@@ -90,6 +90,8 @@ test("preview request holds all services; owner approval and customer cancellati
     bookingWrite("POST", { expectedVersion: 2, action: "cancel" }),
   );
   assert.equal(cancelled.entry.status, "cancelled");
+  assert.equal((await api.customerRequest("mine?view=upcoming")).entries.length, 0);
+  assert.equal((await api.customerRequest("mine?view=history")).entries[0].id, entry.id);
   assert.equal(
     (await f.slots()).some((item) => item.startsAt === slot.startsAt),
     true,
@@ -299,6 +301,8 @@ test("preview transport rejects external paths, unknown/private access, aborted 
     api.customerRequest("mine?ownerId=other"),
     error("INVALID_BOOKING_INPUT", 400),
   );
+  for (const path of ["mine?view=all", "mine?view=upcoming&view=history", "mine?view="])
+    await assert.rejects(api.customerRequest(path), error("INVALID_BOOKING_INPUT", 400));
   const controller = new AbortController();
   controller.abort();
   const before = api.snapshotVersion();
@@ -310,5 +314,143 @@ test("preview transport rejects external paths, unknown/private access, aborted 
     { name: "AbortError" },
   );
   assert.equal(api.snapshotVersion(), before);
+  assert.equal(fetch.mock.callCount(), 0);
+});
+
+test("preview appointments put the nearest active booking first and keep every other entry in history", async (t) => {
+  const fetch = t.mock.method(globalThis, "fetch", () => {
+    throw new Error("No network is allowed in booking fixtures.");
+  });
+  const f = fixture(),
+    { api } = f,
+    { version, ...fields } = api.getSettings();
+  await api.ownerRequest(
+    "mine/businesses/forma/settings",
+    bookingWrite("PATCH", {
+      ...fields,
+      expectedVersion: version,
+      timezone: "UTC",
+      windows: Array.from({ length: 7 }, (_, index) => ({
+        weekday: index + 1,
+        startMinute: 540,
+        endMinute: 1020,
+      })),
+    }),
+  );
+  f.setClock("2030-01-20T12:00:00.000Z");
+  const entries: BookingEntry[] = [];
+  for (let index = 0; index < 30; index++) {
+    const startsAt = `2030-01-${21 + Math.floor(index / 6)}T${String(9 + (index % 6)).padStart(2, "0")}:00:00.000Z`;
+    entries.push(
+      await f.create({
+        startsAt,
+        endsAt: new Date(Date.parse(startsAt) + 45 * 60_000).toISOString(),
+      }),
+    );
+  }
+  for (const index of [1, 2, 3, 4]) {
+    const entry = entries[index];
+    assert.ok(entry);
+    entries[index] = (
+      await api.ownerRequest(
+        `entries/${entry.id}/action`,
+        bookingWrite("POST", {
+          expectedVersion: entry.version,
+          action: "approve",
+        }),
+      )
+    ).entry;
+  }
+  for (const [index, action] of [
+    [28, "cancel"],
+    [29, "decline"],
+  ] as const) {
+    const entry = entries[index];
+    assert.ok(entry);
+    entries[index] = (
+      await api.ownerRequest(
+        `entries/${entry.id}/action`,
+        bookingWrite("POST", {
+          expectedVersion: entry.version,
+          action,
+        }),
+      )
+    ).entry;
+  }
+  const completed = entries[2];
+  assert.ok(completed);
+  f.setClock(completed.endsAt);
+  entries[2] = (
+    await api.ownerRequest(
+      `entries/${completed.id}/action`,
+      bookingWrite("POST", {
+        expectedVersion: completed.version,
+        action: "complete",
+      }),
+    )
+  ).entry;
+  f.setClock("2030-01-21T12:45:00.000Z");
+  const current = await api.customerRequest("mine?view=upcoming&page=1"),
+    second = await api.customerRequest("mine?view=upcoming&page=2"),
+    history = await api.customerRequest("mine?view=history"),
+    original = await api.customerRequest("mine?page=1");
+  assert.equal(current.asOf, "2030-01-21T12:45:00.000Z");
+  assert.equal(current.view, "upcoming");
+  assert.equal(current.entries.length, 20);
+  assert.equal(current.hasMore, true);
+  assert.equal(second.hasMore, false);
+  assert.deepEqual(
+    [...current.entries, ...second.entries].map((entry: BookingEntry) => entry.id),
+    entries.slice(4, 28).map((entry) => entry.id),
+  );
+  assert.deepEqual(
+    history.entries.map((entry: BookingEntry) => entry.id),
+    [entries[29], entries[28], ...entries.slice(0, 4).toReversed()].map((entry) => entry?.id),
+  );
+  assert.equal(
+    new Set(
+      [...current.entries, ...second.entries, ...history.entries].map(
+        (entry: BookingEntry) => entry.id,
+      ),
+    ).size,
+    30,
+  );
+  assert.equal(
+    original.entries[0].id,
+    entries[29]?.id,
+    "Requests without a view retain the legacy descending order.",
+  );
+  assert.equal((await api.ownerRequest("mine?view=upcoming")).entries.length, 0);
+  assert.equal((await api.ownerRequest("mine?view=history")).entries.length, 0);
+  f.setClock("2030-01-21T13:15:00.000Z");
+  assert.equal(
+    (await api.customerRequest("mine?view=upcoming")).entries[0].id,
+    entries[4]?.id,
+    "The appointment in progress stays visible.",
+  );
+  f.setClock("2030-01-21T13:45:00.000Z");
+  assert.equal(
+    (await api.customerRequest("mine?view=history")).entries.some(
+      (entry: BookingEntry) => entry.id === entries[4]?.id,
+    ),
+    true,
+  );
+  assert.equal(
+    (await api.customerRequest("mine?view=upcoming")).entries.some(
+      (entry: BookingEntry) => entry.id === entries[4]?.id,
+    ),
+    false,
+  );
+  f.setClock("2030-01-26T00:00:00.000Z");
+  const older = await api.customerRequest("mine?view=history&page=1"),
+    oldest = await api.customerRequest("mine?view=history&page=2");
+  assert.equal(older.hasMore, true);
+  assert.equal(oldest.hasMore, false);
+  assert.deepEqual(
+    [...older.entries, ...oldest.entries].map((entry: BookingEntry) => entry.id),
+    entries.toReversed().map((entry) => entry.id),
+    "Expired active entries remain reachable through every history page.",
+  );
+  assert.equal((await api.customerRequest("mine?view=upcoming")).entries.length, 0);
   assert.equal(fetch.mock.callCount(), 0);
 });

@@ -82,6 +82,8 @@ test("private reads forward actual request headers and the selected business/ran
   const f = fixture();
   for (const [path, method, rest, result] of [
     ["/mine?page=2", "listMine", [{ page: 2 }], f.values.listMine],
+    ["/mine?page=2&view=upcoming", "listMine", [{ page: 2, view: "upcoming" }], f.values.listMine],
+    ["/mine?view=history", "listMine", [{ view: "history" }], f.values.listMine],
     [`/mine/businesses/${id}/settings`, "readSettings", [id], { settings: f.values.readSettings }],
     [
       `/mine/businesses/${id}/calendar?from=2030-01-07T00%3A00%3A00Z&to=2030-01-08T00%3A00%3A00Z`,
@@ -200,6 +202,10 @@ test("duplicate, unknown and malformed query parameters fail before service disp
     "/mine?page=1.5",
     "/mine?page=abc",
     "/mine?ownerId=other",
+    "/mine?view=upcoming&view=history",
+    "/mine?view=all",
+    "/mine?view=UPCOMING",
+    "/mine?view=",
     `/mine/businesses/${id}/settings?version=1`,
     `/mine/businesses/${id}/calendar?from=x&to=y&customerId=other`,
   ])

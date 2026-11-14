@@ -1,4 +1,9 @@
-import type { BookingAction, BookingSettingsInput, BookingWindow } from "../../lib/booking";
+import type {
+  BookingAction,
+  BookingListView,
+  BookingSettingsInput,
+  BookingWindow,
+} from "../../lib/booking";
 import { isTimeZone } from "../../lib/booking-time";
 
 export class BookingAccessError extends Error {
@@ -182,5 +187,11 @@ export function rangeInput(input: unknown) {
   return { from, to };
 }
 export function mineInput(input: unknown = {}) {
-  return integer(object(input, ["page"]).page ?? 1, 1, 500);
+  const value = object(input, ["page", "view"]);
+  if (value.view !== undefined && value.view !== "upcoming" && value.view !== "history")
+    fail(400, "INVALID_BOOKING_INPUT");
+  return {
+    page: integer(value.page ?? 1, 1, 500),
+    view: value.view as BookingListView | undefined,
+  };
 }

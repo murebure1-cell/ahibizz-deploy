@@ -16,7 +16,11 @@ function query(url: URL, allowed: string[]) {
     if (key === "page") {
       if (!/^\d{1,3}$/.test(value)) throw new BookingAccessError(400, "INVALID_BOOKING_INPUT");
       result[key] = Number(value);
-    } else result[key] = value;
+    } else {
+      if (key === "view" && value !== "upcoming" && value !== "history")
+        throw new BookingAccessError(400, "INVALID_BOOKING_INPUT");
+      result[key] = value;
+    }
   }
   return result;
 }
@@ -70,7 +74,7 @@ export function createBookingHttpHandler({
       const entryMatch = /^\/entries\/([A-Za-z0-9-]{1,128})\/action$/.exec(path);
       if (request.method === "GET") {
         if (path === "/mine")
-          return reply(await service.listMine(request.headers, query(url, ["page"])));
+          return reply(await service.listMine(request.headers, query(url, ["page", "view"])));
         if (publicMatch && !publicMatch[2]) {
           query(url, []);
           return reply({ booking: await service.publicConfig(publicMatch[1] as string) });

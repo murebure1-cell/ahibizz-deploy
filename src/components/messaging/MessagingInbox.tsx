@@ -359,6 +359,7 @@ export function MessagingInbox({
         const acknowledged = { ...intent, receipt };
         pendingRef.current = acknowledged;
         setPending(acknowledged);
+        if (intent.action === "open" && selection.current !== receipt.threadId) setDraft("");
         selection.current = receipt.threadId;
         setSelected(receipt.threadId);
         const fresh = await loadConversation(receipt.threadId, undefined, false);
@@ -432,6 +433,10 @@ export function MessagingInbox({
   }, [active, inbox, loadList, page]);
   const targetKey = initialTarget ? `${initialTarget.kind}:${initialTarget.targetId}` : "";
   useEffect(() => {
+    if (!targetKey) {
+      handledTarget.current = "";
+      return;
+    }
     if (
       !active ||
       !initialTarget ||
@@ -442,6 +447,12 @@ export function MessagingInbox({
     )
       return;
     handledTarget.current = targetKey;
+    if (
+      selection.current === conversation?.thread.id &&
+      conversation?.thread.kind === initialTarget.kind &&
+      conversation.thread.targetId === initialTarget.targetId
+    )
+      return;
     void commit({
       action: "open",
       path: "threads",
@@ -450,7 +461,7 @@ export function MessagingInbox({
       key: crypto.randomUUID(),
       threadId: null,
     });
-  }, [active, busy, commit, initialTarget, pending, targetKey, usable]);
+  }, [active, busy, commit, conversation, initialTarget, pending, targetKey, usable]);
   useEffect(() => {
     if (!active || !usable) return;
     const refresh = () => {

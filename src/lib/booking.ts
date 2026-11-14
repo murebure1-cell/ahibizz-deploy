@@ -28,6 +28,7 @@ export type BookingSlot = { startsAt: string; endsAt: string };
 export type BookingStatus = "requested" | "confirmed" | "cancelled" | "completed" | "declined";
 export type BookingKind = "customer" | "manual" | "block";
 export type BookingAction = "approve" | "decline" | "cancel" | "complete";
+export type BookingListView = "upcoming" | "history";
 export type BookingEntry = BookingSlot & {
   id: string;
   businessId: string;
@@ -52,6 +53,16 @@ export const bookingStatusLabels: Record<BookingStatus, string> = {
   completed: "Održan",
   declined: "Odbijen",
 };
+/** Active appointments remain current until their exact end, including an appointment in progress. */
+export function bookingIsUpcoming(
+  entry: Pick<BookingEntry, "status" | "endsAt">,
+  asOf: number,
+): boolean {
+  return (
+    (entry.status === "requested" || entry.status === "confirmed") &&
+    Date.parse(entry.endsAt) > asOf
+  );
+}
 const bookingMonths = [
   "Januar",
   "Februar",

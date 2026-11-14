@@ -1062,6 +1062,136 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       );
 
       await t.test(
+        "customer views paginate nearest active entries and partition history at the exact end without exposing other customers",
+        async () => {
+          const beforeClock = new Date(clock);
+          try {
+            clock = new Date("2030-01-20T12:00:00.000Z");
+            const entries = [];
+            for (let index = 0; index < 30; index++) {
+              const startsAt = `2030-01-${21 + Math.floor(index / 6)}T${String(9 + (index % 6)).padStart(2, "0")}:00:00.000Z`;
+              const created = await request("POST", `${publicPath}/requests`, {
+                actor: other,
+                key: randomUUID(),
+                body: quote(serviceId, startsAt),
+              });
+              assert.equal(created.status, 201);
+              entries.push(created.data.entry);
+            }
+            for (const index of [1, 3, 4]) {
+              const changed = await action(professional, entries[index], "approve");
+              assert.equal(changed.status, 200);
+              entries[index] = changed.data.entry;
+            }
+            for (const [index, command] of [
+              [2, "cancel"],
+              [28, "cancel"],
+              [29, "decline"],
+            ]) {
+              const changed = await action(professional, entries[index], command);
+              assert.equal(changed.status, 200);
+              entries[index] = changed.data.entry;
+            }
+            clock = new Date("2030-01-21T12:45:00.000Z");
+            const snapshot = await bookingSnapshot();
+            const current = await request("GET", "/mine?view=upcoming&page=1", { actor: other }),
+              second = await request("GET", "/mine?view=upcoming&page=2", { actor: other }),
+              history = await request("GET", "/mine?view=history", { actor: other }),
+              original = await request("GET", "/mine?page=1", { actor: other });
+            assert.equal(current.status, 200);
+            assert.equal(current.data.asOf, clock.toISOString());
+            assert.equal(current.data.view, "upcoming");
+            assert.equal(current.data.entries.length, 20);
+            assert.equal(current.data.hasMore, true);
+            assert.equal(second.data.hasMore, false);
+            assert.deepEqual(
+              [...current.data.entries, ...second.data.entries].map((entry) => entry.id),
+              entries.slice(4, 28).map((entry) => entry.id),
+            );
+            assert.deepEqual(
+              history.data.entries.map((entry) => entry.id),
+              [entries[29], entries[28], ...entries.slice(0, 4).toReversed()].map(
+                (entry) => entry.id,
+              ),
+            );
+            assert.equal(
+              new Set(
+                [...current.data.entries, ...second.data.entries, ...history.data.entries].map(
+                  (entry) => entry.id,
+                ),
+              ).size,
+              30,
+              "Every own entry appears in exactly one view, including the appointment ending at the cutoff.",
+            );
+            assert.equal(original.data.entries[0].id, entries[29].id);
+            assert.equal(Object.hasOwn(original.data, "view"), false);
+            assert.equal(Object.hasOwn(original.data, "asOf"), false);
+            assert.equal(
+              (await request("GET", "/mine?view=history", { actor: customer })).data.entries.some(
+                (entry) => entry.status === "completed",
+              ),
+              true,
+            );
+            assert.equal(
+              (await request("GET", "/mine?view=upcoming", { actor: professional })).data.entries
+                .length,
+              0,
+            );
+            assert.equal(
+              (await request("GET", "/mine?view=history", { actor: professional })).data.entries
+                .length,
+              0,
+            );
+            for (const path of [
+              "/mine?view=all",
+              "/mine?view=upcoming&view=history",
+              "/mine?view=history&page=501",
+            ])
+              assert.equal((await request("GET", path, { actor: other })).status, 400);
+            assert.deepEqual(
+              await bookingSnapshot(),
+              snapshot,
+              "View reads do not change bookings, events or credits.",
+            );
+            clock = new Date("2030-01-21T13:15:00.000Z");
+            assert.equal(
+              (await request("GET", "/mine?view=upcoming", { actor: other })).data.entries[0].id,
+              entries[4].id,
+              "An appointment in progress remains current.",
+            );
+            clock = new Date("2030-01-21T13:45:00.000Z");
+            assert.equal(
+              (await request("GET", "/mine?view=history", { actor: other })).data.entries.some(
+                (entry) => entry.id === entries[4].id,
+              ),
+              true,
+            );
+            assert.equal(
+              (await request("GET", "/mine?view=upcoming", { actor: other })).data.entries.some(
+                (entry) => entry.id === entries[4].id,
+              ),
+              false,
+            );
+            clock = new Date("2030-01-26T00:00:00.000Z");
+            const older = await request("GET", "/mine?view=history&page=1", { actor: other }),
+              oldest = await request("GET", "/mine?view=history&page=2", { actor: other });
+            assert.equal(older.data.hasMore, true);
+            assert.equal(oldest.data.hasMore, false);
+            assert.deepEqual(
+              [...older.data.entries, ...oldest.data.entries].map((entry) => entry.id),
+              entries.toReversed().map((entry) => entry.id),
+            );
+            assert.equal(
+              (await request("GET", "/mine?view=upcoming", { actor: other })).data.entries.length,
+              0,
+            );
+          } finally {
+            clock = beforeClock;
+          }
+        },
+      );
+
+      await t.test(
         "private booking reads reject exact sessions revoked or expired while waiting for authority",
         async () => {
           for (const invalidation of ["revoke", "expire", "expire-session-lock"]) {
@@ -1085,6 +1215,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             expected: "approved",
           });
           assert.equal((await request("GET", "/mine", { actor: customer })).status, 401);
+          for (const view of ["upcoming", "history"])
+            assert.equal(
+              (await request("GET", `/mine?view=${view}`, { actor: customer })).status,
+              401,
+            );
           assert.equal(
             (
               await request("POST", `${publicPath}/requests`, {

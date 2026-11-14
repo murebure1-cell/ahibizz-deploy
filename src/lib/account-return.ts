@@ -1,4 +1,5 @@
 import { bookingReturnPath } from "./booking-return";
+import { type MessageTarget, messageLink, readMessageTarget } from "./messaging";
 
 const accountSections = {
   profil: "profile",
@@ -10,11 +11,44 @@ const accountSections = {
 
 export type AccountSection = (typeof accountSections)[keyof typeof accountSections];
 
+const sectionQueries: Record<AccountSection, keyof typeof accountSections> = {
+  profile: "profil",
+  businesses: "djelatnosti",
+  appointments: "termini",
+  connections: "prijatelji",
+  messages: "poruke",
+};
+
+/** A pane change drops old message targets and unrelated query parameters. */
+export function accountSectionPath(section: AccountSection): string {
+  const query = Object.hasOwn(sectionQueries, section) ? sectionQueries[section] : "profil";
+  return `/nalog?odjeljak=${query}`;
+}
+
 /** Unknown or duplicated section query values open the default account view. */
 export function accountSection(value: unknown): AccountSection {
   return typeof value === "string" && Object.hasOwn(accountSections, value)
     ? accountSections[value as keyof typeof accountSections]
     : "profile";
+}
+
+/** Read only known panes and closed message targets from the current browser address. */
+export function readAccountNavigation(params: URLSearchParams): {
+  section: AccountSection;
+  messageTarget?: MessageTarget;
+  invalidMessageTarget: boolean;
+} {
+  const values = params.getAll("odjeljak");
+  const section = accountSection(values.length === 1 ? values[0] : undefined);
+  if (section !== "messages") return { section, invalidMessageTarget: false };
+  try {
+    const messageTarget = readMessageTarget(params) ?? undefined;
+    if (messageTarget && accountReturnPath(messageLink(messageTarget)) === "/nalog")
+      throw new Error("invalid_message_target");
+    return { section, messageTarget, invalidMessageTarget: false };
+  } catch {
+    return { section, invalidMessageTarget: true };
+  }
 }
 
 /** Only known in-app destinations survive login; never a caller-supplied origin or nested URL. */

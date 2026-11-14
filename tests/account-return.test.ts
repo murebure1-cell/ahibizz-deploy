@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { accountReturnPath, accountSection } from "../src/lib/account-return";
+import {
+  type AccountSection,
+  accountReturnPath,
+  accountSection,
+  accountSectionPath,
+  readAccountNavigation,
+} from "../src/lib/account-return";
 
 test("login retains only exact known messaging destinations and previous safe profile routes", () => {
   const business = "11111111-1111-4111-8111-111111111111";
@@ -76,4 +82,68 @@ test("known account deep links retain their section through sign-in without expo
     "termini&next=elsewhere",
   ])
     assert.equal(accountSection(value), "profile");
+});
+
+test("account pane addresses round-trip for refresh and browser history without old message targets", () => {
+  for (const section of [
+    "profile",
+    "businesses",
+    "appointments",
+    "connections",
+    "messages",
+  ] as const) {
+    const href = accountSectionPath(section);
+    assert.equal(accountReturnPath(href), href);
+    const navigation = readAccountNavigation(
+      new URL(href, "https://app.example.invalid").searchParams,
+    );
+    assert.equal(navigation.section, section);
+    assert.equal(navigation.messageTarget, undefined);
+    assert.equal(navigation.invalidMessageTarget, false);
+    assert.equal(href.includes("osoba="), false);
+    assert.equal(href.includes("djelatnost="), false);
+  }
+  for (const value of ["constructor", "__proto__", "//evil.invalid", "appointments&osoba=other"])
+    assert.equal(accountSectionPath(value as AccountSection), "/nalog?odjeljak=profil");
+});
+
+test("browser account navigation takes message intent only from the current exact message query", () => {
+  const business = "11111111-1111-4111-8111-111111111111";
+  assert.deepEqual(readAccountNavigation(new URLSearchParams("odjeljak=poruke&osoba=person_A-1")), {
+    section: "messages",
+    messageTarget: { kind: "person", targetId: "person_A-1" },
+    invalidMessageTarget: false,
+  });
+  assert.deepEqual(
+    readAccountNavigation(new URLSearchParams(`odjeljak=poruke&djelatnost=${business}`)),
+    {
+      section: "messages",
+      messageTarget: { kind: "business", targetId: business },
+      invalidMessageTarget: false,
+    },
+  );
+  for (const query of [
+    "",
+    "odjeljak=profil&osoba=old",
+    "odjeljak=unknown&osoba=old",
+    "odjeljak=poruke&odjeljak=profil&osoba=old",
+    "odjeljak=poruke&odjeljak=poruke&osoba=old",
+  ]) {
+    const navigation = readAccountNavigation(new URLSearchParams(query));
+    assert.equal(navigation.section, "profile");
+    assert.equal(navigation.messageTarget, undefined);
+    assert.equal(navigation.invalidMessageTarget, false);
+  }
+  for (const query of [
+    "odjeljak=poruke&osoba=",
+    "odjeljak=poruke&osoba=a&osoba=b",
+    `odjeljak=poruke&osoba=a&djelatnost=${business}`,
+    "odjeljak=poruke&djelatnost=not-a-business-id",
+    "odjeljak=poruke&osoba=../../admin",
+    "odjeljak=poruke&osoba=a&next=https://evil.invalid",
+  ])
+    assert.deepEqual(readAccountNavigation(new URLSearchParams(query)), {
+      section: "messages",
+      invalidMessageTarget: true,
+    });
 });

@@ -1,9 +1,11 @@
-import type {
-  BookingEntry,
-  BookingServiceOption,
-  BookingSettings,
-  BookingStatus,
-  PublicBookingConfiguration,
+import {
+  type BookingEntry,
+  type BookingListView,
+  type BookingServiceOption,
+  type BookingSettings,
+  type BookingStatus,
+  bookingIsUpcoming,
+  type PublicBookingConfiguration,
 } from "../../lib/booking";
 import { BookingRequestError, type bookingRequest } from "../../lib/booking-client";
 import { addDays, dailySlots, dateKey, isTimeZone } from "../../lib/booking-time";
@@ -467,16 +469,28 @@ export function createBookingPreviewApi({ now = () => new Date() }: { now?: () =
       let result: unknown;
       if (method === "GET") {
         if (url.pathname === "/mine") {
-          const value = query(["page"]),
+          const value = query(["page", "view"]),
             page =
               value.page === undefined
                 ? 1
                 : /^\d{1,3}$/.test(String(value.page))
                   ? integer(Number(value.page), 1, 500)
                   : reject(400);
+          if (value.view !== undefined && value.view !== "upcoming" && value.view !== "history")
+            reject(400);
+          const view = value.view as BookingListView | undefined,
+            asOf = clock().toISOString();
           const own = [...entries.values()]
-            .filter((entry) => entry.customerId === actor)
-            .sort((a, b) => b.startsAt.localeCompare(a.startsAt) || b.id.localeCompare(a.id));
+            .filter(
+              (entry) =>
+                entry.customerId === actor &&
+                (!view || bookingIsUpcoming(entry, Date.parse(asOf)) === (view === "upcoming")),
+            )
+            .sort((a, b) =>
+              view === "upcoming"
+                ? a.startsAt.localeCompare(b.startsAt) || a.id.localeCompare(b.id)
+                : b.startsAt.localeCompare(a.startsAt) || b.id.localeCompare(a.id),
+            );
           result = {
             entries: own.slice((page - 1) * 20, page * 20),
             page,
@@ -484,6 +498,7 @@ export function createBookingPreviewApi({ now = () => new Date() }: { now?: () =
             credits: [...credits.values()]
               .filter((credit) => credit.recipient === actor)
               .reduce((sum, credit) => sum + credit.amount, 0),
+            ...(view ? { view, asOf } : {}),
           };
         } else if (pub?.[1] && !pub[2]) {
           query([]);

@@ -569,13 +569,19 @@ export function createBookingService({
     },
     async listMine(headers: Headers, input: unknown = {}) {
       const identity = await actor(headers),
-        page = mineInput(input);
+        { page, view } = mineInput(input);
       return transaction(pool, async (client) => {
         const { actor: currentActor } = await authority(client, identity);
+        const asOf = clock().toISOString();
+        const active = "e.status IN ('requested','confirmed') AND e.ends_at > $3::timestamptz";
+        const filter =
+          view === "upcoming" ? `AND (${active})` : view === "history" ? `AND NOT (${active})` : "";
+        const order =
+          view === "upcoming" ? "e.starts_at ASC,e.id ASC" : "e.starts_at DESC,e.id DESC";
         const rows = (
           await client.query<EntryRow>(
-            `SELECT ${entryColumns} FROM booking_entry e WHERE e.customer_user_id=$1 ORDER BY e.starts_at DESC,e.id DESC LIMIT 21 OFFSET $2`,
-            [currentActor.id, (page - 1) * 20],
+            `SELECT ${entryColumns} FROM booking_entry e WHERE e.customer_user_id=$1 ${filter} ORDER BY ${order} LIMIT 21 OFFSET $2`,
+            view ? [currentActor.id, (page - 1) * 20, asOf] : [currentActor.id, (page - 1) * 20],
           )
         ).rows;
         return {
@@ -583,6 +589,7 @@ export function createBookingService({
           page,
           hasMore: rows.length > 20,
           credits: await creditTotal(client, "recipient_user_id", currentActor.id),
+          ...(view ? { view, asOf } : {}),
         };
       });
     },

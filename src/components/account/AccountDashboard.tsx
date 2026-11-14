@@ -1,8 +1,13 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import type { AccountSection } from "../../lib/account-return";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type AccountSection,
+  accountSectionPath,
+  readAccountNavigation,
+} from "../../lib/account-return";
 import type { MessageTarget } from "../../lib/messaging";
 import { type PersonalProfile, profileImageUrl } from "../../lib/people";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
@@ -26,14 +31,42 @@ export function AccountDashboard({
 }) {
   const [profile, setProfile] = useState(initial),
     [personal, setPersonal] = useState<PersonalProfile | null>(null),
-    [section, setSection] = useState<AccountSection>(initialSection),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const searchParams = useSearchParams();
+  const query = searchParams?.toString();
+  const navigation = useRef<HTMLElement>(null);
+  const view = useMemo(
+    () =>
+      query === undefined
+        ? { section: initialSection, messageTarget, invalidMessageTarget }
+        : readAccountNavigation(new URLSearchParams(query)),
+    [query, initialSection, messageTarget, invalidMessageTarget],
+  );
+  const section = view.section;
   const photo = personal ? profileImageUrl(personal, "photo") : null;
-  const targetKey = messageTarget ? `${messageTarget.kind}:${messageTarget.targetId}` : "";
   useEffect(() => {
-    setSection(targetKey ? "messages" : initialSection);
-  }, [initialSection, targetKey]);
+    const nav = navigation.current;
+    if (!nav) return;
+    const reveal = () => {
+      const selected = nav.querySelector<HTMLElement>(`[data-account-section="${section}"]`);
+      if (!selected || nav.scrollWidth <= nav.clientWidth) return;
+      const left = selected.getBoundingClientRect().left - nav.getBoundingClientRect().left;
+      const right = left + selected.offsetWidth;
+      if (left < 0) nav.scrollLeft += left;
+      else if (right > nav.clientWidth) nav.scrollLeft += right - nav.clientWidth;
+    };
+    reveal();
+    const observer = new ResizeObserver(reveal);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, [section]);
+  function changeSection(next: AccountSection) {
+    const href = accountSectionPath(next);
+    if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== href)
+      window.history.pushState(null, "", href);
+    setError("");
+  }
   async function logout() {
     if (busy) return;
     setBusy(true);
@@ -65,19 +98,26 @@ export function AccountDashboard({
               <Image
                 src={photo}
                 alt=""
-                width={62}
-                height={62}
+                width={43}
+                height={43}
                 unoptimized
-                style={{ borderRadius: "50%", objectFit: "cover", width: "100%", height: "100%" }}
+                style={{
+                  borderRadius: "inherit",
+                  objectFit: "cover",
+                  width: "100%",
+                  height: "100%",
+                }}
               />
             ) : (
               profile.name.slice(0, 1).toLocaleUpperCase("bs")
             )}
           </span>
-          <strong>{profile.name}</strong>
-          <small>{profile.role === "owner" ? "Administrator" : "Moj AhiBizz"}</small>
+          <div>
+            <strong>{profile.name}</strong>
+            <small>{profile.role === "owner" ? "Administrator" : "Moj AhiBizz"}</small>
+          </div>
         </div>
-        <nav aria-label="Moj nalog">
+        <nav ref={navigation} aria-label="Moj nalog">
           {(
             [
               { id: "profile", label: "Moj profil", icon: "user" },
@@ -90,11 +130,10 @@ export function AccountDashboard({
             <button
               key={item.id}
               type="button"
+              data-account-section={item.id}
               aria-current={section === item.id ? "page" : undefined}
-              onClick={() => {
-                setSection(item.id);
-                setError("");
-              }}
+              aria-controls="account-panel"
+              onClick={() => changeSection(item.id)}
             >
               <Icon name={item.icon} />
               {item.label}
@@ -111,7 +150,7 @@ export function AccountDashboard({
           Odjava
         </button>
       </aside>
-      <section className={styles.content}>
+      <section id="account-panel" className={styles.content} data-section={section}>
         {error && (
           <p role="alert" className={styles.feedback}>
             {error}
@@ -124,7 +163,7 @@ export function AccountDashboard({
               setPersonal(next);
               setProfile((current) => ({ ...current, name: next.name }));
             }}
-            onBusinesses={() => setSection("businesses")}
+            onBusinesses={() => changeSection("businesses")}
           />
         </div>
         <div hidden={section !== "businesses"}>
@@ -137,12 +176,12 @@ export function AccountDashboard({
           <ConnectionsPanel active={section === "connections"} />
         </div>
         <div hidden={section !== "messages"}>
-          {invalidMessageTarget && (
+          {view.invalidMessageTarget && (
             <p role="alert" className={styles.feedback}>
               Link za razgovor nije ispravan.
             </p>
           )}
-          <MessagingInbox active={section === "messages"} initialTarget={messageTarget} />
+          <MessagingInbox active={section === "messages"} initialTarget={view.messageTarget} />
         </div>
       </section>
     </main>
