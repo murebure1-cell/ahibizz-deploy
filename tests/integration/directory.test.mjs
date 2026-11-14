@@ -196,9 +196,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         3,
       );
       const [owner, member, other] = actors;
-      const { createDirectoryService, DirectoryAccessError } = await import(
-        "../../src/server/directory/index.ts"
-      );
+      const { createDirectoryService, createPublicDirectoryService, DirectoryAccessError } =
+        await import("../../src/server/directory/index.ts");
       const directory = createDirectoryService({
         accounts: createAccountService({ auth, pool }),
         auth,
@@ -561,6 +560,92 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           await pool.query("UPDATE auth_user SET approval = 'approved' WHERE id = $1", [
             member.user.id,
           ]);
+        },
+      );
+
+      await t.test(
+        "database-only public reads preserve publication and owner eligibility without SMTP or private auth",
+        async () => {
+          const publicDirectory = createPublicDirectoryService({ database: pool });
+          const { createDirectoryRequestHandler } = await import(
+            "../../src/server/directory-http.ts"
+          );
+          let authConfigurationReads = 0;
+          const handle = createDirectoryRequestHandler({
+            publicService: () => publicDirectory,
+            configuration: () => {
+              authConfigurationReads++;
+              return null;
+            },
+            privateService: () => null,
+          });
+          const publicRequest = async (route) => {
+            const response = await handle(new Request(new URL(route, baseURL)));
+            return { status: response.status, body: await response.json() };
+          };
+          const profileRoute = `/api/directory/businesses/${memberBusiness.id}`;
+          const beforeAudit = (
+            await pool.query("SELECT count(*)::integer AS n FROM directory_moderation_audit")
+          ).rows[0].n;
+          assert.equal((await publicRequest("/api/directory/categories")).status, 200);
+          const initial = await publicRequest(profileRoute);
+          assert.equal(initial.status, 200);
+          for (const field of ["ownerId", "status", "version", "archivedAt", "updatedAt", "bytes"])
+            assert.equal(Object.hasOwn(initial.body.business, field), false);
+          for (const state of [
+            { approval: "pending", verified: true, status: "published" },
+            { approval: "suspended", verified: true, status: "published" },
+            { approval: "approved", verified: false, status: "published" },
+            { approval: "approved", verified: true, status: "draft" },
+            { approval: "approved", verified: true, status: "pending" },
+            { approval: "approved", verified: true, status: "archived" },
+          ]) {
+            try {
+              await pool.query('UPDATE auth_user SET approval=$1,"emailVerified"=$2 WHERE id=$3', [
+                state.approval,
+                state.verified,
+                member.user.id,
+              ]);
+              await pool.query(
+                "UPDATE directory_business SET status=$1,archived_at=CASE WHEN $1='archived' THEN now() ELSE NULL END WHERE id=$2",
+                [state.status, memberBusiness.id],
+              );
+              const profile = await publicRequest(profileRoute);
+              assert.equal(profile.status, 404, JSON.stringify(state));
+              assert.deepEqual(profile.body, { code: "BUSINESS_NOT_FOUND" });
+              const listing = await publicRequest("/api/directory/businesses");
+              assert.equal(listing.status, 200);
+              assert.equal(
+                listing.body.items.some((value) => value.id === memberBusiness.id),
+                false,
+              );
+            } finally {
+              await pool.query(
+                "UPDATE auth_user SET approval='approved',\"emailVerified\"=true WHERE id=$1",
+                [member.user.id],
+              );
+              await pool.query(
+                "UPDATE directory_business SET status='published',archived_at=NULL WHERE id=$1",
+                [memberBusiness.id],
+              );
+            }
+          }
+          assert.equal((await publicRequest(profileRoute)).status, 200);
+          assert.equal(
+            (await publicRequest("/api/directory/businesses")).body.items.some(
+              (value) => value.id === memberBusiness.id,
+            ),
+            true,
+          );
+          assert.equal(authConfigurationReads, 0);
+          assert.equal((await publicRequest("/api/directory/mine")).status, 503);
+          assert.equal(authConfigurationReads, 1);
+          assert.equal(
+            (await pool.query("SELECT count(*)::integer AS n FROM directory_moderation_audit"))
+              .rows[0].n,
+            beforeAudit,
+          );
+          assert.equal(captured.size, 3);
         },
       );
 

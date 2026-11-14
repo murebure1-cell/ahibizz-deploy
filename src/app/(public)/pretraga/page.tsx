@@ -7,7 +7,7 @@ import { EmptyDirectory } from "../../../components/EmptyDirectory";
 import {
   DirectoryAccessError,
   type DirectoryCategory,
-  getDirectoryService,
+  getPublicDirectoryService,
   type PublicDirectoryBusiness,
 } from "../../../server/directory";
 import { publicBusinessView } from "../../../server/directory/public-view";
@@ -39,7 +39,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     Object.values(params).some(Array.isArray) ||
     Boolean(rawPage && (!/^\d{1,3}$/.test(rawPage) || page < 1 || page > 500));
   try {
-    const service = getDirectoryService();
+    const service = getPublicDirectoryService();
     if (service && !invalidFilters) {
       const [result, classification] = await Promise.all([
         service.listPublic({

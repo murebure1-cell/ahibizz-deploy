@@ -1,0 +1,167 @@
+import { businessMediaProjection } from "../business-media/service";
+import type { Database } from "../db";
+import { getDatabase } from "../db";
+import {
+  type BusinessFields,
+  DirectoryAccessError,
+  type DirectoryBusiness,
+  type DirectoryCategory,
+  fail,
+  type PublicDirectoryBusiness,
+} from "./types";
+import { businessKeys, object, pageInput, uuid } from "./validation";
+
+export type DirectoryReadDatabase = Pick<Database, "query">;
+
+export const columnMap: Record<keyof BusinessFields, string> = {
+  title: "title",
+  categoryId: "category_id",
+  subcategoryId: "subcategory_id",
+  description: "description",
+  contactEmail: "contact_email",
+  contactPhone: "contact_phone",
+  websiteUrl: "website_url",
+  addressLine: "address_line",
+  city: "city",
+  countryCode: "country_code",
+  latitude: "latitude",
+  longitude: "longitude",
+};
+export const columns = [
+  "b.id",
+  'b.owner_user_id AS "ownerId"',
+  ...businessKeys.map((key) => `b.${columnMap[key]} AS "${key}"`),
+  "b.status",
+  "b.version",
+  "b.is_verified AS verified",
+  "b.is_featured AS featured",
+  'b.created_at AS "createdAt"',
+  'b.updated_at AS "updatedAt"',
+  'b.published_at AS "publishedAt"',
+  'b.archived_at AS "archivedAt"',
+  `${businessMediaProjection} AS media`,
+].join(", ");
+export type Row = Omit<
+  DirectoryBusiness,
+  "createdAt" | "updatedAt" | "publishedAt" | "archivedAt"
+> & {
+  createdAt: Date;
+  updatedAt: Date;
+  publishedAt: Date | null;
+  archivedAt: Date | null;
+};
+export function dto(row: Row): DirectoryBusiness {
+  return {
+    ...row,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    publishedAt: row.publishedAt?.toISOString() ?? null,
+    archivedAt: row.archivedAt?.toISOString() ?? null,
+  };
+}
+function publicDto(value: DirectoryBusiness): PublicDirectoryBusiness {
+  const {
+    ownerId: _owner,
+    status: _status,
+    version: _version,
+    archivedAt: _archived,
+    updatedAt: _updated,
+    ...publicValue
+  } = value;
+  return publicValue;
+}
+async function safeRead<T>(action: () => Promise<T>): Promise<T> {
+  try {
+    return await action();
+  } catch (error) {
+    if (error instanceof DirectoryAccessError) throw error;
+    throw new DirectoryAccessError(503, "DIRECTORY_UNAVAILABLE");
+  }
+}
+
+export async function listDirectory(
+  database: DirectoryReadDatabase,
+  input: unknown,
+  condition: string,
+  parameters: unknown[],
+  publicOnly = false,
+) {
+  const { page, pageSize, categoryId, subcategoryId, status, q, city } = pageInput(
+    input,
+    publicOnly,
+  );
+  const filters = [condition],
+    values = [...parameters];
+  if (!publicOnly && status === undefined) filters.push("b.status <> 'archived'");
+  for (const [column, value] of [
+    ["b.category_id", categoryId],
+    ["b.subcategory_id", subcategoryId],
+    ["b.status", status],
+  ] as const)
+    if (value) filters.push(`${column} = $${values.push(value)}`);
+  if (q) {
+    const index = values.push(`%${q.replace(/[\\%_]/g, "\\$&")}%`);
+    filters.push(
+      `(b.title ILIKE $${index} ESCAPE E'\\\\' OR b.description ILIKE $${index} ESCAPE E'\\\\' OR b.city ILIKE $${index} ESCAPE E'\\\\')`,
+    );
+  }
+  if (city) {
+    const index = values.push(`%${city.replace(/[\\%_]/g, "\\$&")}%`);
+    filters.push(`b.city ILIKE $${index} ESCAPE E'\\\\'`);
+  }
+  const limitIndex = values.push(pageSize + 1),
+    offsetIndex = values.push((page - 1) * pageSize);
+  const result = await database.query(
+    `SELECT ${columns} FROM directory_business b ${publicOnly ? "JOIN auth_user u ON u.id = b.owner_user_id" : ""} WHERE ${filters.join(" AND ")} ORDER BY b.created_at DESC, b.id DESC LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
+    values,
+  );
+  const items = (result.rows as Row[]).slice(0, pageSize).map(dto);
+  return { items, page, pageSize, hasMore: result.rows.length > pageSize };
+}
+
+/** Public queries require only the configured database, never an auth or mail service. */
+export function createPublicDirectoryService({ database }: { database: DirectoryReadDatabase }) {
+  return {
+    categories: () =>
+      safeRead(async () => ({
+        categories: (
+          await database.query(
+            'SELECT id, name, slug, parent_id AS "parentId" FROM directory_category ORDER BY parent_id NULLS FIRST, name, id',
+          )
+        ).rows as DirectoryCategory[],
+      })),
+    async listPublic(input: unknown = {}) {
+      object(input, ["page", "pageSize", "categoryId", "subcategoryId", "q", "city"]);
+      return safeRead(async () => {
+        const result = await listDirectory(
+          database,
+          input,
+          "b.status = 'published' AND u.approval = 'approved' AND u.\"emailVerified\" = true",
+          [],
+          true,
+        );
+        return { ...result, items: result.items.map(publicDto) };
+      });
+    },
+    async readPublic(id: string): Promise<PublicDirectoryBusiness> {
+      const key = uuid(id);
+      return safeRead(async () => {
+        const result = await database.query(
+          `SELECT ${columns} FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id WHERE b.id = $1 AND b.status = 'published' AND u.approval = 'approved' AND u."emailVerified" = true`,
+          [key],
+        );
+        if (!result.rows[0]) fail(404, "BUSINESS_NOT_FOUND");
+        return publicDto(dto(result.rows[0] as Row));
+      });
+    },
+  };
+}
+
+export type PublicDirectoryService = ReturnType<typeof createPublicDirectoryService>;
+
+/** The shared database facade remains lazy and does not open a connection here. */
+export function getPublicDirectoryService(
+  database: Database = getDatabase(),
+): PublicDirectoryService | null {
+  return database.configured() ? createPublicDirectoryService({ database }) : null;
+}

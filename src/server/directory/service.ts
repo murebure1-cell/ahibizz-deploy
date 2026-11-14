@@ -3,7 +3,14 @@ import type { Pool, PoolClient } from "pg";
 import { type AuthService, getAuthService } from "../auth";
 import { AccountAccessError, type AccountService, getAccountService } from "../auth/accounts";
 import { type CurrentAuthUser, getAuthDatabasePool } from "../auth/service";
-import { businessMediaProjection } from "../business-media/service";
+import {
+  columnMap,
+  columns,
+  createPublicDirectoryService,
+  dto,
+  listDirectory,
+  type Row,
+} from "./read-service";
 import {
   type BusinessFields,
   type BusinessStatus,
@@ -11,7 +18,6 @@ import {
   type DirectoryBusiness,
   type DirectoryCategory,
   fail,
-  type PublicDirectoryBusiness,
 } from "./types";
 import {
   businessInput,
@@ -19,66 +25,11 @@ import {
   completeFields,
   expectedVersion,
   object,
-  pageInput,
   text,
   uuid,
   versionInput,
 } from "./validation";
 
-const columnMap: Record<keyof BusinessFields, string> = {
-  title: "title",
-  categoryId: "category_id",
-  subcategoryId: "subcategory_id",
-  description: "description",
-  contactEmail: "contact_email",
-  contactPhone: "contact_phone",
-  websiteUrl: "website_url",
-  addressLine: "address_line",
-  city: "city",
-  countryCode: "country_code",
-  latitude: "latitude",
-  longitude: "longitude",
-};
-const columns = [
-  "b.id",
-  'b.owner_user_id AS "ownerId"',
-  ...businessKeys.map((key) => `b.${columnMap[key]} AS "${key}"`),
-  "b.status",
-  "b.version",
-  "b.is_verified AS verified",
-  "b.is_featured AS featured",
-  'b.created_at AS "createdAt"',
-  'b.updated_at AS "updatedAt"',
-  'b.published_at AS "publishedAt"',
-  'b.archived_at AS "archivedAt"',
-  `${businessMediaProjection} AS media`,
-].join(", ");
-type Row = Omit<DirectoryBusiness, "createdAt" | "updatedAt" | "publishedAt" | "archivedAt"> & {
-  createdAt: Date;
-  updatedAt: Date;
-  publishedAt: Date | null;
-  archivedAt: Date | null;
-};
-function dto(row: Row): DirectoryBusiness {
-  return {
-    ...row,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    publishedAt: row.publishedAt?.toISOString() ?? null,
-    archivedAt: row.archivedAt?.toISOString() ?? null,
-  };
-}
-function publicDto(value: DirectoryBusiness): PublicDirectoryBusiness {
-  const {
-    ownerId: _owner,
-    status: _status,
-    version: _version,
-    archivedAt: _archived,
-    updatedAt: _updated,
-    ...publicValue
-  } = value;
-  return publicValue;
-}
 function fields(value: DirectoryBusiness): BusinessFields {
   return Object.fromEntries(businessKeys.map((key) => [key, value[key]])) as BusinessFields;
 }
@@ -294,53 +245,10 @@ export function createDirectoryService({
         fail(401, "AUTHENTICATION_REQUIRED");
       return { ...value, session: signed.session };
     });
-  async function list(
-    input: unknown,
-    condition: string,
-    parameters: unknown[],
-    publicOnly = false,
-  ) {
-    const { page, pageSize, categoryId, subcategoryId, status, q, city } = pageInput(
-      input,
-      publicOnly,
-    );
-    const filters = [condition],
-      values = [...parameters];
-    if (!publicOnly && status === undefined) filters.push("b.status <> 'archived'");
-    for (const [column, value] of [
-      ["b.category_id", categoryId],
-      ["b.subcategory_id", subcategoryId],
-      ["b.status", status],
-    ] as const)
-      if (value) filters.push(`${column} = $${values.push(value)}`);
-    if (q) {
-      const index = values.push(`%${q.replace(/[\\%_]/g, "\\$&")}%`);
-      filters.push(
-        `(b.title ILIKE $${index} ESCAPE E'\\\\' OR b.description ILIKE $${index} ESCAPE E'\\\\' OR b.city ILIKE $${index} ESCAPE E'\\\\')`,
-      );
-    }
-    if (city) {
-      const index = values.push(`%${city.replace(/[\\%_]/g, "\\$&")}%`);
-      filters.push(`b.city ILIKE $${index} ESCAPE E'\\\\'`);
-    }
-    const limitIndex = values.push(pageSize + 1),
-      offsetIndex = values.push((page - 1) * pageSize);
-    const result = await pool.query<Row>(
-      `SELECT ${columns} FROM directory_business b ${publicOnly ? "JOIN auth_user u ON u.id = b.owner_user_id" : ""} WHERE ${filters.join(" AND ")} ORDER BY b.created_at DESC, b.id DESC LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
-      values,
-    );
-    const items = result.rows.slice(0, pageSize).map(dto);
-    return { items, page, pageSize, hasMore: result.rows.length > pageSize };
-  }
+  const list = (input: unknown, condition: string, parameters: unknown[], publicOnly = false) =>
+    listDirectory(pool, input, condition, parameters, publicOnly);
   return {
-    categories: () =>
-      safe(async () => ({
-        categories: (
-          await pool.query<DirectoryCategory>(
-            'SELECT id, name, slug, parent_id AS "parentId" FROM directory_category ORDER BY parent_id NULLS FIRST, name, id',
-          )
-        ).rows,
-      })),
+    ...createPublicDirectoryService({ database: pool }),
     async createCategory(headers: Headers, input: unknown): Promise<DirectoryCategory> {
       const value = object(input, ["name", "slug", "parentId"]);
       const name = text(value.name, 80),
@@ -528,29 +436,6 @@ export function createDirectoryService({
         );
         await audit(client, currentActor.id, before, after, "moderate", reason);
         return after;
-      });
-    },
-    async listPublic(input: unknown = {}) {
-      object(input, ["page", "pageSize", "categoryId", "subcategoryId", "q", "city"]);
-      return safe(async () => {
-        const result = await list(
-          input,
-          "b.status = 'published' AND u.approval = 'approved' AND u.\"emailVerified\" = true",
-          [],
-          true,
-        );
-        return { ...result, items: result.items.map(publicDto) };
-      });
-    },
-    async readPublic(id: string): Promise<PublicDirectoryBusiness> {
-      const key = uuid(id);
-      return safe(async () => {
-        const result = await pool.query<Row>(
-          `SELECT ${columns} FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id WHERE b.id = $1 AND b.status = 'published' AND u.approval = 'approved' AND u."emailVerified" = true`,
-          [key],
-        );
-        if (!result.rows[0]) fail(404, "BUSINESS_NOT_FOUND");
-        return publicDto(dto(result.rows[0]));
       });
     },
   };

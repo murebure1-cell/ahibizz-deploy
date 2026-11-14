@@ -1,6 +1,12 @@
 import { readAuthConfiguration } from "./auth";
 import { AccountAccessError } from "./auth/accounts";
-import { DirectoryAccessError, type DirectoryService, getDirectoryService } from "./directory";
+import {
+  DirectoryAccessError,
+  type DirectoryService,
+  getDirectoryService,
+  getPublicDirectoryService,
+  type PublicDirectoryService,
+} from "./directory";
 
 function reply(body: unknown, status = 200) {
   return Response.json(body, {
@@ -52,6 +58,41 @@ async function input(request: Request) {
   }
 }
 
+function publicRead(request: Request): boolean {
+  return (
+    request.method === "GET" &&
+    /^\/api\/directory\/(?:categories|businesses(?:\/[A-Za-z0-9-]{1,128})?)$/.test(
+      new URL(request.url).pathname,
+    )
+  );
+}
+
+export function createPublicDirectoryHttpHandler(service: PublicDirectoryService) {
+  return async (request: Request) => {
+    try {
+      if (!publicRead(request)) return reply({ code: "NOT_FOUND" }, 404);
+      if (request.url.length > 8192) return reply({ code: "INVALID_DIRECTORY_INPUT" }, 400);
+      const url = new URL(request.url);
+      const path = url.pathname.slice("/api/directory".length);
+      if (path === "/categories") {
+        query(url, []);
+        return reply(await service.categories());
+      }
+      if (path === "/businesses")
+        return reply(
+          await service.listPublic(
+            query(url, ["q", "city", "page", "pageSize", "categoryId", "subcategoryId"]),
+          ),
+        );
+      query(url, []);
+      return reply({ business: await service.readPublic(path.slice("/businesses/".length)) });
+    } catch (error) {
+      if (error instanceof DirectoryAccessError) return reply({ code: error.code }, error.status);
+      return reply({ code: "DIRECTORY_UNAVAILABLE" }, 503);
+    }
+  };
+}
+
 export function createDirectoryHttpHandler({
   service,
   baseURL,
@@ -59,8 +100,10 @@ export function createDirectoryHttpHandler({
   service: DirectoryService;
   baseURL: string;
 }) {
+  const handlePublic = createPublicDirectoryHttpHandler(service);
   return async function directoryHttp(request: Request) {
     try {
+      if (publicRead(request)) return handlePublic(request);
       const url = new URL(request.url);
       if (!url.pathname.startsWith("/api/directory/")) return reply({ code: "NOT_FOUND" }, 404);
       if (request.url.length > 8192) return reply({ code: "INVALID_DIRECTORY_INPUT" }, 400);
@@ -73,16 +116,6 @@ export function createDirectoryHttpHandler({
         id = resource?.[2],
         action = resource?.[3];
       if (request.method === "GET") {
-        if (path === "/categories") {
-          query(url, []);
-          return reply(await service.categories());
-        }
-        if (path === "/businesses")
-          return reply(
-            await service.listPublic(
-              query(url, ["q", "city", "page", "pageSize", "categoryId", "subcategoryId"]),
-            ),
-          );
         if (path === "/mine")
           return reply(
             await service.listOwn(request.headers, query(url, ["q", "page", "pageSize", "status"])),
@@ -98,7 +131,6 @@ export function createDirectoryHttpHandler({
           );
         if (id && !action) {
           query(url, []);
-          if (area === "businesses") return reply({ business: await service.readPublic(id) });
           if (area === "mine")
             return reply({ business: await service.readOwn(request.headers, id) });
         }
@@ -153,13 +185,31 @@ export function createDirectoryHttpHandler({
     }
   };
 }
-export async function handleDirectoryRequest(request: Request) {
-  try {
-    const configuration = readAuthConfiguration(),
-      service = getDirectoryService();
-    if (!configuration || !service) return reply({ code: "DIRECTORY_UNAVAILABLE" }, 503);
-    return createDirectoryHttpHandler({ service, baseURL: configuration.baseURL })(request);
-  } catch {
-    return reply({ code: "DIRECTORY_UNAVAILABLE" }, 503);
-  }
+export function createDirectoryRequestHandler({
+  publicService = getPublicDirectoryService,
+  privateService = getDirectoryService,
+  configuration = readAuthConfiguration,
+}: {
+  publicService?: () => PublicDirectoryService | null;
+  privateService?: () => DirectoryService | null;
+  configuration?: () => { baseURL: string } | null;
+} = {}) {
+  return async (request: Request) => {
+    try {
+      if (publicRead(request)) {
+        const service = publicService();
+        return service
+          ? createPublicDirectoryHttpHandler(service)(request)
+          : reply({ code: "DIRECTORY_UNAVAILABLE" }, 503);
+      }
+      const settings = configuration(),
+        service = privateService();
+      if (!settings || !service) return reply({ code: "DIRECTORY_UNAVAILABLE" }, 503);
+      return createDirectoryHttpHandler({ service, baseURL: settings.baseURL })(request);
+    } catch {
+      return reply({ code: "DIRECTORY_UNAVAILABLE" }, 503);
+    }
+  };
 }
+
+export const handleDirectoryRequest = createDirectoryRequestHandler();

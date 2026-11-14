@@ -7,7 +7,7 @@ import { Icon } from "../../components/Icon";
 import { SearchForm } from "../../components/SearchForm";
 import {
   type DirectoryCategory,
-  getDirectoryService,
+  getPublicDirectoryService,
   type PublicDirectoryBusiness,
 } from "../../server/directory";
 import { publicBusinessView } from "../../server/directory/public-view";
@@ -18,7 +18,7 @@ export default async function HomePage() {
   let businesses: PublicDirectoryBusiness[] = [];
   let categories: DirectoryCategory[] = [];
   try {
-    const service = getDirectoryService();
+    const service = getPublicDirectoryService();
     if (service) {
       const [result, classification] = await Promise.all([
         service.listPublic(),
