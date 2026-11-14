@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const config: NextConfig = {
   output: "standalone",
+  serverExternalPackages: ["nodemailer"],
   poweredByHeader: false,
   async headers() {
     return [
