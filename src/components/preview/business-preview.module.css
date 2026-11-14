@@ -1,0 +1,311 @@
+.workspace {
+  min-width: 0;
+}
+
+.previewNote {
+  max-width: 600px;
+  color: #75838c;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.feedback {
+  margin-block: 16px;
+  color: #526c60;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.feedback:empty {
+  margin: 0;
+}
+
+.editorWrap {
+  margin-top: 22px;
+}
+
+.editorWrap > form {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-block: 22px;
+}
+
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 45px;
+  padding: 11px 16px;
+  border: 1px solid #d2a44c;
+  border-radius: 10px;
+  background: #d8ae56;
+  color: #173047;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.primary:hover {
+  background: #e1bc70;
+}
+
+.primary svg {
+  width: 18px;
+  height: 18px;
+}
+
+.archiveToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: #627381;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.archiveToggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #173047;
+}
+
+.list {
+  display: grid;
+  gap: 15px;
+}
+
+.business {
+  min-width: 0;
+  padding: 21px;
+  border: 1px solid #e2e7eb;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.businessBody {
+  display: flex;
+  align-items: start;
+  gap: 14px;
+}
+
+.monogram {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border: 1px solid #e8deca;
+  border-radius: 12px;
+  background: #f8f2e6;
+  color: #8a6b32;
+  font-size: 21px;
+  font-weight: 600;
+}
+
+.identity {
+  min-width: 0;
+}
+
+.monogram img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: contain;
+  background: #fff;
+}
+
+.identity h3 {
+  overflow-wrap: anywhere;
+  font-size: 19px;
+}
+
+.identity p {
+  margin-top: 7px;
+  color: #627381;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.city {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  color: #627381;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.city svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.businessFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 17px;
+  padding-top: 13px;
+  border-top: 1px solid #edf0f2;
+}
+
+.draftState {
+  color: #75613d;
+  font-size: 11px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.actions :where(button) svg {
+  width: 15px;
+  height: 15px;
+}
+
+.edit {
+  background: #edf2f6;
+  color: #173047;
+  font-weight: 600;
+}
+
+.edit:hover {
+  background: #e3ebf1;
+}
+
+.archive {
+  background: transparent;
+  color: #627381;
+}
+
+.archive:hover {
+  background: #f5f7f9;
+  color: #173047;
+}
+
+.empty {
+  padding: 34px 12px 42px;
+  text-align: center;
+}
+
+.empty > span {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 21px;
+  border: 1px solid #e3eaf0;
+  border-radius: 18px;
+  background: #f0f4f7;
+  color: #7b91a3;
+}
+
+.empty svg {
+  width: 27px;
+  height: 27px;
+}
+
+.empty h3 {
+  font-size: 21px;
+}
+
+.empty p {
+  max-width: 340px;
+  margin: 12px auto 0;
+  color: #627381;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+@media (max-width: 700px) {
+  .toolbar {
+    align-items: start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .business {
+    padding: 17px;
+  }
+
+  .businessBody {
+    gap: 11px;
+  }
+
+  .monogram {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    font-size: 18px;
+  }
+
+  .identity h3 {
+    font-size: 18px;
+  }
+
+  .businessFooter {
+    align-items: start;
+    flex-direction: column;
+  }
+}
+
+.back {
+  font: inherit;
+  font-size: 12px;
+  min-height: 44px;
+  padding: 11px 15px;
+  margin-bottom: 20px;
+  border: 1px solid #dce4e9;
+  border-radius: 9px;
+  background: #fff;
+  color: #496273;
+}
+
+.toolbar > .edit {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #d8e1e7;
+  border-radius: 10px;
+  color: #173047;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toolbar > .edit:hover {
+  background: #f3f6f8;
+}

@@ -1,0 +1,138 @@
+"use client";
+
+import type * as Leaflet from "leaflet";
+import { useEffect, useRef, useState } from "react";
+import type { LocationPoint } from "../../lib/business-location";
+import { safeBusinessImage } from "../../lib/public-business";
+import "leaflet/dist/leaflet.css";
+import styles from "./location.module.css";
+
+export function LocationMap({
+  point,
+  disabled,
+  readOnly = false,
+  logoUrl,
+  onPoint,
+}: {
+  point: LocationPoint | null;
+  disabled: boolean;
+  readOnly?: boolean;
+  logoUrl?: string;
+  onPoint: (point: LocationPoint) => void;
+}) {
+  const element = useRef<HTMLElement>(null);
+  const map = useRef<Leaflet.Map | null>(null);
+  const marker = useRef<Leaflet.Marker | null>(null);
+  const library = useRef<typeof Leaflet | null>(null);
+  const callback = useRef(onPoint);
+  callback.current = onPoint;
+  const locked = useRef(disabled);
+  locked.current = disabled;
+  const latest = useRef(point);
+  latest.current = point;
+  const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    let observer: ResizeObserver | undefined;
+    void import("leaflet")
+      .then((L) => {
+        if (cancelled || !element.current) return;
+        library.current = L;
+        const selected = latest.current;
+        const instance = L.map(element.current, {
+          scrollWheelZoom: false,
+          attributionControl: true,
+        }).setView(
+          selected ? [selected.latitude, selected.longitude] : [44.1, 17.8],
+          selected ? 16 : 7,
+        );
+        map.current = instance;
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
+          referrerPolicy: "strict-origin-when-cross-origin",
+        })
+          .on("tileerror", () => {
+            if (!cancelled) setFailed(true);
+          })
+          .on("tileload", () => {
+            if (!cancelled) setFailed(false);
+          })
+          .addTo(instance);
+        instance.on("click", (event: Leaflet.LeafletMouseEvent) => {
+          const p = event.latlng.wrap();
+          if (!locked.current) callback.current({ latitude: p.lat, longitude: p.lng });
+        });
+        observer = new ResizeObserver(() => instance.invalidateSize({ pan: false }));
+        observer.observe(element.current);
+        setReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+      observer?.disconnect();
+      map.current?.remove();
+      map.current = null;
+      marker.current = null;
+    };
+  }, []);
+  useEffect(() => {
+    const instance = map.current,
+      L = library.current;
+    if (!ready || !instance || !L) return;
+    if (!point) {
+      marker.current?.remove();
+      marker.current = null;
+      return;
+    }
+    const latlng: Leaflet.LatLngExpression = [point.latitude, point.longitude];
+    const safeLogo = safeBusinessImage(logoUrl ? { src: logoUrl, alt: "" } : undefined, true);
+    const content = document.createElement("span");
+    content.setAttribute("aria-hidden", "true");
+    if (safeLogo) {
+      const image = document.createElement("img");
+      image.src = safeLogo.src;
+      image.alt = "";
+      content.appendChild(image);
+    } else
+      content.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 8h1m4 0h1m-6 4h1m4 0h1"/></svg>';
+    const icon = L.divIcon({
+      className: styles.marker,
+      html: content,
+      iconSize: [42, 50],
+      iconAnchor: [21, 48],
+    });
+    if (!marker.current) {
+      marker.current = L.marker(latlng, {
+        icon,
+        draggable: !disabled,
+        title: "Odabrana lokacija",
+        keyboard: !readOnly,
+        interactive: !readOnly,
+      }).addTo(instance);
+      marker.current.on("dragend", () => {
+        const p = marker.current?.getLatLng().wrap();
+        if (p && !locked.current) callback.current({ latitude: p.lat, longitude: p.lng });
+      });
+    } else {
+      marker.current.setLatLng(latlng);
+      marker.current.setIcon(icon);
+    }
+    if (disabled) marker.current.dragging?.disable();
+    else marker.current.dragging?.enable();
+    instance.setView(latlng, Math.max(instance.getZoom(), 15), { animate: false });
+  }, [point, ready, disabled, readOnly, logoUrl]);
+  return (
+    <div className={styles.mapWrap}>
+      <section ref={element} className={styles.map} aria-label="Karta lokacije djelatnosti" />
+      {failed && (
+        <p className={styles.mapError}>Karta trenutno nije dostupna. Pokušaj ponovo kasnije.</p>
+      )}
+    </div>
+  );
+}

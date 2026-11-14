@@ -1,0 +1,272 @@
+.workspace {
+  min-width: 0;
+  color: #173047;
+}
+.workspace :where(h2, h3, p) {
+  margin: 0;
+}
+.workspace :where(button) {
+  font: inherit;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+.header h2 {
+  font-size: clamp(1.3rem, 3vw, 1.75rem);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.eyebrow {
+  color: #94713b;
+  font-size: 0.65rem;
+  font-weight: 650;
+  letter-spacing: 0.15em;
+  margin-bottom: 7px;
+}
+.workspace svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.status {
+  font-size: 0.8rem;
+  color: #687987;
+  margin: 0 0 22px;
+}
+.secondary,
+.remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border-radius: 10px;
+  padding: 10px 13px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.secondary {
+  border: 1px solid #d8e1e7;
+  color: #173047;
+  background: #fff;
+}
+.secondary:hover:not(:disabled) {
+  background: #f3f6f8;
+}
+.remove {
+  border: 1px solid transparent;
+  color: #935050;
+  background: transparent;
+}
+.remove:hover:not(:disabled) {
+  background: #fff2f0;
+}
+.workspace button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.workspace button:focus-visible {
+  outline: 2px solid #987637;
+  outline-offset: 3px;
+}
+.brandGrid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
+  gap: 18px;
+  margin-bottom: 18px;
+}
+.card {
+  border: 1px solid #e1e7eb;
+  border-radius: 18px;
+  padding: 22px;
+  background: #fff;
+  min-width: 0;
+}
+.card h3 {
+  font-size: 0.95rem;
+  font-weight: 650;
+  margin-bottom: 18px;
+}
+.logo {
+  width: 132px;
+  height: 132px;
+  background: #f4eddf;
+  border: 1px solid #ede2cb;
+  border-radius: 20px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 18px;
+}
+.logo > span {
+  font-size: 2.2rem;
+  font-weight: 650;
+  color: #8d7039;
+}
+.logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.rowLogo {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  object-fit: contain;
+  display: block;
+}
+.cover {
+  min-height: 132px;
+  height: 132px;
+  width: 100%;
+  margin-bottom: 18px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #173047;
+  display: grid;
+  place-items: center;
+}
+.cover img[width="1600"] {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.galleryHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.galleryHeading h3 {
+  margin: 0;
+}
+.galleryHeading p {
+  font-size: 0.75rem;
+  color: #7a8a96;
+  line-height: 1.6;
+}
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.galleryItem {
+  margin: 0;
+  min-width: 0;
+}
+.galleryItem > img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  height: auto;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #f3f6f8;
+}
+.galleryItem figcaption {
+  margin: 9px 0 8px;
+  color: #687987;
+  font-size: 0.75rem;
+}
+.galleryItem .actions {
+  justify-content: start;
+}
+.addPhoto {
+  min-height: 195px;
+  border: 1px dashed #cbd8e1;
+  border-radius: 12px;
+  background: #f7f9fb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.addPhoto > svg {
+  width: 28px;
+  height: 28px;
+  color: #9a7a42;
+}
+.error,
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin-bottom: 18px;
+  font-size: 0.83rem;
+  line-height: 1.65;
+}
+.error {
+  color: #8b4141;
+  background: #fff4f2;
+  border: 1px solid #eddad6;
+}
+.notice {
+  color: #47614f;
+  background: #f4f8f1;
+  border: 1px solid #e0ead9;
+}
+.empty {
+  padding: 28px 0;
+  color: #687987;
+}
+@media (max-width: 700px) {
+  .brandGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .card {
+    padding: 20px;
+  }
+  .header {
+    align-items: start;
+  }
+  .gallery {
+    gap: 14px;
+  }
+  .galleryItem .actions {
+    display: grid;
+    gap: 2px;
+  }
+  .galleryItem .actions button {
+    width: 100%;
+    padding-inline: 8px;
+    font-size: 0.72rem;
+  }
+  .cover {
+    height: 170px;
+  }
+}
+@media (max-width: 390px) {
+  .gallery {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace * {
+    scroll-behavior: auto;
+  }
+}
+
+.header > button svg {
+  transform: rotate(180deg);
+}

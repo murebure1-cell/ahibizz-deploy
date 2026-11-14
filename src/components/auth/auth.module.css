@@ -1,0 +1,257 @@
+.page {
+  width: min(1040px, calc(100% - 48px));
+  margin: 55px auto 72px;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  overflow: hidden;
+  min-height: 610px;
+  border: 1px solid #e1e7eb;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 20px 65px #17304706;
+}
+.card {
+  padding: 35px 48px 42px;
+  min-width: 0;
+}
+.back {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  color: #74818a;
+  font-size: 12px;
+  margin-bottom: 35px;
+}
+.back svg {
+  width: 14px;
+  height: 14px;
+  transform: rotate(180deg);
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: #987735;
+  font-weight: 650;
+}
+.card h1 {
+  font-size: 36px;
+  color: #173047;
+  margin-top: 12px;
+  line-height: 1.14;
+  letter-spacing: -0.04em;
+}
+.intro {
+  font-size: 14px;
+  color: #6d7d89;
+  margin: 14px 0 28px;
+}
+.card form > label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #284356;
+}
+.card input:not([type="checkbox"]) {
+  width: 100%;
+  border: 1px solid #d5dfe5;
+  border-radius: 10px;
+  background: #fff;
+  color: #173047;
+  min-height: 48px;
+  padding: 11px 13px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 400;
+}
+.card input:disabled {
+  background: #f5f7f8;
+  cursor: not-allowed;
+}
+.password {
+  position: relative;
+  display: flex;
+}
+.card .password input {
+  padding-right: 67px;
+}
+.password button {
+  position: absolute;
+  right: 9px;
+  top: 0;
+  bottom: 0;
+  background: none;
+  border: 0;
+  color: #657787;
+  font-size: 11px;
+  font-weight: 600;
+}
+.card small {
+  font-size: 11px;
+  font-weight: 400;
+  color: #81909b;
+}
+.options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  font-size: 11px;
+}
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #526b7c;
+}
+.card .remember input {
+  width: 16px;
+  height: 16px;
+  accent-color: #173047;
+}
+.options > a,
+.switch a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 47px;
+  border: 0;
+  border-radius: 10px;
+  background: #dab15a;
+  color: #173047;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  padding: 12px;
+  margin-top: 25px;
+}
+.submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.switch {
+  margin-top: 25px;
+  font-size: 12px;
+  color: #697d8b;
+  text-align: center;
+}
+.notice {
+  padding: 13px 15px;
+  background: #f6f0e4;
+  color: #826321;
+  border: 1px solid #ece1c8;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.error {
+  margin-top: 18px;
+  color: #9f3434;
+  font-size: 13px;
+}
+.done {
+  padding: 22px 0;
+}
+.done > svg {
+  padding: 10px;
+  width: 44px;
+  height: 44px;
+  background: #eaf4ec;
+  border-radius: 50%;
+  color: #4a7757;
+  margin-bottom: 20px;
+}
+.done h2 {
+  font-size: 23px;
+}
+.done > p {
+  font-size: 14px;
+  color: #6d7d89;
+  line-height: 1.6;
+  margin-top: 12px;
+}
+.story {
+  background: linear-gradient(155deg, #17354b, #102437);
+  position: relative;
+  padding: 70px 40px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  color: #fff;
+  overflow: hidden;
+}
+.story::after {
+  content: "";
+  position: absolute;
+  width: 310px;
+  height: 310px;
+  border: 1px solid #d9b5613d;
+  transform: rotate(24deg);
+  border-radius: 55px;
+  right: -175px;
+  top: 130px;
+}
+.story > span {
+  font-size: 38px;
+  line-height: 1.16;
+  letter-spacing: -0.045em;
+  position: relative;
+  z-index: 1;
+}
+.story > i {
+  font-size: 24px;
+  position: absolute;
+  bottom: 39px;
+  left: 40px;
+  color: #dfbc70;
+  font-weight: 700;
+  font-style: normal;
+}
+@media (max-width: 760px) {
+  .page {
+    max-width: 500px;
+    grid-template-columns: 1fr;
+    margin: 24px auto 40px;
+    width: calc(100% - 32px);
+    min-height: 0;
+    border-radius: 18px;
+  }
+  .card {
+    padding: 23px 24px 30px;
+  }
+  .card h1 {
+    font-size: 31px;
+  }
+  .story {
+    display: none;
+  }
+  .back {
+    margin-bottom: 30px;
+  }
+  .options {
+    align-items: start;
+    flex-wrap: wrap;
+  }
+  .intro {
+    margin-bottom: 22px;
+  }
+}
+
+.resend {
+  border: 0;
+  background: transparent;
+  color: #526b7c;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 12px 0;
+  min-height: 44px;
+  font-size: 13px;
+}

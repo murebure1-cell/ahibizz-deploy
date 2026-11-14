@@ -1,0 +1,685 @@
+.profile {
+  width: min(1160px, calc(100% - 48px));
+  margin-inline: auto;
+  padding-block: 24px 64px;
+  color: #173047;
+}
+
+.profile[data-embedded="true"] {
+  width: 100%;
+  padding-top: 0;
+}
+
+.profile section,
+.profile aside {
+  scroll-margin-top: 96px;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 20px;
+  color: #627381;
+  font-size: 12px;
+}
+
+.breadcrumb a {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 35px;
+}
+
+.breadcrumb a:hover {
+  color: #173047;
+}
+
+.breadcrumb svg {
+  width: 16px;
+  height: 16px;
+  transform: rotate(180deg);
+}
+
+.breadcrumb > span {
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.cover {
+  position: relative;
+  height: 240px;
+  overflow: hidden;
+  border: 1px solid #233f56;
+  border-radius: 21px;
+  background: linear-gradient(120deg, #142d44 30%, #25475f);
+}
+
+.cover::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  background: #caa35c;
+  content: "";
+}
+
+.cover[data-photo="true"] {
+  height: 330px;
+  border: 0;
+}
+
+.cover[data-photo="true"]::after {
+  height: 45%;
+  background: linear-gradient(transparent, #142d444f);
+}
+
+.cover > img {
+  object-fit: cover;
+}
+
+.cover > .brandMark {
+  position: absolute;
+  top: 30px;
+  right: 31px;
+  width: 144px;
+  height: auto;
+  opacity: 0.5;
+}
+
+.coverCaption {
+  position: absolute;
+  bottom: 54px;
+  left: 32px;
+  color: #dae5ed;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+}
+
+.identity {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 23px;
+  min-width: 0;
+  margin: -27px 23px 0;
+  padding: 26px;
+  border: 1px solid #e1e7eb;
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 7px 25px #17304705;
+}
+
+.logo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border: 1px solid #d5b575;
+  border-radius: 17px;
+  background: #173047;
+  color: #e6c782;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.logo img {
+  object-fit: contain;
+  background: #fff;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+}
+
+.category {
+  margin-bottom: 8px;
+  color: #8b692b;
+  font-size: 11px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.title :is(h1, h2) {
+  color: #173047;
+  font-size: clamp(28px, 3.4vw, 38px);
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.locationSummary {
+  display: flex;
+  align-items: start;
+  gap: 6px;
+  margin-top: 12px;
+  color: #627381;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.locationSummary svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  color: #a27c32;
+}
+
+.verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  color: #4f705e;
+  font-size: 11px;
+}
+
+.verified svg {
+  width: 14px;
+  height: 14px;
+}
+
+.quickActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.quickActions:empty {
+  display: none;
+}
+
+.primary,
+.secondary {
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 45px;
+  padding: 11px 17px;
+  border: 1px solid #d2a64d;
+  border-radius: 10px;
+  background: #d8ae56;
+  color: #173047;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.primary:hover {
+  background: #e2bc6e;
+}
+
+.secondary {
+  border-color: #e1e7eb;
+  background: #fff;
+  color: #516b7f;
+}
+
+.secondary:hover {
+  background: #f2f5f8;
+}
+
+.primary svg,
+.secondary svg {
+  width: 17px;
+  height: 17px;
+}
+
+.sectionNavigation {
+  display: flex;
+  gap: 32px;
+  margin-block: 24px 30px;
+  padding-inline: 3px;
+  overflow-x: auto;
+  border-bottom: 1px solid #dfe6eb;
+  scrollbar-width: thin;
+}
+
+.sectionNavigation a {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: 49px;
+  padding-block: 10px;
+  border-bottom: 2px solid transparent;
+  color: #627381;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.sectionNavigation a:hover,
+.sectionNavigation a:focus-visible {
+  border-bottom-color: #c8a154;
+  color: #173047;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 318px;
+  align-items: start;
+  gap: 26px;
+}
+
+.details {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+.section,
+.contact {
+  min-width: 0;
+  padding: 29px;
+  border: 1px solid #e1e7eb;
+  border-radius: 17px;
+  background: #fff;
+}
+
+.sectionHeading,
+.contactHeading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 23px;
+}
+
+.sectionHeading h2,
+.contactHeading h2 {
+  color: #173047;
+  font-size: 23px;
+}
+
+.sectionHeading > span,
+.contactHeading > span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 33px;
+  height: 33px;
+  border-radius: 10px;
+  background: #f6f0e3;
+  color: #9a7733;
+}
+
+.sectionHeading svg,
+.contactHeading svg {
+  width: 17px;
+  height: 17px;
+}
+
+.description {
+  color: #51697b;
+  font-size: 14px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.missing,
+.address {
+  color: #627381;
+  font-size: 13px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.appointments {
+  min-width: 0;
+}
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.gallery figure {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+  background: #edf1f4;
+}
+
+.gallery figure:only-child {
+  grid-column: 1 / -1;
+}
+
+.gallery img {
+  object-fit: cover;
+}
+
+.map {
+  position: relative;
+  isolation: isolate;
+  margin-top: 21px;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.directions {
+  margin-top: 23px;
+  padding-top: 20px;
+  border-top: 1px solid #e9eef1;
+}
+
+.directions p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 13px;
+  color: #627381;
+  font-size: 12px;
+}
+
+.directions :where(p) svg {
+  width: 13px;
+  height: 13px;
+}
+
+.directions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.directions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 45px;
+  padding: 10px 14px;
+  border: 1px solid #dce4e9;
+  border-radius: 9px;
+  background: #f8fafb;
+  color: #3d596f;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.directions a:hover {
+  border-color: #b5c6d3;
+  background: #f0f4f7;
+}
+
+.directions :where(a) svg {
+  width: 17px;
+  height: 17px;
+}
+
+.directions :where(a) svg:last-child {
+  width: 12px;
+  height: 12px;
+  opacity: 0.7;
+}
+
+.contact {
+  position: sticky;
+  top: 96px;
+  padding: 25px;
+}
+
+.contactHeading {
+  margin-bottom: 17px;
+}
+
+.contactHeading h2 {
+  font-size: 21px;
+}
+
+.contactRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding-block: 17px;
+  border-bottom: 1px solid #edf0f2;
+}
+
+.contactRow > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.contactRow small {
+  display: block;
+  margin-bottom: 4px;
+  color: #627381;
+  font-size: 10px;
+}
+
+.contactRow strong {
+  display: block;
+  color: #173047;
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.contactRow:hover strong {
+  color: #8b692b;
+}
+
+.contactRow > svg {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: #9a7a3b;
+}
+
+.contactRow > svg:last-child {
+  width: 13px;
+  height: 13px;
+  color: #8d9da9;
+}
+
+.contactLocation {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  margin-top: 19px;
+  padding: 12px;
+  border: 1px solid #e2e8ec;
+  border-radius: 10px;
+  color: #486579;
+  background: #f6f8fa;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.contactLocation:hover {
+  background: #edf2f6;
+}
+
+.contactLocation svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.contactLocation svg:last-child {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+}
+
+@media (max-width: 980px) {
+  .identity {
+    flex-wrap: wrap;
+    gap: 18px;
+  }
+
+  .title {
+    flex-basis: calc(100% - 100px);
+  }
+
+  .quickActions {
+    margin: 0 0 0 90px;
+  }
+
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 20px;
+  }
+
+  .section {
+    padding: 25px;
+  }
+
+  .contact {
+    padding: 22px;
+  }
+}
+
+@media (max-width: 760px) {
+  .profile {
+    width: calc(100% - 32px);
+    padding-top: 13px;
+    padding-bottom: 44px;
+  }
+
+  .breadcrumb {
+    padding-bottom: 13px;
+    font-size: 11px;
+  }
+
+  .cover {
+    height: 165px;
+    border-radius: 16px;
+  }
+
+  .cover[data-photo="true"] {
+    height: 220px;
+  }
+
+  .cover > .brandMark {
+    top: 23px;
+    right: 23px;
+    width: 119px;
+  }
+
+  .coverCaption {
+    bottom: 42px;
+    left: 23px;
+    font-size: 8px;
+  }
+
+  .identity {
+    gap: 14px;
+    margin: -22px 10px 0;
+    padding: 20px 17px;
+    border-radius: 14px;
+  }
+
+  .logo {
+    width: 60px;
+    height: 60px;
+    border-radius: 14px;
+    font-size: 21px;
+  }
+
+  .title {
+    flex-basis: calc(100% - 74px);
+  }
+
+  .title :is(h1, h2) {
+    font-size: 27px;
+  }
+
+  .category {
+    margin-bottom: 7px;
+    font-size: 10px;
+  }
+
+  .locationSummary {
+    margin-top: 10px;
+    font-size: 11px;
+  }
+
+  .quickActions {
+    width: 100%;
+    margin: 4px 0 0;
+  }
+
+  .quickActions > a,
+  .quickActions > button {
+    flex: 1;
+  }
+
+  .sectionNavigation {
+    gap: 27px;
+    margin-block: 16px 22px;
+  }
+
+  .sectionNavigation a {
+    min-height: 46px;
+    font-size: 12px;
+  }
+
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .details {
+    gap: 20px;
+  }
+
+  .gallery {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .section,
+  .contact {
+    padding: 24px 21px;
+    border-radius: 15px;
+  }
+
+  .sectionHeading,
+  .contactHeading {
+    margin-bottom: 20px;
+  }
+
+  .sectionHeading h2 {
+    font-size: 22px;
+  }
+
+  .description {
+    font-size: 13px;
+    line-height: 1.9;
+  }
+
+  .address,
+  .missing {
+    font-size: 12px;
+  }
+
+  .contact {
+    position: static;
+  }
+}
+
+.profile[data-embedded="true"] .layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+.profile[data-embedded="true"] .contact {
+  position: static;
+}

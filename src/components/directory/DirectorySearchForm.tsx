@@ -1,0 +1,93 @@
+"use client";
+
+import Form from "next/form";
+import { useId, useState } from "react";
+import { Icon } from "../Icon";
+import type { CategoryOption } from "./BusinessEditor";
+import styles from "./public-search.module.css";
+
+export function DirectorySearchForm({
+  query,
+  city,
+  categoryId,
+  subcategoryId,
+  categories,
+}: {
+  query: string;
+  city: string;
+  categoryId: string;
+  subcategoryId: string;
+  categories: CategoryOption[];
+}) {
+  const prefix = useId();
+  const [category, setCategory] = useState(categoryId);
+  const [subcategory, setSubcategory] = useState(subcategoryId);
+  const children = categories.filter((item) => item.parentId === category);
+  return (
+    <Form action="/pretraga" className={styles.form}>
+      <label htmlFor={`${prefix}-query`}>
+        Naziv ili usluga
+        <input
+          id={`${prefix}-query`}
+          name="q"
+          type="search"
+          defaultValue={query}
+          maxLength={120}
+          placeholder="Šta tražiš?"
+        />
+      </label>
+      <label htmlFor={`${prefix}-city`}>
+        Grad ili mjesto
+        <input
+          id={`${prefix}-city`}
+          name="mjesto"
+          defaultValue={city}
+          maxLength={100}
+          placeholder="Npr. Tuzla"
+        />
+      </label>
+      <label htmlFor={`${prefix}-category`}>
+        Kategorija
+        <select
+          id={`${prefix}-category`}
+          name="categoryId"
+          value={category}
+          onChange={(event) => {
+            setCategory(event.target.value);
+            setSubcategory("");
+          }}
+        >
+          <option value="">Sve kategorije</option>
+          {categories
+            .filter((item) => item.parentId === null)
+            .map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+        </select>
+      </label>
+      <label htmlFor={`${prefix}-subcategory`}>
+        Podkategorija
+        <select
+          id={`${prefix}-subcategory`}
+          name="subcategoryId"
+          value={subcategory}
+          disabled={!children.length}
+          onChange={(event) => setSubcategory(event.target.value)}
+        >
+          <option value="">Sve podkategorije</option>
+          {children.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button type="submit">
+        <Icon name="search" />
+        Pretraži
+      </button>
+    </Form>
+  );
+}
