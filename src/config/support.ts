@@ -3,5 +3,21 @@ export const publicSupportSettings = {
   enabled: true,
   recipient: "Ajdin Tabakovic",
   paypalUrl: "https://paypal.me/AjdinTabakovic",
-  bank: { name: "", iban: "", accountNumber: "", bic: "" },
+  bankAccounts: [
+    {
+      id: "bih",
+      label: "Uplata iz BiH",
+      name: "Raiffeisenbank",
+      accountNumber: "1613000073375996",
+    },
+    {
+      id: "eu",
+      label: "Uplata iz EU",
+      name: "Wise",
+      iban: "BE95 9678 9089 6058",
+      bic: "TRWIBEB1XXX",
+      address: "Rue du Trône 100, 3rd floor, Brussels, 1050, Belgium",
+      note: "Za uplate izvan SEPA koristite i SWIFT/BIC te adresu banke.",
+    },
+  ],
 };

@@ -1,14 +1,20 @@
 import { publicSupportSettings } from "../config/support";
 
+export type SupportBankAccount = {
+  id: string;
+  label: string;
+  name: string;
+  iban: string | null;
+  accountNumber: string | null;
+  bic: string | null;
+  address: string | null;
+  note: string | null;
+};
+
 export type SupportConfig = {
   recipient: string;
   paypalUrl: string | null;
-  bank: {
-    name: string;
-    iban: string | null;
-    accountNumber: string | null;
-    bic: string | null;
-  } | null;
+  bankAccounts: SupportBankAccount[];
   purpose: string;
 };
 
@@ -61,6 +67,7 @@ export function supportIban(value: unknown): string | null {
   const checkDigits = Number(compact.slice(2, 4));
   if (checkDigits < 2 || checkDigits > 98) return null;
   if (compact.startsWith("BA") && !/^BA\d{18}$/.test(compact)) return null;
+  if (compact.startsWith("BE") && !/^BE\d{14}$/.test(compact)) return null;
   let remainder = 0;
   for (const character of compact.slice(4) + compact.slice(0, 4)) {
     const digits = /[A-Z]/.test(character) ? String(character.charCodeAt(0) - 55) : character;
@@ -69,50 +76,68 @@ export function supportIban(value: unknown): string | null {
   return remainder === 1 ? compact : null;
 }
 
+function entered(value: unknown): boolean {
+  return value !== undefined && value !== null && value !== "";
+}
+
+function readBankAccount(value: unknown): SupportBankAccount | null {
+  if (!record(value)) return null;
+  const id = plainText(value.id, 40);
+  const label = plainText(value.label, 80);
+  const name = plainText(value.name, 140);
+  if (!id || !/^[a-z0-9][a-z0-9_-]*$/.test(id) || !label || !name) return null;
+  const iban = supportIban(value.iban);
+  const rawAccount = plainText(value.accountNumber, 40);
+  const accountNumber =
+    rawAccount &&
+    /^[0-9][0-9 -]*[0-9]$/.test(rawAccount) &&
+    /^[0-9]{8,34}$/.test(rawAccount.replace(/[ -]/g, ""))
+      ? rawAccount
+      : null;
+  const rawBic = plainText(value.bic, 11)?.toUpperCase();
+  const bic = rawBic && /^[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?$/.test(rawBic) ? rawBic : null;
+  const address = plainText(value.address, 300);
+  const note = plainText(value.note, 220);
+  const optional = { iban, accountNumber, bic, address, note };
+  if (Object.entries(optional).some(([key, parsed]) => entered(value[key]) && !parsed)) return null;
+  if (!iban && !accountNumber) return null;
+  return { id, label, name, ...optional };
+}
+
 export function readSupportConfig(value: unknown): SupportConfig | null {
   if (!record(value) || value.enabled !== true) return null;
   const recipient = plainText(value.recipient, 140);
   if (!recipient) return null;
   const paypalUrl = supportPayPalUrl(value.paypalUrl);
-  let bank: SupportConfig["bank"] = null;
-  if (record(value.bank)) {
-    const name = plainText(value.bank.name, 140);
-    const iban = supportIban(value.bank.iban);
-    const rawAccount = plainText(value.bank.accountNumber, 40);
-    const accountNumber =
-      rawAccount &&
-      /^[0-9][0-9 -]*[0-9]$/.test(rawAccount) &&
-      /^[0-9]{8,34}$/.test(rawAccount.replace(/[ -]/g, ""))
-        ? rawAccount
-        : null;
-    const rawBic = plainText(value.bank.bic, 11);
-    const bic =
-      rawBic && /^[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?$/.test(rawBic.toUpperCase())
-        ? rawBic.toUpperCase()
-        : null;
-    const invalidEnteredIban =
-      typeof value.bank.iban === "string" && value.bank.iban.trim() !== "" && !iban;
-    const invalidEnteredBic =
-      typeof value.bank.bic === "string" && value.bank.bic.trim() !== "" && !bic;
-    if (name && (iban || accountNumber) && !invalidEnteredIban && !invalidEnteredBic)
-      bank = { name, iban, accountNumber, bic };
-  }
-  if (!paypalUrl && !bank) return null;
-  return { recipient, paypalUrl, bank, purpose: "Podrška razvoju AhiBizza" };
+  const candidates =
+    Array.isArray(value.bankAccounts) && value.bankAccounts.length <= 6 ? value.bankAccounts : [];
+  const ids = candidates.map((account) => (record(account) ? plainText(account.id, 40) : null));
+  const bankAccounts = candidates.flatMap((account, index) => {
+    if (!ids[index] || ids.filter((id) => id === ids[index]).length !== 1) return [];
+    const bank = readBankAccount(account);
+    return bank ? [bank] : [];
+  });
+  if (!paypalUrl && !bankAccounts.length) return null;
+  return { recipient, paypalUrl, bankAccounts, purpose: "Podrška razvoju AhiBizza" };
 }
 
 export function getSupportConfig(): SupportConfig | null {
   return readSupportConfig(publicSupportSettings);
 }
 
-export function bankTransferText(config: SupportConfig): string {
-  if (!config.bank) return "";
+export function bankTransferText(config: SupportConfig, bankAccountId: string): string {
+  const matches = config.bankAccounts.filter((account) => account.id === bankAccountId);
+  if (matches.length !== 1) return "";
+  const bank = matches[0];
+  if (!bank) return "";
   return [
     `Primalac: ${config.recipient}`,
-    `Banka: ${config.bank.name}`,
-    config.bank.iban ? `IBAN: ${config.bank.iban}` : "",
-    config.bank.accountNumber ? `Broj računa: ${config.bank.accountNumber}` : "",
-    config.bank.bic ? `SWIFT/BIC: ${config.bank.bic}` : "",
+    `Banka: ${bank.name}`,
+    bank.iban ? `IBAN: ${bank.iban}` : "",
+    bank.accountNumber ? `Broj računa: ${bank.accountNumber}` : "",
+    bank.bic ? `SWIFT/BIC: ${bank.bic}` : "",
+    bank.address ? `Adresa banke: ${bank.address}` : "",
+    bank.note ? `Napomena: ${bank.note}` : "",
     `Svrha uplate: ${config.purpose}`,
   ]
     .filter(Boolean)
