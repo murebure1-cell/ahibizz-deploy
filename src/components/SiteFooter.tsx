@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getSupportConfig } from "../lib/support";
 
 export function SiteFooter() {
   return (
@@ -20,6 +21,7 @@ export function SiteFooter() {
         <nav aria-label="Navigacija podnožja">
           <Link href="/pretraga">Istraži djelatnosti</Link>
           <Link href="/o-nama">O AhiBizzu</Link>
+          {getSupportConfig() && <Link href="/podrzi">Podrži AhiBizz</Link>}
         </nav>
       </div>
       <div className="container footer-bottom">

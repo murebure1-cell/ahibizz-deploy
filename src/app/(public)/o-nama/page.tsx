@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "../../../components/Icon";
+import { getSupportConfig } from "../../../lib/support";
 
 export const metadata: Metadata = { title: "O AhiBizzu" };
 
@@ -52,16 +53,25 @@ export default function AboutPage() {
         <div>
           <p className="eyebrow">Tek počinjemo</p>
           <h2>Prostor se gradi pažljivo.</h2>
-          <p>
-            Nova platforma je u pripremi. Profili djelatnosti, poruke i online termini još nisu
-            otvoreni.
-          </p>
+          <p>Predstavi svoj posao, poveži se s ljudima i dogovori termin na jednom mjestu.</p>
         </div>
         <Link className="button button-navy" href="/pretraga">
           Pogledaj imenik
           <Icon name="arrow" />
         </Link>
       </section>
+      {getSupportConfig() && (
+        <section className="about-status">
+          <div>
+            <h2>Podrži razvoj AhiBizza.</h2>
+            <p>Dobrovoljna podrška razvoju platforme.</p>
+          </div>
+          <Link className="button button-navy" href="/podrzi">
+            Podrži AhiBizz
+            <Icon name="arrow" />
+          </Link>
+        </section>
+      )}
     </main>
   );
 }

@@ -1,0 +1,279 @@
+.page {
+  width: min(1000px, calc(100% - 64px));
+  margin-inline: auto;
+  padding-block: 64px 80px;
+}
+.intro {
+  max-width: 640px;
+}
+.mark {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 24px;
+  border: 1px solid #e4d3ad;
+  border-radius: 15px;
+  color: #92712c;
+  background: linear-gradient(135deg, #fbf7ec, #f1e6cc);
+}
+.mark svg {
+  width: 23px;
+  height: 23px;
+}
+.intro h1 {
+  font-size: clamp(32px, 4.5vw, 52px);
+  line-height: 1.08;
+  text-wrap: balance;
+}
+.intro p {
+  margin-top: 20px;
+  color: var(--muted);
+  font-size: 16px;
+}
+.recipient {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-block: 28px;
+  margin-block: 12px 4px;
+}
+.recipient > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.recipient > div > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.recipient strong {
+  font-size: 17px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.recipientType {
+  flex-shrink: 0;
+  padding: 6px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--muted);
+  background: #ffffffb3;
+  font-size: 12px;
+}
+.methods {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 24px;
+}
+.methods[data-method-count="1"] {
+  grid-template-columns: minmax(0, 620px);
+}
+.card {
+  min-width: 0;
+  padding: 30px;
+  border: 1px solid #dfe6e8;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #ffffffeb, #ffffffbd);
+  box-shadow: 0 18px 56px #10243708;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: arrive 0.28s ease both;
+}
+.cardHeading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.cardHeading h2 {
+  font-size: 22px;
+  line-height: 1.2;
+}
+.methodIcon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 43px;
+  height: 43px;
+  border: 1px solid #e3e9ec;
+  border-radius: 13px;
+  color: var(--navy);
+  background: #f4f7f9;
+}
+.methodIcon svg {
+  width: 22px;
+  height: 22px;
+}
+.paypalButton,
+.copyButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 48px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.5;
+  text-align: center;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+.paypalButton {
+  color: var(--navy-deep);
+  border-color: #cca34d;
+  background: linear-gradient(115deg, #e8c77f, #d7aa43);
+  box-shadow: 0 8px 20px #ac83331a;
+}
+.paypalButton:hover {
+  background: linear-gradient(115deg, #edcf91, #dfb553);
+  transform: translateY(-1px);
+}
+.paypalButton svg,
+.copyButton svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.details {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+.details > div {
+  display: grid;
+  gap: 5px;
+  padding-block: 15px;
+  border-top: 1px solid #e6ebed;
+}
+.details > div:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.details dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+.details dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.details dd.account {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+.copy {
+  margin-top: 14px;
+}
+.copyButton {
+  color: var(--navy);
+  border-color: #d5dfe5;
+  background: #fff;
+}
+.copyButton:hover:not(:disabled) {
+  border-color: #a8bac7;
+  background: #f5f8fa;
+  transform: translateY(-1px);
+}
+.copyButton:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.copyStatus {
+  min-height: 1.5em;
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.manualCopy {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+.manualCopy label {
+  color: var(--muted);
+  font-size: 12px;
+}
+.manualCopy textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 140px;
+  padding: 13px;
+  border: 1px solid #c9d5dc;
+  border-radius: 10px;
+  color: var(--ink);
+  background: #f7f9fa;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 680px) {
+  .page {
+    width: calc(100% - 36px);
+    padding-block: 38px 52px;
+  }
+  .intro p {
+    margin-top: 16px;
+    font-size: 15px;
+  }
+  .recipient {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    padding-block: 24px;
+    margin-top: 8px;
+  }
+  .methods,
+  .methods[data-method-count="1"] {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+  .card {
+    padding: 23px 20px;
+    border-radius: 20px;
+  }
+  .cardHeading {
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .cardHeading h2 {
+    font-size: 21px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+  .paypalButton,
+  .copyButton {
+    transition: none;
+  }
+  .paypalButton:hover,
+  .copyButton:hover:not(:disabled) {
+    transform: none;
+  }
+}
