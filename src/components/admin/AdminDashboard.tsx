@@ -96,6 +96,7 @@ export function AdminDashboard({ initial }: { initial: SafeAccountProfile }) {
           {visited.businesses && (
             <BusinessManager
               key={initial.id}
+              expectedAccountId={initial.id}
               active={section === "businesses"}
               isOwner
               initialAll

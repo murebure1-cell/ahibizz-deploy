@@ -255,6 +255,7 @@ export function AccountPreview() {
           <div hidden={section !== "appointments"}>
             <CustomerAppointments
               heading={false}
+              expectedAccountId="00100000-0000-4000-8000-000000000002"
               active={section === "appointments"}
               preview
               request={booking.customerRequest}

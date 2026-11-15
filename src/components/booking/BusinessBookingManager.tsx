@@ -1,6 +1,7 @@
 "use client";
 
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type BookingAction,
   type BookingEntry,
@@ -14,6 +15,8 @@ import {
 } from "../../lib/booking";
 import {
   BookingRequestError,
+  bookingAccessDenied,
+  bookingActorRequest,
   bookingError,
   bookingRequest,
   bookingWrite,
@@ -28,6 +31,9 @@ type Props = {
   preview?: boolean;
   onBack?: () => void;
   request?: typeof bookingRequest;
+  expectedAccountId?: string;
+  active?: boolean;
+  onAccessDenied?: (failure: unknown) => void;
 };
 type WindowDraft = { key: string; weekday: number; start: string; end: string };
 type ServiceDraft = {
@@ -283,11 +289,31 @@ function entryTime(entry: BookingEntry) {
 }
 
 export function BusinessBookingManager(props: Props) {
-  return <BookingWorkspace key={props.businessId} {...props} />;
+  return (
+    <BookingWorkspace
+      key={`${props.businessId}:${props.expectedAccountId ?? "unavailable"}`}
+      {...props}
+    />
+  );
 }
 
-function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, request }: Props) {
-  const api = request ?? (preview ? null : bookingRequest);
+function BookingWorkspace({
+  businessId,
+  businessTitle,
+  preview = false,
+  onBack,
+  request,
+  expectedAccountId,
+  active = true,
+  onAccessDenied,
+}: Props) {
+  const api = useMemo(
+    () =>
+      preview && !request
+        ? null
+        : bookingActorRequest(expectedAccountId, request ?? bookingRequest),
+    [expectedAccountId, preview, request],
+  );
   const [settings, setSettings] = useState<BookingSettings | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -315,7 +341,9 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
   const [uncertain, setUncertain] = useState(false);
   const [createSettingsBlocked, setCreateSettingsBlocked] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [requiresLogin, setRequiresLogin] = useState(false);
   const live = useRef(false),
+    authority = useRef(0),
     writing = useRef(false),
     settingsEpoch = useRef(0),
     calendarEpoch = useRef(0);
@@ -324,8 +352,53 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
     writeController = useRef<AbortController | null>(null);
   const intent = useRef<Intent | null>(null),
     sequence = useRef(0);
+  const writeEpoch = useRef(new WeakMap<AbortController, number>()),
+    deniedCallback = useRef(onAccessDenied),
+    settingsValue = useRef(settings),
+    previousApi = useRef(api);
+  deniedCallback.current = onAccessDenied;
+  settingsValue.current = settings;
   const path = `mine/businesses/${encodeURIComponent(businessId)}`;
   const timezone = settings?.timezone ?? "Europe/Sarajevo";
+
+  const clearPrivate = useCallback((failure?: unknown, preserveRecovery = true) => {
+    const command = intent.current;
+    const recovery =
+      preserveRecovery && command && (command.uncertain || writing.current)
+        ? { ...command, uncertain: true }
+        : null;
+    authority.current++;
+    settingsEpoch.current++;
+    calendarEpoch.current++;
+    settingsRead.current?.abort();
+    calendarRead.current?.abort();
+    writeController.current?.abort();
+    writeController.current = null;
+    writing.current = false;
+    intent.current = recovery;
+    settingsValue.current = null;
+    setSettings(null);
+    setDraft(null);
+    setEntries(null);
+    setCredits(null);
+    setClientName("");
+    setClientPhone("");
+    setServiceId("");
+    setStart("");
+    setEnd("");
+    setNotice("");
+    setBusy(null);
+    setSettingsLoading(false);
+    setCalendarLoading(false);
+    setCalendarError("");
+    setCreateError("");
+    setSettingsOpen(false);
+    setCreating(Boolean(recovery));
+    setUncertain(Boolean(recovery));
+    setRequiresLogin(Boolean(failure));
+    setSettingsError(failure ? bookingError(failure) : "");
+    if (failure) deniedCallback.current?.(failure);
+  }, []);
 
   const loadSettings = useCallback(
     async (replaceDraft: boolean) => {
@@ -336,14 +409,22 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
       }
       settingsRead.current?.abort();
       const controller = new AbortController(),
+        generation = authority.current,
         epoch = ++settingsEpoch.current;
       settingsRead.current = controller;
       setSettingsLoading(true);
       try {
         const data = await api(`${path}/settings`, { signal: controller.signal });
-        if (!live.current || controller.signal.aborted || epoch !== settingsEpoch.current) return;
+        if (
+          !live.current ||
+          generation !== authority.current ||
+          controller.signal.aborted ||
+          epoch !== settingsEpoch.current
+        )
+          return;
         const value = readSettings(data.settings);
         setSettings(value);
+        setRequiresLogin(false);
         setCreateSettingsBlocked(false);
         if (replaceDraft) {
           setDraft(toDraft(value));
@@ -354,13 +435,19 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
         setMonth((current) => current || `${today.slice(0, 7)}-01`);
         setDay((current) => current || today);
       } catch (failure) {
-        if (live.current && !controller.signal.aborted && epoch === settingsEpoch.current)
+        if (!live.current || generation !== authority.current) return;
+        if (bookingAccessDenied(failure)) {
+          clearPrivate(failure);
+          return;
+        }
+        if (!controller.signal.aborted && epoch === settingsEpoch.current)
           setSettingsError(bookingError(failure));
       } finally {
-        if (live.current && epoch === settingsEpoch.current) setSettingsLoading(false);
+        if (live.current && generation === authority.current && epoch === settingsEpoch.current)
+          setSettingsLoading(false);
       }
     },
-    [api, path],
+    [api, path, clearPrivate],
   );
 
   const loadCalendar = useCallback(
@@ -368,6 +455,7 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
       if (!api || !month || !isTimeZone(timezone)) return;
       calendarRead.current?.abort();
       const controller = new AbortController(),
+        generation = authority.current,
         epoch = ++calendarEpoch.current;
       calendarRead.current = controller;
       setCalendarLoading(true);
@@ -380,7 +468,13 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
         const data = await api(`${path}/calendar?${new URLSearchParams({ from, to })}`, {
           signal: controller.signal,
         });
-        if (!live.current || controller.signal.aborted || epoch !== calendarEpoch.current) return;
+        if (
+          !live.current ||
+          generation !== authority.current ||
+          controller.signal.aborted ||
+          epoch !== calendarEpoch.current
+        )
+          return;
         if (
           !Array.isArray(data.entries) ||
           !integer(data.earnedCredits, 0, Number.MAX_SAFE_INTEGER)
@@ -392,50 +486,79 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
         setEntries(rows);
         setCredits(data.earnedCredits);
       } catch (failure) {
-        if (live.current && !controller.signal.aborted && epoch === calendarEpoch.current)
+        if (!live.current || generation !== authority.current) return;
+        if (bookingAccessDenied(failure)) {
+          clearPrivate(failure);
+          return;
+        }
+        if (!controller.signal.aborted && epoch === calendarEpoch.current)
           setCalendarError([message, bookingError(failure)].filter(Boolean).join(" "));
       } finally {
-        if (live.current && epoch === calendarEpoch.current) setCalendarLoading(false);
+        if (live.current && generation === authority.current && epoch === calendarEpoch.current)
+          setCalendarLoading(false);
       }
     },
-    [api, month, timezone, path, businessId],
+    [api, month, timezone, path, businessId, clearPrivate],
   );
 
   useEffect(() => {
     live.current = true;
-    void loadSettings(true);
     return () => {
       live.current = false;
+      authority.current++;
       settingsEpoch.current++;
       calendarEpoch.current++;
       settingsRead.current?.abort();
       calendarRead.current?.abort();
       writeController.current?.abort();
     };
-  }, [loadSettings]);
+  }, []);
   useEffect(() => {
-    if (settings) void loadCalendar();
+    if (previousApi.current !== api) {
+      previousApi.current = api;
+      clearPrivate(undefined, false);
+    }
+  }, [api, clearPrivate]);
+  useEffect(() => {
+    if (active && !settingsValue.current) void loadSettings(true);
+    if (!active) setSettingsLoading(false);
+    return () => {
+      settingsEpoch.current++;
+      settingsRead.current?.abort();
+    };
+  }, [active, loadSettings]);
+  useEffect(() => {
+    if (active && settings) void loadCalendar();
+    if (!active) setCalendarLoading(false);
     return () => {
       calendarEpoch.current++;
       calendarRead.current?.abort();
     };
-  }, [loadCalendar, settings]);
+  }, [active, loadCalendar, settings]);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(timer);
   }, []);
 
   function beginWrite(label: string) {
-    if (writing.current || !api) return null;
+    if (writing.current || !api || requiresLogin || !active) return null;
     writing.current = true;
     calendarEpoch.current++;
     calendarRead.current?.abort();
     setCalendarLoading(false);
     const controller = new AbortController();
+    writeEpoch.current.set(controller, authority.current);
     writeController.current = controller;
     setBusy(label);
     setNotice("");
     return controller;
+  }
+  function currentWrite(controller: AbortController) {
+    return (
+      live.current &&
+      writeEpoch.current.get(controller) === authority.current &&
+      !controller.signal.aborted
+    );
   }
   function endWrite(controller: AbortController) {
     if (writeController.current !== controller) return;
@@ -460,7 +583,7 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
         ...bookingWrite("PATCH", body),
         signal: controller.signal,
       });
-      if (!live.current || controller.signal.aborted) return;
+      if (!currentWrite(controller)) return;
       const value = readSettings(data.settings);
       if (value.version <= body.expectedVersion || !sameSettings(value, body))
         throw new Error("invalid_settings_ack");
@@ -468,7 +591,12 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
       setDraft(toDraft(value));
       setNotice("Postavke termina su sačuvane.");
     } catch (failure) {
-      if (live.current && !controller.signal.aborted) {
+      if (!live.current || writeEpoch.current.get(controller) !== authority.current) return;
+      if (bookingAccessDenied(failure)) {
+        clearPrivate(failure);
+        return;
+      }
+      if (!controller.signal.aborted) {
         const stale = failure instanceof BookingRequestError && failure.status === 409;
         setSettingsError(bookingError(failure));
         if (stale || !(failure instanceof BookingRequestError) || failure.status >= 500) {
@@ -490,7 +618,7 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
         ...bookingWrite("POST", { expectedVersion: entry.version, action }),
         signal: controller.signal,
       });
-      if (!live.current || controller.signal.aborted) return;
+      if (!currentWrite(controller)) return;
       const value = readEntry(data.entry, businessId);
       const expected = {
         approve: "confirmed",
@@ -510,10 +638,15 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
               : "Termin je otkazan.",
       );
     } catch (failure) {
-      if (live.current && !controller.signal.aborted) message = bookingError(failure);
+      if (!live.current || writeEpoch.current.get(controller) !== authority.current) return;
+      if (bookingAccessDenied(failure)) {
+        clearPrivate(failure);
+        return;
+      }
+      if (!controller.signal.aborted) message = bookingError(failure);
     } finally {
       endWrite(controller);
-      if (live.current && !controller.signal.aborted) void loadCalendar(message);
+      if (currentWrite(controller)) void loadCalendar(message);
     }
   }
   async function sendCreate(value: Intent) {
@@ -526,7 +659,7 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
         ...bookingWrite("POST", value.body, value.id),
         signal: controller.signal,
       });
-      if (!live.current || controller.signal.aborted) return;
+      if (!currentWrite(controller)) return;
       const entry = readEntry(data.entry, businessId);
       if (
         entry.kind !== value.body.kind ||
@@ -552,7 +685,14 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
       setMonth(targetMonth);
       refresh = targetMonth === month;
     } catch (failure) {
-      if (live.current && !controller.signal.aborted) {
+      if (!live.current || writeEpoch.current.get(controller) !== authority.current) return;
+      if (bookingAccessDenied(failure)) {
+        // A first definite denial did not write; a denial after an unknown attempt cannot prove that.
+        if (!value.uncertain) intent.current = null;
+        clearPrivate(failure);
+        return;
+      }
+      if (!controller.signal.aborted) {
         const known =
           failure instanceof BookingRequestError &&
           failure.status >= 400 &&
@@ -585,7 +725,7 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
       }
     } finally {
       endWrite(controller);
-      if (refresh && live.current && !controller.signal.aborted) void loadCalendar();
+      if (refresh && currentWrite(controller)) void loadCalendar();
     }
   }
   function submitCreate(event: FormEvent<HTMLFormElement>) {
@@ -674,12 +814,13 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
               Djelatnosti
             </button>
           )}
-          <p className={styles.eyebrow}>{businessTitle}</p>
+          {!requiresLogin && <p className={styles.eyebrow}>{businessTitle}</p>}
           <h1 id="business-booking-title">Termini</h1>
         </div>
         <button
           className={styles.secondary}
           type="button"
+          disabled={requiresLogin}
           onClick={() => setSettingsOpen(!settingsOpen)}
         >
           <Icon name="sliders" />
@@ -700,6 +841,16 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
         <p className={styles.error} role="alert">
           {settingsError}
         </p>
+      )}
+      {requiresLogin && (
+        <Link
+          className={styles.secondary}
+          href="/prijava?nastavi=%2Fnalog%3Fodjeljak%3Ddjelatnosti"
+          target={uncertain ? "_blank" : undefined}
+          rel={uncertain ? "noopener" : undefined}
+        >
+          Prijavi se
+        </Link>
       )}
       {settingsLoading && (
         <p className={styles.loading} role="status">

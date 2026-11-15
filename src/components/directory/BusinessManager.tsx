@@ -2,11 +2,27 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BookingSettings } from "../../lib/booking";
-import { bookingError, bookingRequest, bookingWrite } from "../../lib/booking-client";
+import {
+  bookingActorRequest,
+  bookingError,
+  bookingRequest,
+  bookingWrite,
+} from "../../lib/booking-client";
 import { isTimeZone } from "../../lib/booking-time";
-import { type BusinessMediaManifest, businessMediaUrl } from "../../lib/business-media";
+import {
+  type BusinessMediaAsset,
+  type BusinessMediaManifest,
+  businessMediaUrl,
+} from "../../lib/business-media";
+import { businessMediaRequest } from "../../lib/business-media-client";
+import {
+  type DirectoryRequest,
+  directoryAccessDenied,
+  directoryActorRequest,
+  directoryRequest,
+} from "../../lib/directory-client";
 import {
   createDirectoryCreation,
   type DirectoryCreateIntent,
@@ -35,15 +51,9 @@ function errorMessage(error: unknown) {
     return "Ovaj zahtjev je već poslan. Osvježi spisak i provjeri sačuvanu djelatnost.";
   if (code === "AUTHENTICATION_REQUIRED" || code === "ACCOUNT_SUSPENDED")
     return "Prijava je istekla. Prijavi se ponovo.";
+  if (code === "ACCOUNT_IDENTITY_CHANGED") return "Prijavi se ponovo svojim nalogom.";
   if (code === "INVALID_DIRECTORY_INPUT") return "Provjeri unesene podatke.";
   return "Zahtjev nije uspio. Pokušaj ponovo.";
-}
-async function request(path: string, options: RequestInit = {}) {
-  const response = await fetch(`/api/directory/${path}`, { cache: "no-store", ...options });
-  const data = await response.json().catch(() => null);
-  if (!response.ok) throw new RequestError(data?.code ?? "UNAVAILABLE", response.status);
-  if (!data || typeof data !== "object") throw new RequestError("UNAVAILABLE");
-  return data;
 }
 function write(method: string, body: unknown, requestId?: string): RequestInit {
   return {
@@ -112,11 +122,21 @@ export function BusinessManager({
   isOwner,
   initialAll = false,
   embedded = false,
+  expectedAccountId,
+  request: directoryApi = directoryRequest,
+  bookingApi = bookingRequest,
+  mediaApi = businessMediaRequest,
+  mediaImageUrl = businessMediaUrl,
 }: {
   active: boolean;
   isOwner: boolean;
   initialAll?: boolean;
   embedded?: boolean;
+  expectedAccountId?: string;
+  request?: DirectoryRequest;
+  bookingApi?: typeof bookingRequest;
+  mediaApi?: typeof businessMediaRequest;
+  mediaImageUrl?: (id: string, asset: BusinessMediaAsset, area: "mine" | "public") => string | null;
 }) {
   const [items, setItems] = useState<DirectoryBusiness[] | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -131,8 +151,14 @@ export function BusinessManager({
   const [archived, setArchived] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const [bookingBusiness, setBookingBusiness] = useState<DirectoryBusiness | null>(null);
-  const [mediaBusiness, setMediaBusiness] = useState<DirectoryBusiness | null>(null);
+  const [bookingBusiness, setBookingBusiness] = useState<Pick<
+    DirectoryBusiness,
+    "id" | "title"
+  > | null>(null);
+  const [mediaBusiness, setMediaBusiness] = useState<Pick<
+    DirectoryBusiness,
+    "id" | "title"
+  > | null>(null);
   const [pendingCreate, setPendingCreate] = useState<DirectoryCreateIntent | null>(null);
   const [loginRequired, setLoginRequired] = useState(false);
   const [bookingOption, setBookingOption] = useState<{ id: string; enabled: boolean } | null>(null);
@@ -143,33 +169,125 @@ export function BusinessManager({
   const writing = useRef<AbortController | null>(null);
   const creation = useRef(createDirectoryCreation());
   const loadedSelection = useRef("");
+  const live = useRef(false);
+  const epoch = useRef(0);
+  const boundary = useRef({ expectedAccountId, directoryApi, bookingApi, mediaApi, isOwner });
+  const currentBoundary = useRef(boundary.current);
+  currentBoundary.current = { expectedAccountId, directoryApi, bookingApi, mediaApi, isOwner };
+  const current = useCallback(
+    (access: number) => {
+      const value = currentBoundary.current;
+      return (
+        live.current &&
+        epoch.current === access &&
+        value.expectedAccountId === expectedAccountId &&
+        value.directoryApi === directoryApi &&
+        value.bookingApi === bookingApi &&
+        value.mediaApi === mediaApi &&
+        value.isOwner === isOwner
+      );
+    },
+    [expectedAccountId, directoryApi, bookingApi, mediaApi, isOwner],
+  );
+  const request = useMemo(
+    () => directoryActorRequest(expectedAccountId, directoryApi),
+    [expectedAccountId, directoryApi],
+  );
+  const booking = useMemo(
+    () => bookingActorRequest(expectedAccountId, bookingApi),
+    [expectedAccountId, bookingApi],
+  );
+  const clearPrivate = useCallback((preserveCreation = false) => {
+    if (preserveCreation) creation.current.retainUncertain();
+    epoch.current++;
+    reads.current++;
+    bookingReads.current++;
+    writing.current?.abort();
+    writing.current = null;
+    loadedSelection.current = "";
+    setItems(null);
+    setCategories([]);
+    setHasMore(false);
+    setEditing(undefined);
+    // An unknown child command must keep its mounted recovery state, without a private title.
+    setBookingBusiness((current) =>
+      preserveCreation && current ? { id: current.id, title: "Booking" } : null,
+    );
+    setMediaBusiness((current) =>
+      preserveCreation && current ? { id: current.id, title: "Fotografije" } : null,
+    );
+    setBookingOption(null);
+    setBookingNote("");
+    setBookingLoading(false);
+    setNotice("");
+    setBusy(false);
+    setLoading(false);
+    setReadError("");
+    if (!preserveCreation) creation.current = createDirectoryCreation();
+    setPendingCreate(creation.current.intent);
+  }, []);
+  const denied = useCallback(
+    (failure: unknown) => {
+      if (!directoryAccessDenied(failure)) return false;
+      clearPrivate(true);
+      setLoginRequired(true);
+      setError("Prijavi se ponovo svojim nalogom.");
+      return true;
+    },
+    [clearPrivate],
+  );
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+      epoch.current++;
+      reads.current++;
+      bookingReads.current++;
+      writing.current?.abort();
+    };
+  }, []);
+  useEffect(() => {
+    const previous = boundary.current;
+    if (
+      previous.expectedAccountId !== expectedAccountId ||
+      previous.directoryApi !== directoryApi ||
+      previous.bookingApi !== bookingApi ||
+      previous.mediaApi !== mediaApi ||
+      previous.isOwner !== isOwner
+    ) {
+      boundary.current = { expectedAccountId, directoryApi, bookingApi, mediaApi, isOwner };
+      clearPrivate();
+      setAll(initialAll && isOwner);
+      setPage(1);
+      setError("");
+      setLoginRequired(false);
+    }
+  }, [expectedAccountId, directoryApi, bookingApi, mediaApi, isOwner, initialAll, clearPrivate]);
   const editingId = editing?.id;
   const locked = busy || pendingCreate !== null;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: changing panel activity or management role invalidates an in-flight write.
-  useEffect(() => {
-    setBusy(false);
-    return () => {
-      writing.current?.abort();
-      writing.current = null;
-    };
-  }, [active, isOwner]);
+  // A dispatched command keeps its result and lock while another account section is visible.
+  // Only a changed actor/transport/role or unmount invalidates that private workspace.
   useEffect(() => {
     const revision = ++bookingReads.current;
+    const access = epoch.current;
     setBookingOption(null);
     setBookingLoading(false);
     if (!active || !editingId) return;
     const controller = new AbortController();
     setBookingLoading(true);
-    void bookingRequest(`mine/businesses/${encodeURIComponent(editingId)}/settings`, {
+    void booking(`mine/businesses/${encodeURIComponent(editingId)}/settings`, {
       signal: controller.signal,
     })
       .then((data) => {
-        if (controller.signal.aborted || revision !== bookingReads.current) return;
+        if (!current(access) || controller.signal.aborted || revision !== bookingReads.current)
+          return;
         const settings = readBookingSettings(data.settings);
         setBookingOption({ id: editingId, enabled: settings.enabled });
       })
-      .catch(() => {
-        if (!controller.signal.aborted && revision === bookingReads.current)
+      .catch((failure) => {
+        if (!current(access)) return;
+        if (denied(failure)) return;
+        if (current(access) && !controller.signal.aborted && revision === bookingReads.current)
           setBookingNote("Booking postavke nisu učitane. Ostaju nepromijenjene.");
       })
       .finally(() => {
@@ -177,12 +295,13 @@ export function BusinessManager({
           setBookingLoading(false);
       });
     return () => controller.abort();
-  }, [active, editingId]);
+  }, [active, editingId, booking, denied, current]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: refresh explicitly invalidates the fetched list after writes and on request.
   useEffect(() => {
     if (!active || bookingBusiness || mediaBusiness) return;
     const controller = new AbortController(),
       revision = ++reads.current;
+    const access = epoch.current;
     setReadError("");
     const suffix = `?page=${page}${archived ? "&status=archived" : ""}`;
     const selection = `${all && isOwner ? "admin" : "mine"}${suffix}`;
@@ -194,7 +313,7 @@ export function BusinessManager({
       request("categories", { signal: controller.signal }),
     ])
       .then(([list, taxonomy]) => {
-        if (controller.signal.aborted || revision !== reads.current) return;
+        if (!current(access) || controller.signal.aborted || revision !== reads.current) return;
         if (
           !Array.isArray(list.items) ||
           !Array.isArray(taxonomy.categories) ||
@@ -205,8 +324,11 @@ export function BusinessManager({
         setHasMore(list.hasMore);
         setCategories(taxonomy.categories);
         loadedSelection.current = selection;
+        setLoginRequired(false);
       })
       .catch((error) => {
+        if (!current(access)) return;
+        if (denied(error)) return;
         if (!controller.signal.aborted && revision === reads.current) {
           if (!cached || (error instanceof RequestError && [401, 403].includes(error.status))) {
             setItems(null);
@@ -216,21 +338,36 @@ export function BusinessManager({
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted && revision === reads.current) setLoading(false);
+        if (current(access) && !controller.signal.aborted && revision === reads.current)
+          setLoading(false);
       });
     return () => controller.abort();
-  }, [active, refresh, all, archived, isOwner, page, bookingBusiness, mediaBusiness]);
+  }, [
+    active,
+    refresh,
+    all,
+    archived,
+    isOwner,
+    page,
+    bookingBusiness,
+    mediaBusiness,
+    request,
+    denied,
+    current,
+  ]);
 
   async function updateBookingFlag(
     business: DirectoryBusiness,
     enabled: boolean,
     wasNew: boolean,
     controller: AbortController,
+    access: number,
   ) {
     try {
+      if (!current(access) || controller.signal.aborted) return;
       const bookingPath = `mine/businesses/${encodeURIComponent(business.id)}/settings`;
-      const fresh = await bookingRequest(bookingPath, { signal: controller.signal });
-      if (controller.signal.aborted) return;
+      const fresh = await booking(bookingPath, { signal: controller.signal });
+      if (!current(access) || controller.signal.aborted) return;
       const before = readBookingSettings(fresh.settings);
       if (before.enabled !== enabled) {
         const body = {
@@ -250,11 +387,11 @@ export function BusinessManager({
             active,
           })),
         };
-        const changed = await bookingRequest(bookingPath, {
+        const changed = await booking(bookingPath, {
           ...bookingWrite("PATCH", body),
           signal: controller.signal,
         });
-        if (controller.signal.aborted) return;
+        if (!current(access) || controller.signal.aborted) return;
         const after = readBookingSettings(changed.settings);
         const configuration = (value: BookingSettings) =>
           JSON.stringify({
@@ -279,6 +416,8 @@ export function BusinessManager({
       }
       if (wasNew && enabled) setBookingBusiness(business);
     } catch (failure) {
+      if (!current(access)) return;
+      if (!controller.signal.aborted && denied(failure)) return;
       if (!controller.signal.aborted)
         setBookingNote(
           `Podaci djelatnosti su sačuvani. Promjena bookinga nije potvrđena. ${bookingError(failure)} Otvori Booking i provjeri postavke.`,
@@ -293,25 +432,26 @@ export function BusinessManager({
       (replay && replay !== creation.current.intent)
     )
       return;
-    const current = replay ? null : editing;
+    const editingBusiness = replay ? null : editing;
     if (replay) {
       fields = replay.fields;
       publish = replay.publish;
     }
     const controller = new AbortController();
+    const access = epoch.current;
     writing.current = controller;
     const call = async (path: string, options: RequestInit = {}) => {
       const result = await request(path, { ...options, signal: controller.signal });
-      if (controller.signal.aborted) throw new Error("aborted");
+      if (!current(access) || controller.signal.aborted) throw new Error("aborted");
       return result;
     };
     const { bookingEnabled, ...directoryFields } = fields;
-    const wasNew = !current;
+    const wasNew = !editingBusiness;
     const updateBooking =
       typeof bookingEnabled === "boolean" &&
       (wasNew
         ? bookingEnabled
-        : bookingOption?.id === current?.id && bookingOption.enabled !== bookingEnabled);
+        : bookingOption?.id === editingBusiness?.id && bookingOption.enabled !== bookingEnabled);
     setBusy(true);
     setError("");
     setNotice("");
@@ -320,14 +460,14 @@ export function BusinessManager({
     reads.current++;
     let committed: DirectoryBusiness | null = null;
     try {
-      const intent = current ? null : (replay ?? creation.current.begin(fields, publish));
+      const intent = editingBusiness ? null : (replay ?? creation.current.begin(fields, publish));
       if (intent) {
         setPendingCreate(intent);
       }
-      const data = current
+      const data = editingBusiness
         ? await call(
-            `mine/${current.id}`,
-            write("PATCH", { ...directoryFields, expectedVersion: current.version }),
+            `mine/${editingBusiness.id}`,
+            write("PATCH", { ...directoryFields, expectedVersion: editingBusiness.version }),
           )
         : {
             business: await creation.current.send(intent as DirectoryCreateIntent, (options) =>
@@ -358,7 +498,8 @@ export function BusinessManager({
       );
       setEditing(undefined);
     } catch (error) {
-      if (controller.signal.aborted) return;
+      if (!current(access) || controller.signal.aborted) return;
+      if (denied(error)) return;
       if (committed) {
         try {
           const latest = await call(`mine/${committed.id}`);
@@ -371,8 +512,9 @@ export function BusinessManager({
             setEditing(latest.business);
             setError("Podaci su sačuvani. Objava nije potvrđena.");
           }
-        } catch {
-          if (controller.signal.aborted) return;
+        } catch (failure) {
+          if (!current(access) || controller.signal.aborted) return;
+          if (denied(failure)) return;
           setEditing(undefined);
           setError("Podaci su sačuvani. Osvježi spisak radi provjere objave.");
         }
@@ -390,12 +532,13 @@ export function BusinessManager({
         committed &&
         updateBooking &&
         typeof bookingEnabled === "boolean" &&
+        current(access) &&
         !controller.signal.aborted
       )
-        await updateBookingFlag(committed, bookingEnabled, wasNew, controller);
+        await updateBookingFlag(committed, bookingEnabled, wasNew, controller, access);
       if (writing.current === controller) {
         writing.current = null;
-        if (!controller.signal.aborted) {
+        if (current(access) && !controller.signal.aborted) {
           setBusy(false);
           setRefresh((value) => value + 1);
         }
@@ -405,6 +548,7 @@ export function BusinessManager({
   async function move(item: DirectoryBusiness, action: "publish" | "archive" | "recover") {
     if (writing.current || !active || creation.current.intent) return;
     const controller = new AbortController();
+    const access = epoch.current;
     writing.current = controller;
     setBusy(true);
     setError("");
@@ -415,7 +559,7 @@ export function BusinessManager({
         ...write("POST", { expectedVersion: item.version }),
         signal: controller.signal,
       });
-      if (controller.signal.aborted) return;
+      if (!current(access) || controller.signal.aborted) return;
       if (data.business?.id !== item.id) throw new RequestError("UNAVAILABLE");
       setNotice(
         action === "archive"
@@ -427,11 +571,13 @@ export function BusinessManager({
               : "Djelatnost je poslana na pregled.",
       );
     } catch (error) {
+      if (!current(access)) return;
+      if (!controller.signal.aborted && denied(error)) return;
       if (!controller.signal.aborted) setError(errorMessage(error));
     } finally {
       if (writing.current === controller) {
         writing.current = null;
-        if (!controller.signal.aborted) {
+        if (current(access) && !controller.signal.aborted) {
           setBusy(false);
           setRefresh((value) => value + 1);
         }
@@ -463,6 +609,10 @@ export function BusinessManager({
         businessId={mediaBusiness.id}
         businessTitle={mediaBusiness.title}
         active={active}
+        expectedAccountId={expectedAccountId}
+        request={mediaApi}
+        imageUrl={mediaImageUrl}
+        onAccessDenied={denied}
         onChanged={mediaChanged}
         onBack={() => {
           setMediaBusiness(null);
@@ -484,6 +634,10 @@ export function BusinessManager({
           </p>
         )}
         <BusinessBookingManager
+          active={active}
+          expectedAccountId={expectedAccountId}
+          request={bookingApi}
+          onAccessDenied={denied}
           businessId={bookingBusiness.id}
           businessTitle={bookingBusiness.title}
           onBack={() => {
@@ -646,9 +800,9 @@ export function BusinessManager({
             {items?.map((item) => (
               <article key={item.id} className={styles.business}>
                 <span className={styles.monogram} aria-hidden="true">
-                  {item.media?.logo ? (
+                  {item.media?.logo && mediaImageUrl(item.id, item.media.logo, "mine") ? (
                     <Image
-                      src={businessMediaUrl(item.id, item.media.logo, "mine")}
+                      src={mediaImageUrl(item.id, item.media.logo, "mine") as string}
                       alt=""
                       width={50}
                       height={50}

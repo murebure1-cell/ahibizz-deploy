@@ -274,12 +274,14 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           origin = baseURL,
           contentType = "application/json",
           handler = http,
+          expectedAccountId,
         } = {},
       ) {
         const headers = new Headers(actor?.headers);
         headers.set("origin", origin);
         if (body !== undefined) headers.set("content-type", contentType);
         if (key) headers.set("idempotency-key", key);
+        if (expectedAccountId !== undefined) headers.set("X-AhiBizz-Account-ID", expectedAccountId);
         const response = await handler(
           new Request(new URL(`/api/booking${route}`, baseURL), {
             method,
@@ -641,6 +643,130 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             1,
             "The actual database guard must reject an overlapping direct insertion too.",
           );
+        },
+      );
+
+      await t.test(
+        "expected booking actor binds every private read, write and historical receipt to the signed account",
+        async () => {
+          const before = await bookingSnapshot();
+          const expectedAccountId = operator.user.id;
+          const commands = [
+            ["GET", "/mine", { actor: winnerActor }],
+            ["GET", `${ownerPath}/settings`, { actor: professional }],
+            [
+              "GET",
+              `${ownerPath}/calendar?from=2030-01-07T00:00:00.000Z&to=2030-01-08T00:00:00.000Z`,
+              { actor: professional },
+            ],
+            [
+              "PATCH",
+              `${ownerPath}/settings`,
+              { actor: professional, body: settingsInput(settings) },
+            ],
+            [
+              "POST",
+              `${ownerPath}/entries`,
+              {
+                actor: professional,
+                key: randomUUID(),
+                body: {
+                  kind: "block",
+                  startsAt: "2030-01-20T08:00:00.000Z",
+                  endsAt: "2030-01-20T09:00:00.000Z",
+                  configurationVersion: settings.version,
+                },
+              },
+            ],
+            [
+              "POST",
+              `${publicPath}/requests`,
+              {
+                actor: customer,
+                key: randomUUID(),
+                body: quote(serviceId, "2030-01-20T10:00:00.000Z"),
+              },
+            ],
+            [
+              "POST",
+              `/entries/${winner.id}/action`,
+              { actor: professional, body: { action: "approve", expectedVersion: winner.version } },
+            ],
+            [
+              "POST",
+              `${publicPath}/requests`,
+              { actor: winnerActor, body: winnerBody, key: winnerKey },
+            ],
+          ];
+          for (const [method, route, options] of commands) {
+            const response = await request(method, route, { ...options, expectedAccountId });
+            assert.equal(response.status, 401, `${method} ${route}`);
+            assert.equal(response.data.code, "ACCOUNT_IDENTITY_CHANGED");
+          }
+          assert.deepEqual(await bookingSnapshot(), before);
+          const allowed = await request("GET", "/mine", {
+            actor: winnerActor,
+            expectedAccountId: winnerActor.user.id,
+          });
+          assert.equal(allowed.status, 200);
+          assert.equal(
+            allowed.data.entries.some((row) => row.id === winner.id),
+            true,
+          );
+          assert.equal(
+            (
+              await request("GET", `${ownerPath}/settings`, {
+                actor: professional,
+                expectedAccountId: professional.user.id,
+              })
+            ).status,
+            200,
+          );
+          const malformed = await request("GET", "/mine", {
+            actor: customer,
+            expectedAccountId: "invalid/actor",
+          });
+          assert.equal(malformed.status, 400);
+          assert.equal(malformed.data.code, "INVALID_BOOKING_INPUT");
+          assert.equal((await request("GET", publicPath)).status, 200);
+        },
+      );
+
+      await t.test(
+        "expected booking identity is checked inside the current authority lock",
+        async () => {
+          const before = await bookingSnapshot();
+          const approved = await accounts.read(professional.headers);
+          const guardedHttp = createBookingHttpHandler({
+            service: createBookingService({
+              accounts: { ...accounts, read: async () => approved },
+              auth,
+              pool,
+              now: () => new Date(clock),
+            }),
+            baseURL,
+          });
+          const locker = await pool.connect();
+          let pending;
+          try {
+            await locker.query("BEGIN");
+            await locker.query("SELECT id FROM auth_user WHERE id=$1 FOR UPDATE", [
+              professional.user.id,
+            ]);
+            pending = request("GET", `${ownerPath}/settings`, {
+              actor: professional,
+              expectedAccountId: operator.user.id,
+              handler: guardedHttp,
+            });
+            await waitForLockWaiters(pool, applicationName, 1);
+          } finally {
+            await locker.query("ROLLBACK");
+            locker.release();
+          }
+          const denied = await pending;
+          assert.equal(denied.status, 401);
+          assert.equal(denied.data.code, "ACCOUNT_IDENTITY_CHANGED");
+          assert.deepEqual(await bookingSnapshot(), before);
         },
       );
 

@@ -177,10 +177,17 @@ export function AccountDashboard({
           />
         </div>
         <div hidden={section !== "businesses"}>
-          <BusinessManager active={section === "businesses"} isOwner={profile.role === "owner"} />
+          <BusinessManager
+            active={section === "businesses"}
+            isOwner={profile.role === "owner"}
+            expectedAccountId={initial.id}
+          />
         </div>
         <div hidden={section !== "appointments"}>
-          <CustomerAppointments active={section === "appointments"} />
+          <CustomerAppointments
+            active={section === "appointments"}
+            expectedAccountId={initial.id}
+          />
         </div>
         <div hidden={section !== "connections"}>
           <ConnectionsPanel active={section === "connections"} expectedAccountId={initial.id} />

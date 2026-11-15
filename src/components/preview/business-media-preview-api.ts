@@ -88,10 +88,12 @@ export function createBusinessMediaPreviewApi({
   readBusiness,
   bumpBusiness,
   normalizeImage = normalize,
+  expectedAccountId = "00100000-0000-4000-8000-000000000001",
 }: {
   readBusiness: (id: string) => Business | null;
   bumpBusiness: (id: string, expectedVersion: number) => Business;
   normalizeImage?: (file: Blob, kind: BusinessMediaKind) => Promise<Normalized>;
+  expectedAccountId?: string;
 }) {
   const images = new Map<string, { asset: BusinessMediaAsset; url: string }>(),
     receipts = new Map<string, { fingerprint: string; receipt: BusinessMediaReceipt }>(),
@@ -125,6 +127,11 @@ export function createBusinessMediaPreviewApi({
     const match =
       /^(mine|public)\/([A-Za-z0-9_-]{1,128})(?:\/(logo|cover|gallery)\/([0-8]))?$/.exec(path);
     if (!match) fail(404, "NOT_FOUND");
+    const expected = new Headers(options.headers).get("X-AhiBizz-Account-ID");
+    if (match[1] === "mine" && expected !== null) {
+      if (!/^[A-Za-z0-9_-]{1,128}$/.test(expected)) fail(400);
+      if (expected !== expectedAccountId) fail(401, "ACCOUNT_IDENTITY_CHANGED");
+    }
     const [, area, idText, kindText, slotText] = match,
       id = idText as string,
       kind = kindText as BusinessMediaKind | undefined,

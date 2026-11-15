@@ -1,18 +1,22 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   type BusinessMediaAsset,
   type BusinessMediaKind,
   type BusinessMediaManifest,
+  type BusinessMediaReceipt,
   businessMediaUrl,
   readBusinessMediaManifest,
   readBusinessMediaReceipt,
 } from "../../lib/business-media";
 import {
   BusinessMediaRequestError,
+  businessMediaAccessDenied,
+  businessMediaActorRequest,
   businessMediaError,
+  businessMediaNeedsRecovery,
   businessMediaRequest,
 } from "../../lib/business-media-client";
 import { Icon } from "../Icon";
@@ -31,6 +35,8 @@ type PendingMedia = {
   key: string;
   method: "PUT" | "DELETE";
   file: File | null;
+  uncertain?: boolean;
+  receipt?: BusinessMediaReceipt;
 };
 const statuses = {
   draft: "Nacrt",
@@ -100,6 +106,8 @@ export function BusinessMediaManager({
   imageUrl = businessMediaUrl,
   onChanged,
   onBack,
+  expectedAccountId,
+  onAccessDenied,
 }: {
   businessId: string;
   businessTitle: string;
@@ -109,55 +117,112 @@ export function BusinessMediaManager({
   imageUrl?: ImageUrl;
   onChanged?: (manifest: BusinessMediaManifest) => void;
   onBack?: () => void;
+  expectedAccountId?: string;
+  onAccessDenied?: (failure: unknown) => void;
 }) {
   const [manifest, setManifest] = useState<BusinessMediaManifest | null>(null),
     [loading, setLoading] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
-    [pending, setPending] = useState<PendingMedia | null>(null);
-  const api = useRef(request),
+    [pending, setPending] = useState<PendingMedia | null>(null),
+    [loginRequired, setLoginRequired] = useState(false);
+  const scopedRequest = useMemo(
+    () => businessMediaActorRequest(expectedAccountId, request),
+    [expectedAccountId, request],
+  );
+  const api = useRef(scopedRequest),
     changed = useRef(onChanged),
+    deniedCallback = useRef(onAccessDenied),
+    actor = useRef(expectedAccountId),
+    accessEpoch = useRef(0),
+    pendingRef = useRef<PendingMedia | null>(null),
     currentId = useRef(businessId),
     read = useRef<AbortController | null>(null),
     revision = useRef(0),
     writing = useRef(false),
     writeToken = useRef(0),
     live = useRef(false);
-  api.current = request;
+  api.current = scopedRequest;
   changed.current = onChanged;
+  deniedCallback.current = onAccessDenied;
+  actor.current = expectedAccountId;
   currentId.current = businessId;
+  const clearDeniedAccess = useCallback((failure: unknown) => {
+    if (!businessMediaAccessDenied(failure)) return false;
+    const command = pendingRef.current;
+    const recovery =
+      command && (command.uncertain || command.receipt || writing.current)
+        ? { ...command, uncertain: true }
+        : null;
+    accessEpoch.current++;
+    revision.current++;
+    writeToken.current++;
+    read.current?.abort();
+    writing.current = false;
+    pendingRef.current = recovery;
+    setManifest(null);
+    setPending(recovery);
+    setBusy(false);
+    setLoading(false);
+    setNotice("");
+    setLoginRequired(true);
+    setError(businessMediaError(failure));
+    deniedCallback.current?.(failure);
+    return true;
+  }, []);
   useEffect(() => {
     live.current = true;
     return () => {
       live.current = false;
+      accessEpoch.current++;
       revision.current++;
       read.current?.abort();
     };
   }, []);
   const load = useCallback(async () => {
     if (writing.current) return;
-    if (preview && api.current === businessMediaRequest) {
+    if (preview && request === businessMediaRequest) {
       setError("Fotografije nisu dostupne u ovom prikazu.");
       return;
     }
     read.current?.abort();
     const controller = new AbortController(),
-      current = ++revision.current;
+      current = ++revision.current,
+      access = accessEpoch.current,
+      expectedActor = expectedAccountId,
+      transport = api.current;
     read.current = controller;
     setLoading(true);
     setError("");
     try {
-      const result = await api.current(`mine/${encodeURIComponent(businessId)}`, {
+      const result = await transport(`mine/${encodeURIComponent(businessId)}`, {
         signal: controller.signal,
       });
       const next = readBusinessMediaManifest(result.manifest);
       if (next.businessId !== businessId) throw new Error("invalid_media_business");
-      if (!live.current || controller.signal.aborted || current !== revision.current) return;
+      if (
+        !live.current ||
+        api.current !== transport ||
+        actor.current !== expectedActor ||
+        access !== accessEpoch.current ||
+        controller.signal.aborted ||
+        current !== revision.current
+      )
+        return;
       setManifest(next);
+      setLoginRequired(false);
       changed.current?.(next);
       return next;
     } catch (failure) {
+      if (
+        !live.current ||
+        api.current !== transport ||
+        actor.current !== expectedActor ||
+        access !== accessEpoch.current
+      )
+        return;
+      if (clearDeniedAccess(failure)) return;
       if (live.current && !controller.signal.aborted && current === revision.current) {
         if (
           failure instanceof BusinessMediaRequestError &&
@@ -167,23 +232,33 @@ export function BusinessMediaManager({
         setError(businessMediaError(failure));
       }
     } finally {
-      if (live.current && current === revision.current) setLoading(false);
+      if (
+        live.current &&
+        api.current === transport &&
+        actor.current === expectedActor &&
+        access === accessEpoch.current &&
+        current === revision.current
+      )
+        setLoading(false);
     }
-  }, [businessId, preview]);
+  }, [businessId, preview, request, expectedAccountId, clearDeniedAccess]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: A different business or preview boundary discards that workspace's local view.
   useEffect(() => {
     setManifest(null);
     setPending(null);
+    pendingRef.current = null;
     setNotice("");
     setError("");
     setBusy(false);
+    setLoginRequired(false);
+    accessEpoch.current++;
     writeToken.current++;
     writing.current = false;
     return () => {
       revision.current++;
       read.current?.abort();
     };
-  }, [businessId, preview]);
+  }, [businessId, preview, scopedRequest]);
   useEffect(() => {
     if (active) void load();
   }, [active, load]);
@@ -193,32 +268,41 @@ export function BusinessMediaManager({
       writing.current ||
       !active ||
       intent.businessId !== businessId ||
-      (preview && api.current === businessMediaRequest)
+      (preview && request === businessMediaRequest)
     )
       return;
     writing.current = true;
-    const token = ++writeToken.current;
+    const token = ++writeToken.current,
+      access = accessEpoch.current,
+      expectedActor = expectedAccountId,
+      transport = api.current;
     read.current?.abort();
     revision.current++;
     setBusy(true);
     setError("");
     setNotice("");
     setPending(intent);
+    pendingRef.current = intent;
     let refreshConflict = false;
     try {
-      const result = await api.current(
-        `mine/${encodeURIComponent(intent.businessId)}/${intent.kind}/${intent.slot}`,
-        {
-          method: intent.method,
-          headers: {
-            "If-Match": `"${intent.expectedVersion}"`,
-            "Idempotency-Key": intent.key,
-            ...(intent.file ? { "Content-Type": intent.file.type } : {}),
-          },
-          ...(intent.file ? { body: intent.file } : {}),
-        },
-      );
-      const receipt = readBusinessMediaReceipt(result.receipt);
+      const receipt =
+        intent.receipt ??
+        readBusinessMediaReceipt(
+          (
+            await transport(
+              `mine/${encodeURIComponent(intent.businessId)}/${intent.kind}/${intent.slot}`,
+              {
+                method: intent.method,
+                headers: {
+                  "If-Match": `"${intent.expectedVersion}"`,
+                  "Idempotency-Key": intent.key,
+                  ...(intent.file ? { "Content-Type": intent.file.type } : {}),
+                },
+                ...(intent.file ? { body: intent.file } : {}),
+              },
+            )
+          ).receipt,
+        );
       if (
         receipt.businessId !== intent.businessId ||
         receipt.kind !== intent.kind ||
@@ -229,16 +313,36 @@ export function BusinessMediaManager({
           : receipt.mediaVersion !== null)
       )
         throw new Error("unconfirmed_media_write");
+      if (
+        !live.current ||
+        api.current !== transport ||
+        actor.current !== expectedActor ||
+        access !== accessEpoch.current ||
+        token !== writeToken.current
+      )
+        return;
+      const acknowledged = { ...intent, receipt };
+      pendingRef.current = acknowledged;
+      setPending(acknowledged);
       // The idempotent receipt proves the command, never the current publication state.
       const fresh = readBusinessMediaManifest(
-        (await api.current(`mine/${encodeURIComponent(intent.businessId)}`)).manifest,
+        (await transport(`mine/${encodeURIComponent(intent.businessId)}`)).manifest,
       );
       if (fresh.businessId !== intent.businessId || fresh.businessVersion < receipt.businessVersion)
         throw new Error("unconfirmed_current_media");
-      if (live.current && token === writeToken.current && currentId.current === intent.businessId) {
+      if (
+        live.current &&
+        api.current === transport &&
+        actor.current === expectedActor &&
+        access === accessEpoch.current &&
+        token === writeToken.current &&
+        currentId.current === intent.businessId
+      ) {
         setManifest(fresh);
         changed.current?.(fresh);
         setPending(null);
+        pendingRef.current = null;
+        setLoginRequired(false);
         setNotice(
           fresh.status === "pending"
             ? "Izmjene su poslane na pregled."
@@ -246,12 +350,26 @@ export function BusinessMediaManager({
         );
       }
     } catch (failure) {
-      if (live.current && token === writeToken.current && currentId.current === intent.businessId) {
+      if (
+        live.current &&
+        api.current === transport &&
+        actor.current === expectedActor &&
+        access === accessEpoch.current &&
+        token === writeToken.current &&
+        currentId.current === intent.businessId
+      ) {
+        const command = pendingRef.current?.key === intent.key ? pendingRef.current : intent;
+        const recover = businessMediaNeedsRecovery(command, failure);
+        const recovery = recover ? { ...command, uncertain: true } : null;
+        pendingRef.current = recovery;
+        setPending(recovery);
+        if (clearDeniedAccess(failure)) return;
         setError(businessMediaError(failure));
         if (
           failure instanceof BusinessMediaRequestError &&
           failure.status >= 400 &&
-          failure.status < 500
+          failure.status < 500 &&
+          !recover
         ) {
           setPending(null);
           if ([401, 403, 404].includes(failure.status)) setManifest(null);
@@ -259,7 +377,12 @@ export function BusinessMediaManager({
         }
       }
     } finally {
-      if (token === writeToken.current) {
+      if (
+        api.current === transport &&
+        actor.current === expectedActor &&
+        access === accessEpoch.current &&
+        token === writeToken.current
+      ) {
         writing.current = false;
         if (live.current && currentId.current === intent.businessId) setBusy(false);
         if (refreshConflict && live.current && currentId.current === intent.businessId) void load();
@@ -307,11 +430,14 @@ export function BusinessMediaManager({
     .join("")
     .toLocaleUpperCase("bs");
   return (
-    <section className={styles.workspace} aria-label={`Fotografije: ${businessTitle}`}>
+    <section
+      className={styles.workspace}
+      aria-label={loginRequired ? "Fotografije" : `Fotografije: ${businessTitle}`}
+    >
       <header className={styles.header}>
         <div>
           <p className={styles.eyebrow}>FOTOGRAFIJE</p>
-          <h2>{businessTitle}</h2>
+          <h2>{loginRequired ? "Fotografije" : businessTitle}</h2>
         </div>
         {onBack && (
           <button

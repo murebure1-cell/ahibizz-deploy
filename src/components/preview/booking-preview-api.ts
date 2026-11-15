@@ -463,6 +463,13 @@ export function createBookingPreviewApi({ now = () => new Date() }: { now?: () =
         reject(400);
       const url = new URL(path, "https://booking-preview.invalid/"),
         method = options.method ?? "GET";
+      const expected = new Headers(options.headers).get("X-AhiBizz-Account-ID");
+      // Match the real API: public config/slots remain anonymous, private paths bind the actor.
+      const publicRead = method === "GET" && /^\/businesses\/[^/]+(?:\/slots)?$/.test(url.pathname);
+      if (!publicRead && expected !== null) {
+        if (!/^[A-Za-z0-9_-]{1,128}$/.test(expected)) reject(400);
+        if (expected !== actor) reject(401, "ACCOUNT_IDENTITY_CHANGED");
+      }
       function query(keys: string[]) {
         const values: Record<string, unknown> = {};
         for (const [key, value] of url.searchParams) {

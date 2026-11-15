@@ -275,6 +275,65 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
       await t.test(
+        "expected actor binds private manifests, pixels and mutations before administrator access",
+        async () => {
+          const before = await counts();
+          const matched = new Headers(owner.headers);
+          matched.set("X-AhiBizz-Account-ID", owner.user.id);
+          const changed = new Headers(owner.headers);
+          changed.set("X-AhiBizz-Account-ID", member.user.id);
+          const invalid = new Headers(owner.headers);
+          invalid.set("X-AhiBizz-Account-ID", "invalid actor");
+          assert.deepEqual(
+            await media.readOwn(matched, memberBusiness.id),
+            await media.readOwn(owner.headers, memberBusiness.id),
+          );
+          await deny(
+            () => media.readOwn(changed, memberBusiness.id),
+            401,
+            "ACCOUNT_IDENTITY_CHANGED",
+          );
+          await deny(
+            () => media.readOwnImage(changed, memberBusiness.id, "logo", 0, 1),
+            401,
+            "ACCOUNT_IDENTITY_CHANGED",
+          );
+          await deny(
+            () =>
+              media.save(
+                changed,
+                memberBusiness.id,
+                "logo",
+                0,
+                { expectedVersion: 1, bytes: image },
+                randomUUID(),
+              ),
+            401,
+            "ACCOUNT_IDENTITY_CHANGED",
+          );
+          await deny(
+            () =>
+              media.remove(
+                changed,
+                memberBusiness.id,
+                "logo",
+                0,
+                { expectedVersion: 1 },
+                randomUUID(),
+              ),
+            401,
+            "ACCOUNT_IDENTITY_CHANGED",
+          );
+          await deny(
+            () => media.readOwn(invalid, memberBusiness.id),
+            400,
+            "INVALID_BUSINESS_MEDIA_INPUT",
+          );
+          assert.deepEqual(await counts(), before);
+          assert.equal((await readMember()).version, 1);
+        },
+      );
+      await t.test(
         "actual logo bytes normalize, increment the shared business version and stay private before publication",
         async () => {
           logoReceipt = await media.save(
@@ -315,6 +374,42 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             null,
           );
           assert.equal(await media.readPublicImage(memberBusiness.id, "logo", 0, 2), null);
+        },
+      );
+      await t.test(
+        "same-actor image receipt replay succeeds while another expected actor cannot recover it",
+        async () => {
+          const before = await counts();
+          const matched = new Headers(member.headers);
+          matched.set("X-AhiBizz-Account-ID", member.user.id);
+          const changed = new Headers(member.headers);
+          changed.set("X-AhiBizz-Account-ID", other.user.id);
+          await deny(
+            () =>
+              media.save(
+                changed,
+                memberBusiness.id,
+                "logo",
+                0,
+                { expectedVersion: 1, bytes: image },
+                logoKey,
+              ),
+            401,
+            "ACCOUNT_IDENTITY_CHANGED",
+          );
+          assert.deepEqual(
+            await media.save(
+              matched,
+              memberBusiness.id,
+              "logo",
+              0,
+              { expectedVersion: 1, bytes: image },
+              logoKey,
+            ),
+            logoReceipt,
+          );
+          assert.deepEqual(await counts(), before);
+          assert.equal((await readMember()).version, 2);
         },
       );
       await t.test(

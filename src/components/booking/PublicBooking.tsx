@@ -9,7 +9,13 @@ import {
   bookingStatusLabels,
   type PublicBookingConfiguration,
 } from "../../lib/booking";
-import { BookingRequestError, bookingError, bookingRequest } from "../../lib/booking-client";
+import {
+  BookingRequestError,
+  bookingAccountId,
+  bookingActorRequest,
+  bookingError,
+  bookingRequest,
+} from "../../lib/booking-client";
 import { createBookingSubmission } from "../../lib/booking-submission";
 import { addDays, dateKey } from "../../lib/booking-time";
 import { Icon } from "../Icon";
@@ -21,10 +27,16 @@ type Props = {
   configuration: PublicBookingConfiguration;
   preview?: boolean;
   request?: typeof bookingRequest;
+  expectedAccountId?: string;
 };
 
 export function PublicBooking(props: Props) {
-  return <BookingWorkspace key={props.businessId} {...props} />;
+  return (
+    <BookingWorkspace
+      key={`${props.businessId}:${props.expectedAccountId ?? "public"}`}
+      {...props}
+    />
+  );
 }
 
 function BookingWorkspace({
@@ -32,6 +44,7 @@ function BookingWorkspace({
   configuration: initialConfiguration,
   preview = false,
   request = bookingRequest,
+  expectedAccountId,
 }: Props) {
   const [configuration, setConfiguration] = useState(initialConfiguration),
     [changeNotice, setChangeNotice] = useState("");
@@ -51,6 +64,7 @@ function BookingWorkspace({
     live = useRef(false),
     needsConfiguration = useRef(false),
     submitting = useRef(false),
+    submissionActor = useRef<string | null>(expectedAccountId ?? null),
     operation = useRef(createBookingSubmission(businessId));
   const api = useRef(request);
   api.current = request;
@@ -169,12 +183,20 @@ function BookingWorkspace({
     setLogin(false);
     try {
       let entry: BookingEntry;
-      if (retry) entry = await operation.current.retry(api.current);
+      if (!retry) {
+        submissionActor.current =
+          expectedAccountId ??
+          (!preview && api.current === bookingRequest ? await bookingAccountId() : null);
+      }
+      const submissionRequest = submissionActor.current
+        ? bookingActorRequest(submissionActor.current, api.current)
+        : api.current;
+      if (retry) entry = await operation.current.retry(submissionRequest);
       else {
         if (!selected) return;
         entry = await operation.current.submit(
           { serviceId, startsAt: selected.startsAt, configurationVersion: configuration.version },
-          api.current,
+          submissionRequest,
         );
       }
       if (live.current) {
@@ -184,7 +206,8 @@ function BookingWorkspace({
     } catch (failure) {
       if (!live.current) return;
       setLogin(
-        failure instanceof BookingRequestError && failure.code === "AUTHENTICATION_REQUIRED",
+        failure instanceof BookingRequestError &&
+          ["AUTHENTICATION_REQUIRED", "ACCOUNT_IDENTITY_CHANGED"].includes(failure.code),
       );
       setError(bookingError(failure));
       if (operation.current.uncertain) {
@@ -333,6 +356,8 @@ function BookingWorkspace({
                   <Link
                     className={styles.secondary}
                     href={`/prijava?nastavi=${encodeURIComponent(`/djelatnosti/${businessId}#business-appointments`)}`}
+                    target={uncertain ? "_blank" : undefined}
+                    rel={uncertain ? "noopener" : undefined}
                   >
                     Prijavi se
                   </Link>
@@ -348,6 +373,8 @@ function BookingWorkspace({
                 )}
                 <Link
                   className={styles.secondary}
+                  target={uncertain ? "_blank" : undefined}
+                  rel={uncertain ? "noopener" : undefined}
                   href={
                     preview ? "/pregled/prostor/nalog?odjeljak=termini" : "/nalog?odjeljak=termini"
                   }

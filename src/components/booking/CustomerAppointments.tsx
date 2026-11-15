@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type BookingEntry,
   type BookingListView,
@@ -8,7 +8,13 @@ import {
   bookingMoney,
   bookingStatusLabels,
 } from "../../lib/booking";
-import { bookingError, bookingRequest, bookingWrite } from "../../lib/booking-client";
+import {
+  bookingAccessDenied,
+  bookingActorRequest,
+  bookingError,
+  bookingRequest,
+  bookingWrite,
+} from "../../lib/booking-client";
 import {
   type CustomerAppointmentsState,
   customerAppointmentsFailed,
@@ -16,17 +22,25 @@ import {
 import { Icon } from "../Icon";
 import styles from "./public-booking.module.css";
 
-export function CustomerAppointments({
-  active = true,
-  heading = true,
-  preview = false,
-  request = bookingRequest,
-}: {
+type Props = {
   active?: boolean;
   heading?: boolean;
   preview?: boolean;
   request?: typeof bookingRequest;
-}) {
+  expectedAccountId?: string;
+};
+
+export function CustomerAppointments(props: Props) {
+  return <AppointmentsWorkspace key={props.expectedAccountId ?? "unavailable"} {...props} />;
+}
+
+function AppointmentsWorkspace({
+  active = true,
+  heading = true,
+  preview = false,
+  request = bookingRequest,
+  expectedAccountId,
+}: Props) {
   const [readState, setReadState] = useState<CustomerAppointmentsState>({
       result: null,
       requiresLogin: false,
@@ -39,9 +53,50 @@ export function CustomerAppointments({
     [notice, setNotice] = useState(""),
     [refresh, setRefresh] = useState(0);
   const revision = useRef(0),
+    authority = useRef(0),
+    live = useRef(false),
+    controllers = useRef(new Set<AbortController>()),
     writing = useRef(false),
-    api = useRef(request);
-  api.current = request;
+    api = useMemo(
+      () => bookingActorRequest(expectedAccountId, request),
+      [expectedAccountId, request],
+    );
+  const clearPrivate = useCallback((failure: unknown) => {
+    authority.current++;
+    revision.current++;
+    for (const controller of controllers.current) controller.abort();
+    controllers.current.clear();
+    writing.current = false;
+    setReadState({ result: null, requiresLogin: true });
+    setNotice("");
+    setError(bookingError(failure));
+    setBusy(false);
+    setLoading(false);
+  }, []);
+  const previousApi = useRef(api);
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+      authority.current++;
+      revision.current++;
+      for (const controller of controllers.current) controller.abort();
+      controllers.current.clear();
+    };
+  }, []);
+  useEffect(() => {
+    if (previousApi.current === api) return;
+    previousApi.current = api;
+    authority.current++;
+    revision.current++;
+    for (const controller of controllers.current) controller.abort();
+    controllers.current.clear();
+    setReadState({ result: null, requiresLogin: false });
+    setNotice("");
+    setError("");
+    writing.current = false;
+    setBusy(false);
+  }, [api]);
   const { result, requiresLogin } = readState;
   const selection = `${view}:${page}`;
   const ready = result?.key === selection;
@@ -50,15 +105,22 @@ export function CustomerAppointments({
   const credits = ready ? result.credits : null;
   // biome-ignore lint/correctness/useExhaustiveDependencies: The refresh counter deliberately repeats the same read after a user action.
   useEffect(() => {
-    if (!active || (preview && api.current === bookingRequest)) return;
+    if (!active || (preview && request === bookingRequest)) return;
     const current = ++revision.current,
+      generation = authority.current,
       controller = new AbortController();
+    controllers.current.add(controller);
     setError("");
     setLoading(true);
-    void api
-      .current(`mine?page=${page}&view=${view}`, { signal: controller.signal })
+    void api(`mine?page=${page}&view=${view}`, { signal: controller.signal })
       .then((data) => {
-        if (controller.signal.aborted || current !== revision.current) return;
+        if (
+          !live.current ||
+          generation !== authority.current ||
+          controller.signal.aborted ||
+          current !== revision.current
+        )
+          return;
         if (
           !Array.isArray(data.entries) ||
           data.page !== page ||
@@ -83,6 +145,11 @@ export function CustomerAppointments({
         });
       })
       .catch((failure) => {
+        if (!live.current || generation !== authority.current) return;
+        if (bookingAccessDenied(failure)) {
+          clearPrivate(failure);
+          return;
+        }
         if (!controller.signal.aborted && current === revision.current) {
           setReadState((previous) => customerAppointmentsFailed(previous, failure));
           setNotice("");
@@ -90,24 +157,30 @@ export function CustomerAppointments({
         }
       })
       .finally(() => {
-        if (current === revision.current) setLoading(false);
+        controllers.current.delete(controller);
+        if (live.current && generation === authority.current && current === revision.current)
+          setLoading(false);
       });
     return () => {
       revision.current++;
       controller.abort();
     };
-  }, [active, page, view, refresh, preview]);
+  }, [active, page, view, refresh, preview, api, clearPrivate, request]);
   async function cancel(entry: BookingEntry) {
-    if (requiresLogin || writing.current || (preview && api.current === bookingRequest)) return;
+    if (requiresLogin || writing.current || (preview && request === bookingRequest)) return;
+    const generation = authority.current,
+      controller = new AbortController();
+    controllers.current.add(controller);
     writing.current = true;
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      const result = await api.current(
-        `entries/${entry.id}/action`,
-        bookingWrite("POST", { expectedVersion: entry.version, action: "cancel" }),
-      );
+      const result = await api(`entries/${entry.id}/action`, {
+        ...bookingWrite("POST", { expectedVersion: entry.version, action: "cancel" }),
+        signal: controller.signal,
+      });
+      if (!live.current || generation !== authority.current || controller.signal.aborted) return;
       if (
         result.entry?.id !== entry.id ||
         result.entry?.businessId !== entry.businessId ||
@@ -118,12 +191,20 @@ export function CustomerAppointments({
         throw new Error("unconfirmed_cancel");
       setNotice(preview ? "Termin je otkazan u pregledu." : "Termin je otkazan.");
     } catch (failure) {
+      if (!live.current || generation !== authority.current) return;
+      if (bookingAccessDenied(failure)) {
+        clearPrivate(failure);
+        return;
+      }
       setReadState((previous) => customerAppointmentsFailed(previous, failure));
       setError(bookingError(failure));
     } finally {
-      writing.current = false;
-      setBusy(false);
-      setRefresh((value) => value + 1);
+      controllers.current.delete(controller);
+      if (live.current && generation === authority.current) {
+        writing.current = false;
+        setBusy(false);
+        setRefresh((value) => value + 1);
+      }
     }
   }
   return (

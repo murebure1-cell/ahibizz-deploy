@@ -57,6 +57,7 @@ export function BusinessPreview() {
     return (
       <BusinessMediaManager
         key={mediaId}
+        expectedAccountId="00100000-0000-4000-8000-000000000001"
         businessId={mediaId}
         businessTitle={drafts.find((d) => d.id === mediaId)?.title ?? "Djelatnost"}
         preview
@@ -69,6 +70,7 @@ export function BusinessPreview() {
     return (
       <BusinessBookingManager
         businessId={bookingId}
+        expectedAccountId="00100000-0000-4000-8000-000000000001"
         businessTitle={
           drafts.find((draft) => draft.id === bookingId)?.title ?? "Studio Forma · ogledni profil"
         }

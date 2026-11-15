@@ -33,6 +33,11 @@ export function createDirectoryCreation() {
     get intent() {
       return intent;
     },
+    retainUncertain() {
+      // A concurrent denied read cannot prove the dispatched create did not commit.
+      if (intent) uncertain = true;
+      return intent;
+    },
     begin(fields: CreateFields, publish: boolean): DirectoryCreateIntent {
       if (intent || running) throw new DirectoryCreationPendingError();
       const snapshot = Object.freeze({ ...fields });
@@ -77,7 +82,7 @@ export function createDirectoryCreation() {
           failure.status >= 400 &&
           failure.status < 500 &&
           failure.status !== 408;
-        if (rejected && !wasUncertain) {
+        if (rejected && !wasUncertain && !uncertain) {
           intent = null;
           uncertain = false;
         } else uncertain = true;

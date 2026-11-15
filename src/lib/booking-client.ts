@@ -17,6 +17,42 @@ export async function bookingRequest(path: string, options: RequestInit = {}) {
     throw new BookingRequestError(data?.code ?? "BOOKING_UNAVAILABLE", response.status);
   return data;
 }
+
+export function bookingActorRequest(
+  expectedAccountId: string | undefined,
+  request: typeof bookingRequest = bookingRequest,
+): typeof bookingRequest {
+  return (path, options = {}) => {
+    if (!expectedAccountId || !/^[A-Za-z0-9_-]{1,128}$/.test(expectedAccountId))
+      return Promise.reject(new BookingRequestError("ACCOUNT_IDENTITY_CHANGED", 401));
+    const headers = new Headers(options.headers);
+    headers.set("X-AhiBizz-Account-ID", expectedAccountId);
+    return request(path, { ...options, headers });
+  };
+}
+
+export function bookingAccessDenied(failure: unknown): failure is BookingRequestError {
+  return failure instanceof BookingRequestError && [401, 403].includes(failure.status);
+}
+
+/** Resolve a public form's signed actor only after an explicit booking attempt. */
+export async function bookingAccountId(): Promise<string> {
+  const response = await fetch("/api/account", {
+    credentials: "same-origin",
+    cache: "no-store",
+    mode: "same-origin",
+    redirect: "error",
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok)
+    throw new BookingRequestError(
+      typeof data?.code === "string" ? data.code : "BOOKING_UNAVAILABLE",
+      response.status,
+    );
+  if (typeof data?.account?.id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(data.account.id))
+    throw new BookingRequestError("BOOKING_UNAVAILABLE", 503);
+  return data.account.id;
+}
 export function bookingWrite(method: string, body: unknown, idempotencyKey?: string): RequestInit {
   return {
     method,
@@ -30,6 +66,7 @@ export function bookingWrite(method: string, body: unknown, idempotencyKey?: str
 export function bookingError(error: unknown) {
   const code = error instanceof BookingRequestError ? error.code : "";
   if (code === "AUTHENTICATION_REQUIRED") return "Prijavi se da nastaviš.";
+  if (code === "ACCOUNT_IDENTITY_CHANGED") return "Prijavi se ponovo svojim nalogom.";
   if (["ACCOUNT_PENDING_APPROVAL", "EMAIL_NOT_VERIFIED", "ACCOUNT_SUSPENDED"].includes(code))
     return "Nalog još nema pristup zakazivanju.";
   if (["SLOT_UNAVAILABLE", "BOOKING_CONFLICT"].includes(code))

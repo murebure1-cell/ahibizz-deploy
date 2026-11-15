@@ -28,6 +28,31 @@ const fields = {
   bookingEnabled: true,
 };
 
+test("concurrent authority loss preserves a dispatched create after its later first denial", async () => {
+  const creation = createDirectoryCreation();
+  const command = creation.begin(fields, false);
+  let reject!: (failure: unknown) => void;
+  const pending = creation.send(
+    command,
+    () =>
+      new Promise((_resolve, fail) => {
+        reject = fail;
+      }),
+  );
+  assert.equal(creation.retainUncertain(), command);
+  reject(new DirectoryRequestError("AUTHENTICATION_REQUIRED", 401));
+  await assert.rejects(pending);
+  assert.equal(creation.intent, command);
+  const row = { id: "same-business", version: 1 } as DirectoryBusiness;
+  const recovered = await creation.send(command, async (options) => {
+    assert.equal(options.body, command.body);
+    assert.equal(new Headers(options.headers).get("Idempotency-Key"), command.key);
+    return { business: row };
+  });
+  assert.equal(recovered.id, "same-business");
+  assert.equal(creation.intent, null);
+});
+
 /** Isolated receipts behind the actual HTTP and input boundaries; no fetch or real database. */
 function fixture() {
   const rows = new Map<string, DirectoryBusiness>();

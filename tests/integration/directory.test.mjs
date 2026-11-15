@@ -24,7 +24,7 @@ async function outsideTables(pool, schema) {
   ).rows;
 }
 
-async function waitForTwoLockWaiters(pool, applicationName) {
+async function waitForTwoLockWaiters(pool, applicationName, minimum = 2) {
   const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {
     const count = (
@@ -33,10 +33,10 @@ async function waitForTwoLockWaiters(pool, applicationName) {
         [applicationName],
       )
     ).rows[0].n;
-    if (count >= 2) return;
+    if (count >= minimum) return;
     await delay(20);
   }
-  throw new Error("Both directory creates must reach the held actor lock.");
+  throw new Error("Directory requests must reach the held authority lock.");
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -198,19 +198,25 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       const [owner, member, other] = actors;
       const { createDirectoryService, createPublicDirectoryService, DirectoryAccessError } =
         await import("../../src/server/directory/index.ts");
+      const accounts = createAccountService({ auth, pool });
       const directory = createDirectoryService({
-        accounts: createAccountService({ auth, pool }),
+        accounts,
         auth,
         pool,
       });
       const { createDirectoryHttpHandler } = await import("../../src/server/directory-http.ts");
       const directoryHttp = createDirectoryHttpHandler({ service: directory, baseURL });
-      async function directoryRequest(method, route, { actor, body, key, origin = baseURL } = {}) {
+      async function directoryRequest(
+        method,
+        route,
+        { actor, body, key, origin = baseURL, expectedAccountId, handler = directoryHttp } = {},
+      ) {
         const headers = new Headers(actor?.headers);
         headers.set("origin", origin);
         if (body !== undefined) headers.set("content-type", "application/json");
         if (key) headers.set("idempotency-key", key);
-        const response = await directoryHttp(
+        if (expectedAccountId !== undefined) headers.set("X-AhiBizz-Account-ID", expectedAccountId);
+        const response = await handler(
           new Request(new URL(route, baseURL), {
             method,
             headers,
@@ -249,6 +255,21 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         latitude: 44.5384,
         longitude: 18.6671,
       });
+      const directorySnapshot = async () => {
+        const snapshot = {};
+        for (const table of [
+          "directory_category",
+          "directory_business",
+          "directory_create_commands",
+          "directory_moderation_audit",
+        ])
+          snapshot[table] = (
+            await pool.query(
+              `SELECT to_jsonb(item) AS value FROM ${table} item ORDER BY to_jsonb(item)::text`,
+            )
+          ).rows;
+        return snapshot;
+      };
 
       await t.test("only owner creates a consistent two-level taxonomy", async () => {
         await denied(
@@ -452,6 +473,72 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             (await pool.query("SELECT count(*)::integer AS n FROM directory_business")).rows[0].n,
             6,
           );
+        },
+      );
+
+      await t.test(
+        "private directory reads, writes and create receipts reject a changed expected account",
+        async () => {
+          const before = await directorySnapshot();
+          const version = { expectedVersion: memberBusiness.version };
+          const commands = [
+            ["GET", "/api/directory/mine", { actor: member }],
+            ["GET", `/api/directory/mine/${memberBusiness.id}`, { actor: member }],
+            ["GET", "/api/directory/admin", { actor: owner }],
+            ["GET", "/api/directory/review", { actor: owner }],
+            [
+              "POST",
+              "/api/directory/categories",
+              { actor: owner, body: { name: "Forbidden identity", slug: "forbidden-identity" } },
+            ],
+            [
+              "POST",
+              "/api/directory/mine",
+              { actor: member, body: winningInput, key: winningRequest },
+            ],
+            [
+              "PATCH",
+              `/api/directory/mine/${memberBusiness.id}`,
+              { actor: member, body: { ...version, title: "Forbidden change" } },
+            ],
+            ...["publish", "archive", "recover"].map((action) => [
+              "POST",
+              `/api/directory/mine/${memberBusiness.id}/${action}`,
+              { actor: member, body: version },
+            ]),
+            [
+              "PATCH",
+              `/api/directory/review/${memberBusiness.id}`,
+              { actor: owner, body: { ...version, status: "published" } },
+            ],
+          ];
+          for (const [method, route, options] of commands) {
+            const response = await directoryRequest(method, route, {
+              ...options,
+              expectedAccountId: options.actor === owner ? member.user.id : owner.user.id,
+            });
+            assert.equal(response.status, 401, `${method} ${route}`);
+            assert.equal(response.data.code, "ACCOUNT_IDENTITY_CHANGED");
+          }
+          assert.deepEqual(await directorySnapshot(), before);
+          const own = await directoryRequest("GET", "/api/directory/mine", {
+            actor: member,
+            expectedAccountId: member.user.id,
+          });
+          assert.equal(own.status, 200);
+          assert.equal(
+            own.data.items.some((row) => row.id === memberBusiness.id),
+            true,
+          );
+          for (const expectedAccountId of ["", "invalid/actor", "a".repeat(129)]) {
+            const malformed = await directoryRequest("GET", "/api/directory/admin", {
+              actor: owner,
+              expectedAccountId,
+            });
+            assert.equal(malformed.status, 400);
+            assert.equal(malformed.data.code, "INVALID_DIRECTORY_INPUT");
+          }
+          assert.equal((await directoryRequest("GET", "/api/directory/categories")).status, 200);
         },
       );
 
@@ -1115,6 +1202,113 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
               other.user.id,
             ]);
           }
+        },
+      );
+
+      await t.test(
+        "private directory reads recheck exact session authority after their transaction lock wait",
+        async () => {
+          const routes = [
+            [member, "/api/directory/mine"],
+            [member, `/api/directory/mine/${memberBusiness.id}`],
+            [owner, "/api/directory/admin"],
+            [owner, "/api/directory/review"],
+          ];
+          const before = await directorySnapshot();
+          for (const [actor, route] of routes) {
+            for (const invalidation of ["revoke", "expire", "expire-session-lock"]) {
+              const approved = await accounts.read(actor.headers);
+              const signed = await auth.api.getSession({
+                headers: actor.headers,
+                query: { disableCookieCache: true, disableRefresh: true },
+              });
+              const original = (
+                await pool.query("SELECT to_jsonb(s) AS value FROM auth_session s WHERE id=$1", [
+                  signed.session.id,
+                ])
+              ).rows[0].value;
+              const guardedHttp = createDirectoryHttpHandler({
+                service: createDirectoryService({
+                  accounts: { ...accounts, read: async () => approved },
+                  auth,
+                  pool,
+                }),
+                baseURL,
+              });
+              const locker = await pool.connect();
+              let pending;
+              try {
+                try {
+                  await locker.query("BEGIN");
+                  if (invalidation === "expire-session-lock") {
+                    await pool.query(
+                      `UPDATE auth_session SET "expiresAt"=clock_timestamp()+interval '500 milliseconds' WHERE id=$1`,
+                      [signed.session.id],
+                    );
+                    await locker.query("SELECT id FROM auth_session WHERE id=$1 FOR UPDATE", [
+                      signed.session.id,
+                    ]);
+                  } else {
+                    await locker.query("SELECT id FROM auth_user WHERE id=$1 FOR UPDATE", [
+                      actor.user.id,
+                    ]);
+                  }
+                  pending = directoryRequest("GET", route, {
+                    actor,
+                    expectedAccountId: actor.user.id,
+                    handler: guardedHttp,
+                  });
+                  await waitForTwoLockWaiters(pool, applicationName, 1);
+                  if (invalidation === "revoke") {
+                    assert.equal(
+                      (
+                        await pool.query('DELETE FROM auth_session WHERE id=$1 AND "userId"=$2', [
+                          signed.session.id,
+                          actor.user.id,
+                        ])
+                      ).rowCount,
+                      1,
+                    );
+                  } else if (invalidation === "expire") {
+                    assert.equal(
+                      (
+                        await pool.query(
+                          'UPDATE auth_session SET "expiresAt"=clock_timestamp() WHERE id=$1',
+                          [signed.session.id],
+                        )
+                      ).rowCount,
+                      1,
+                    );
+                  } else {
+                    const expiresAt = (
+                      await pool.query('SELECT "expiresAt" FROM auth_session WHERE id=$1', [
+                        signed.session.id,
+                      ])
+                    ).rows[0].expiresAt;
+                    await pool.query(
+                      "SELECT pg_sleep(greatest(0,extract(epoch from ($1::timestamptz-clock_timestamp())))+0.03)",
+                      [expiresAt],
+                    );
+                  }
+                } finally {
+                  await locker.query("ROLLBACK");
+                  locker.release();
+                }
+                const response = await pending;
+                assert.equal(response.status, 401, `${route}: ${invalidation}`);
+                assert.equal(response.data.code, "AUTHENTICATION_REQUIRED");
+                assert.deepEqual(await directorySnapshot(), before);
+              } finally {
+                // Restore only this isolated fixture's original signed session for the next case.
+                await pool.query(
+                  'INSERT INTO auth_session SELECT * FROM jsonb_populate_record(NULL::auth_session,$1::jsonb) WHERE true ON CONFLICT (id) DO UPDATE SET "expiresAt"=EXCLUDED."expiresAt"',
+                  [JSON.stringify(original)],
+                );
+              }
+              assert.equal((await directoryRequest("GET", route, { actor })).status, 200);
+            }
+          }
+          assert.deepEqual(await directorySnapshot(), before);
         },
       );
 

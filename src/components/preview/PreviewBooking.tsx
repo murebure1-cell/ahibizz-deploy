@@ -7,6 +7,7 @@ export function PreviewBooking({ businessId = "forma" }: { businessId?: string }
   return (
     <PublicBooking
       key={businessId}
+      expectedAccountId="00100000-0000-4000-8000-000000000002"
       businessId={businessId}
       configuration={configuration}
       preview

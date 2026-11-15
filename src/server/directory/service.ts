@@ -90,6 +90,7 @@ async function transaction<T>(pool: Pool, action: (client: PoolClient) => Promis
 }
 type DirectoryIdentity = CurrentAuthUser & {
   session: { id: string; userId: string; token: string };
+  expectedAccountId?: string;
 };
 async function lockUsers(client: PoolClient, identity: DirectoryIdentity, extraId?: string) {
   const actorId = identity.id;
@@ -100,6 +101,8 @@ async function lockUsers(client: PoolClient, identity: DirectoryIdentity, extraI
   );
   const actor = result.rows.find((row) => row.id === actorId);
   eligible(actor);
+  if (identity.expectedAccountId !== undefined && actor.id !== identity.expectedAccountId)
+    fail(401, "ACCOUNT_IDENTITY_CHANGED");
   const session = await client.query(
     'WITH locked_session AS MATERIALIZED (SELECT id,"expiresAt" FROM auth_session WHERE id=$1 AND "userId"=$2 AND token=$3 FOR UPDATE) SELECT id FROM locked_session WHERE "expiresAt">clock_timestamp()',
     [identity.session.id, actorId, identity.session.token],
@@ -235,6 +238,9 @@ export function createDirectoryService({
     fail(503, "DIRECTORY_CONFIGURATION_INVALID");
   const actor = (headers: Headers) =>
     safe(async () => {
+      const expectedAccountId = headers.get("X-AhiBizz-Account-ID");
+      if (expectedAccountId !== null && !/^[A-Za-z0-9_-]{1,128}$/.test(expectedAccountId))
+        fail(400, "INVALID_DIRECTORY_INPUT");
       const value = await accounts.read(headers);
       eligible(value);
       const signed = await auth.api.getSession({
@@ -243,10 +249,12 @@ export function createDirectoryService({
       });
       if (!signed?.session || signed.session.userId !== value.id || signed.user.id !== value.id)
         fail(401, "AUTHENTICATION_REQUIRED");
-      return { ...value, session: signed.session };
+      return {
+        ...value,
+        session: signed.session,
+        ...(expectedAccountId === null ? {} : { expectedAccountId }),
+      };
     });
-  const list = (input: unknown, condition: string, parameters: unknown[], publicOnly = false) =>
-    listDirectory(pool, input, condition, parameters, publicOnly);
   return {
     ...createPublicDirectoryService({ database: pool }),
     async createCategory(headers: Headers, input: unknown): Promise<DirectoryCategory> {
@@ -279,28 +287,35 @@ export function createDirectoryService({
     },
     async listOwn(headers: Headers, input: unknown = {}) {
       const identity = await actor(headers);
-      return safe(() => list(input, "b.owner_user_id = $1", [identity.id]));
+      return transaction(pool, async (client) => {
+        const { actor: currentActor } = await lockUsers(client, identity);
+        return listDirectory(client, input, "b.owner_user_id = $1", [currentActor.id]);
+      });
     },
     async listAdmin(headers: Headers, input: unknown = {}) {
       const identity = await actor(headers);
-      owner(identity);
-      return safe(() => list(input, "true", []));
+      return transaction(pool, async (client) => {
+        const { actor: currentActor } = await lockUsers(client, identity);
+        owner(currentActor);
+        return listDirectory(client, input, "true", []);
+      });
     },
     async pending(headers: Headers, input: unknown = {}) {
       const identity = await actor(headers);
-      owner(identity);
       object(input, ["page", "pageSize"]);
-      return safe(() => list(input, "b.status = 'pending'", []));
+      return transaction(pool, async (client) => {
+        const { actor: currentActor } = await lockUsers(client, identity);
+        owner(currentActor);
+        return listDirectory(client, input, "b.status = 'pending'", []);
+      });
     },
     async readOwn(headers: Headers, id: string) {
       const identity = await actor(headers),
         key = uuid(id);
-      return safe(async () => {
-        const value = await business(pool, key);
-        if (value.ownerId !== identity.id && identity.role !== "owner")
-          fail(404, "BUSINESS_NOT_FOUND");
-        return value;
-      });
+      return transaction(
+        pool,
+        async (client) => (await lockedBusiness(client, identity, key)).before,
+      );
     },
     async create(headers: Headers, input: unknown, requestId: string): Promise<DirectoryBusiness> {
       const value = completeFields(businessInput(input, true) as BusinessFields),

@@ -32,7 +32,10 @@ import {
 } from "./validation";
 
 type Query = Pick<PoolClient, "query">;
-type BookingIdentity = CurrentAuthUser & { session: { id: string; userId: string; token: string } };
+type BookingIdentity = CurrentAuthUser & {
+  session: { id: string; userId: string; token: string };
+  expectedAccountId?: string;
+};
 type Business = { id: string; owner_user_id: string; title: string; status: string };
 type EntryRow = Omit<BookingEntry, "startsAt" | "endsAt"> & {
   startsAt: Date;
@@ -137,6 +140,8 @@ async function authority(client: PoolClient, identity: BookingIdentity, extra: s
   ).rows;
   const actor = users.find((row) => row.id === actorId);
   eligible(actor);
+  if (identity.expectedAccountId !== undefined && actor.id !== identity.expectedAccountId)
+    fail(401, "ACCOUNT_IDENTITY_CHANGED");
   const session = await client.query(
     'WITH locked_session AS MATERIALIZED (SELECT id,"expiresAt" FROM auth_session WHERE id=$1 AND "userId"=$2 AND token=$3 FOR UPDATE) SELECT id FROM locked_session WHERE "expiresAt">clock_timestamp()',
     [identity.session.id, actorId, identity.session.token],
@@ -420,6 +425,9 @@ export function createBookingService({
 }) {
   const actor = (headers: Headers): Promise<BookingIdentity> =>
     safe(async () => {
+      const expectedAccountId = headers.get("X-AhiBizz-Account-ID");
+      if (expectedAccountId !== null && !/^[A-Za-z0-9_-]{1,128}$/.test(expectedAccountId))
+        fail(400, "INVALID_BOOKING_INPUT");
       const identity = await accounts.read(headers);
       eligible(identity);
       const signed = await auth.api.getSession({
@@ -432,7 +440,11 @@ export function createBookingService({
         signed.user.id !== identity.id
       )
         fail(401, "AUTHENTICATION_REQUIRED");
-      return { ...identity, session: signed.session };
+      return {
+        ...identity,
+        session: signed.session,
+        ...(expectedAccountId === null ? {} : { expectedAccountId }),
+      };
     });
   const clock = () => {
     const value = now();
