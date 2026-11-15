@@ -13,6 +13,7 @@ const links = [
   { href: "/nalog?odjeljak=poruke", label: "Poruke" },
   { href: "/nalog", label: "Moj nalog" },
   { href: "/o-nama", label: "O AhiBizzu" },
+  { href: "/instaliraj", label: "Instaliraj AhiBizz" },
 ];
 const accessLinks = [
   { href: "/prijava", label: "Prijava" },

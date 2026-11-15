@@ -21,6 +21,7 @@ export function SiteFooter() {
         <nav aria-label="Navigacija podnožja">
           <Link href="/pretraga">Istraži djelatnosti</Link>
           <Link href="/o-nama">O AhiBizzu</Link>
+          <Link href="/instaliraj">Instaliraj aplikaciju</Link>
           {getSupportConfig() && <Link href="/podrzi">Podrži AhiBizz</Link>}
         </nav>
       </div>

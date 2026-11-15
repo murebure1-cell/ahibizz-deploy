@@ -1,0 +1,123 @@
+.page {
+  width: min(620px, calc(100% - 40px));
+  margin: 52px auto 72px;
+}
+.card {
+  padding: 40px;
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: linear-gradient(145deg, #fffffff0, #ffffffbd);
+  box-shadow: 0 18px 65px #142c400a;
+}
+.icon {
+  border-radius: 20px;
+  margin-bottom: 28px;
+}
+.card h1 {
+  font-size: clamp(30px, 5vw, 42px);
+  line-height: 1.12;
+}
+.intro {
+  color: var(--muted);
+  margin-top: 16px;
+}
+.install {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 13px 18px;
+  margin-top: 30px;
+  border: 1px solid #c79b3e;
+  border-radius: 13px;
+  color: var(--navy-deep);
+  background: linear-gradient(115deg, #e8c77f, #d7aa43);
+  font-weight: 650;
+}
+.install:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.install svg,
+.installed svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.status {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.status:empty {
+  display: none;
+}
+.instructions {
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+}
+.instructions details {
+  border-bottom: 1px solid var(--line);
+  padding-block: 17px;
+}
+.instructions summary {
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 650;
+}
+.instructions ol {
+  margin: 18px 0 0;
+  padding-left: 21px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.instructions li + li {
+  margin-top: 10px;
+}
+.instructions strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.copy {
+  min-height: 44px;
+  padding: 10px 0;
+  margin-top: 14px;
+  border: 0;
+  color: var(--navy);
+  background: transparent;
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.link {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--ink);
+  background: #fff;
+}
+.hint {
+  margin-top: 22px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.installed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 28px;
+  color: #34684e;
+}
+@media (max-width: 600px) {
+  .page {
+    margin-block: 28px 44px;
+  }
+  .card {
+    padding: 28px 23px;
+    border-radius: 22px;
+  }
+}
