@@ -6,7 +6,7 @@ export function PreviewBooking({ businessId = "forma" }: { businessId?: string }
   const configuration = api.getConfig(businessId);
   return (
     <PublicBooking
-      key={`${businessId}-${configuration.version}`}
+      key={businessId}
       businessId={businessId}
       configuration={configuration}
       preview

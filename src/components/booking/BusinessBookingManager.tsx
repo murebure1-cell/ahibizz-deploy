@@ -1290,14 +1290,16 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
                     <div className={styles.entryActions}>
                       {entry.status === "requested" && (
                         <>
-                          <button
-                            type="button"
-                            className={styles.primary}
-                            disabled={busy !== null || uncertain}
-                            onClick={() => void changeEntry(entry, "approve")}
-                          >
-                            Odobri
-                          </button>
+                          {Date.parse(entry.startsAt) > now && (
+                            <button
+                              type="button"
+                              className={styles.primary}
+                              disabled={busy !== null || uncertain}
+                              onClick={() => void changeEntry(entry, "approve")}
+                            >
+                              Odobri
+                            </button>
+                          )}
                           <button
                             type="button"
                             className={styles.secondary}

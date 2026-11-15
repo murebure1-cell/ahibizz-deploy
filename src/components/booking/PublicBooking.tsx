@@ -9,28 +9,30 @@ import {
   bookingStatusLabels,
   type PublicBookingConfiguration,
 } from "../../lib/booking";
-import {
-  BookingRequestError,
-  bookingError,
-  bookingRequest,
-  bookingWrite,
-} from "../../lib/booking-client";
+import { BookingRequestError, bookingError, bookingRequest } from "../../lib/booking-client";
+import { createBookingSubmission } from "../../lib/booking-submission";
 import { addDays, dateKey } from "../../lib/booking-time";
 import { Icon } from "../Icon";
 import { CalendarDays } from "./CalendarDays";
 import styles from "./public-booking.module.css";
 
-export function PublicBooking({
-  businessId,
-  configuration: initialConfiguration,
-  preview = false,
-  request = bookingRequest,
-}: {
+type Props = {
   businessId: string;
   configuration: PublicBookingConfiguration;
   preview?: boolean;
   request?: typeof bookingRequest;
-}) {
+};
+
+export function PublicBooking(props: Props) {
+  return <BookingWorkspace key={props.businessId} {...props} />;
+}
+
+function BookingWorkspace({
+  businessId,
+  configuration: initialConfiguration,
+  preview = false,
+  request = bookingRequest,
+}: Props) {
   const [configuration, setConfiguration] = useState(initialConfiguration),
     [changeNotice, setChangeNotice] = useState("");
   const prefix = useId(),
@@ -40,13 +42,14 @@ export function PublicBooking({
     [selection, setSelection] = useState(""),
     [loading, setLoading] = useState(false),
     [busy, setBusy] = useState(false),
+    [uncertain, setUncertain] = useState(false),
     [error, setError] = useState(""),
     [login, setLogin] = useState(false),
     [done, setDone] = useState<BookingEntry | null>(null),
     [refresh, setRefresh] = useState(0);
   const revision = useRef(0),
     submitting = useRef(false),
-    operation = useRef<{ body: string; key: string } | null>(null);
+    operation = useRef(createBookingSubmission(businessId));
   const api = useRef(request);
   api.current = request;
   const service = configuration.services.find((item) => item.id === serviceId);
@@ -70,7 +73,13 @@ export function PublicBooking({
   useEffect(() => {
     const current = ++revision.current,
       controller = new AbortController();
-    if (!configuration.enabled || !serviceId || (preview && api.current === bookingRequest)) return;
+    if (
+      uncertain ||
+      !configuration.enabled ||
+      !serviceId ||
+      (preview && api.current === bookingRequest)
+    )
+      return;
     setLoading(true);
     setError("");
     setSelection("");
@@ -109,61 +118,60 @@ export function PublicBooking({
     refresh,
     preview,
     refreshConfiguration,
+    uncertain,
   ]);
   if (!configuration.enabled || !service) return null;
   const selected = slots.find((item) => item.startsAt === selection);
-  async function submit() {
-    if (submitting.current || !selected || !service || (preview && api.current === bookingRequest))
+  async function submit(retry = false) {
+    if (
+      submitting.current ||
+      (!retry && (uncertain || !selected || !service)) ||
+      (retry && !operation.current.uncertain) ||
+      (preview && api.current === bookingRequest)
+    )
       return;
-    const body = {
-        serviceId,
-        startsAt: selected.startsAt,
-        configurationVersion: configuration.version,
-      },
-      serialized = JSON.stringify(body);
-    if (operation.current?.body !== serialized)
-      operation.current = { body: serialized, key: crypto.randomUUID() };
     submitting.current = true;
     setBusy(true);
     setError("");
     setLogin(false);
     try {
-      const data = await api.current(
-        `businesses/${businessId}/requests`,
-        bookingWrite("POST", body, operation.current.key),
-      );
-      if (
-        data.entry?.businessId !== businessId ||
-        data.entry?.kind !== "customer" ||
-        data.entry?.startsAt !== selected.startsAt
-      )
-        throw new Error("unconfirmed_request");
-      setDone(data.entry);
-      operation.current = null;
+      let entry: BookingEntry;
+      if (retry) entry = await operation.current.retry(api.current);
+      else {
+        if (!selected) return;
+        entry = await operation.current.submit(
+          { serviceId, startsAt: selected.startsAt, configurationVersion: configuration.version },
+          api.current,
+        );
+      }
+      setDone(entry);
+      setUncertain(false);
     } catch (failure) {
       setLogin(
         failure instanceof BookingRequestError && failure.code === "AUTHENTICATION_REQUIRED",
       );
       setError(bookingError(failure));
+      if (operation.current.uncertain) {
+        setUncertain(true);
+        setError("Slanje nije potvrđeno. Provjeri isti zahtjev ili otvori Moje termine.");
+        return;
+      }
+      setUncertain(false);
       if (
         failure instanceof BookingRequestError &&
         failure.code === "BOOKING_CONFIGURATION_CHANGED"
       ) {
-        operation.current = null;
         try {
           await refreshConfiguration();
         } catch {
           setError("Raspored nije dostupan. Otvori profil ponovo.");
         }
       }
-      if (!(failure instanceof BookingRequestError) || failure.status >= 500)
-        setError("Slanje nije potvrđeno. Provjeri Moje termine prije novog zahtjeva.");
       if (failure instanceof BookingRequestError && failure.code === "BOOKING_DISABLED") {
         setSelection("");
         setSlots([]);
       }
       if (failure instanceof BookingRequestError && failure.code === "SLOT_UNAVAILABLE") {
-        operation.current = null;
         setRefresh((value) => value + 1);
       }
     } finally {
@@ -217,7 +225,7 @@ export function PublicBooking({
             <select
               id={`${prefix}-service`}
               value={serviceId}
-              disabled={busy}
+              disabled={busy || uncertain}
               onChange={(event) => {
                 setService(event.target.value);
                 setLogin(false);
@@ -239,7 +247,7 @@ export function PublicBooking({
             }}
             minDate={today}
             maxDate={addDays(today, 90)}
-            disabled={busy}
+            disabled={busy || uncertain}
           />
           <div className={styles.timeHeading}>
             <h3>Slobodni termini</h3>
@@ -258,7 +266,7 @@ export function PublicBooking({
                   key={slot.startsAt}
                   type="button"
                   aria-pressed={selection === slot.startsAt}
-                  disabled={busy}
+                  disabled={busy || uncertain}
                   onClick={() => {
                     setSelection(slot.startsAt);
                     setError("");
@@ -277,6 +285,11 @@ export function PublicBooking({
           {error && (
             <div role="alert" className={styles.error}>
               <p>{error}</p>
+              {uncertain && (
+                <button type="button" disabled={busy} onClick={() => void submit(true)}>
+                  {busy ? "Provjera…" : "Provjeri isti zahtjev"}
+                </button>
+              )}
               {login ? (
                 <Link
                   href={`/prijava?nastavi=${encodeURIComponent(`/djelatnosti/${businessId}#business-appointments`)}`}
@@ -284,25 +297,21 @@ export function PublicBooking({
                   Prijavi se
                 </Link>
               ) : (
-                <>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setRefresh((value) => value + 1)}
-                  >
-                    Osvježi termine
-                  </button>
-                  <Link
-                    href={
-                      preview
-                        ? "/pregled/prostor/nalog?odjeljak=termini"
-                        : "/nalog?odjeljak=termini"
-                    }
-                  >
-                    Moji termini
-                  </Link>
-                </>
+                <button
+                  type="button"
+                  disabled={busy || uncertain}
+                  onClick={() => setRefresh((value) => value + 1)}
+                >
+                  Osvježi termine
+                </button>
               )}
+              <Link
+                href={
+                  preview ? "/pregled/prostor/nalog?odjeljak=termini" : "/nalog?odjeljak=termini"
+                }
+              >
+                Moji termini
+              </Link>
             </div>
           )}
           <div className={styles.total}>
@@ -318,11 +327,13 @@ export function PublicBooking({
           <button
             type="button"
             className={styles.primary}
-            disabled={busy || loading || !selected}
+            disabled={busy || uncertain || loading || !selected}
             onClick={() => void submit()}
           >
             {busy
-              ? "Slanje…"
+              ? uncertain
+                ? "Provjera…"
+                : "Slanje…"
               : preview
                 ? "Pošalji zahtjev u pregledu"
                 : "Pošalji zahtjev za termin"}

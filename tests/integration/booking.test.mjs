@@ -1039,6 +1039,36 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       );
 
       await t.test(
+        "a request cannot be approved at its start, but the owner can still decline it",
+        async () => {
+          const beforeClock = clock;
+          try {
+            clock = new Date("2030-01-11T12:00:00.000Z");
+            const created = await request("POST", `${publicPath}/requests`, {
+              actor: customer,
+              key: randomUUID(),
+              body: quote(serviceId, "2030-01-12T09:00:00.000Z"),
+            });
+            assert.equal(created.status, 201);
+            const entry = created.data.entry;
+            clock = new Date(entry.startsAt);
+            const before = await bookingSnapshot();
+            const approved = await action(professional, entry, "approve");
+            assert.equal(approved.status, 409);
+            assert.equal(approved.data.code, "INVALID_BOOKING_TRANSITION");
+            assert.deepEqual(await bookingSnapshot(), before);
+            const declined = await action(professional, entry, "decline");
+            assert.equal(declined.status, 200);
+            assert.equal(declined.data.entry.status, "declined");
+            assert.equal(declined.data.entry.version, entry.version + 1);
+            assert.equal(await count("booking_completion_credit"), 1);
+          } finally {
+            clock = beforeClock;
+          }
+        },
+      );
+
+      await t.test(
         "a customer's exact session revoked after preflight cannot create an appointment or receipt",
         async () => {
           const body = quote(serviceId, "2030-01-10T09:00:00.000Z"),
