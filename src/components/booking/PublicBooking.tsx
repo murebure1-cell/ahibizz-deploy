@@ -285,33 +285,43 @@ function BookingWorkspace({
           {error && (
             <div role="alert" className={styles.error}>
               <p>{error}</p>
-              {uncertain && (
-                <button type="button" disabled={busy} onClick={() => void submit(true)}>
-                  {busy ? "Provjera…" : "Provjeri isti zahtjev"}
-                </button>
-              )}
-              {login ? (
+              <div className={styles.actions}>
+                {uncertain && (
+                  <button
+                    type="button"
+                    className={styles.primary}
+                    disabled={busy}
+                    onClick={() => void submit(true)}
+                  >
+                    {busy ? "Provjera…" : "Provjeri isti zahtjev"}
+                  </button>
+                )}
+                {login ? (
+                  <Link
+                    className={styles.secondary}
+                    href={`/prijava?nastavi=${encodeURIComponent(`/djelatnosti/${businessId}#business-appointments`)}`}
+                  >
+                    Prijavi se
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.secondary}
+                    disabled={busy || uncertain}
+                    onClick={() => setRefresh((value) => value + 1)}
+                  >
+                    Osvježi termine
+                  </button>
+                )}
                 <Link
-                  href={`/prijava?nastavi=${encodeURIComponent(`/djelatnosti/${businessId}#business-appointments`)}`}
+                  className={styles.secondary}
+                  href={
+                    preview ? "/pregled/prostor/nalog?odjeljak=termini" : "/nalog?odjeljak=termini"
+                  }
                 >
-                  Prijavi se
+                  Moji termini
                 </Link>
-              ) : (
-                <button
-                  type="button"
-                  disabled={busy || uncertain}
-                  onClick={() => setRefresh((value) => value + 1)}
-                >
-                  Osvježi termine
-                </button>
-              )}
-              <Link
-                href={
-                  preview ? "/pregled/prostor/nalog?odjeljak=termini" : "/nalog?odjeljak=termini"
-                }
-              >
-                Moji termini
-              </Link>
+              </div>
             </div>
           )}
           <div className={styles.total}>

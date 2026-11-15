@@ -237,8 +237,8 @@
   border-radius: 10px;
   margin: 16px 0;
 }
-.error a,
-.error button {
+.error > a,
+.error > button {
   display: inline-block;
   color: inherit;
   text-decoration: underline;
@@ -247,6 +247,17 @@
   border: 0;
   background: none;
   padding: 8px 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.actions :is(.primary, .secondary) {
+  flex: 1 1 auto;
+  width: auto;
+  text-align: center;
 }
 .success {
   padding: 22px;
