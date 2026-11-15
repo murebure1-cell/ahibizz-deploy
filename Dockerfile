@@ -19,7 +19,8 @@ ENV NODE_ENV=production \
 
 # Package managers are build tools. The server starts with Node directly and does
 # not need npm's vulnerable transitive packages or the bundled Yarn distribution.
-RUN rm -rf /usr/local/lib/node_modules/npm /opt/yarn-v1.22.22 \
+RUN apk add --no-cache --upgrade 'zlib>=1.4-r0' \
+    && rm -rf /usr/local/lib/node_modules/npm /opt/yarn-v1.22.22 \
     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn /usr/local/bin/yarnpkg \
     && test ! -e /usr/local/lib/node_modules/npm && test ! -e /opt/yarn-v1.22.22 \
     && ! command -v npm && ! command -v npx && ! command -v yarn && ! command -v yarnpkg \

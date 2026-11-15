@@ -101,7 +101,9 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/ahibizz-security" "$RUNNER_TEMP/ahibizz-trivy-cache"
           docker image inspect ahibizz:ci > "$RUNNER_TEMP/ahibizz-security/image-inspect.json"
-          docker save --output "$RUNNER_TEMP/ahibizz-image.tar" ahibizz:ci
+          docker save --platform linux/amd64 --output "$RUNNER_TEMP/ahibizz-image.tar" ahibizz:ci
+          node scripts/check-runtime-security.mjs --extract-image-identity \
+            "$RUNNER_TEMP/ahibizz-image.tar" "$RUNNER_TEMP/ahibizz-security"
           scanner=aquasec/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
           docker run --rm "$scanner" --version > "$RUNNER_TEMP/ahibizz-security/scanner-version.txt"
           docker run --rm \
@@ -115,7 +117,11 @@ jobs:
             "$scanner" version --format json > "$RUNNER_TEMP/ahibizz-security/scanner-version.json"
           image_id=$(docker image inspect --format '{{.Id}}' ahibizz:ci)
           node scripts/check-runtime-security.mjs "$RUNNER_TEMP/ahibizz-security/runtime.json" \
-            "$image_id" "$GITHUB_SHA" "$RUNNER_TEMP/ahibizz-security/summary.json"
+            "$image_id" "$GITHUB_SHA" "$RUNNER_TEMP/ahibizz-security/summary.json" \
+            "$RUNNER_TEMP/ahibizz-security/image-inspect.json" \
+            "$RUNNER_TEMP/ahibizz-security/archive-manifest.json" \
+            "$RUNNER_TEMP/ahibizz-security/archive-config.json" \
+            "$RUNNER_TEMP/ahibizz-security/archive-identity.json"
       - name: Preserve the complete runtime vulnerability report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
