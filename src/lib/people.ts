@@ -64,7 +64,9 @@ export function profileImageUrl(profile: PersonalProfile, kind: ProfileImageKind
       : profile.canCustomizeCover
         ? profile.coverVersion
         : null;
-  return version === null ? null : `/api/people/me/media/${kind}?v=${version}`;
+  return version === null
+    ? null
+    : `/api/people/me/media/${kind}?v=${version}&accountId=${encodeURIComponent(profile.id)}`;
 }
 
 const countries = new Set(

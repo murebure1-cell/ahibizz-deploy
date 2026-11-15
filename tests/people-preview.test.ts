@@ -26,6 +26,23 @@ function offline(t: TestContext) {
   });
 }
 
+test("profile preview rejects another mounted account before reading or writing private data", async (t) => {
+  const fetch = offline(t);
+  const api = createPeoplePreviewApi();
+  t.after(() => api.dispose());
+  const before = api.getProfile();
+  for (const [actor, status, code] of [
+    ["other-person", 401, "ACCOUNT_IDENTITY_CHANGED"],
+    ["invalid/id", 400, "INVALID_PROFILE_INPUT"],
+  ] as const) {
+    const headers = { "X-AhiBizz-Account-ID": actor };
+    await assert.rejects(api.request("me", { headers }), rejected(status, code));
+    await assert.rejects(api.request("me", { ...patch(0), headers }), rejected(status, code));
+  }
+  assert.deepEqual(api.getProfile(), before);
+  assert.equal(fetch.mock.callCount(), 0);
+});
+
 test("personal preview starts private and empty, with explicit fixture cover capability", async (t) => {
   const fetch = offline(t);
   const api = createPeoplePreviewApi();

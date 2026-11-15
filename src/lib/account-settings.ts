@@ -11,6 +11,20 @@ export class AccountSettingsError extends Error {
   }
 }
 
+/** Bind a mounted settings panel to its account, independently of later cookie changes. */
+export function accountSettingsActorRequest(
+  expectedAccountId: string,
+  request: typeof accountSettingsRequest = accountSettingsRequest,
+): typeof accountSettingsRequest {
+  return (options = {}) => {
+    if (typeof expectedAccountId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(expectedAccountId))
+      return Promise.reject(new AccountSettingsError(401, "ACCOUNT_IDENTITY_CHANGED"));
+    const headers = new Headers(options.headers);
+    headers.set("X-AhiBizz-Account-ID", expectedAccountId);
+    return request({ ...options, headers });
+  };
+}
+
 export function appearanceUpdate(appearance: Appearance, expectedAppearance: Appearance) {
   if (!isAppearance(appearance) || !isAppearance(expectedAppearance))
     throw new AccountSettingsError(400, "INVALID_PROFILE");
@@ -48,14 +62,13 @@ export function readAccountSettings(
 }
 
 export async function accountSettingsRequest(options: RequestInit = {}): Promise<unknown> {
+  const headers = new Headers(options.headers);
+  if (options.method === "PATCH") headers.set("Content-Type", "application/json");
   const response = await fetch("/api/account", {
     ...options,
     cache: "no-store",
     credentials: "same-origin",
-    headers: {
-      ...options.headers,
-      ...(options.method === "PATCH" ? { "Content-Type": "application/json" } : {}),
-    },
+    headers,
   });
   let value: unknown;
   try {

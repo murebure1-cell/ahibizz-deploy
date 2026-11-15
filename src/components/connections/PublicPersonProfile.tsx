@@ -2,7 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   type PublicPerson,
   publicPersonImageUrl,
@@ -12,6 +20,7 @@ import {
 } from "../../lib/connections";
 import {
   ConnectionRequestError,
+  connectionAccountRequest,
   connectionError,
   connectionRequest,
 } from "../../lib/connections-client";
@@ -29,6 +38,8 @@ type PendingWrite = {
   expectedVersion: number;
   personId: string;
   action: Action;
+  actorId: string;
+  uncertain: boolean;
 };
 function relationshipNotice(relationship: Relationship): string {
   if (relationship.status === "accepted") return "Sada ste prijatelji.";
@@ -41,15 +52,7 @@ function relationshipNotice(relationship: Relationship): string {
   return "Prijateljstvo je uklonjeno.";
 }
 
-export function PublicPersonProfile({
-  personId,
-  preview = false,
-  request = connectionRequest,
-  ownProfileHref = "/nalog?dio=profil",
-  loginHref,
-  imageUrl = publicPersonImageUrl,
-  messageHref,
-}: {
+type ProfileProps = {
   personId: string;
   preview?: boolean;
   request?: typeof connectionRequest;
@@ -57,7 +60,28 @@ export function PublicPersonProfile({
   loginHref?: string;
   imageUrl?: PersonMediaUrl;
   messageHref?: string;
-}) {
+};
+
+export function PublicPersonProfile(props: ProfileProps) {
+  const boundary = useMemo(
+    () => ({ personId: props.personId, request: props.request, preview: props.preview }),
+    [props.personId, props.request, props.preview],
+  );
+  const mounted = useRef({ boundary, key: 0 });
+  if (mounted.current.boundary !== boundary)
+    mounted.current = { boundary, key: mounted.current.key + 1 };
+  return <PersonProfile key={mounted.current.key} {...props} />;
+}
+
+function PersonProfile({
+  personId,
+  preview = false,
+  request = connectionRequest,
+  ownProfileHref = "/nalog?odjeljak=profil",
+  loginHref,
+  imageUrl = publicPersonImageUrl,
+  messageHref,
+}: ProfileProps) {
   const [tab, setTab] = useState<"about" | "skills" | "photos">("about");
   const tabId = useId(),
     tabButtons = useRef<(HTMLButtonElement | null)[]>([]);
@@ -94,6 +118,7 @@ export function PublicPersonProfile({
     writing = useRef(false),
     live = useRef(false),
     currentId = useRef(personId);
+  const capturedActor = useRef<string | null | undefined>(undefined);
   api.current = request;
   currentId.current = personId;
 
@@ -118,9 +143,11 @@ export function PublicPersonProfile({
     setLoading(true);
     setError("");
     try {
-      const result = await api.current(`people/${encodeURIComponent(personId)}`, {
-        signal: nextController.signal,
-      });
+      const path = `people/${encodeURIComponent(personId)}`;
+      const options = { signal: nextController.signal };
+      const result = capturedActor.current
+        ? await connectionAccountRequest(api.current, capturedActor.current, path, options)
+        : await api.current(path, options);
       const next = readPublicPerson(result.person);
       const relation = readRelationship(result.relationship);
       if (
@@ -130,6 +157,9 @@ export function PublicPersonProfile({
       )
         throw new Error("invalid_public_person");
       if (!live.current || nextController.signal.aborted || current !== revision.current) return;
+      if (capturedActor.current && result.viewerId !== capturedActor.current)
+        throw new ConnectionRequestError(401, "ACCOUNT_IDENTITY_CHANGED");
+      capturedActor.current = result.viewerId;
       setPerson(next);
       setRelationship(relation);
       setViewerId(result.viewerId);
@@ -141,6 +171,8 @@ export function PublicPersonProfile({
           setRelationship(null);
           setViewerId(null);
           setNotice("");
+          setConfirmRemove(false);
+          setPending((intent) => (intent?.uncertain ? intent : null));
         }
         setError(
           failure instanceof ConnectionRequestError && failure.status === 404
@@ -179,7 +211,7 @@ export function PublicPersonProfile({
     setConfirmRemove(false);
     setPending(intent);
     try {
-      const result = await api.current(intent.path, {
+      const result = await connectionAccountRequest(api.current, intent.actorId, intent.path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: intent.body,
@@ -197,14 +229,24 @@ export function PublicPersonProfile({
     } catch (failure) {
       if (live.current && currentId.current === intent.personId) {
         setError(connectionError(failure));
+        const denied =
+          failure instanceof ConnectionRequestError && [401, 403].includes(failure.status);
+        if (denied) {
+          setRelationship(null);
+          setViewerId(null);
+          setNotice("");
+          setConfirmRemove(false);
+        }
         if (
           failure instanceof ConnectionRequestError &&
           failure.status >= 400 &&
-          failure.status < 500
+          failure.status < 500 &&
+          failure.status !== 408 &&
+          !(denied && intent.uncertain)
         ) {
           setPending(null);
           if (failure.status === 409) void load();
-        }
+        } else intent.uncertain = true;
       }
     } finally {
       writing.current = false;
@@ -234,6 +276,8 @@ export function PublicPersonProfile({
       expectedVersion: relationship.version,
       personId: person.id,
       action,
+      actorId: viewerId,
+      uncertain: false,
     };
     void send(intent);
   }
@@ -253,8 +297,8 @@ export function PublicPersonProfile({
           <button
             type="button"
             className={styles.secondary}
-            disabled={loading}
-            onClick={() => void load()}
+            disabled={busy || loading}
+            onClick={() => (pending ? void send(pending) : void load())}
           >
             Pokušaj ponovo
           </button>

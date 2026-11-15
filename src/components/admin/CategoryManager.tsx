@@ -1,11 +1,16 @@
 "use client";
 
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DirectoryCategory } from "../../server/directory/types";
 import { Icon } from "../Icon";
 import styles from "./admin.module.css";
 import {
+  type AdminRequest,
   AdminRequestError,
+  accountProfile,
+  adminAccessDenied,
+  adminActorRequest,
+  browserAdminRequest,
   category,
   categoryList,
   categorySlug,
@@ -13,7 +18,17 @@ import {
   responseData,
 } from "./responses";
 
-export function CategoryManager() {
+type Props = { expectedAccountId?: string; request?: AdminRequest };
+export function CategoryManager(props: Props) {
+  return <CategoryWorkspace key={props.expectedAccountId ?? "unavailable"} {...props} />;
+}
+function CategoryWorkspace({ expectedAccountId, request: transport = browserAdminRequest }: Props) {
+  const api = useMemo(
+    () => adminActorRequest(expectedAccountId, transport),
+    [expectedAccountId, transport],
+  );
+  const currentApi = useRef(api);
+  currentApi.current = api;
   const [items, setItems] = useState<DirectoryCategory[] | null>(null);
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState("");
@@ -23,6 +38,7 @@ export function CategoryManager() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const live = useRef(false);
+  const authority = useRef(0);
   const revision = useRef(0);
   const request = useRef<AbortController | null>(null);
   const writing = useRef(false);
@@ -31,46 +47,106 @@ export function CategoryManager() {
     .filter((item) => item.parentId === null)
     .sort((a, b) => a.name.localeCompare(b.name, "bs"));
 
+  const clearPrivate = useCallback((failure?: unknown) => {
+    const dispatched = writing.current;
+    authority.current++;
+    revision.current++;
+    request.current?.abort();
+    writing.current = false;
+    reading.current = false;
+    setItems(null);
+    setName("");
+    setParentId("");
+    setNotice("");
+    setBusy(false);
+    setLoading(false);
+    setUncertain((previous) => (failure ? previous || dispatched : false));
+    setError(failure ? errorMessage(failure) : "");
+  }, []);
+
   const load = useCallback(async () => {
     if (writing.current) return;
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
     const current = ++revision.current;
+    const generation = authority.current,
+      scoped = api;
     reading.current = true;
     setLoading(true);
     setError("");
     setItems(null);
     try {
-      const response = await fetch("/api/directory/categories", {
+      const account = await responseData(
+        await scoped("/api/account", { signal: controller.signal }),
+      );
+      if (!accountProfile(account.account) || account.account.id !== expectedAccountId)
+        throw new AdminRequestError(401, "ACCOUNT_IDENTITY_CHANGED");
+      if (account.account.role !== "owner") throw new AdminRequestError(403, "OWNER_REQUIRED");
+      if (
+        !live.current ||
+        generation !== authority.current ||
+        currentApi.current !== scoped ||
+        controller.signal.aborted ||
+        current !== revision.current
+      )
+        return;
+      const response = await scoped("/api/directory/categories", {
         signal: controller.signal,
         cache: "no-store",
         credentials: "same-origin",
         redirect: "error",
       });
       const data = await responseData(response);
-      if (!live.current || controller.signal.aborted || current !== revision.current) return;
+      if (
+        !live.current ||
+        generation !== authority.current ||
+        currentApi.current !== scoped ||
+        controller.signal.aborted ||
+        current !== revision.current
+      )
+        return;
       setItems(categoryList(data));
       setUncertain(false);
     } catch (failure) {
+      if (!live.current || generation !== authority.current || currentApi.current !== scoped)
+        return;
+      if (adminAccessDenied(failure)) {
+        clearPrivate(failure);
+        return;
+      }
       if (live.current && !controller.signal.aborted && current === revision.current)
         setError(errorMessage(failure));
     } finally {
-      if (live.current && current === revision.current) {
+      if (
+        live.current &&
+        generation === authority.current &&
+        currentApi.current === scoped &&
+        current === revision.current
+      ) {
         reading.current = false;
         setLoading(false);
       }
     }
-  }, []);
+  }, [api, expectedAccountId, clearPrivate]);
 
   useEffect(() => {
     live.current = true;
-    void load();
     return () => {
       live.current = false;
+      authority.current++;
       revision.current++;
       request.current?.abort();
     };
+  }, []);
+  const previousApi = useRef(api);
+  useEffect(() => {
+    if (previousApi.current === api) return;
+    previousApi.current = api;
+    clearPrivate();
+  }, [api, clearPrivate]);
+  useEffect(() => {
+    void load();
   }, [load]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -92,11 +168,13 @@ export function CategoryManager() {
     const controller = new AbortController();
     request.current = controller;
     const current = ++revision.current;
+    const generation = authority.current,
+      scoped = api;
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      const response = await fetch("/api/directory/categories", {
+      const response = await scoped("/api/directory/categories", {
         method: "POST",
         signal: controller.signal,
         credentials: "same-origin",
@@ -105,7 +183,14 @@ export function CategoryManager() {
         body: JSON.stringify(body),
       });
       const data = await responseData(response);
-      if (!live.current || controller.signal.aborted || current !== revision.current) return;
+      if (
+        !live.current ||
+        generation !== authority.current ||
+        currentApi.current !== scoped ||
+        controller.signal.aborted ||
+        current !== revision.current
+      )
+        return;
       const saved = data.category;
       if (
         response.status !== 201 ||
@@ -120,18 +205,32 @@ export function CategoryManager() {
       setName("");
       setNotice(parent ? "Podkategorija je dodana." : "Glavna kategorija je dodana.");
     } catch (failure) {
+      if (!live.current || generation !== authority.current || currentApi.current !== scoped)
+        return;
+      if (adminAccessDenied(failure)) {
+        clearPrivate(failure);
+        return;
+      }
       if (live.current && !controller.signal.aborted && current === revision.current) {
         setError(errorMessage(failure));
         if (
           !(failure instanceof AdminRequestError) ||
+          failure.status === 408 ||
           failure.status === 502 ||
           failure.status >= 500
         )
           setUncertain(true);
       }
     } finally {
-      writing.current = false;
-      if (live.current && current === revision.current) setBusy(false);
+      if (
+        live.current &&
+        generation === authority.current &&
+        currentApi.current === scoped &&
+        current === revision.current
+      ) {
+        writing.current = false;
+        setBusy(false);
+      }
     }
   }
 

@@ -48,16 +48,28 @@ export function createPeopleHttpHandler({
         match = /^\/api\/people\/me\/media\/(photo|cover)$/.exec(url.pathname),
         kind = match?.[1] as "photo" | "cover" | undefined;
       if (!me && !kind) return reply({ code: "NOT_FOUND" }, 404);
-      const allowedQuery = request.method === "GET" && kind ? ["v"] : [];
+      const allowedQuery = request.method === "GET" && kind ? ["v", "accountId"] : [];
       const seen = new Set<string>();
       for (const [key, value] of url.searchParams) {
-        if (!allowedQuery.includes(key) || seen.has(key) || !/^\d{1,10}$/.test(value))
+        if (
+          !allowedQuery.includes(key) ||
+          seen.has(key) ||
+          !(key === "accountId" ? /^[A-Za-z0-9_-]{1,128}$/.test(value) : /^\d{1,10}$/.test(value))
+        )
           return reply({ code: "INVALID_PROFILE_INPUT" }, 400);
         seen.add(key);
       }
       if (request.method === "GET") {
         if (me) return reply({ profile: await service.read(request.headers) });
-        const image = await service.readMedia(request.headers, kind as "photo" | "cover");
+        const headers = new Headers(request.headers);
+        const accountId = url.searchParams.get("accountId");
+        if (accountId !== null) {
+          const expected = headers.get("X-AhiBizz-Account-ID");
+          if (expected !== null && expected !== accountId)
+            return reply({ code: "ACCOUNT_IDENTITY_CHANGED" }, 401);
+          headers.set("X-AhiBizz-Account-ID", accountId);
+        }
+        const image = await service.readMedia(headers, kind as "photo" | "cover");
         if (!image) return reply({ code: "MEDIA_NOT_FOUND" }, 404);
         return new Response(new Uint8Array(image.bytes), {
           headers: {

@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { type PersonalProfile, profileImageUrl, workStatusLabels } from "../src/lib/people";
-import { readPersonalProfile } from "../src/lib/people-client";
+import {
+  ProfileRequestError,
+  peopleAccountRequest,
+  type peopleRequest,
+  readPersonalProfile,
+} from "../src/lib/people-client";
 
 function profile(patch: Partial<PersonalProfile> = {}): PersonalProfile {
   return {
@@ -114,12 +119,42 @@ test("media versions are positive committed revisions inside the profile CAS and
   assert.deepEqual(readPersonalProfile(current), current);
 });
 
-test("media URLs are fixed same-origin own-profile endpoints, with no invented missing image or user identifier", () => {
+test("media URLs are fixed same-origin endpoints bound to the profile account", () => {
   assert.equal(profileImageUrl(profile(), "photo"), null);
   assert.equal(profileImageUrl(profile(), "cover"), null);
   const row = profile({ version: 4, photoVersion: 4, coverVersion: 2, canCustomizeCover: true });
-  assert.equal(profileImageUrl(row, "photo"), "/api/people/me/media/photo?v=4");
-  assert.equal(profileImageUrl(row, "cover"), "/api/people/me/media/cover?v=2");
+  assert.equal(
+    profileImageUrl(row, "photo"),
+    "/api/people/me/media/photo?v=4&accountId=fixture-user",
+  );
+  assert.equal(
+    profileImageUrl(row, "cover"),
+    "/api/people/me/media/cover?v=2&accountId=fixture-user",
+  );
   assert.equal(profileImageUrl({ ...row, canCustomizeCover: false }, "cover"), null);
-  assert.equal(profileImageUrl(row, "photo")?.includes(row.id), false);
+  assert.equal(profileImageUrl(row, "photo")?.includes(row.id), true);
+});
+
+test("private profile transport binds reads and writes to a validated fixed account", async () => {
+  const calls: { path: string; options: RequestInit }[] = [];
+  const request: typeof peopleRequest = async (path, options = {}) => {
+    calls.push({ path, options });
+    return { profile: profile() };
+  };
+  for (const id of [undefined, "", "wrong/id", "x".repeat(129)])
+    await assert.rejects(
+      peopleAccountRequest(request, id, "me"),
+      (error: unknown) =>
+        error instanceof ProfileRequestError && error.code === "ACCOUNT_IDENTITY_CHANGED",
+    );
+  assert.equal(calls.length, 0);
+  const body = JSON.stringify({ expectedVersion: 0, name: "Changed" });
+  await peopleAccountRequest(request, "fixture-user", "me", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "X-AhiBizz-Account-ID": "other" },
+    body,
+  });
+  assert.equal(calls[0]?.options.body, body);
+  assert.equal(new Headers(calls[0]?.options.headers).get("X-AhiBizz-Account-ID"), "fixture-user");
+  assert.equal(new Headers(calls[0]?.options.headers).get("Content-Type"), "application/json");
 });

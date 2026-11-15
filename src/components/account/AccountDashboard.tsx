@@ -169,6 +169,8 @@ export function AccountDashboard({
         <div hidden={section !== "profile"}>
           <PersonalProfileWorkspace
             active={section === "profile"}
+            expectedAccountId={initial.id}
+            onAccessDenied={() => setPersonal(null)}
             onProfileChanged={(next) => {
               setPersonal(next);
               setProfile((current) => ({ ...current, name: next.name }));

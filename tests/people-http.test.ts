@@ -116,6 +116,24 @@ test("unauthenticated writes are rejected before body access or image parsing", 
   );
 });
 
+test("private image account query binds browser image requests and rejects conflicting identities", async () => {
+  const f = fixture();
+  assert.equal(
+    (await f.send("GET", "/api/people/me/media/photo?v=2&accountId=fixture-only")).status,
+    200,
+  );
+  const headers = f.calls[0]?.args[0];
+  assert.ok(headers instanceof Headers);
+  assert.equal(headers.get("X-AhiBizz-Account-ID"), "fixture-only");
+  for (const query of ["accountId=", "accountId=other%2Fperson", "accountId=a&accountId=b"])
+    assert.equal((await f.send("GET", `/api/people/me/media/photo?${query}`)).status, 400);
+  const conflicting = await f.send("GET", "/api/people/me/media/photo?accountId=fixture-only", {
+    headers: { "X-AhiBizz-Account-ID": "different-account" },
+  });
+  assert.equal(conflicting.status, 401);
+  assert.equal(f.calls.length, 1);
+});
+
 test("write origin is exact and closed query/URL limits reject before authority calls", async () => {
   const f = fixture();
   for (const origin of [null, "https://other.invalid", `${baseURL}.other.invalid`])

@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   type AdminAccountApproval,
   type AdminAccountPage,
@@ -13,11 +13,17 @@ import {
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { Icon } from "../Icon";
 import styles from "./admin.module.css";
-import { AdminRequestError, errorMessage, responseData } from "./responses";
+import {
+  type AdminRequest,
+  AdminRequestError,
+  adminAccessDenied,
+  adminActorRequest,
+  browserAdminRequest,
+  errorMessage,
+  responseData,
+} from "./responses";
 
-export type AdminAccountRequest = (path: string, init?: RequestInit) => Promise<Response>;
-// Keep the native browser fetch receiver separate from the React ref used below.
-const browserRequest: AdminAccountRequest = (path, init) => fetch(path, init);
+export type AdminAccountRequest = AdminRequest;
 type ReadState = { key: string; data: AdminAccountPage | null; loading: boolean; error: string };
 const filters: { approval: AdminAccountApproval; label: string; empty: string }[] = [
   { approval: "pending", label: "Na čekanju", empty: "Nema prijava na čekanju." },
@@ -26,7 +32,15 @@ const filters: { approval: AdminAccountApproval; label: string; empty: string }[
 ];
 const initialView = adminAccountQuery("pending", 1);
 
-export function AccountApprovals({ request = browserRequest }: { request?: AdminAccountRequest }) {
+type Props = { request?: AdminAccountRequest; expectedAccountId?: string };
+export function AccountApprovals(props: Props) {
+  return <ApprovalWorkspace key={props.expectedAccountId ?? "unavailable"} {...props} />;
+}
+function ApprovalWorkspace({ request = browserAdminRequest, expectedAccountId }: Props) {
+  const scopedRequest = useMemo(
+    () => adminActorRequest(expectedAccountId, request),
+    [expectedAccountId, request],
+  );
   const [view, setView] = useState(initialView);
   const [search, setSearch] = useState("");
   const [inputError, setInputError] = useState("");
@@ -43,100 +57,145 @@ export function AccountApprovals({ request = browserRequest }: { request?: Admin
   const [needsReview, setNeedsReview] = useState(false);
   const searchId = useId();
   const live = useRef(false),
+    authority = useRef(0),
     revision = useRef(0),
     readController = useRef<AbortController | null>(null),
     writeController = useRef<AbortController | null>(null),
     writing = useRef(false),
     reading = useRef(false),
     reviewRequired = useRef(false),
-    api = useRef(request),
+    api = useRef(scopedRequest),
     cache = useRef(new Map<string, AdminAccountPage>());
   const key = adminAccountPath(view);
   const currentKey = useRef(key);
   currentKey.current = key;
-  api.current = request;
+  api.current = scopedRequest;
   const data = read.key === key ? read.data : (cache.current.get(key) ?? null);
   const loading = read.key === key ? read.loading : !data;
   const error = read.key === key ? read.error : "";
   const filter = filters.find((item) => item.approval === view.approval) ?? filters[0];
 
-  const load = useCallback(async (next: AdminAccountQuery, force = false) => {
-    if (writing.current) return;
+  const clearPrivate = useCallback((failure?: unknown) => {
+    authority.current++;
+    revision.current++;
     readController.current?.abort();
-    const current = ++revision.current;
-    const nextKey = adminAccountPath(next);
-    const cached = cache.current.get(nextKey) ?? null;
-    if (cached && !force && !reviewRequired.current) {
-      reading.current = false;
-      setRead({ key: nextKey, data: cached, loading: false, error: "" });
-      return;
-    }
-    const controller = new AbortController();
-    readController.current = controller;
-    reading.current = true;
-    setRead({ key: nextKey, data: cached, loading: true, error: "" });
-    try {
-      const response = await api.current(nextKey, {
-        signal: controller.signal,
-        cache: "no-store",
-        credentials: "same-origin",
-        redirect: "error",
-      });
-      const body = await responseData(response);
-      let result: AdminAccountPage;
-      try {
-        result = readAdminAccountPage(body, next);
-      } catch {
-        throw new AdminRequestError(502);
-      }
-      if (
-        !live.current ||
-        controller.signal.aborted ||
-        current !== revision.current ||
-        currentKey.current !== nextKey
-      )
-        return;
-      if (cache.current.size >= 12) {
-        const oldest = cache.current.keys().next().value;
-        if (oldest) cache.current.delete(oldest);
-      }
-      cache.current.set(nextKey, result);
-      reviewRequired.current = false;
-      setNeedsReview(false);
-      setRead({ key: nextKey, data: result, loading: false, error: "" });
-    } catch (failure) {
-      if (
-        live.current &&
-        !controller.signal.aborted &&
-        current === revision.current &&
-        currentKey.current === nextKey
-      ) {
-        const accessLost =
-          failure instanceof AdminRequestError &&
-          (failure.status === 401 || failure.status === 403);
-        if (accessLost) cache.current.clear();
-        setRead({
-          key: nextKey,
-          data: accessLost ? null : cached,
-          loading: false,
-          error: errorMessage(failure),
-        });
-      }
-    } finally {
-      if (live.current && current === revision.current) reading.current = false;
-    }
+    writeController.current?.abort();
+    writeController.current = null;
+    cache.current.clear();
+    reading.current = false;
+    writing.current = false;
+    reviewRequired.current = Boolean(failure);
+    setNeedsReview(Boolean(failure));
+    setPending(null);
+    setNotice("");
+    setInputError("");
+    setSearch("");
+    setRead({
+      key: currentKey.current,
+      data: null,
+      loading: false,
+      error: failure ? errorMessage(failure) : "",
+    });
   }, []);
+
+  const load = useCallback(
+    async (next: AdminAccountQuery, force = false) => {
+      if (writing.current) return;
+      readController.current?.abort();
+      const current = ++revision.current;
+      const nextKey = adminAccountPath(next);
+      const cached = cache.current.get(nextKey) ?? null;
+      if (cached && !force && !reviewRequired.current) {
+        reading.current = false;
+        setRead({ key: nextKey, data: cached, loading: false, error: "" });
+        return;
+      }
+      const controller = new AbortController();
+      const generation = authority.current,
+        transport = scopedRequest;
+      readController.current = controller;
+      reading.current = true;
+      setRead({ key: nextKey, data: cached, loading: true, error: "" });
+      try {
+        const response = await transport(nextKey, {
+          signal: controller.signal,
+          cache: "no-store",
+          credentials: "same-origin",
+          redirect: "error",
+        });
+        const body = await responseData(response);
+        let result: AdminAccountPage;
+        try {
+          result = readAdminAccountPage(body, next);
+        } catch {
+          throw new AdminRequestError(502);
+        }
+        if (
+          !live.current ||
+          generation !== authority.current ||
+          api.current !== transport ||
+          controller.signal.aborted ||
+          current !== revision.current ||
+          currentKey.current !== nextKey
+        )
+          return;
+        if (cache.current.size >= 12) {
+          const oldest = cache.current.keys().next().value;
+          if (oldest) cache.current.delete(oldest);
+        }
+        cache.current.set(nextKey, result);
+        reviewRequired.current = false;
+        setNeedsReview(false);
+        setRead({ key: nextKey, data: result, loading: false, error: "" });
+      } catch (failure) {
+        if (!live.current || generation !== authority.current || api.current !== transport) return;
+        if (adminAccessDenied(failure)) {
+          clearPrivate(failure);
+          return;
+        }
+        if (
+          live.current &&
+          !controller.signal.aborted &&
+          current === revision.current &&
+          currentKey.current === nextKey
+        ) {
+          setRead({
+            key: nextKey,
+            data: cached,
+            loading: false,
+            error: errorMessage(failure),
+          });
+        }
+      } finally {
+        if (
+          live.current &&
+          generation === authority.current &&
+          api.current === transport &&
+          current === revision.current
+        )
+          reading.current = false;
+      }
+    },
+    [scopedRequest, clearPrivate],
+  );
 
   useEffect(() => {
     live.current = true;
     return () => {
       live.current = false;
+      authority.current++;
       revision.current++;
       readController.current?.abort();
       writeController.current?.abort();
       cache.current.clear();
     };
   }, []);
+  const previousApi = useRef(scopedRequest);
+  useEffect(() => {
+    if (previousApi.current === scopedRequest) return;
+    previousApi.current = scopedRequest;
+    clearPrivate();
+  }, [scopedRequest, clearPrivate]);
   useEffect(() => {
     void load(view);
   }, [load, view]);
@@ -183,6 +242,8 @@ export function AccountApprovals({ request = browserRequest }: { request?: Admin
     writing.current = true;
     readController.current?.abort();
     const controller = new AbortController();
+    const generation = authority.current,
+      transport = scopedRequest;
     writeController.current = controller;
     const current = ++revision.current;
     setPending({ id: target.id, approval });
@@ -190,7 +251,7 @@ export function AccountApprovals({ request = browserRequest }: { request?: Admin
     setInputError("");
     let refresh = false;
     try {
-      const response = await api.current(`/api/admin/accounts/${encodeURIComponent(target.id)}`, {
+      const response = await transport(`/api/admin/accounts/${encodeURIComponent(target.id)}`, {
         method: "PATCH",
         signal: controller.signal,
         credentials: "same-origin",
@@ -204,7 +265,14 @@ export function AccountApprovals({ request = browserRequest }: { request?: Admin
       } catch {
         throw new AdminRequestError(502);
       }
-      if (!live.current || controller.signal.aborted || current !== revision.current) return;
+      if (
+        !live.current ||
+        generation !== authority.current ||
+        api.current !== transport ||
+        controller.signal.aborted ||
+        current !== revision.current
+      )
+        return;
       cache.current.clear();
       setNotice(
         approval === "approved"
@@ -217,6 +285,11 @@ export function AccountApprovals({ request = browserRequest }: { request?: Admin
       );
       refresh = true;
     } catch (failure) {
+      if (!live.current || generation !== authority.current || api.current !== transport) return;
+      if (adminAccessDenied(failure)) {
+        clearPrivate(failure);
+        return;
+      }
       if (live.current && !controller.signal.aborted && current === revision.current) {
         cache.current.clear();
         reviewRequired.current = true;
@@ -226,18 +299,24 @@ export function AccountApprovals({ request = browserRequest }: { request?: Admin
           data: null,
           loading: false,
           error:
-            failure instanceof AdminRequestError && [401, 403].includes(failure.status)
-              ? errorMessage(failure)
-              : failure instanceof AdminRequestError && failure.status === 409
-                ? "Status naloga je izmijenjen. Osvježi listu."
-                : "Odluka nije potvrđena. Osvježi naloge i provjeri stanje.",
+            failure instanceof AdminRequestError && failure.status === 409
+              ? "Status naloga je izmijenjen. Osvježi listu."
+              : "Odluka nije potvrđena. Osvježi naloge i provjeri stanje.",
         });
       }
     } finally {
-      writing.current = false;
-      if (live.current && current === revision.current) {
-        setPending(null);
-        if (refresh) void load(view, true);
+      if (writeController.current === controller) {
+        writeController.current = null;
+        writing.current = false;
+        if (
+          live.current &&
+          generation === authority.current &&
+          api.current === transport &&
+          current === revision.current
+        ) {
+          setPending(null);
+          if (refresh) void load(view, true);
+        }
       }
     }
   }

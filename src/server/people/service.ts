@@ -12,7 +12,7 @@ import { getAuthDatabasePool } from "../auth/service";
 import { normalizeProfileImage } from "./media";
 import { fail, mediaKind, object, PeopleAccessError, profileInput, version } from "./validation";
 
-type SignedSession = { id: string; userId: string; token: string };
+type SignedSession = { id: string; userId: string; token: string; expectedAccountId?: string };
 type Image = { bytes: Buffer; mime: "image/webp"; width: number; height: number; version: number };
 type ProfileRow = Omit<PersonalProfile, "canCustomizeCover">;
 
@@ -66,6 +66,8 @@ async function authority(client: PoolClient, session: SignedSession): Promise<Cu
       [session.userId],
     )
   ).rows[0];
+  if (session.expectedAccountId !== undefined && user?.id !== session.expectedAccountId)
+    fail(401, "ACCOUNT_IDENTITY_CHANGED");
   eligible(user);
   const signed = await client.query(
     'WITH locked_session AS MATERIALIZED (SELECT id,"expiresAt" FROM auth_session WHERE id=$1 AND "userId"=$2 AND token=$3 FOR UPDATE) SELECT id FROM locked_session WHERE "expiresAt">clock_timestamp()',
@@ -134,6 +136,9 @@ export function createPeopleService({
 }) {
   async function session(headers: Headers): Promise<SignedSession> {
     try {
+      const expectedAccountId = headers.get("X-AhiBizz-Account-ID");
+      if (expectedAccountId !== null && !/^[A-Za-z0-9_-]{1,128}$/.test(expectedAccountId))
+        fail(400, "INVALID_PROFILE_INPUT");
       const identity = await accounts.read(headers);
       const value = await auth.api.getSession({
         headers,
@@ -141,7 +146,10 @@ export function createPeopleService({
       });
       if (!value?.session || value.session.userId !== identity.id || value.user.id !== identity.id)
         fail(401, "AUTHENTICATION_REQUIRED");
-      return value.session;
+      return {
+        ...value.session,
+        ...(expectedAccountId === null ? {} : { expectedAccountId }),
+      };
     } catch (error) {
       rethrow(error);
     }

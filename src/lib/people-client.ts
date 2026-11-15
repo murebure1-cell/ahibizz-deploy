@@ -16,15 +16,31 @@ export async function peopleRequest(
     ...options,
     credentials: "same-origin",
     cache: "no-store",
+    mode: "same-origin",
+    redirect: "error",
   });
   const result = await response.json().catch(() => null);
   if (!response.ok || !result || typeof result !== "object")
     throw new ProfileRequestError(response.status, result?.code ?? "PROFILE_UNAVAILABLE");
   return result;
 }
+/** Bind a mounted private profile to the account it was opened for. */
+export function peopleAccountRequest(
+  request: typeof peopleRequest,
+  expectedAccountId: string | undefined,
+  path: string,
+  options: RequestInit = {},
+): ReturnType<typeof peopleRequest> {
+  if (typeof expectedAccountId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(expectedAccountId))
+    return Promise.reject(new ProfileRequestError(401, "ACCOUNT_IDENTITY_CHANGED"));
+  const headers = new Headers(options.headers);
+  headers.set("X-AhiBizz-Account-ID", expectedAccountId);
+  return request(path, { ...options, headers });
+}
 export function profileError(error: unknown) {
   const code = error instanceof ProfileRequestError ? error.code : "";
   if (code === "AUTHENTICATION_REQUIRED") return "Prijavi se ponovo.";
+  if (code === "ACCOUNT_IDENTITY_CHANGED") return "Prijavi se ponovo svojim nalogom.";
   if (code === "VERSION_CONFLICT")
     return "Profil je izmijenjen na drugom mjestu. Otvori sačuvani profil.";
   if (code === "COVER_NOT_ALLOWED") return "Vlastita naslovnica nije uključena u tvoj paket.";

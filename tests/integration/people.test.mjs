@@ -23,7 +23,7 @@ async function outsideTables(pool, schema) {
     )
   ).rows;
 }
-async function waiting(pool, applicationName) {
+async function waiting(pool, applicationName, minimum = 2) {
   const deadline = Date.now() + 3000;
   while (Date.now() < deadline) {
     const count = (
@@ -32,7 +32,7 @@ async function waiting(pool, applicationName) {
         [applicationName],
       )
     ).rows[0].n;
-    if (count >= 2) return;
+    if (count >= minimum) return;
     await delay(10);
   }
   throw new Error("Both personal profile writes must reach the held authority lock.");
@@ -373,6 +373,88 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       })
         .png()
         .toBuffer();
+      await t.test(
+        "expected account binds every private read and write before touching equal-version foreign data",
+        async () => {
+          const before = await people.read(other.headers);
+          const snapshot = async () => ({
+            accounts: (await pool.query("SELECT id,name FROM auth_user ORDER BY id")).rows,
+            profiles: (await pool.query("SELECT * FROM personal_profile ORDER BY user_id")).rows,
+            images: (await pool.query("SELECT * FROM personal_profile_image ORDER BY user_id,kind"))
+              .rows,
+          });
+          const saved = await snapshot();
+          for (const [id, status, code] of [
+            [member.user.id, 401, "ACCOUNT_IDENTITY_CHANGED"],
+            ["invalid/actor", 400, "INVALID_PROFILE_INPUT"],
+          ]) {
+            const headers = new Headers(other.headers);
+            headers.set("X-AhiBizz-Account-ID", id);
+            for (const action of [
+              () => people.read(headers),
+              () => people.readMedia(headers, "photo"),
+              () => people.readMedia(headers, "cover"),
+              () => people.update(headers, { ...base, expectedVersion: before.version }),
+              () =>
+                people.saveMedia(headers, "photo", { expectedVersion: before.version, bytes: png }),
+              () =>
+                people.saveMedia(headers, "cover", { expectedVersion: before.version, bytes: png }),
+              () => people.removeMedia(headers, "photo", { expectedVersion: before.version }),
+              () => people.removeMedia(headers, "cover", { expectedVersion: before.version }),
+            ])
+              await denied(action, status, code);
+          }
+          const matching = new Headers(other.headers);
+          matching.set("X-AhiBizz-Account-ID", other.user.id);
+          assert.deepEqual(await people.read(matching), before);
+          assert.deepEqual(await snapshot(), saved);
+          const { createPeopleHttpHandler } = await import("../../src/server/people-http.ts");
+          const http = createPeopleHttpHandler({ service: people, baseURL });
+          const wrongImage = await http(
+            new Request(`${baseURL}/api/people/me/media/photo?v=1&accountId=${member.user.id}`, {
+              headers: other.headers,
+            }),
+          );
+          assert.equal(wrongImage.status, 401);
+          assert.equal((await wrongImage.json()).code, "ACCOUNT_IDENTITY_CHANGED");
+        },
+      );
+      await t.test(
+        "profile reads recheck signed-session expiry after the held current-user lock",
+        async () => {
+          const session = await auth.api.getSession({ headers: other.headers });
+          const original = (
+            await pool.query('SELECT "expiresAt" FROM auth_session WHERE id=$1', [
+              session.session.id,
+            ])
+          ).rows[0].expiresAt;
+          const blocker = await pool.connect();
+          let read;
+          try {
+            await blocker.query("BEGIN");
+            await blocker.query("SELECT id FROM auth_user WHERE id=$1 FOR UPDATE", [other.user.id]);
+            const headers = new Headers(other.headers);
+            headers.set("X-AhiBizz-Account-ID", other.user.id);
+            read = people.read(headers);
+            // Keep rejection handled while the lock is intentionally held.
+            read.catch(() => {});
+            await waiting(administration, applicationName, 1);
+            await blocker.query(
+              "UPDATE auth_session SET \"expiresAt\"=clock_timestamp()-interval '1 second' WHERE id=$1",
+              [session.session.id],
+            );
+            await blocker.query("COMMIT");
+            await denied(() => read, 401, "AUTHENTICATION_REQUIRED");
+          } finally {
+            await blocker.query("ROLLBACK");
+            blocker.release();
+            await pool.query('UPDATE auth_session SET "expiresAt"=$1 WHERE id=$2', [
+              original,
+              session.session.id,
+            ]);
+          }
+        },
+      );
       await t.test(
         "real image normalization stores own raster bytes with the shared profile CAS",
         async () => {

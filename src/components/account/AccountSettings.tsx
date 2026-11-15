@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccountSettingsError,
+  accountSettingsActorRequest,
   accountSettingsError,
   accountSettingsRequest,
   appearanceUpdate,
@@ -21,18 +22,28 @@ const choices = [
   { value: "dark", label: "Tamno", symbol: "☾" },
 ] as const;
 
-export function AccountSettings({
-  initial,
-  active = true,
-  request = accountSettingsRequest,
-  onConfirmed,
-}: {
+type Props = {
   initial: SafeAccountProfile;
   active?: boolean;
   request?: typeof accountSettingsRequest;
   onConfirmed?: (account: SafeAccountProfile) => void;
-}) {
+};
+
+export function AccountSettings(props: Props) {
+  return <SettingsWorkspace key={props.initial.id} {...props} />;
+}
+
+function SettingsWorkspace({
+  initial,
+  active = true,
+  request = accountSettingsRequest,
+  onConfirmed,
+}: Props) {
   const { setAppearance, resetAppearance } = useAppAppearance();
+  const scopedRequest = useMemo(
+    () => accountSettingsActorRequest(initial.id, request),
+    [initial.id, request],
+  );
   const [confirmed, setConfirmed] = useState<Appearance>(initial.appearance),
     [draft, setDraft] = useState<Appearance>(initial.appearance),
     [loaded, setLoaded] = useState(false),
@@ -47,12 +58,21 @@ export function AccountSettings({
     writing = useRef(false),
     revision = useRef(0),
     controller = useRef<AbortController | null>(null),
-    api = useRef(request),
+    boundary = useRef(scopedRequest),
     changed = useRef(onConfirmed);
-  api.current = request;
+  boundary.current = scopedRequest;
   changed.current = onConfirmed;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: A changed transport starts a new authority epoch and invalidates its pending acknowledgements.
   useEffect(() => {
     live.current = true;
+    attempted.current = false;
+    writing.current = false;
+    setLoaded(false);
+    setBlocked(false);
+    setSaving(false);
+    setError("");
+    setNotice("");
+    setAccessLost(false);
     return () => {
       live.current = false;
       revision.current++;
@@ -60,7 +80,7 @@ export function AccountSettings({
       // React's mount effect replay must start a fresh read after aborting the first one.
       attempted.current = false;
     };
-  }, []);
+  }, [scopedRequest]);
 
   const denied = useCallback(
     (failure: unknown) => {
@@ -69,6 +89,7 @@ export function AccountSettings({
         (failure.status === 401 || failure.status === 403)
       ) {
         setAccessLost(true);
+        setLoaded(false);
         resetAppearance();
       }
     },
@@ -86,8 +107,12 @@ export function AccountSettings({
     setError("");
     setNotice("");
     try {
-      const account = readAccountSettings(await api.current({ signal: abort.signal }), initial.id);
-      if (!live.current || current !== revision.current) return;
+      const account = readAccountSettings(
+        await scopedRequest({ signal: abort.signal }),
+        initial.id,
+      );
+      if (!live.current || boundary.current !== scopedRequest || current !== revision.current)
+        return;
       if (abort.signal.aborted) throw new AccountSettingsError(408, "ACCOUNT_UNAVAILABLE");
       setConfirmed(account.appearance);
       setDraft(account.appearance);
@@ -97,21 +122,23 @@ export function AccountSettings({
       setAppearance(account.appearance);
       changed.current?.(account);
     } catch (failure) {
-      if (!live.current || current !== revision.current) return;
+      if (!live.current || boundary.current !== scopedRequest || current !== revision.current)
+        return;
       setBlocked(true);
       setError(accountSettingsError(failure));
       denied(failure);
     } finally {
       window.clearTimeout(timeout);
-      if (live.current && current === revision.current) setLoading(false);
+      if (live.current && boundary.current === scopedRequest && current === revision.current)
+        setLoading(false);
     }
-  }, [initial.id, setAppearance, denied]);
+  }, [initial.id, scopedRequest, setAppearance, denied]);
   useEffect(() => {
     if (active && !attempted.current) void load();
   }, [active, load]);
 
   async function save() {
-    if (writing.current || loading || !loaded || blocked || draft === confirmed) return;
+    if (!active || writing.current || loading || !loaded || blocked || draft === confirmed) return;
     writing.current = true;
     controller.current?.abort();
     const current = ++revision.current,
@@ -124,11 +151,12 @@ export function AccountSettings({
     setNotice("");
     try {
       const account = readAccountSettings(
-        await api.current({ method: "PATCH", body, signal: abort.signal }),
+        await scopedRequest({ method: "PATCH", body, signal: abort.signal }),
         initial.id,
         draft,
       );
-      if (!live.current || current !== revision.current) return;
+      if (!live.current || boundary.current !== scopedRequest || current !== revision.current)
+        return;
       if (abort.signal.aborted) throw new AccountSettingsError(408, "ACCOUNT_UNAVAILABLE");
       setConfirmed(account.appearance);
       setDraft(account.appearance);
@@ -136,14 +164,15 @@ export function AccountSettings({
       changed.current?.(account);
       setNotice("Postavke su sačuvane.");
     } catch (failure) {
-      if (!live.current || current !== revision.current) return;
+      if (!live.current || boundary.current !== scopedRequest || current !== revision.current)
+        return;
       // A network failure may happen after COMMIT. Read the saved value before a new intent.
       setBlocked(true);
       setError(accountSettingsError(failure));
       denied(failure);
     } finally {
       window.clearTimeout(timeout);
-      if (live.current && current === revision.current) {
+      if (live.current && boundary.current === scopedRequest && current === revision.current) {
         writing.current = false;
         setSaving(false);
       }

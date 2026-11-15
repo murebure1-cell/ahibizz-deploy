@@ -87,10 +87,12 @@ export function AdminDashboard({ initial }: { initial: SafeAccountProfile }) {
           <p>{current.description}</p>
         </header>
         <div hidden={section !== "accounts"}>
-          {visited.accounts && <AccountApprovals key={initial.id} />}
+          {visited.accounts && <AccountApprovals key={initial.id} expectedAccountId={initial.id} />}
         </div>
         <div hidden={section !== "categories"}>
-          {visited.categories && <CategoryManager key={initial.id} />}
+          {visited.categories && (
+            <CategoryManager key={initial.id} expectedAccountId={initial.id} />
+          )}
         </div>
         <div hidden={section !== "businesses"}>
           {visited.businesses && (

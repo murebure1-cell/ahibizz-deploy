@@ -155,6 +155,9 @@ async function transaction<T>(pool: Pool, body: (client: PoolClient) => Promise<
 
 export function createAccountService({ auth, pool }: { auth: AuthService; pool: Pool }) {
   async function session(headers: Headers) {
+    const expectedAccountId = headers.get("X-AhiBizz-Account-ID");
+    if (expectedAccountId !== null && !/^[A-Za-z0-9_-]{1,128}$/.test(expectedAccountId))
+      fail(400, "INVALID_PROFILE");
     try {
       const result = await auth.api.getSession({
         headers,
@@ -162,7 +165,7 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
       });
       if (!result?.session || result.session.userId !== result.user.id)
         fail(401, "AUTHENTICATION_REQUIRED");
-      return result.session;
+      return { ...result.session, expectedAccountId };
     } catch (error) {
       if (error instanceof AccountAccessError) throw error;
       throw new AccountAccessError(503, "ACCOUNT_UNAVAILABLE");
@@ -184,6 +187,8 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
       [current.id, current.userId, current.token],
     );
     if (signed.rowCount !== 1) fail(401, "AUTHENTICATION_REQUIRED");
+    if (current.expectedAccountId !== null && user.id !== current.expectedAccountId)
+      fail(401, "ACCOUNT_IDENTITY_CHANGED");
     return user;
   }
   async function read(headers: Headers): Promise<SafeAccountProfile> {

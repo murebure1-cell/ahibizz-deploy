@@ -14,6 +14,31 @@ export class AdminRequestError extends Error {
   }
 }
 
+export type AdminRequest = (path: string, init?: RequestInit) => Promise<Response>;
+export const browserAdminRequest: AdminRequest = (path, init) => fetch(path, init);
+export function adminActorRequest(
+  expectedAccountId: string | undefined,
+  request: AdminRequest = browserAdminRequest,
+): AdminRequest {
+  return (path, init = {}) => {
+    if (!expectedAccountId || !/^[A-Za-z0-9_-]{1,128}$/.test(expectedAccountId))
+      return Promise.reject(new AdminRequestError(401, "ACCOUNT_IDENTITY_CHANGED"));
+    const headers = new Headers(init.headers);
+    headers.set("X-AhiBizz-Account-ID", expectedAccountId);
+    return request(path, {
+      ...init,
+      headers,
+      cache: "no-store",
+      credentials: "same-origin",
+      mode: "same-origin",
+      redirect: "error",
+    });
+  };
+}
+export function adminAccessDenied(error: unknown): boolean {
+  return error instanceof AdminRequestError && [401, 403].includes(error.status);
+}
+
 export async function responseData(response: Response): Promise<Record<string, unknown>> {
   const data: unknown = await response.json().catch(() => null);
   if (!response.ok)

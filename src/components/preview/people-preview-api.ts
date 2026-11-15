@@ -80,6 +80,11 @@ export function createPeoplePreviewApi() {
   const request: typeof peopleRequest = async (path, options = {}) => {
     const currentLifetime = lifetime;
     if (options.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    const expectedAccountId = new Headers(options.headers).get("X-AhiBizz-Account-ID");
+    if (expectedAccountId !== null && !/^[A-Za-z0-9_-]{1,128}$/.test(expectedAccountId))
+      throw new ProfileRequestError(400, "INVALID_PROFILE_INPUT");
+    if (expectedAccountId !== null && expectedAccountId !== profile.id)
+      throw new ProfileRequestError(401, "ACCOUNT_IDENTITY_CHANGED");
     const method = (options.method ?? "GET").toUpperCase();
     if (path === "me" && method === "GET") return { profile: structuredClone(profile) };
     if (path === "me" && method === "PATCH") {

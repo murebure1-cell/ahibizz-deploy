@@ -180,7 +180,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             error.status === status &&
             (!code || error.code === code),
         );
-      async function request(method, route, { body, cookies, origin = baseURL } = {}) {
+      async function request(
+        method,
+        route,
+        { body, cookies, origin = baseURL, expectedAccountId } = {},
+      ) {
         const url = new URL(route, baseURL);
         assert.equal(url.origin, baseURL);
         const headers = new Headers({
@@ -189,6 +193,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         });
         if (body !== undefined) headers.set("content-type", "application/json");
         if (cookies?.header()) headers.set("cookie", cookies.header());
+        if (expectedAccountId !== undefined) headers.set("X-AhiBizz-Account-ID", expectedAccountId);
         const handler = url.pathname.startsWith("/api/auth/") ? http : accountHttp;
         const response = await handler(
           new Request(url, {
@@ -865,6 +870,93 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           const revoked = await request("GET", privatePath, { cookies: member });
           assert.equal(revoked.response.status, 401);
           assert.equal(revoked.data.code, "AUTHENTICATION_REQUIRED");
+        },
+      );
+      await t.test(
+        "mounted account expectations reject switched-account reads and writes before touching data",
+        async () => {
+          const ownerHeaders = accountHeaders(first);
+          const ownerBefore = await accounts.read(ownerHeaders);
+          const targetId = (
+            await pool.query("SELECT id FROM auth_user WHERE email=$1", [pendingEmail])
+          ).rows[0].id;
+          // Reproduce an old panel for A after signing in as B (the existing owner).
+          // Identical appearance values must not let A's stale panel change B.
+          await pool.query(
+            "INSERT INTO auth_account_preferences(user_id,appearance) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET appearance=$2",
+            [targetId, ownerBefore.appearance],
+          );
+          const snapshot = async () => ({
+            users: (
+              await pool.query(
+                'SELECT id,name,"updatedAt",role,approval FROM auth_user ORDER BY id',
+              )
+            ).rows,
+            preferences: (
+              await pool.query("SELECT * FROM auth_account_preferences ORDER BY user_id")
+            ).rows,
+            profiles: (await pool.query("SELECT * FROM personal_profile ORDER BY user_id")).rows,
+            audit: (await pool.query("SELECT * FROM auth_account_audit ORDER BY id")).rows,
+          });
+          const before = await snapshot();
+          for (const [method, route, cookies, expectedAccountId, body] of [
+            ["GET", "/api/account", first, targetId],
+            [
+              "PATCH",
+              "/api/account",
+              first,
+              targetId,
+              {
+                appearance: ownerBefore.appearance === "dark" ? "light" : "dark",
+                expectedAppearance: ownerBefore.appearance,
+              },
+            ],
+            ["GET", "/api/admin/accounts", first, targetId],
+            ["GET", "/api/admin/accounts?approval=approved&page=1", first, targetId],
+            [
+              "PATCH",
+              `/api/admin/accounts/${targetId}`,
+              first,
+              targetId,
+              { approval: "suspended", expected: "approved" },
+            ],
+          ]) {
+            const result = await request(method, route, { cookies, expectedAccountId, body });
+            assert.equal(result.response.status, 401, `${method} ${route}`);
+            assert.equal(result.data.code, "ACCOUNT_IDENTITY_CHANGED");
+            assert.deepEqual(await snapshot(), before, "Wrong actor cannot change either account");
+          }
+          for (const expectedAccountId of ["", "invalid/actor", "x".repeat(129)]) {
+            const result = await request("PATCH", "/api/account", {
+              cookies: first,
+              expectedAccountId,
+              body: { appearance: "light", expectedAppearance: ownerBefore.appearance },
+            });
+            assert.equal(result.response.status, 400);
+            assert.deepEqual(await snapshot(), before);
+          }
+          const matching = await request("PATCH", "/api/account", {
+            cookies: first,
+            expectedAccountId: ownerBefore.id,
+            body: { appearance: "light", expectedAppearance: ownerBefore.appearance },
+          });
+          assert.equal(matching.response.status, 200);
+          assert.equal(matching.data.account.id, ownerBefore.id);
+          assert.equal(matching.data.account.appearance, "light");
+          await accounts.update(ownerHeaders, {
+            appearance: ownerBefore.appearance,
+            expectedAppearance: "light",
+          });
+          assert.deepEqual(await accounts.read(ownerHeaders), ownerBefore);
+          assert.equal(
+            (
+              await request("GET", "/api/account", {
+                cookies: first,
+                expectedAccountId: ownerBefore.id,
+              })
+            ).response.status,
+            200,
+          );
         },
       );
       await t.test(

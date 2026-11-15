@@ -288,6 +288,7 @@ export function AccountPreview() {
           <div hidden={section !== "profile"}>
             <PersonalProfileWorkspace
               active={section === "profile"}
+              expectedAccountId={person.getProfile().id}
               preview
               request={person.request}
               connectionsRequest={connections.request}
