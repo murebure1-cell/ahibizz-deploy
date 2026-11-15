@@ -46,13 +46,14 @@ type Draft = {
 };
 type CreateBody = {
   kind: "manual" | "block";
+  configurationVersion: number;
   serviceId?: string;
   startsAt: string;
   endsAt?: string;
   clientName?: string;
   clientPhone?: string;
 };
-type Intent = { id: string; body: CreateBody };
+type Intent = { id: string; body: CreateBody; uncertain: boolean };
 const weekdays = ["Ponedjeljak", "Utorak", "Srijeda", "Četvrtak", "Petak", "Subota", "Nedjelja"];
 const zones = [
   "Europe/Sarajevo",
@@ -312,6 +313,7 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
   const [clientPhone, setClientPhone] = useState("");
   const [createError, setCreateError] = useState("");
   const [uncertain, setUncertain] = useState(false);
+  const [createSettingsBlocked, setCreateSettingsBlocked] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const live = useRef(false),
     writing = useRef(false),
@@ -342,6 +344,7 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
         if (!live.current || controller.signal.aborted || epoch !== settingsEpoch.current) return;
         const value = readSettings(data.settings);
         setSettings(value);
+        setCreateSettingsBlocked(false);
         if (replaceDraft) {
           setDraft(toDraft(value));
           setSettingsBlocked(false);
@@ -551,13 +554,29 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
     } catch (failure) {
       if (live.current && !controller.signal.aborted) {
         const known =
-          failure instanceof BookingRequestError && failure.status >= 400 && failure.status < 500;
+          failure instanceof BookingRequestError &&
+          failure.status >= 400 &&
+          failure.status < 500 &&
+          failure.status !== 408 &&
+          !value.uncertain;
         if (known) {
           intent.current = null;
           setUncertain(false);
           setCreateError(bookingError(failure));
+          if (
+            failure.code === "BOOKING_CONFIGURATION_CHANGED" ||
+            failure.code === "BOOKING_SERVICE_NOT_FOUND"
+          ) {
+            setCreateSettingsBlocked(true);
+            setSettingsBlocked(true);
+            setServiceId("");
+            setStart("");
+            setEnd("");
+            await loadSettings(false);
+          }
           refresh = true;
         } else {
+          value.uncertain = true;
           setUncertain(true);
           setCreateError(
             "Odgovor nije stigao. Unos može biti sačuvan. Ponovi isti unos da provjeriš rezultat.",
@@ -571,7 +590,8 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
   }
   function submitCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!settings || writing.current || uncertain) return;
+    if (!settings || writing.current || uncertain || settingsLoading || createSettingsBlocked)
+      return;
     const minute = minuteValue(start),
       startsAt =
         minute !== null && minute < 1440 ? localInstant(createDate, minute, timezone) : null;
@@ -586,7 +606,7 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
       setCreateError("Odaberi budući termin unutar narednih 90 dana.");
       return;
     }
-    const body: CreateBody = { kind, startsAt };
+    const body: CreateBody = { kind, startsAt, configurationVersion: settings.version };
     if (kind === "manual") {
       if (!settings.services.some((service) => service.id === serviceId && service.active)) {
         setCreateError("Izaberi dostupnu uslugu.");
@@ -620,7 +640,7 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
       }
       body.endsAt = endsAt;
     }
-    const value = { id: crypto.randomUUID(), body };
+    const value = { id: crypto.randomUUID(), body, uncertain: false };
     intent.current = value;
     void sendCreate(value);
   }
@@ -1104,7 +1124,9 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
                     </button>
                   )}
                 </div>
-                <fieldset disabled={busy !== null || uncertain}>
+                <fieldset
+                  disabled={busy !== null || uncertain || settingsLoading || createSettingsBlocked}
+                >
                   <label className={styles.field}>
                     Vrsta
                     <select
@@ -1222,6 +1244,16 @@ function BookingWorkspace({ businessId, businessTitle, preview = false, onBack, 
                   <p className={styles.error} role="alert">
                     {createError}
                   </p>
+                )}
+                {createSettingsBlocked && !settingsLoading && (
+                  <button
+                    className={styles.secondary}
+                    type="button"
+                    disabled={busy !== null}
+                    onClick={() => void loadSettings(false)}
+                  >
+                    Osvježi usluge
+                  </button>
                 )}
                 {uncertain && (
                   <button

@@ -659,6 +659,8 @@ export function createBookingService({
         if (old) return old;
         const config = await settings(client, id),
           instant = clock();
+        if (config.version !== value.configurationVersion)
+          fail(409, "BOOKING_CONFIGURATION_CHANGED");
         const service =
           value.kind === "manual" ? activeService(config, value.serviceId as string) : null;
         const endsAt = service

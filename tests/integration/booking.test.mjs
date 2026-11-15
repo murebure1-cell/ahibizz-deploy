@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import path from "node:path";
 import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
@@ -907,6 +907,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             body: {
               kind: "manual",
               serviceId,
+              configurationVersion: settings.version,
               startsAt: "2030-01-08T08:00:00.000Z",
               clientName: "Offline fixture",
               clientPhone: "+38761123456",
@@ -933,6 +934,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             key: randomUUID(),
             body: {
               kind: "block",
+              configurationVersion: settings.version,
               startsAt: "2030-01-08T10:00:00.000Z",
               endsAt: "2030-01-08T11:00:00.000Z",
             },
@@ -1016,6 +1018,199 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           assert.equal(utc.data.slots[0].startsAt, "2030-01-09T09:00:00.000Z");
           const rows = (await pool.query("SELECT DISTINCT timezone FROM booking_entry")).rows;
           assert.deepEqual(rows, [{ timezone: "Europe/Sarajevo" }]);
+        },
+      );
+
+      await t.test(
+        "manual appointments and blocks reject stale configuration without writes and replay reviewed receipts",
+        async () => {
+          const baseline = settings;
+          for (const change of ["price", "duration", "timezone", "schedule", "enabled"]) {
+            const previous = settings;
+            const patch =
+              change === "price"
+                ? {
+                    services: previous.services.map((row) => ({
+                      ...row,
+                      priceMinor: row.priceMinor + 100,
+                    })),
+                  }
+                : change === "duration"
+                  ? {
+                      services: previous.services.map((row) => ({
+                        ...row,
+                        durationMinutes: 60,
+                      })),
+                    }
+                  : change === "timezone"
+                    ? { timezone: "Europe/Sarajevo" }
+                    : change === "schedule"
+                      ? {
+                          windows: previous.windows.map((window) => ({
+                            ...window,
+                            endMinute: 960,
+                          })),
+                        }
+                      : { enabled: false };
+            const saved = await request("PATCH", `${ownerPath}/settings`, {
+              actor: professional,
+              body: settingsInput(previous, patch),
+            });
+            assert.equal(saved.status, 200, change);
+            settings = saved.data.settings;
+            const inputs = [
+                {
+                  kind: "manual",
+                  serviceId,
+                  startsAt: "2030-01-09T18:00:00.000Z",
+                  clientName: "Reviewed offline fixture",
+                },
+                {
+                  kind: "block",
+                  startsAt: "2030-01-09T20:00:00.000Z",
+                  endsAt: "2030-01-09T21:00:00.000Z",
+                },
+              ],
+              receipts = [];
+            for (const input of inputs) {
+              const key = randomUUID(),
+                snapshot = await bookingSnapshot(),
+                stale = await request("POST", `${ownerPath}/entries`, {
+                  actor: professional,
+                  key,
+                  body: { ...input, configurationVersion: previous.version },
+                });
+              assert.equal(stale.status, 409, `${change}: ${input.kind}`);
+              assert.equal(stale.data.code, "BOOKING_CONFIGURATION_CHANGED");
+              assert.deepEqual(
+                await bookingSnapshot(),
+                snapshot,
+                "A stale owner quote cannot create an entry, receipt, audit event or credit.",
+              );
+              const body = { ...input, configurationVersion: settings.version },
+                created = await request("POST", `${ownerPath}/entries`, {
+                  actor: professional,
+                  key,
+                  body,
+                });
+              assert.equal(created.status, 201);
+              assert.equal(created.data.entry.timezone, settings.timezone);
+              if (input.kind === "manual") {
+                const reviewedService = settings.services.find((row) => row.id === serviceId);
+                assert.ok(reviewedService);
+                assert.equal(created.data.entry.priceMinor, reviewedService.priceMinor);
+                assert.equal(created.data.entry.durationMinutes, reviewedService.durationMinutes);
+                assert.equal(
+                  Date.parse(created.data.entry.endsAt) - Date.parse(created.data.entry.startsAt),
+                  reviewedService.durationMinutes * 60_000,
+                );
+              }
+              const cancelled = await action(professional, created.data.entry, "cancel");
+              assert.equal(cancelled.status, 200);
+              receipts.push({ key, body, entry: cancelled.data.entry });
+            }
+            const changedAgain = await request("PATCH", `${ownerPath}/settings`, {
+              actor: professional,
+              body: settingsInput(settings),
+            });
+            assert.equal(changedAgain.status, 200);
+            settings = changedAgain.data.settings;
+            const snapshot = await bookingSnapshot();
+            for (const receipt of receipts) {
+              const replay = await request("POST", `${ownerPath}/entries`, {
+                actor: professional,
+                key: receipt.key,
+                body: receipt.body,
+              });
+              assert.equal(replay.status, 201);
+              assert.deepEqual(replay.data.entry, receipt.entry);
+              const differentIntent = await request("POST", `${ownerPath}/entries`, {
+                actor: professional,
+                key: receipt.key,
+                body: { ...receipt.body, configurationVersion: settings.version },
+              });
+              assert.equal(differentIntent.status, 409);
+              assert.equal(differentIntent.data.code, "IDEMPOTENCY_CONFLICT");
+            }
+            assert.deepEqual(await bookingSnapshot(), snapshot);
+          }
+          const restored = await request("PATCH", `${ownerPath}/settings`, {
+            actor: professional,
+            body: settingsInput(baseline, { expectedVersion: settings.version }),
+          });
+          assert.equal(restored.status, 200);
+          settings = restored.data.settings;
+        },
+      );
+
+      await t.test(
+        "new owner commands require a configuration version while historical omitted-version receipts still replay",
+        async () => {
+          const body = {
+              kind: "block",
+              startsAt: "2030-01-09T22:00:00.000Z",
+              endsAt: "2030-01-09T23:00:00.000Z",
+            },
+            key = randomUUID(),
+            snapshot = await bookingSnapshot(),
+            missing = await request("POST", `${ownerPath}/entries`, {
+              actor: professional,
+              key,
+              body,
+            });
+          assert.equal(missing.status, 409);
+          assert.equal(missing.data.code, "BOOKING_CONFIGURATION_CHANGED");
+          assert.deepEqual(await bookingSnapshot(), snapshot);
+          const created = await request("POST", `${ownerPath}/entries`, {
+            actor: professional,
+            key,
+            body: { ...body, configurationVersion: settings.version },
+          });
+          assert.equal(created.status, 201);
+          const cancelled = await action(professional, created.data.entry, "cancel");
+          assert.equal(cancelled.status, 200);
+          // Model a receipt written by the old implementation in this isolated schema only.
+          // Its normalized input had these exact fields and no configurationVersion property.
+          const historicalFingerprint = createHash("sha256")
+            .update(
+              JSON.stringify([
+                "manual",
+                business.id,
+                {
+                  kind: body.kind,
+                  serviceId: null,
+                  startsAt: body.startsAt,
+                  endsAt: body.endsAt,
+                  clientName: null,
+                  clientPhone: null,
+                },
+              ]),
+            )
+            .digest("hex");
+          assert.equal(
+            (
+              await pool.query(
+                "UPDATE booking_create_commands SET fingerprint=$1 WHERE actor_user_id=$2 AND request_id=$3 AND entry_id=$4",
+                [historicalFingerprint, professional.user.id, key, created.data.entry.id],
+              )
+            ).rowCount,
+            1,
+          );
+          const changed = await request("PATCH", `${ownerPath}/settings`, {
+            actor: professional,
+            body: settingsInput(settings),
+          });
+          assert.equal(changed.status, 200);
+          settings = changed.data.settings;
+          const beforeReplay = await bookingSnapshot(),
+            replay = await request("POST", `${ownerPath}/entries`, {
+              actor: professional,
+              key,
+              body,
+            });
+          assert.equal(replay.status, 201);
+          assert.deepEqual(replay.data.entry, cancelled.data.entry);
+          assert.deepEqual(await bookingSnapshot(), beforeReplay);
         },
       );
 

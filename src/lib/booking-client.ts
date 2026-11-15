@@ -38,6 +38,9 @@ export function bookingError(error: unknown) {
     return "Podaci su izmijenjeni. Osvježi pregled i pokušaj ponovo.";
   if (code === "SELF_BOOKING_NOT_ALLOWED") return "Za svoj posao dodaj ručni termin u kalendaru.";
   if (code === "BOOKING_DISABLED") return "Booking trenutno nije dostupan.";
+  if (code === "BOOKING_SERVICE_NOT_FOUND") return "Usluga više nije dostupna. Izaberi drugu.";
+  if (code === "BOOKING_CONFIGURATION_CHANGED")
+    return "Usluge ili raspored su izmijenjeni. Provjeri novi odabir.";
   if (code === "INVALID_BOOKING_INPUT" || code === "UNEXPECTED_FIELD")
     return "Provjeri unesene podatke.";
   if (code === "BOOKING_NOT_FOUND" || code === "BUSINESS_NOT_FOUND")

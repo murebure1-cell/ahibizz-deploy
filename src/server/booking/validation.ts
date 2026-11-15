@@ -154,6 +154,7 @@ export function manualInput(input: unknown) {
     "endsAt",
     "clientName",
     "clientPhone",
+    "configurationVersion",
   ]);
   if (value.kind !== "manual" && value.kind !== "block") fail(400, "INVALID_BOOKING_INPUT");
   const serviceId =
@@ -170,6 +171,10 @@ export function manualInput(input: unknown) {
     endsAt: value.endsAt === undefined ? null : instant(value.endsAt),
     clientName: text(value.clientName, 120, true),
     clientPhone,
+    // Omit the field for historical commands so their idempotency fingerprint stays stable.
+    ...(value.configurationVersion === undefined
+      ? {}
+      : { configurationVersion: version(value.configurationVersion, true) }),
   };
 }
 export function transitionInput(input: unknown) {

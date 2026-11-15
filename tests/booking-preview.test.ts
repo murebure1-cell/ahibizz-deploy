@@ -167,6 +167,139 @@ test("preview configuration CAS protects selected quotes and retains existing bo
   assert.equal(api.getConfig(otherId).version, 0, "failed settings save stays atomic");
 });
 
+test("preview manual appointments and blocks require a reviewed current configuration and preserve receipts", async (t) => {
+  for (const change of ["price", "duration", "timezone", "schedule", "enabled"] as const) {
+    await t.test(change, async () => {
+      const { api, service } = fixture(),
+        before = api.getSettings(),
+        { version, ...fields } = before;
+      const patch =
+        change === "price"
+          ? {
+              services: before.services.map((item) => ({
+                ...item,
+                priceMinor: item.priceMinor + 100,
+              })),
+            }
+          : change === "duration"
+            ? { services: before.services.map((item) => ({ ...item, durationMinutes: 60 })) }
+            : change === "timezone"
+              ? { timezone: "UTC" }
+              : change === "schedule"
+                ? { windows: before.windows.map((window) => ({ ...window, endMinute: 960 })) }
+                : { enabled: false };
+      await api.ownerRequest(
+        "mine/businesses/forma/settings",
+        bookingWrite("PATCH", { ...fields, ...patch, expectedVersion: version }),
+      );
+      const reviewed = api.getSettings(),
+        revision = api.snapshotVersion(),
+        inputs = [
+          {
+            kind: "manual",
+            serviceId: service.id,
+            startsAt: "2030-01-07T18:00:00.000Z",
+            clientName: "Reviewed fixture client",
+          },
+          {
+            kind: "block",
+            startsAt: "2030-01-07T20:00:00.000Z",
+            endsAt: "2030-01-07T21:00:00.000Z",
+          },
+        ];
+      const receipts: { body: object; key: string; entry: BookingEntry }[] = [];
+      for (const input of inputs) {
+        const key = randomUUID();
+        await assert.rejects(
+          api.ownerRequest(
+            "mine/businesses/forma/entries",
+            bookingWrite("POST", { ...input, configurationVersion: version }, key),
+          ),
+          error("BOOKING_CONFIGURATION_CHANGED", 409),
+        );
+        await assert.rejects(
+          api.ownerRequest(
+            "mine/businesses/forma/entries",
+            bookingWrite("POST", input, randomUUID()),
+          ),
+          error("BOOKING_CONFIGURATION_CHANGED", 409),
+        );
+        assert.equal(api.snapshotVersion(), revision + receipts.length);
+        assert.equal((await api.ownerRequest(calendar)).entries.length, receipts.length);
+        const body = { ...input, configurationVersion: reviewed.version },
+          result = await api.ownerRequest(
+            "mine/businesses/forma/entries",
+            bookingWrite("POST", body, key),
+          ),
+          entry = result.entry as BookingEntry;
+        assert.equal(entry.timezone, reviewed.timezone);
+        if (input.kind === "manual") {
+          const currentService = reviewed.services.find((item) => item.id === service.id);
+          assert.ok(currentService);
+          assert.equal(entry.priceMinor, currentService.priceMinor);
+          assert.equal(entry.durationMinutes, currentService.durationMinutes);
+          assert.equal(
+            Date.parse(entry.endsAt) - Date.parse(entry.startsAt),
+            currentService.durationMinutes * 60_000,
+          );
+        }
+        receipts.push({ body, key, entry });
+      }
+      const { version: currentVersion, ...current } = reviewed;
+      await api.ownerRequest(
+        "mine/businesses/forma/settings",
+        bookingWrite("PATCH", { ...current, expectedVersion: currentVersion }),
+      );
+      const after = api.snapshotVersion();
+      for (const receipt of receipts) {
+        const replay = await api.ownerRequest(
+          "mine/businesses/forma/entries",
+          bookingWrite("POST", receipt.body, receipt.key),
+        );
+        assert.deepEqual(replay.entry, receipt.entry);
+        await assert.rejects(
+          api.ownerRequest(
+            "mine/businesses/forma/entries",
+            bookingWrite(
+              "POST",
+              { ...receipt.body, configurationVersion: api.getSettings().version },
+              receipt.key,
+            ),
+          ),
+          error("IDEMPOTENCY_CONFLICT", 409),
+        );
+      }
+      assert.equal(api.snapshotVersion(), after, "replay never creates another mutation");
+      assert.equal((await api.ownerRequest(calendar)).entries.length, 2);
+    });
+  }
+});
+
+test("preview blocks can review version zero before any booking settings exist", async () => {
+  const { api } = fixture(),
+    id = "preview-business-1";
+  api.registerBusiness(id, "Empty booking fixture");
+  assert.equal(api.getSettings(id).version, 0);
+  const input = {
+    kind: "block",
+    startsAt: "2030-01-07T08:00:00.000Z",
+    endsAt: "2030-01-07T09:00:00.000Z",
+  };
+  const revision = api.snapshotVersion();
+  await assert.rejects(
+    api.ownerRequest(`mine/businesses/${id}/entries`, bookingWrite("POST", input, randomUUID())),
+    error("BOOKING_CONFIGURATION_CHANGED", 409),
+  );
+  assert.equal(api.snapshotVersion(), revision);
+  const created = await api.ownerRequest(
+    `mine/businesses/${id}/entries`,
+    bookingWrite("POST", { ...input, configurationVersion: 0 }, randomUUID()),
+  );
+  assert.equal(created.entry.kind, "block");
+  assert.equal(created.entry.timezone, api.getSettings(id).timezone);
+  assert.equal((await api.ownerRequest(calendar.replace("forma", id))).entries.length, 1);
+});
+
 test("preview credits require an approved customer appointment, elapsed end and one completion", async () => {
   const f = fixture(),
     { api } = f,
@@ -194,6 +327,7 @@ test("preview credits require an approved customer appointment, elapsed end and 
       {
         kind: "manual",
         serviceId: f.service.id,
+        configurationVersion: api.getSettings().version,
         startsAt: "2030-01-07T18:00:00.000Z",
         clientName: "Ogledna osoba",
       },
@@ -211,7 +345,12 @@ test("preview credits require an approved customer appointment, elapsed end and 
     "mine/businesses/forma/entries",
     bookingWrite(
       "POST",
-      { kind: "block", startsAt: "2030-01-08T18:00:00.000Z", endsAt: "2030-01-08T19:00:00.000Z" },
+      {
+        kind: "block",
+        configurationVersion: api.getSettings().version,
+        startsAt: "2030-01-08T18:00:00.000Z",
+        endsAt: "2030-01-08T19:00:00.000Z",
+      },
       randomUUID(),
     ),
   );
@@ -271,7 +410,12 @@ test("preview draft settings begin disabled, reads are isolated copies and disab
     "mine/businesses/forma/entries",
     bookingWrite(
       "POST",
-      { kind: "block", startsAt: "2030-01-07T08:00:00Z", endsAt: "2030-01-07T09:00:00Z" },
+      {
+        kind: "block",
+        configurationVersion: api.getSettings().version,
+        startsAt: "2030-01-07T08:00:00Z",
+        endsAt: "2030-01-07T09:00:00Z",
+      },
       randomUUID(),
     ),
   );

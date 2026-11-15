@@ -48,26 +48,40 @@ function BookingWorkspace({
     [done, setDone] = useState<BookingEntry | null>(null),
     [refresh, setRefresh] = useState(0);
   const revision = useRef(0),
+    live = useRef(false),
+    needsConfiguration = useRef(false),
     submitting = useRef(false),
     operation = useRef(createBookingSubmission(businessId));
   const api = useRef(request);
   api.current = request;
   const service = configuration.services.find((item) => item.id === serviceId);
   const today = dateKey(new Date(), configuration.timezone);
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+      revision.current++;
+    };
+  }, []);
   const refreshConfiguration = useCallback(
-    async (current?: number) => {
-      const result = await api.current(`businesses/${businessId}`);
-      if (current !== undefined && current !== revision.current) return;
+    async (current: number, signal: AbortSignal) => {
+      const result = await api.current(`businesses/${businessId}`, { signal });
+      if (!live.current || signal.aborted || current !== revision.current) return;
       const next = result.booking as PublicBookingConfiguration;
       if (!next || !Number.isInteger(next.version) || !Array.isArray(next.services))
         throw new Error("invalid_booking_configuration");
       setSelection("");
+      setSlots([]);
       setConfiguration(next);
-      if (!next.services.some((item) => item.id === serviceId))
-        setService(next.services[0]?.id ?? "");
+      setService((selected) =>
+        next.services.some((item) => item.id === selected)
+          ? selected
+          : (next.services[0]?.id ?? ""),
+      );
+      needsConfiguration.current = false;
       setChangeNotice("Usluga ili raspored su izmijenjeni. Provjeri novi odabir.");
     },
-    [businessId, serviceId],
+    [businessId],
   );
   // biome-ignore lint/correctness/useExhaustiveDependencies: The refresh counter deliberately repeats the same read after a user action.
   useEffect(() => {
@@ -84,27 +98,46 @@ function BookingWorkspace({
     setError("");
     setSelection("");
     setSlots([]);
-    void api
-      .current(`businesses/${businessId}/slots?${new URLSearchParams({ serviceId, date })}`, {
-        signal: controller.signal,
-      })
-      .then(async (data) => {
-        if (current !== revision.current) return;
+    async function read() {
+      try {
+        if (needsConfiguration.current) {
+          await refreshConfiguration(current, controller.signal);
+          return;
+        }
+        const data = await api.current(
+          `businesses/${businessId}/slots?${new URLSearchParams({ serviceId, date })}`,
+          { signal: controller.signal },
+        );
+        if (!live.current || controller.signal.aborted || current !== revision.current) return;
         if (!Array.isArray(data.slots) || data.serviceId !== serviceId || data.date !== date)
           throw new Error("invalid_slots");
         if (data.configurationVersion !== configuration.version) {
-          await refreshConfiguration(current);
+          needsConfiguration.current = true;
+          await refreshConfiguration(current, controller.signal);
           return;
         }
         setSlots(data.slots);
-      })
-      .catch((failure) => {
-        if (!controller.signal.aborted && current === revision.current)
+      } catch (failure) {
+        if (!live.current || controller.signal.aborted || current !== revision.current) return;
+        if (
+          failure instanceof BookingRequestError &&
+          ["BOOKING_SERVICE_NOT_FOUND", "BOOKING_DISABLED"].includes(failure.code)
+        ) {
+          needsConfiguration.current = true;
+          try {
+            await refreshConfiguration(current, controller.signal);
+          } catch (refreshFailure) {
+            if (live.current && !controller.signal.aborted && current === revision.current)
+              setError(bookingError(refreshFailure));
+          }
+        } else {
           setError(bookingError(failure));
-      })
-      .finally(() => {
-        if (current === revision.current) setLoading(false);
-      });
+        }
+      } finally {
+        if (live.current && current === revision.current) setLoading(false);
+      }
+    }
+    void read();
     return () => {
       revision.current++;
       controller.abort();
@@ -144,9 +177,12 @@ function BookingWorkspace({
           api.current,
         );
       }
-      setDone(entry);
-      setUncertain(false);
+      if (live.current) {
+        setDone(entry);
+        setUncertain(false);
+      }
     } catch (failure) {
+      if (!live.current) return;
       setLogin(
         failure instanceof BookingRequestError && failure.code === "AUTHENTICATION_REQUIRED",
       );
@@ -159,24 +195,21 @@ function BookingWorkspace({
       setUncertain(false);
       if (
         failure instanceof BookingRequestError &&
-        failure.code === "BOOKING_CONFIGURATION_CHANGED"
+        ["BOOKING_CONFIGURATION_CHANGED", "BOOKING_SERVICE_NOT_FOUND", "BOOKING_DISABLED"].includes(
+          failure.code,
+        )
       ) {
-        try {
-          await refreshConfiguration();
-        } catch {
-          setError("Raspored nije dostupan. Otvori profil ponovo.");
-        }
-      }
-      if (failure instanceof BookingRequestError && failure.code === "BOOKING_DISABLED") {
+        needsConfiguration.current = true;
         setSelection("");
         setSlots([]);
+        setRefresh((value) => value + 1);
       }
       if (failure instanceof BookingRequestError && failure.code === "SLOT_UNAVAILABLE") {
         setRefresh((value) => value + 1);
       }
     } finally {
       submitting.current = false;
-      setBusy(false);
+      if (live.current) setBusy(false);
     }
   }
   const moment = (value: string) => bookingDate(value, configuration.timezone, { time: true });

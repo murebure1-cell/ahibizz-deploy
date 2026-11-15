@@ -194,7 +194,7 @@ export function createBookingPreviewApi({ now = () => new Date() }: { now?: () =
   function activeService(settings: BookingSettings, id: unknown) {
     const key = uuid(id),
       service = settings.services.find((item) => item.id === key && item.active);
-    if (!service) reject(400);
+    if (!service) reject(404, "BOOKING_SERVICE_NOT_FOUND");
     return service;
   }
   function slots(id: string, serviceId: unknown, date: unknown) {
@@ -304,7 +304,15 @@ export function createBookingPreviewApi({ now = () => new Date() }: { now?: () =
     const value = record(
       input,
       manual
-        ? ["kind", "serviceId", "startsAt", "endsAt", "clientName", "clientPhone"]
+        ? [
+            "kind",
+            "serviceId",
+            "startsAt",
+            "endsAt",
+            "clientName",
+            "clientPhone",
+            "configurationVersion",
+          ]
         : ["serviceId", "startsAt", "configurationVersion"],
     );
     const startsAt = instant(value.startsAt);
@@ -321,7 +329,10 @@ export function createBookingPreviewApi({ now = () => new Date() }: { now?: () =
     const clientName = manual ? optionalText(value.clientName, 120) : "Ogledni korisnik";
     const clientPhone = manual ? optionalText(value.clientPhone, 40) : null;
     if (clientPhone && !/^[+0-9][0-9 ().-]{3,39}$/.test(clientPhone)) reject(400);
-    const quoteVersion = manual ? null : integer(value.configurationVersion, 1);
+    const quoteVersion =
+      manual && value.configurationVersion === undefined
+        ? null
+        : integer(value.configurationVersion, manual ? 0 : 1);
     const payload = JSON.stringify([
       id,
       manual,
@@ -342,7 +353,7 @@ export function createBookingPreviewApi({ now = () => new Date() }: { now?: () =
       return { entry: prior };
     }
     if (!manual && actor === OWNER) reject(403, "SELF_BOOKING_NOT_ALLOWED");
-    if (!manual && quoteVersion !== config.version) reject(409, "BOOKING_CONFIGURATION_CHANGED");
+    if (quoteVersion !== config.version) reject(409, "BOOKING_CONFIGURATION_CHANGED");
     if (!manual && !publicConfig(config).enabled) reject(409, "BOOKING_DISABLED");
     const service = kind === "block" ? null : activeService(config, serviceId);
     let endsAt = service
