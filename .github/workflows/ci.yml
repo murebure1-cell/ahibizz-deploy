@@ -94,7 +94,36 @@ jobs:
           AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
         run: node --import tsx --test tests/integration/messaging.test.mjs
       - name: Build the production image
-        run: docker build --tag ahibizz:ci .
+        run: docker build --pull --tag ahibizz:ci .
+      - name: Scan the exact production image for high and critical vulnerabilities
+        timeout-minutes: 7
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/ahibizz-security" "$RUNNER_TEMP/ahibizz-trivy-cache"
+          docker image inspect ahibizz:ci > "$RUNNER_TEMP/ahibizz-security/image-inspect.json"
+          docker save --output "$RUNNER_TEMP/ahibizz-image.tar" ahibizz:ci
+          scanner=aquasec/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
+          docker run --rm "$scanner" --version > "$RUNNER_TEMP/ahibizz-security/scanner-version.txt"
+          docker run --rm \
+            --volume "$RUNNER_TEMP/ahibizz-image.tar:/image.tar:ro" \
+            --volume "$RUNNER_TEMP/ahibizz-security:/evidence" \
+            --volume "$RUNNER_TEMP/ahibizz-trivy-cache:/root/.cache/trivy" \
+            "$scanner" image --input /image.tar --scanners vuln --list-all-pkgs \
+            --ignorefile /dev/null --format json \
+            --output /evidence/runtime.json --exit-code 0 --timeout 5m
+          docker run --rm --volume "$RUNNER_TEMP/ahibizz-trivy-cache:/root/.cache/trivy" \
+            "$scanner" version --format json > "$RUNNER_TEMP/ahibizz-security/scanner-version.json"
+          image_id=$(docker image inspect --format '{{.Id}}' ahibizz:ci)
+          node scripts/check-runtime-security.mjs "$RUNNER_TEMP/ahibizz-security/runtime.json" \
+            "$image_id" "$GITHUB_SHA" "$RUNNER_TEMP/ahibizz-security/summary.json"
+      - name: Preserve the complete runtime vulnerability report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: runtime-security
+          path: ${{ runner.temp }}/ahibizz-security/
+          if-no-files-found: error
+          retention-days: 14
       - name: Smoke test the production entrypoint and database readiness
         timeout-minutes: 3
         env:

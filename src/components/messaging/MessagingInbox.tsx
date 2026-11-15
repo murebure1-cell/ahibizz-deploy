@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type ChatConversation,
   type ChatMessage,
-  type ChatReceipt,
   type ChatThread,
   type ChatThreadPage,
   conversationReadThrough,
@@ -28,19 +27,15 @@ import {
   messagingAccessDenied,
   messagingCommandNeedsRecovery,
 } from "../../lib/messaging-command-state";
+import {
+  browserMessagingRecoveryStore,
+  type MessagingIntent as Intent,
+  type MessagingRecoveryStore,
+  MessagingStorageError,
+} from "../../lib/messaging-recovery-storage";
 import { Icon } from "../Icon";
 import styles from "./messaging.module.css";
 
-type Intent = {
-  action: "open" | "send" | "block";
-  path: string;
-  body: Record<string, unknown>;
-  key: string;
-  threadId: string | null;
-  target?: MessageTarget;
-  receipt?: ChatReceipt;
-  uncertain?: boolean;
-};
 function initials(name: string) {
   return name
     .split(/\s+/)
@@ -93,6 +88,7 @@ export function MessagingInbox({
   heading = true,
   onSimulateReply,
   expectedAccountId,
+  recoveryStore,
 }: {
   active?: boolean;
   preview?: boolean;
@@ -101,6 +97,8 @@ export function MessagingInbox({
   heading?: boolean;
   onSimulateReply?: (threadId: string) => void | Promise<void>;
   expectedAccountId?: string;
+  /** Only isolated fixtures inject this; live persistence is bound to the signed account. */
+  recoveryStore?: MessagingRecoveryStore;
 }) {
   const [inbox, setInbox] = useState<MessageInbox>("personal");
   const [page, setPage] = useState(1);
@@ -117,6 +115,19 @@ export function MessagingInbox({
   const [pending, setPending] = useState<Intent | null>(null);
   const [error, setError] = useState("");
   const [requiresLogin, setRequiresLogin] = useState(false);
+  const [authorityVerified, setAuthorityVerified] = useState(false);
+  const [recoveryReady, setRecoveryReady] = useState(false);
+  const [storageWarning, setStorageWarning] = useState("");
+  const store = useMemo(
+    () =>
+      recoveryStore ??
+      (!preview && request === messagingRequest && messageIdentifier(expectedAccountId)
+        ? browserMessagingRecoveryStore(expectedAccountId)
+        : null),
+    [recoveryStore, preview, request, expectedAccountId],
+  );
+  const restored = useRef(false);
+  const pendingInbox = useRef<MessageInbox>("personal");
   const alive = useRef(false);
   const scope = useRef(0);
   const listRevision = useRef(0);
@@ -130,6 +141,8 @@ export function MessagingInbox({
   const listCache = useRef(new Map<string, ChatThreadPage>());
   const conversationCache = useRef(new Map<string, ChatConversation>());
   const draftCache = useRef(new Map<string, string>());
+  const draftRevisions = useRef(new Map<string, string | null>());
+  const unpersistedDrafts = useRef(new Set<string>());
   const handledTarget = useRef("");
   const controllers = useRef(new Set<AbortController>());
   const previousTransport = useRef({ request, preview, expectedAccountId });
@@ -162,6 +175,11 @@ export function MessagingInbox({
     listCache.current.clear();
     conversationCache.current.clear();
     draftCache.current.clear();
+    draftRevisions.current.clear();
+    unpersistedDrafts.current.clear();
+    restored.current = false;
+    setAuthorityVerified(false);
+    setRecoveryReady(false);
     selection.current = null;
     pendingRef.current = recovery;
     writing.current = false;
@@ -182,12 +200,23 @@ export function MessagingInbox({
   const fail = useCallback(
     (failure: unknown) => {
       if (failure instanceof MessagingRequestError && [401, 403, 404].includes(failure.status)) {
+        if (failure.status === 404) {
+          try {
+            store?.clearSelection(selection.current);
+          } catch {
+            /* Private view still clears. */
+          }
+        }
         clearPrivate(false, true);
         if (failure.status !== 404) setRequiresLogin(true);
       }
-      setError(messagingError(failure));
+      setError(
+        failure instanceof MessagingStorageError
+          ? "Nacrt se ne može sačuvati na uređaju. Oslobodi prostor pa pokušaj ponovo."
+          : messagingError(failure),
+      );
     },
-    [clearPrivate],
+    [clearPrivate, store],
   );
   const updateThread = useCallback((thread: ChatThread) => {
     for (const [key, value] of listCache.current) {
@@ -236,6 +265,7 @@ export function MessagingInbox({
         )
           return;
         listCache.current.set(key, value);
+        setAuthorityVerified(true);
         setRequiresLogin(false);
         if (view.current.inbox === selectedInbox && view.current.page === selectedPage) {
           setThreads(value.items);
@@ -303,6 +333,19 @@ export function MessagingInbox({
         };
         if (newerMetadata) appliedRevision.current = ticket;
         conversationCache.current.set(id, next);
+        const draftKey = `${next.thread.inbox}:${id}`;
+        if (!draftCache.current.has(draftKey)) {
+          let saved = "";
+          try {
+            const value = store?.readDraftState(id, next.thread.inbox);
+            saved = value?.text ?? "";
+            draftRevisions.current.set(draftKey, value?.key ?? null);
+          } catch {
+            setStorageWarning("Nacrt se trenutno čuva samo dok je aplikacija otvorena.");
+          }
+          draftCache.current.set(draftKey, saved);
+        }
+        setDraft(draftCache.current.get(draftKey) ?? "");
         setConversation(next);
         updateThread(next.thread);
         setReading(false);
@@ -364,13 +407,61 @@ export function MessagingInbox({
         }
       }
     },
-    [fail, scopedRequest, updateThread, usable],
+    [fail, scopedRequest, updateThread, usable, store],
   );
 
   const commit = useCallback(
     async (intent: Intent) => {
       if (!usable || writing.current) return;
       const generation = scope.current;
+      const commandInbox =
+        pendingRef.current?.key === intent.key ? pendingInbox.current : view.current.inbox;
+      if (store && (!authorityVerified || !recoveryReady)) {
+        // Explicit recovery after reauthentication first rechecks this exact actor.
+        // It never replays a command merely because a background request succeeded.
+        if (pendingRef.current?.key !== intent.key) return;
+        writing.current = true;
+        setBusy(true);
+        try {
+          const authority = readChatThreadPage(
+            await scopedRequest(`threads?inbox=${commandInbox}&page=1`),
+          );
+          if (
+            authority.page !== 1 ||
+            authority.items.some((thread) => thread.inbox !== commandInbox)
+          )
+            throw Error("invalid_message_inbox");
+          if (!alive.current || scope.current !== generation) return;
+          restored.current = true;
+          setAuthorityVerified(true);
+          setRecoveryReady(true);
+          setRequiresLogin(false);
+        } catch (failure) {
+          if (alive.current && scope.current === generation) fail(failure);
+          return;
+        } finally {
+          if (alive.current && scope.current === generation) {
+            writing.current = false;
+            setBusy(false);
+          }
+        }
+      }
+      // Persist before dispatch: closing the app during POST must retain the same command key.
+      try {
+        const existing = store?.readPending();
+        if (existing && existing.intent.key !== intent.key && !pendingRef.current) {
+          pendingRef.current = existing.intent;
+          pendingInbox.current = existing.inbox;
+          setPending(existing.intent);
+          return;
+        }
+        const durable = store?.savePending({ ...intent, uncertain: true }, commandInbox);
+        if (durable?.receipt) intent = { ...intent, receipt: durable.receipt };
+      } catch (failure) {
+        fail(failure);
+        return;
+      }
+      pendingInbox.current = commandInbox;
       writing.current = true;
       setBusy(true);
       setError("");
@@ -389,10 +480,12 @@ export function MessagingInbox({
           throw new Error("unconfirmed_message_action");
         if (!alive.current || scope.current !== generation) return;
         const acknowledged = { ...intent, receipt };
+        // The earlier unknown journal is already sufficient if this write fails.
         pendingRef.current = acknowledged;
         setPending(acknowledged);
+        store?.savePending(acknowledged, commandInbox);
         if (intent.action === "open" && selection.current !== receipt.threadId)
-          setDraft(draftCache.current.get(receipt.threadId) ?? "");
+          setDraft(draftCache.current.get(`${commandInbox}:${receipt.threadId}`) ?? "");
         selection.current = receipt.threadId;
         setSelected(receipt.threadId);
         const fresh = await loadConversation(receipt.threadId, undefined, false);
@@ -409,13 +502,28 @@ export function MessagingInbox({
           fresh.thread.latestSequence < receipt.sequence
         )
           throw new Error("unconfirmed_message_action");
-        pendingRef.current = null;
-        setPending(null);
-        setRequiresLogin(false);
         if (intent.action === "send") {
-          draftCache.current.delete(receipt.threadId);
-          if (selection.current === receipt.threadId) setDraft("");
+          // Clear only the matching sent draft before removing recovery, avoiding a crash gap.
+          const remaining =
+            store?.clearSentDraft(
+              receipt.threadId,
+              fresh.thread.inbox,
+              intent.body.body as string,
+              intent.key,
+            ) ?? "";
+          draftCache.current.set(`${fresh.thread.inbox}:${receipt.threadId}`, remaining);
+          draftRevisions.current.set(
+            `${fresh.thread.inbox}:${receipt.threadId}`,
+            store?.readDraftState(receipt.threadId, fresh.thread.inbox).key ?? null,
+          );
+          if (selection.current === receipt.threadId) setDraft(remaining);
         }
+        store?.completePending(intent.key, receipt);
+        const nextPending = store?.readPending() ?? null;
+        pendingRef.current = nextPending?.intent ?? null;
+        pendingInbox.current = nextPending?.inbox ?? fresh.thread.inbox;
+        setPending(nextPending?.intent ?? null);
+        setRequiresLogin(false);
         setInbox(fresh.thread.inbox);
         setPage(1);
         view.current = { inbox: fresh.thread.inbox, page: 1 };
@@ -431,8 +539,19 @@ export function MessagingInbox({
           pendingRef.current = recovery;
           setPending(recovery);
         } else {
-          pendingRef.current = null;
-          setPending(null);
+          try {
+            store?.clearPending(intent.key);
+            const next = store?.readPending() ?? null;
+            pendingRef.current = next?.intent ?? null;
+            pendingInbox.current = next?.inbox ?? commandInbox;
+            setPending(next?.intent ?? null);
+          } catch (storageFailure) {
+            const recovery = { ...command, uncertain: true };
+            pendingRef.current = recovery;
+            setPending(recovery);
+            fail(storageFailure);
+            return;
+          }
         }
         fail(failure);
       } finally {
@@ -442,7 +561,16 @@ export function MessagingInbox({
         }
       }
     },
-    [fail, loadConversation, loadList, scopedRequest, usable],
+    [
+      fail,
+      loadConversation,
+      loadList,
+      scopedRequest,
+      usable,
+      store,
+      authorityVerified,
+      recoveryReady,
+    ],
   );
 
   useEffect(() => {
@@ -465,6 +593,68 @@ export function MessagingInbox({
     }
   }, [clearPrivate, request, preview, expectedAccountId]);
   useEffect(() => {
+    if (!active || !authorityVerified || restored.current) return;
+    restored.current = true;
+    try {
+      const saved = store?.readPending();
+      if (saved) {
+        pendingRef.current = saved.intent;
+        pendingInbox.current = saved.inbox;
+        setPending(saved.intent);
+        setInbox(saved.inbox);
+        view.current = { inbox: saved.inbox, page: 1 };
+      } else {
+        const last = store?.readSelection();
+        if (last && !initialTarget) {
+          setInbox(last.inbox);
+          view.current = { inbox: last.inbox, page: 1 };
+          selection.current = last.threadId;
+          setSelected(last.threadId);
+          void loadConversation(last.threadId);
+        }
+      }
+      setRecoveryReady(true);
+    } catch {
+      setStorageWarning(
+        "Nacrt se ne može sačuvati na uređaju. Oslobodi prostor pa osvježi stranicu.",
+      );
+    }
+  }, [active, authorityVerified, store, initialTarget, loadConversation]);
+  useEffect(() => {
+    if (!store) return;
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === store.logoutKey) {
+        clearPrivate(true);
+        setRequiresLogin(true);
+        setError("Prijavi se ponovo.");
+        return;
+      }
+      if (
+        !event.key?.startsWith(`${store.prefix}draft.`) ||
+        !authorityVerified ||
+        !restored.current ||
+        writing.current ||
+        pendingRef.current
+      )
+        return;
+      for (const key of draftCache.current.keys()) {
+        if (unpersistedDrafts.current.has(key)) continue;
+        const [selectedInbox, id] = key.split(":");
+        if ((selectedInbox !== "personal" && selectedInbox !== "business") || !id) continue;
+        try {
+          const value = store.readDraftState(id, selectedInbox);
+          draftCache.current.set(key, value.text);
+          draftRevisions.current.set(key, value.key);
+          if (selection.current === id) setDraft(value.text);
+        } catch {
+          /* Never replace a local draft when storage is unavailable. */
+        }
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [clearPrivate, store, authorityVerified]);
+  useEffect(() => {
     if (active) void loadList(inbox, page);
     return () => {
       for (const controller of controllers.current) controller.abort();
@@ -480,6 +670,7 @@ export function MessagingInbox({
       !active ||
       !initialTarget ||
       !usable ||
+      (store && !recoveryReady) ||
       pending ||
       busy ||
       handledTarget.current === targetKey
@@ -500,7 +691,18 @@ export function MessagingInbox({
       key: crypto.randomUUID(),
       threadId: null,
     });
-  }, [active, busy, commit, conversation, initialTarget, pending, targetKey, usable]);
+  }, [
+    active,
+    busy,
+    commit,
+    conversation,
+    initialTarget,
+    pending,
+    targetKey,
+    usable,
+    store,
+    recoveryReady,
+  ]);
   useEffect(() => {
     if (!active || !usable) return;
     const refresh = () => {
@@ -526,7 +728,12 @@ export function MessagingInbox({
     if (busy || pending || selection.current === thread.id) return;
     selection.current = thread.id;
     setSelected(thread.id);
-    setDraft(draftCache.current.get(thread.id) ?? "");
+    setDraft(draftCache.current.get(`${thread.inbox}:${thread.id}`) ?? "");
+    try {
+      store?.saveSelection(thread.id, thread.inbox);
+    } catch {
+      setStorageWarning("Nacrt se trenutno čuva samo dok je aplikacija otvorena.");
+    }
     setError("");
     setConversation(conversationCache.current.get(thread.id) ?? null);
     void loadConversation(thread.id);
@@ -555,16 +762,44 @@ export function MessagingInbox({
   function send() {
     if (!conversation?.thread.canSend || busy || pending) return;
     try {
+      let commandKey = crypto.randomUUID(),
+        draftRevision: string | undefined;
+      if (store) {
+        const id = conversation.thread.id,
+          selectedInbox = conversation.thread.inbox;
+        const key = `${selectedInbox}:${id}`;
+        if (unpersistedDrafts.current.has(key)) {
+          draftRevisions.current.set(key, store.saveDraft(id, selectedInbox, draft));
+          unpersistedDrafts.current.delete(key);
+          setStorageWarning("");
+        } else {
+          // A different window may have sent this draft before its storage event arrived.
+          const current = store.readDraftState(id, selectedInbox);
+          if (current.text !== draft || current.key !== draftRevisions.current.get(key)) {
+            draftCache.current.set(key, current.text);
+            draftRevisions.current.set(key, current.key);
+            setDraft(current.text);
+            return;
+          }
+        }
+        const revision = draftRevisions.current.get(key);
+        if (!revision) throw new MessagingStorageError();
+        // Two windows sending the same immutable draft version share one server command.
+        commandKey = revision;
+        draftRevision = revision;
+      }
       const body = normalizeMessageBody(draft);
       void commit({
         action: "send",
         path: `threads/${conversation.thread.id}/messages`,
         body: { body },
         threadId: conversation.thread.id,
-        key: crypto.randomUUID(),
+        key: commandKey,
+        ...(draftRevision ? { draftRevision } : {}),
       });
-    } catch {
-      setError("Napiši poruku do 2.000 znakova.");
+    } catch (failure) {
+      if (failure instanceof MessagingStorageError) fail(failure);
+      else setError("Napiši poruku do 2.000 znakova.");
     }
   }
   const thread = conversation?.thread;
@@ -600,6 +835,11 @@ export function MessagingInbox({
             </Link>
           )}
         </div>
+      )}
+      {storageWarning && (
+        <p role="status" className={styles.error}>
+          {storageWarning}
+        </p>
       )}
       {pending && (
         <div role="status" className={styles.pending}>
@@ -840,8 +1080,23 @@ export function MessagingInbox({
                   onChange={(event) => {
                     const value = event.target.value;
                     if (selected) {
-                      if (value) draftCache.current.set(selected, value);
-                      else draftCache.current.delete(selected);
+                      const selectedInbox = conversation?.thread.inbox ?? inbox;
+                      draftCache.current.set(`${selectedInbox}:${selected}`, value);
+                      try {
+                        const revision = store?.saveDraft(selected, selectedInbox, value);
+                        draftRevisions.current.set(
+                          `${selectedInbox}:${selected}`,
+                          revision ?? null,
+                        );
+                        store?.saveSelection(selected, selectedInbox);
+                        unpersistedDrafts.current.delete(`${selectedInbox}:${selected}`);
+                        setStorageWarning("");
+                      } catch {
+                        unpersistedDrafts.current.add(`${selectedInbox}:${selected}`);
+                        setStorageWarning(
+                          "Nacrt se trenutno čuva samo dok je aplikacija otvorena.",
+                        );
+                      }
                     }
                     setDraft(value);
                   }}

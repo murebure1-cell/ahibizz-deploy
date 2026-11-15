@@ -9,6 +9,7 @@ import {
   readAccountNavigation,
 } from "../../lib/account-return";
 import type { MessageTarget } from "../../lib/messaging";
+import { clearBrowserMessagingRecovery } from "../../lib/messaging-recovery-storage";
 import { type PersonalProfile, profileImageUrl } from "../../lib/people";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { useAppAppearance } from "../appearance/AppAppearance";
@@ -88,6 +89,7 @@ export function AccountDashboard({
         setError("Odjava nije uspjela. Pokušaj ponovo.");
         return;
       }
+      clearBrowserMessagingRecovery(initial.id);
       resetAppearance();
       window.location.assign("/prijava");
     } catch {
