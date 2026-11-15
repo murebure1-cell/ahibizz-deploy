@@ -1,7 +1,7 @@
 .workspace {
-  --ink: #173047;
-  --muted: #6b7d8c;
-  --line: #e1e7ec;
+  --ink: var(--ui-text);
+  --muted: var(--ui-muted);
+  --line: var(--ui-border);
   min-width: 0;
   width: 100%;
   color: var(--ink);
@@ -21,7 +21,7 @@
 }
 .workspace button:focus-visible,
 .workspace textarea:focus-visible {
-  outline: 3px solid #cfaa58;
+  outline: 3px solid var(--ui-focus);
   outline-offset: 3px;
 }
 .workspace svg {
@@ -53,7 +53,7 @@
 .pending button {
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #fff;
+  background: var(--ui-surface);
   color: var(--ink);
   padding: 11px 16px;
   font-size: 0.8rem;
@@ -68,17 +68,17 @@
   line-height: 1.5;
 }
 .error {
-  background: #fff0eb;
-  color: #9b3d27;
-  border: 1px solid #f2d8ce;
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+  border: 1px solid var(--ui-danger-border);
 }
 .pending {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  background: #faf4e5;
-  border: 1px solid #e8d6ad;
+  background: var(--ui-warning-soft);
+  border: 1px solid var(--ui-warning-border);
 }
 .layout {
   display: grid;
@@ -88,7 +88,7 @@
   border: 1px solid var(--line);
   border-radius: 23px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--ui-surface-raised);
   box-shadow: 0 12px 40px #15314a06;
 }
 .sidebar {
@@ -97,7 +97,7 @@
   min-width: 0;
   min-height: 0;
   border-right: 1px solid var(--line);
-  background: #fff;
+  background: var(--ui-surface);
 }
 .tabs {
   display: grid;
@@ -110,14 +110,14 @@
   border: 0;
   border-radius: 11px;
   min-height: 42px;
-  background: #f4f6f8;
+  background: var(--ui-surface-soft);
   color: var(--muted);
   font-size: 0.81rem;
   font-weight: 650;
 }
 .tabs button[aria-selected="true"] {
-  background: #173047;
-  color: #fff;
+  background: var(--ui-primary);
+  color: var(--ui-on-primary);
   box-shadow: 0 4px 10px #17304712;
 }
 .threadList {
@@ -139,10 +139,10 @@
   transition: background 0.16s ease;
 }
 .thread:hover {
-  background: #f5f7fa;
+  background: var(--ui-surface-hover);
 }
 .thread.selected {
-  background: #f7f1e4;
+  background: var(--ui-surface-soft);
 }
 .avatar {
   display: flex;
@@ -151,15 +151,15 @@
   width: 42px;
   height: 42px;
   border-radius: 15px;
-  background: linear-gradient(145deg, #e9edf2, #f5f7f9);
-  color: #274761;
+  background: var(--ui-surface-soft);
+  color: var(--ui-text-secondary);
   font-size: 0.82rem;
   font-weight: 700;
   flex-shrink: 0;
 }
 .thread.selected .avatar {
-  background: #fff8e6;
-  color: #96712b;
+  background: var(--ui-surface-soft);
+  color: var(--ui-accent-text);
 }
 .threadBody {
   display: flex;
@@ -200,8 +200,8 @@
   height: 19px;
   padding: 0 5px;
   border-radius: 7px;
-  background: #d3ae5b;
-  color: #153047;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
   font-size: 0.63rem;
   font-weight: 750;
 }
@@ -217,7 +217,7 @@
 .listEmpty > svg {
   width: 30px;
   height: 30px;
-  color: #a5b3bf;
+  color: var(--ui-subtle);
   margin-bottom: 4px;
 }
 .listEmpty strong {
@@ -251,7 +251,7 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  background: linear-gradient(150deg, #fbfcfd, #f4f7f9);
+  background: var(--ui-surface-soft);
 }
 .conversationHeader {
   display: flex;
@@ -260,7 +260,7 @@
   padding: 17px 22px;
   min-height: 83px;
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--ui-surface-raised);
   backdrop-filter: blur(12px);
 }
 .conversationTitle {
@@ -287,7 +287,7 @@
   font-size: 0.7rem;
 }
 .block:hover {
-  color: #9b3d27;
+  color: var(--ui-danger);
 }
 .back {
   display: none;
@@ -296,7 +296,7 @@
   width: 38px;
   height: 38px;
   padding: 8px;
-  background: #fff;
+  background: var(--ui-surface);
 }
 .back svg {
   transform: rotate(180deg);
@@ -328,7 +328,7 @@
   max-width: 84%;
   min-width: 72px;
   padding: 12px 15px 8px;
-  background: #fff;
+  background: var(--ui-surface);
   border: 1px solid var(--line);
   border-radius: 17px 17px 17px 5px;
   box-shadow: 0 3px 10px #15304703;
@@ -347,13 +347,14 @@
   margin-top: 5px;
 }
 .fromMe .bubble {
-  border-color: #173047;
-  background: #173047;
-  color: #fff;
+  border-color: var(--ui-primary);
+  background: var(--ui-primary);
+  color: var(--ui-on-primary);
   border-radius: 17px 17px 5px 17px;
 }
 .fromMe .bubble time {
-  color: #b8cad6;
+  color: var(--ui-on-primary);
+  opacity: 0.78;
 }
 .older {
   display: block;
@@ -361,7 +362,7 @@
   padding: 8px 14px;
   border: 1px solid var(--line);
   border-radius: 20px;
-  background: #fff;
+  background: var(--ui-surface);
   color: var(--muted);
   font-size: 0.71rem;
 }
@@ -402,10 +403,10 @@
   place-items: center;
   width: 76px;
   height: 76px;
-  background: linear-gradient(140deg, #e9edf1, #fff);
-  border: 1px solid #fff;
+  background: linear-gradient(140deg, var(--ui-surface-soft), var(--ui-surface));
+  border: 1px solid var(--ui-border);
   border-radius: 25px;
-  color: #b78c37;
+  color: var(--ui-accent-text);
   box-shadow: 0 8px 25px #17304705;
   margin-bottom: 7px;
 }
@@ -419,7 +420,7 @@
 .emptyConversation svg {
   width: 30px;
   height: 30px;
-  color: #a5b3bf;
+  color: var(--ui-subtle);
 }
 .emptyConversation strong {
   color: var(--ink);
@@ -434,7 +435,7 @@
   align-items: flex-end;
   gap: 10px;
   padding: 16px 20px 20px;
-  background: #fff;
+  background: var(--ui-surface);
   border-top: 1px solid var(--line);
 }
 .composer textarea {
@@ -446,13 +447,13 @@
   padding: 13px 14px;
   border: 1px solid var(--line);
   border-radius: 15px;
-  background: #f8fafb;
+  background: var(--ui-surface-soft);
   color: var(--ink);
   font-size: 0.86rem;
   line-height: 1.5;
 }
 .composer textarea::placeholder {
-  color: #8a99a5;
+  color: var(--ui-muted);
 }
 .send {
   display: flex;
@@ -461,9 +462,9 @@
   gap: 8px;
   height: 50px;
   padding: 0 17px;
-  background: #d1ac59;
-  color: #173047;
-  border: 1px solid #c59b45;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  border: 1px solid var(--ui-accent-border);
   border-radius: 14px;
   font-size: 0.8rem;
   font-weight: 700;
@@ -473,7 +474,7 @@
   font-size: 0.78rem;
   color: var(--muted);
   text-align: center;
-  background: #f1f3f6;
+  background: var(--ui-surface-soft);
   border-top: 1px solid var(--line);
 }
 .simulate {
@@ -482,7 +483,7 @@
   border: 0;
   background: transparent;
   padding: 5px 12px;
-  color: #8a6a29;
+  color: var(--ui-accent-text);
   font-size: 0.72rem;
   text-decoration: underline;
   text-underline-offset: 3px;

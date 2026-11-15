@@ -34,7 +34,7 @@ function text(value: unknown, maximum: number): value is string {
 }
 
 /** Parse only documented account fields; never carry response extras into component state. */
-function account(value: unknown): SafeAccountProfile {
+export function readSafeAccountProfile(value: unknown): SafeAccountProfile {
   const row = record(value, [
     "id",
     "name",
@@ -110,7 +110,7 @@ export function readAdminAccountPage(value: unknown, query: AdminAccountQuery): 
     row.accounts.length > 30
   )
     invalid();
-  const accounts = row.accounts.map(account);
+  const accounts = row.accounts.map(readSafeAccountProfile);
   if (
     accounts.some((item) => item.approval !== query.approval) ||
     new Set(accounts.map((item) => item.id)).size !== accounts.length
@@ -131,7 +131,7 @@ export function readAdminAccountDecision(
   approval: "approved" | "suspended",
 ): SafeAccountProfile {
   const row = record(value, ["account"]);
-  const result = account(row.account);
+  const result = readSafeAccountProfile(row.account);
   if (result.id !== targetId || result.role !== "member" || result.approval !== approval) invalid();
   return result;
 }

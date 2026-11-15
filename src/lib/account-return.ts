@@ -7,6 +7,7 @@ const accountSections = {
   termini: "appointments",
   prijatelji: "connections",
   poruke: "messages",
+  postavke: "settings",
 } as const;
 
 export type AccountSection = (typeof accountSections)[keyof typeof accountSections];
@@ -17,6 +18,7 @@ const sectionQueries: Record<AccountSection, keyof typeof accountSections> = {
   appointments: "termini",
   connections: "prijatelji",
   messages: "poruke",
+  settings: "postavke",
 };
 
 /** A pane change drops old message targets and unrelated query parameters. */

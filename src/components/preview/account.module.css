@@ -12,7 +12,7 @@
 
 .eyebrow {
   margin-bottom: 10px;
-  color: #8b6b2c;
+  color: var(--ui-accent-text);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.13em;
@@ -24,13 +24,13 @@
 
 .intro {
   margin-top: 10px;
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 14px;
 }
 
 .previewLabel {
   padding-bottom: 3px;
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -45,9 +45,9 @@
 .sidebar,
 .panel {
   min-width: 0;
-  border: 1px solid #e2e7eb;
+  border: 1px solid var(--ui-border);
   border-radius: 20px;
-  background: #fff;
+  background: var(--ui-surface);
 }
 
 .sidebar {
@@ -67,10 +67,10 @@
   place-items: center;
   width: 43px;
   height: 43px;
-  border: 1px solid #d7bc84;
+  border: 1px solid var(--ui-accent-border);
   border-radius: 14px;
   background: #173047;
-  color: #efd39a;
+  color: #e9ca8a;
   font-size: 13px;
   font-weight: 650;
   letter-spacing: -0.04em;
@@ -91,7 +91,7 @@
 .identity :where(div) > span {
   display: block;
   margin-top: 4px;
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 10px;
 }
 
@@ -110,20 +110,20 @@
   border: 0;
   border-radius: 10px;
   background: transparent;
-  color: #627484;
+  color: var(--ui-text-secondary);
   text-align: left;
   font-size: 13px;
   font-weight: 500;
 }
 
 .navigation button:hover {
-  background: #f5f7f9;
-  color: #173047;
+  background: var(--ui-surface-hover);
+  color: var(--ui-text);
 }
 
 .navigation button[aria-current="page"] {
-  background: #ecf1f5;
-  color: #173047;
+  background: var(--ui-surface-soft);
+  color: var(--ui-text);
   font-weight: 650;
 }
 
@@ -147,8 +147,8 @@
 .sidebarNote {
   margin: 20px 10px 0;
   padding-top: 15px;
-  border-top: 1px solid #edf0f2;
-  color: #627381;
+  border-top: 1px solid var(--ui-border);
+  color: var(--ui-text-secondary);
   font-size: 10px;
 }
 
@@ -177,7 +177,7 @@
   padding: 5px 0 5px 10px;
   border: 0;
   background: none;
-  color: #657789;
+  color: var(--ui-text-secondary);
   font-size: 12px;
 }
 
@@ -191,9 +191,9 @@
   align-items: start;
   gap: 18px;
   padding: 26px;
-  border: 1px solid #e5eaf0;
+  border: 1px solid var(--ui-border);
   border-radius: 15px;
-  background: #f7f9fb;
+  background: var(--ui-surface-soft);
 }
 
 .nextIcon,
@@ -202,8 +202,8 @@
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  color: #7e632e;
-  background: #f5ecd9;
+  color: var(--ui-accent-text);
+  background: var(--ui-surface-soft);
 }
 
 .nextIcon {
@@ -218,7 +218,7 @@
 }
 
 .smallLabel {
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 9px;
   letter-spacing: 0.09em;
   font-weight: 600;
@@ -231,7 +231,7 @@
 
 .nextAppointment p {
   margin-top: 10px;
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -247,10 +247,10 @@
   width: 100%;
   padding: 18px 2px;
   border: 0;
-  border-bottom: 1px solid #edf0f2;
+  border-bottom: 1px solid var(--ui-border);
   background: none;
   text-align: left;
-  color: #173047;
+  color: var(--ui-text);
 }
 
 .shortcuts button:last-child {
@@ -266,8 +266,8 @@
   width: 39px;
   height: 39px;
   border-radius: 11px;
-  background: #f0f4f7;
-  color: #5a7388;
+  background: var(--ui-surface-soft);
+  color: var(--ui-text-secondary);
 }
 
 .shortcutIcon svg {
@@ -284,7 +284,7 @@
 .shortcuts :where(button > span) > span {
   display: block;
   margin-top: 5px;
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 11px;
   line-height: 1.5;
 }
@@ -293,7 +293,7 @@
   width: 16px;
   height: 16px;
   margin-left: auto;
-  color: #9aa7b1;
+  color: var(--ui-subtle);
   flex-shrink: 0;
 }
 
@@ -309,10 +309,10 @@
   width: 64px;
   height: 64px;
   margin-bottom: 22px;
-  border: 1px solid #e3eaf0;
+  border: 1px solid var(--ui-border);
   border-radius: 19px;
-  background: #f0f4f7;
-  color: #7b91a3;
+  background: var(--ui-surface-soft);
+  color: var(--ui-muted);
 }
 
 .emptyIcon svg {
@@ -327,7 +327,7 @@
 .empty p {
   max-width: 330px;
   margin-top: 12px;
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 13px;
   line-height: 1.7;
 }
@@ -339,16 +339,16 @@
   gap: 12px;
   min-height: 45px;
   padding: 11px 17px;
-  border: 1px solid #d8ae56;
+  border: 1px solid var(--ui-accent-border);
   border-radius: 11px;
-  background: #d8ae56;
-  color: #173047;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
   font-size: 12px;
   font-weight: 600;
 }
 
 .primary:hover:not(:disabled) {
-  background: #e1bc70;
+  background: var(--ui-accent);
 }
 
 .primary:disabled {
@@ -367,7 +367,7 @@
 
 .sectionNote {
   margin-bottom: 24px;
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 13px;
   line-height: 1.7;
 }
@@ -389,7 +389,7 @@
   flex-direction: column;
   align-items: start;
   gap: 10px;
-  color: #173047;
+  color: var(--ui-text);
   font-size: 13px;
   font-weight: 600;
 }
@@ -400,10 +400,10 @@
   min-width: 0;
   min-height: 48px;
   padding: 11px 13px;
-  border: 1px solid #cdd6dd;
+  border: 1px solid var(--ui-border);
   border-radius: 10px;
-  background: #fff;
-  color: #173047;
+  background: var(--ui-input);
+  color: var(--ui-text);
   font: inherit;
   font-size: 16px;
   font-weight: 400;
@@ -415,7 +415,7 @@
 
 .status {
   margin-top: 14px;
-  color: #526b61;
+  color: var(--ui-success);
   font-size: 12px;
 }
 
@@ -432,7 +432,7 @@
 
 .themeGroup legend {
   padding: 0;
-  color: #173047;
+  color: var(--ui-text);
   font-size: 13px;
   font-weight: 600;
 }
@@ -451,17 +451,17 @@
   align-items: center;
   gap: 10px;
   padding: 13px 10px 11px;
-  border: 1px solid #dce3e8;
+  border: 1px solid var(--ui-border);
   border-radius: 12px;
-  color: #637786;
+  color: var(--ui-text-secondary);
   font-size: 12px;
   cursor: pointer;
 }
 
 .themeOptions label:has(input:checked) {
-  border-color: #c5a35d;
-  background: #fcf9f2;
-  color: #173047;
+  border-color: var(--ui-accent-border);
+  background: var(--ui-surface-soft);
+  color: var(--ui-text);
 }
 
 .themeOptions input {
@@ -469,7 +469,7 @@
   top: 10px;
   right: 8px;
   margin: 0;
-  accent-color: #94712f;
+  accent-color: var(--ui-primary);
 }
 
 .themeSwatch {
@@ -507,8 +507,8 @@
 .settingsNote {
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid #edf0f2;
-  color: #5c7181;
+  border-top: 1px solid var(--ui-border);
+  color: var(--ui-text-secondary);
   font-size: 12px;
   line-height: 1.7;
 }
@@ -516,7 +516,7 @@
 .settingsNote span {
   display: block;
   margin-top: 6px;
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 11px;
 }
 
@@ -586,15 +586,15 @@
     flex: 0 0 auto;
     gap: 8px;
     padding-inline: 13px;
-    border: 1px solid #e2e7eb;
+    border: 1px solid var(--ui-border);
     border-radius: 10px;
-    background: #fff;
+    background: var(--ui-surface);
     font-size: 12px;
     white-space: nowrap;
   }
 
   .navigation button[aria-current="page"] {
-    border-color: #bdcbd6;
+    border-color: var(--ui-border);
   }
 
   .navigation button > .navArrow,

@@ -58,6 +58,7 @@ export default async function AccountPage({
     );
   return (
     <AccountDashboard
+      key={profile.id}
       initial={profile}
       messageTarget={messageTarget}
       invalidMessageTarget={invalidMessageTarget}

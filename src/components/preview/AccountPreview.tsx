@@ -4,6 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { AccountSettingsError } from "../../lib/account-settings";
+import { isAppearance } from "../../lib/appearance";
+import type { SafeAccountProfile } from "../../server/auth/accounts";
+import { AccountSettings } from "../account/AccountSettings";
 import { CustomerAppointments } from "../booking/CustomerAppointments";
 import { ConnectionsPanel } from "../connections/ConnectionsPanel";
 import { Icon, type IconName } from "../Icon";
@@ -30,12 +34,6 @@ const sections = [
 ] as const satisfies readonly { id: string; label: string; icon: IconName }[];
 
 type Section = (typeof sections)[number]["id"];
-type Theme = "light" | "dark" | "system";
-const themes: { id: Theme; label: string }[] = [
-  { id: "light", label: "Svijetlo" },
-  { id: "dark", label: "Tamno" },
-  { id: "system", label: "Sistem" },
-];
 
 function EmptyState({
   icon,
@@ -73,8 +71,28 @@ export function AccountPreview() {
   const [section, setSection] = useState<Section>("overview");
   const navigation = useRef<HTMLElement>(null);
   const name = person.getProfile().name;
-  const [language, setLanguage] = useState("bs");
-  const [theme, setTheme] = useState<Theme>("system");
+  const settings = useRef<SafeAccountProfile>({
+    id: person.getProfile().id,
+    name,
+    email: "preview@example.invalid",
+    role: "member",
+    approval: "approved",
+    emailVerified: true,
+    locale: "bs",
+    appearance: "system",
+  });
+  const settingsRequest = useRef(async (options: RequestInit = {}) => {
+    if (options.method === "PATCH") {
+      const value = JSON.parse(String(options.body)) as Record<string, unknown>;
+      if (
+        !isAppearance(value.appearance) ||
+        value.expectedAppearance !== settings.current.appearance
+      )
+        throw new AccountSettingsError(409, "APPEARANCE_CONFLICT");
+      settings.current = { ...settings.current, appearance: value.appearance };
+    }
+    return { account: { ...settings.current } };
+  });
   const saved = previewBusinesses.filter((business) => preview.saved.has(business.id));
   const current = sections.find((item) => item.id === section) ?? sections[0];
 
@@ -84,6 +102,7 @@ export function AccountPreview() {
     if (selectedSection === "prijatelji") setSection("connections");
     if (selectedSection === "djelatnosti") setSection("businesses");
     if (selectedSection === "poruke") setSection("messages");
+    if (selectedSection === "postavke") setSection("settings");
   }, [selectedSection]);
   // Keep the active account section visible in the horizontal mobile navigation.
   // biome-ignore lint/correctness/useExhaustiveDependencies: Section changes update the rendered aria-current target.
@@ -288,50 +307,13 @@ export function AccountPreview() {
               imageUrl={connections.imageUrl}
             />
           </div>
-          {section === "settings" && (
-            <div className={styles.settings}>
-              <label className={styles.field} htmlFor="account-preview-language">
-                Jezik
-                <select
-                  id="account-preview-language"
-                  value={language}
-                  onChange={(event) => setLanguage(event.target.value)}
-                >
-                  <option value="bs">Bosanski</option>
-                  <option value="en">English</option>
-                </select>
-              </label>
-              <fieldset className={styles.themeGroup}>
-                <legend>Izgled</legend>
-                <div className={styles.themeOptions}>
-                  {themes.map((option) => (
-                    <label key={option.id}>
-                      <input
-                        type="radio"
-                        name="preview-theme"
-                        value={option.id}
-                        checked={theme === option.id}
-                        onChange={() => setTheme(option.id)}
-                      />
-                      <span
-                        className={styles.themeSwatch}
-                        data-theme={option.id}
-                        aria-hidden="true"
-                      >
-                        <span />
-                      </span>
-                      <span>{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-              <p className={styles.settingsNote} role="status">
-                Odabrano: {language === "bs" ? "Bosanski" : "English"} ·{" "}
-                {themes.find((item) => item.id === theme)?.label}.
-                <span>Probni odabir ne mijenja jezik ni temu ostatka aplikacije.</span>
-              </p>
-            </div>
-          )}
+          <div hidden={section !== "settings"}>
+            <AccountSettings
+              initial={settings.current}
+              active={section === "settings"}
+              request={settingsRequest.current}
+            />
+          </div>
         </section>
       </div>
     </main>

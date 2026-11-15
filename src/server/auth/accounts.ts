@@ -79,7 +79,7 @@ export function parseAccountListInput(input: unknown): AccountListInput {
   };
 }
 function updateInput(input: unknown) {
-  const value = object(input, ["name", "locale", "appearance"]);
+  const value = object(input, ["name", "locale", "appearance", "expectedAppearance"]);
   if (Object.keys(value).length === 0) fail(400, "INVALID_PROFILE");
   if (
     Object.hasOwn(value, "name") &&
@@ -99,7 +99,18 @@ function updateInput(input: unknown) {
     !["system", "light", "dark"].includes(value.appearance as string)
   )
     fail(400, "INVALID_PROFILE");
-  return value as { name?: string; locale?: AccountLocale; appearance?: AccountAppearance };
+  if (
+    Object.hasOwn(value, "expectedAppearance") &&
+    (!Object.hasOwn(value, "appearance") ||
+      !["system", "light", "dark"].includes(value.expectedAppearance as string))
+  )
+    fail(400, "INVALID_PROFILE");
+  return value as {
+    name?: string;
+    locale?: AccountLocale;
+    appearance?: AccountAppearance;
+    expectedAppearance?: AccountAppearance;
+  };
 }
 async function profile(client: Pick<PoolClient, "query">, id: string): Promise<SafeAccountProfile> {
   const result = await client.query<SafeAccountProfile>(
@@ -189,6 +200,11 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
         current = await session(headers);
       return transaction(pool, async (client) => {
         const user = await authority(client, current);
+        if (
+          value.expectedAppearance !== undefined &&
+          (await profile(client, user.id)).appearance !== value.expectedAppearance
+        )
+          fail(409, "APPEARANCE_CONFLICT");
         if (value.name !== undefined) {
           await client.query('UPDATE auth_user SET name = $1, "updatedAt" = now() WHERE id = $2', [
             value.name.trim(),

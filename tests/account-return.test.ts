@@ -16,6 +16,7 @@ test("login retains only exact known messaging destinations and previous safe pr
     "/nalog?odjeljak=termini",
     "/nalog?odjeljak=prijatelji",
     "/nalog?odjeljak=poruke",
+    "/nalog?odjeljak=postavke",
     "/nalog?odjeljak=poruke&osoba=person_1-A",
     `/nalog?odjeljak=poruke&djelatnost=${business}`,
     `/djelatnosti/${business}#business-appointments`,
@@ -42,7 +43,8 @@ test("login retains only exact known messaging destinations and previous safe pr
     "/nalog?odjeljak=termini&odjeljak=poruke",
     "/nalog?odjeljak=djelatnosti&next=https://evil.invalid",
     "/nalog?odjeljak=termini#other",
-    "/nalog?odjeljak=postavke",
+    "/nalog?odjeljak=postavke&odjeljak=profil",
+    "/nalog?odjeljak=postavke&appearance=dark",
     "/nalog?odjeljak=constructor",
     "/nalog?odjeljak=%74ermini",
     "/nalog?odjeljak=poruke%26osoba%3Dsomeone",
@@ -59,6 +61,7 @@ test("known account deep links retain their section through sign-in without expo
     ["termini", "appointments"],
     ["prijatelji", "connections"],
     ["poruke", "messages"],
+    ["postavke", "settings"],
   ] as const;
   for (const [query, expected] of sections) {
     const loginReturn = accountReturnPath(`/nalog?odjeljak=${query}`);
@@ -75,7 +78,7 @@ test("known account deep links retain their section through sign-in without expo
     [],
     ["termini", "poruke"],
     { toString: () => "djelatnosti" },
-    "postavke",
+    "postavke&appearance=dark",
     "constructor",
     "__proto__",
     "TERMINI",
@@ -91,6 +94,7 @@ test("account pane addresses round-trip for refresh and browser history without 
     "appointments",
     "connections",
     "messages",
+    "settings",
   ] as const) {
     const href = accountSectionPath(section);
     assert.equal(accountReturnPath(href), href);
@@ -134,6 +138,10 @@ test("browser account navigation takes message intent only from the current exac
     assert.equal(navigation.messageTarget, undefined);
     assert.equal(navigation.invalidMessageTarget, false);
   }
+  assert.deepEqual(readAccountNavigation(new URLSearchParams("odjeljak=postavke&osoba=old")), {
+    section: "settings",
+    invalidMessageTarget: false,
+  });
   for (const query of [
     "odjeljak=poruke&osoba=",
     "odjeljak=poruke&osoba=a&osoba=b",

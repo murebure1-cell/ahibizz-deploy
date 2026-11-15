@@ -5,9 +5,9 @@
   grid-template-columns: 1.15fr 1fr;
   overflow: hidden;
   min-height: 610px;
-  border: 1px solid #e1e7eb;
+  border: 1px solid var(--ui-border);
   border-radius: 24px;
-  background: #fff;
+  background: var(--ui-surface);
   box-shadow: 0 20px 65px #17304706;
 }
 .card {
@@ -18,7 +18,7 @@
   display: flex;
   gap: 5px;
   align-items: center;
-  color: #74818a;
+  color: var(--ui-muted);
   font-size: 12px;
   margin-bottom: 35px;
 }
@@ -30,19 +30,19 @@
 .eyebrow {
   font-size: 10px;
   letter-spacing: 0.14em;
-  color: #987735;
+  color: var(--ui-accent-text);
   font-weight: 650;
 }
 .card h1 {
   font-size: 36px;
-  color: #173047;
+  color: var(--ui-text);
   margin-top: 12px;
   line-height: 1.14;
   letter-spacing: -0.04em;
 }
 .intro {
   font-size: 14px;
-  color: #6d7d89;
+  color: var(--ui-muted);
   margin: 14px 0 28px;
 }
 .card form > label {
@@ -52,14 +52,14 @@
   margin-top: 18px;
   font-size: 13px;
   font-weight: 600;
-  color: #284356;
+  color: var(--ui-text);
 }
 .card input:not([type="checkbox"]) {
   width: 100%;
-  border: 1px solid #d5dfe5;
+  border: 1px solid var(--ui-border);
   border-radius: 10px;
-  background: #fff;
-  color: #173047;
+  background: var(--ui-input);
+  color: var(--ui-text);
   min-height: 48px;
   padding: 11px 13px;
   font: inherit;
@@ -67,7 +67,7 @@
   font-weight: 400;
 }
 .card input:disabled {
-  background: #f5f7f8;
+  background: var(--ui-surface-soft);
   cursor: not-allowed;
 }
 .password {
@@ -84,14 +84,14 @@
   bottom: 0;
   background: none;
   border: 0;
-  color: #657787;
+  color: var(--ui-text-secondary);
   font-size: 11px;
   font-weight: 600;
 }
 .card small {
   font-size: 11px;
   font-weight: 400;
-  color: #81909b;
+  color: var(--ui-muted);
 }
 .options {
   display: flex;
@@ -105,12 +105,12 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  color: #526b7c;
+  color: var(--ui-text-secondary);
 }
 .card .remember input {
   width: 16px;
   height: 16px;
-  accent-color: #173047;
+  accent-color: var(--ui-primary);
 }
 .options > a,
 .switch a {
@@ -125,8 +125,8 @@
   min-height: 47px;
   border: 0;
   border-radius: 10px;
-  background: #dab15a;
-  color: #173047;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
   font: inherit;
   font-size: 14px;
   font-weight: 650;
@@ -140,21 +140,21 @@
 .switch {
   margin-top: 25px;
   font-size: 12px;
-  color: #697d8b;
+  color: var(--ui-muted);
   text-align: center;
 }
 .notice {
   padding: 13px 15px;
-  background: #f6f0e4;
-  color: #826321;
-  border: 1px solid #ece1c8;
+  background: var(--ui-success-soft);
+  color: var(--ui-accent-text);
+  border: 1px solid var(--ui-accent-border);
   border-radius: 10px;
   font-size: 13px;
   line-height: 1.6;
 }
 .error {
   margin-top: 18px;
-  color: #9f3434;
+  color: var(--ui-danger);
   font-size: 13px;
 }
 .done {
@@ -164,9 +164,9 @@
   padding: 10px;
   width: 44px;
   height: 44px;
-  background: #eaf4ec;
+  background: var(--ui-success-soft);
   border-radius: 50%;
-  color: #4a7757;
+  color: var(--ui-success);
   margin-bottom: 20px;
 }
 .done h2 {
@@ -174,7 +174,7 @@
 }
 .done > p {
   font-size: 14px;
-  color: #6d7d89;
+  color: var(--ui-muted);
   line-height: 1.6;
   margin-top: 12px;
 }
@@ -248,7 +248,7 @@
 .resend {
   border: 0;
   background: transparent;
-  color: #526b7c;
+  color: var(--ui-text-secondary);
   text-decoration: underline;
   text-underline-offset: 3px;
   padding: 12px 0;

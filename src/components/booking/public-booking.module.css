@@ -1,11 +1,11 @@
 .booking,
 .appointments {
   min-width: 0;
-  color: #193347;
+  color: var(--ui-text);
 }
 .booking {
-  background: #fff;
-  border: 1px solid #dce5e9;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
   border-radius: 17px;
   padding: 27px;
 }
@@ -20,13 +20,13 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  background: #f5eddd;
+  background: var(--ui-surface-soft);
   border-radius: 12px;
-  color: #9b7834;
+  color: var(--ui-accent-text);
 }
 .heading p {
   font-size: 10px;
-  color: #988052;
+  color: var(--ui-accent-text);
   text-transform: uppercase;
   letter-spacing: 0.13em;
   margin-bottom: 6px;
@@ -41,17 +41,17 @@
   gap: 9px;
   font-size: 12px;
   font-weight: 600;
-  color: #526c7d;
+  color: var(--ui-text-secondary);
   margin: 18px 0;
 }
 .label select {
   font: inherit;
   font-weight: 400;
   font-size: 16px;
-  color: #193347;
-  border: 1px solid #dbe4e9;
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
   border-radius: 9px;
-  background: #f9fafb;
+  background: var(--ui-surface-soft);
   width: 100%;
   min-height: 46px;
   padding: 11px 12px;
@@ -72,10 +72,10 @@
   text-transform: capitalize;
 }
 .month button {
-  border: 1px solid #e1e6e9;
+  border: 1px solid var(--ui-border);
   border-radius: 9px;
-  background: #fff;
-  color: #5c7484;
+  background: var(--ui-surface);
+  color: var(--ui-text-secondary);
   display: grid;
   place-items: center;
   width: 38px;
@@ -94,7 +94,7 @@
 }
 .weekdays {
   font-size: 11px;
-  color: #8b9ba4;
+  color: var(--ui-muted);
   margin-bottom: 8px;
 }
 .days {
@@ -111,15 +111,15 @@
   border: 1px solid transparent;
   background: transparent;
   border-radius: 9px;
-  color: #496374;
+  color: var(--ui-text-secondary);
 }
 .days button:hover {
-  background: #f7f0e3;
+  background: var(--ui-surface-hover);
 }
 .days button[aria-pressed="true"] {
-  background: #18374c;
-  border-color: #18374c;
-  color: #fff;
+  background: var(--ui-primary);
+  border-color: var(--ui-primary);
+  color: var(--ui-on-primary);
 }
 .days button:disabled {
   opacity: 0.27;
@@ -135,14 +135,14 @@
   justify-content: space-between;
   gap: 10px;
   padding-top: 17px;
-  border-top: 1px solid #edf0f3;
+  border-top: 1px solid var(--ui-border);
 }
 .timeHeading h3 {
   font-size: 13px;
 }
 .timeHeading > span {
   font-size: 10px;
-  color: #84949d;
+  color: var(--ui-muted);
 }
 .times {
   display: grid;
@@ -158,15 +158,15 @@
   font-size: 12px;
   min-height: 44px;
   padding: 8px 5px;
-  border: 1px solid #dce5e9;
+  border: 1px solid var(--ui-border);
   border-radius: 9px;
-  background: #fff;
-  color: #496374;
+  background: var(--ui-surface);
+  color: var(--ui-text-secondary);
 }
 .times button[aria-pressed="true"] {
-  background: #f6eddb;
-  border-color: #b18c40;
-  color: #79581e;
+  background: var(--ui-surface-soft);
+  border-color: var(--ui-accent-border);
+  color: var(--ui-accent-text);
 }
 .times button:disabled {
   opacity: 0.5;
@@ -174,7 +174,7 @@
 .note {
   font-size: 12px;
   line-height: 1.7;
-  color: #7b8f9c;
+  color: var(--ui-muted);
   margin: 12px 0;
 }
 .total {
@@ -183,20 +183,20 @@
   gap: 14px;
   align-items: center;
   font-size: 13px;
-  color: #6c8391;
-  border-top: 1px solid #edf0f3;
+  color: var(--ui-muted);
+  border-top: 1px solid var(--ui-border);
   margin-top: 21px;
   padding-top: 20px;
 }
 .total strong {
   font-size: 22px;
   letter-spacing: -0.03em;
-  color: #173047;
+  color: var(--ui-text);
 }
 .summary {
   font-size: 13px;
   margin: 13px 0;
-  color: #496374;
+  color: var(--ui-text-secondary);
 }
 .primary,
 .secondary {
@@ -204,10 +204,10 @@
   font-size: 13px;
   min-height: 46px;
   padding: 12px 17px;
-  border: 1px solid #cba04a;
+  border: 1px solid var(--ui-accent-border);
   border-radius: 10px;
-  background: #dbb35f;
-  color: #173047;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -223,17 +223,17 @@
   cursor: default;
 }
 .secondary {
-  background: #fff;
-  border-color: #dce5e9;
-  color: #5c7382;
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+  color: var(--ui-text-secondary);
 }
 .error {
   font-size: 13px;
   line-height: 1.7;
-  color: #944c38;
-  background: #fbf1ed;
+  color: var(--ui-danger);
+  background: var(--ui-danger-soft);
   padding: 15px;
-  border: 1px solid #f0ddd4;
+  border: 1px solid var(--ui-danger-border);
   border-radius: 10px;
   margin: 16px 0;
 }
@@ -261,12 +261,12 @@
 }
 .success {
   padding: 22px;
-  border: 1px solid #dbe7df;
-  background: #eff5f0;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-success-soft);
   border-radius: 12px;
   font-size: 13px;
   line-height: 1.8;
-  color: #426d51;
+  color: var(--ui-success);
 }
 .success > svg {
   width: 26px;
@@ -309,9 +309,9 @@
   font-size: 12px;
   min-height: 44px;
   padding: 10px 14px;
-  border: 1px solid #dce5e9;
-  background: #fff;
-  color: #5f7888;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+  color: var(--ui-text-secondary);
   border-radius: 9px;
 }
 .viewSwitch {
@@ -320,9 +320,9 @@
   gap: 4px;
   padding: 4px;
   margin: 0 0 22px;
-  border: 1px solid #e0e6e9;
+  border: 1px solid var(--ui-border);
   border-radius: 12px;
-  background: #eef2f4;
+  background: var(--ui-surface-soft);
 }
 .viewSwitch button {
   min-height: 44px;
@@ -330,19 +330,19 @@
   border: 1px solid transparent;
   border-radius: 9px;
   background: transparent;
-  color: #657d8c;
+  color: var(--ui-muted);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
 }
 .viewSwitch button[aria-pressed="true"] {
-  border-color: #dce4e8;
-  background: #fff;
-  color: #193347;
+  border-color: var(--ui-border);
+  background: var(--ui-surface);
+  color: var(--ui-text);
   box-shadow: 0 2px 5px #19334708;
 }
 .viewSwitch button:focus-visible {
-  outline: 2px solid #a4813b;
+  outline: 2px solid var(--ui-focus);
   outline-offset: 2px;
 }
 .viewSwitch button:disabled {
@@ -351,8 +351,8 @@
 }
 .credit {
   font-size: 13px;
-  color: #917232;
-  background: #f7f0df;
+  color: var(--ui-accent-text);
+  background: var(--ui-surface-soft);
   border-radius: 10px;
   padding: 13px 16px;
   margin-bottom: 17px;
@@ -367,9 +367,9 @@
   justify-content: space-between;
   gap: 22px;
   padding: 24px;
-  border: 1px solid #dfe6e9;
+  border: 1px solid var(--ui-border);
   border-radius: 14px;
-  background: #fff;
+  background: var(--ui-surface);
   min-width: 0;
 }
 .entry > div {
@@ -382,12 +382,12 @@
 }
 .entry a {
   font-size: 13px;
-  color: #8e7237;
+  color: var(--ui-accent-text);
   line-height: 1.6;
 }
 .entry p {
   font-size: 13px;
-  color: #627b8b;
+  color: var(--ui-text-secondary);
   margin-top: 11px;
 }
 .entry .note {
@@ -399,21 +399,21 @@
   font-size: 10px;
   padding: 4px 8px;
   border-radius: 5px;
-  background: #f5eedf;
-  color: #957236;
+  background: var(--ui-success-soft);
+  color: var(--ui-accent-text);
 }
 .status[data-status="confirmed"] {
-  background: #eaf2ec;
-  color: #4b775b;
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
 }
 .status[data-status="completed"] {
-  background: #e9f0f4;
-  color: #4b6b80;
+  background: var(--ui-success-soft);
+  color: var(--ui-text-secondary);
 }
 .status[data-status="cancelled"],
 .status[data-status="declined"] {
-  background: #f1f3f5;
-  color: #8999a5;
+  background: var(--ui-danger-soft);
+  color: var(--ui-muted);
 }
 .pagination {
   display: flex;
@@ -422,18 +422,18 @@
   gap: 18px;
   margin-top: 23px;
   font-size: 13px;
-  color: #728895;
+  color: var(--ui-muted);
 }
 .empty {
   padding: 45px 20px;
-  border: 1px dashed #dce4e9;
+  border: 1px dashed var(--ui-border);
   border-radius: 14px;
-  background: #ffffff80;
+  background: var(--ui-surface);
   text-align: center;
 }
 .empty > svg {
   margin: 0 auto 15px;
-  color: #a78b51;
+  color: var(--ui-accent-text);
 }
 .empty h3 {
   font-size: 20px;
@@ -441,7 +441,7 @@
 .empty a {
   display: inline-flex;
   font-size: 13px;
-  color: #8f7136;
+  color: var(--ui-accent-text);
   min-height: 44px;
   align-items: center;
   margin-top: 13px;

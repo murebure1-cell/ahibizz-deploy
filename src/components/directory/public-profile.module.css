@@ -2,7 +2,7 @@
   width: min(1160px, calc(100% - 48px));
   margin-inline: auto;
   padding-block: 24px 64px;
-  color: #173047;
+  color: var(--ui-text);
 }
 
 .profile[data-embedded="true"] {
@@ -21,7 +21,7 @@
   justify-content: space-between;
   gap: 20px;
   padding-bottom: 20px;
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 12px;
 }
 
@@ -33,7 +33,7 @@
 }
 
 .breadcrumb a:hover {
-  color: #173047;
+  color: var(--ui-text);
 }
 
 .breadcrumb svg {
@@ -108,9 +108,9 @@
   min-width: 0;
   margin: -27px 23px 0;
   padding: 26px;
-  border: 1px solid #e1e7eb;
+  border: 1px solid var(--ui-border);
   border-radius: 17px;
-  background: #fff;
+  background: var(--ui-surface);
   box-shadow: 0 7px 25px #17304705;
 }
 
@@ -122,10 +122,10 @@
   width: 72px;
   height: 72px;
   overflow: hidden;
-  border: 1px solid #d5b575;
+  border: 1px solid var(--ui-accent-border);
   border-radius: 17px;
   background: #173047;
-  color: #e6c782;
+  color: #e9ca8a;
   font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.04em;
@@ -143,14 +143,14 @@
 
 .category {
   margin-bottom: 8px;
-  color: #8b692b;
+  color: var(--ui-accent-text);
   font-size: 11px;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
 .title :is(h1, h2) {
-  color: #173047;
+  color: var(--ui-text);
   font-size: clamp(28px, 3.4vw, 38px);
   line-height: 1.12;
   overflow-wrap: anywhere;
@@ -161,7 +161,7 @@
   align-items: start;
   gap: 6px;
   margin-top: 12px;
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 12px;
   line-height: 1.7;
   overflow-wrap: anywhere;
@@ -172,7 +172,7 @@
   width: 14px;
   height: 14px;
   margin-top: 3px;
-  color: #a27c32;
+  color: var(--ui-accent-text);
 }
 
 .verified {
@@ -180,7 +180,7 @@
   align-items: center;
   gap: 5px;
   margin-top: 10px;
-  color: #4f705e;
+  color: var(--ui-success);
   font-size: 11px;
 }
 
@@ -210,26 +210,26 @@
   gap: 9px;
   min-height: 45px;
   padding: 11px 17px;
-  border: 1px solid #d2a64d;
+  border: 1px solid var(--ui-accent-border);
   border-radius: 10px;
-  background: #d8ae56;
-  color: #173047;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
   font-size: 12px;
   font-weight: 600;
 }
 
 .primary:hover {
-  background: #e2bc6e;
+  background: var(--ui-accent);
 }
 
 .secondary {
-  border-color: #e1e7eb;
-  background: #fff;
-  color: #516b7f;
+  border-color: var(--ui-border);
+  background: var(--ui-surface);
+  color: var(--ui-text-secondary);
 }
 
 .secondary:hover {
-  background: #f2f5f8;
+  background: var(--ui-surface-hover);
 }
 
 .primary svg,
@@ -244,7 +244,7 @@
   margin-block: 24px 30px;
   padding-inline: 3px;
   overflow-x: auto;
-  border-bottom: 1px solid #dfe6eb;
+  border-bottom: 1px solid var(--ui-border);
   scrollbar-width: thin;
 }
 
@@ -255,15 +255,15 @@
   min-height: 49px;
   padding-block: 10px;
   border-bottom: 2px solid transparent;
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 13px;
   font-weight: 500;
 }
 
 .sectionNavigation a:hover,
 .sectionNavigation a:focus-visible {
-  border-bottom-color: #c8a154;
-  color: #173047;
+  border-bottom-color: var(--ui-accent-border);
+  color: var(--ui-text);
 }
 
 .layout {
@@ -283,9 +283,9 @@
 .contact {
   min-width: 0;
   padding: 29px;
-  border: 1px solid #e1e7eb;
+  border: 1px solid var(--ui-border);
   border-radius: 17px;
-  background: #fff;
+  background: var(--ui-surface);
 }
 
 .sectionHeading,
@@ -298,7 +298,7 @@
 
 .sectionHeading h2,
 .contactHeading h2 {
-  color: #173047;
+  color: var(--ui-text);
   font-size: 23px;
 }
 
@@ -310,8 +310,8 @@
   width: 33px;
   height: 33px;
   border-radius: 10px;
-  background: #f6f0e3;
-  color: #9a7733;
+  background: var(--ui-surface-soft);
+  color: var(--ui-accent-text);
 }
 
 .sectionHeading svg,
@@ -321,7 +321,7 @@
 }
 
 .description {
-  color: #51697b;
+  color: var(--ui-text-secondary);
   font-size: 14px;
   line-height: 1.9;
   white-space: pre-wrap;
@@ -330,7 +330,7 @@
 
 .missing,
 .address {
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 13px;
   line-height: 1.8;
   overflow-wrap: anywhere;
@@ -353,7 +353,7 @@
   overflow: hidden;
   aspect-ratio: 4 / 3;
   border-radius: 12px;
-  background: #edf1f4;
+  background: var(--ui-surface-soft);
 }
 
 .gallery figure:only-child {
@@ -375,7 +375,7 @@
 .directions {
   margin-top: 23px;
   padding-top: 20px;
-  border-top: 1px solid #e9eef1;
+  border-top: 1px solid var(--ui-border);
 }
 
 .directions p {
@@ -383,7 +383,7 @@
   align-items: center;
   gap: 7px;
   margin-bottom: 13px;
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 12px;
 }
 
@@ -405,17 +405,17 @@
   gap: 9px;
   min-height: 45px;
   padding: 10px 14px;
-  border: 1px solid #dce4e9;
+  border: 1px solid var(--ui-border);
   border-radius: 9px;
-  background: #f8fafb;
-  color: #3d596f;
+  background: var(--ui-surface-soft);
+  color: var(--ui-text-secondary);
   font-size: 12px;
   font-weight: 600;
 }
 
 .directions a:hover {
-  border-color: #b5c6d3;
-  background: #f0f4f7;
+  border-color: var(--ui-border-strong);
+  background: var(--ui-surface-hover);
 }
 
 .directions :where(a) svg {
@@ -449,7 +449,7 @@
   gap: 12px;
   min-width: 0;
   padding-block: 17px;
-  border-bottom: 1px solid #edf0f2;
+  border-bottom: 1px solid var(--ui-border);
 }
 
 .contactRow > span {
@@ -460,13 +460,13 @@
 .contactRow small {
   display: block;
   margin-bottom: 4px;
-  color: #627381;
+  color: var(--ui-text-secondary);
   font-size: 10px;
 }
 
 .contactRow strong {
   display: block;
-  color: #173047;
+  color: var(--ui-text);
   font-size: 12px;
   font-weight: 550;
   line-height: 1.6;
@@ -474,20 +474,20 @@
 }
 
 .contactRow:hover strong {
-  color: #8b692b;
+  color: var(--ui-accent-text);
 }
 
 .contactRow > svg {
   flex-shrink: 0;
   width: 18px;
   height: 18px;
-  color: #9a7a3b;
+  color: var(--ui-accent-text);
 }
 
 .contactRow > svg:last-child {
   width: 13px;
   height: 13px;
-  color: #8d9da9;
+  color: var(--ui-muted);
 }
 
 .contactLocation {
@@ -497,16 +497,16 @@
   min-height: 46px;
   margin-top: 19px;
   padding: 12px;
-  border: 1px solid #e2e8ec;
+  border: 1px solid var(--ui-border);
   border-radius: 10px;
-  color: #486579;
-  background: #f6f8fa;
+  color: var(--ui-text-secondary);
+  background: var(--ui-surface-soft);
   font-size: 11px;
   line-height: 1.6;
 }
 
 .contactLocation:hover {
-  background: #edf2f6;
+  background: var(--ui-surface-hover);
 }
 
 .contactLocation svg {

@@ -1,7 +1,7 @@
 .workspace {
-  --booking-ink: #173047;
-  --booking-muted: #627381;
-  --booking-line: #dfe6eb;
+  --booking-ink: var(--ui-text);
+  --booking-muted: var(--ui-muted);
+  --booking-line: var(--ui-border);
   color: var(--booking-ink);
   min-width: 0;
   width: 100%;
@@ -21,7 +21,7 @@
   opacity: 0.5;
 }
 .workspace :is(input, select) {
-  accent-color: #173047;
+  accent-color: var(--ui-primary);
 }
 .workspace fieldset {
   border: 0;
@@ -62,7 +62,7 @@
 }
 .back {
   border: 1px solid var(--booking-line);
-  background: #fff;
+  background: var(--ui-surface);
   color: var(--booking-ink);
   width: fit-content;
   min-height: 44px;
@@ -93,33 +93,33 @@
   text-align: center;
 }
 .primary {
-  background: #173047;
-  color: #fff;
-  border: 1px solid #173047;
+  background: var(--ui-primary);
+  color: var(--ui-on-primary);
+  border: 1px solid var(--ui-primary);
 }
 .secondary {
-  background: #fff;
-  border: 1px solid #d3dde5;
-  color: #173047;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-text);
 }
 .textButton {
   background: transparent;
   border: 1px solid transparent;
-  color: #345570;
+  color: var(--ui-text-secondary);
   padding-inline: 8px;
 }
 .primary:hover:not(:disabled) {
-  background: #24465f;
+  background: var(--ui-primary-hover);
 }
 .secondary:hover:not(:disabled),
 .textButton:hover:not(:disabled) {
-  background: #f0f4f7;
+  background: var(--ui-surface-hover);
 }
 .previewNote,
 .notice,
 .error,
 .conflict {
-  border: 1px solid #e0d4b7;
+  border: 1px solid var(--ui-warning-border);
   border-radius: 10px;
   padding: 12px 14px;
   font-size: 0.85rem;
@@ -128,18 +128,18 @@
   overflow-wrap: anywhere;
 }
 .previewNote {
-  color: #766037;
-  background: #fcf8ee;
+  color: var(--ui-warning);
+  background: var(--ui-warning-soft);
 }
 .notice {
-  color: #27533f;
-  background: #f0f7f2;
-  border-color: #d5e7da;
+  color: var(--ui-success);
+  background: var(--ui-success-soft);
+  border-color: var(--ui-success-border);
 }
 .error {
-  color: #8a3434;
-  background: #fff4f3;
-  border-color: #ecd1ce;
+  color: var(--ui-danger);
+  background: var(--ui-danger-soft);
+  border-color: var(--ui-danger-border);
 }
 .loading {
   padding-block: 20px;
@@ -159,27 +159,27 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #6e624d;
+  color: var(--ui-accent-text);
 }
 .onlineState > span,
 .calendarLegend > span {
   width: 7px;
   height: 7px;
-  background: #c5a56a;
+  background: var(--ui-accent);
   border-radius: 50%;
   flex-shrink: 0;
 }
 .onlineState[data-enabled="true"] {
-  color: #37624b;
+  color: var(--ui-success);
 }
 .onlineState:where([data-enabled="true"]) > span {
-  background: #5a8c70;
+  background: var(--ui-success);
 }
 
 .settings,
 .calendar,
 .dayPanel {
-  background: #fff;
+  background: var(--ui-surface);
   border: 1px solid var(--booking-line);
   border-radius: 18px;
   min-width: 0;
@@ -235,7 +235,7 @@
   width: 38px;
   height: 23px;
   border-radius: 20px;
-  background: #cbd5dd;
+  background: var(--ui-switch-track);
   position: relative;
   transition: background 150ms;
 }
@@ -250,13 +250,13 @@
   transition: transform 150ms;
 }
 .switch :where(input:checked + span) {
-  background: #173047;
+  background: var(--ui-primary);
 }
 .switch :where(input:checked + span)::after {
   transform: translateX(15px);
 }
 .switch :where(input:focus-visible + span) {
-  outline: 3px solid #d9af57;
+  outline: 3px solid var(--ui-focus);
   outline-offset: 3px;
 }
 .switch :where(input:disabled + span) {
@@ -267,7 +267,7 @@
   flex-direction: column;
   gap: 7px;
   min-width: 0;
-  color: #4e6374;
+  color: var(--ui-text-secondary);
   font-size: 0.78rem;
   font-weight: 600;
 }
@@ -276,9 +276,9 @@
   width: 100%;
   min-width: 0;
   min-height: 44px;
-  background: #fff;
-  color: #173047;
-  border: 1px solid #d3dde5;
+  background: var(--ui-input);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
   border-radius: 9px;
   padding: 10px 11px;
   font-size: 0.9rem;
@@ -287,7 +287,7 @@
 }
 .field input:disabled,
 .field select:disabled {
-  background: #f5f7f9;
+  background: var(--ui-surface-soft);
 }
 .settings fieldset > .field {
   max-width: 320px;
@@ -319,8 +319,8 @@
   align-items: end;
   gap: 14px;
   padding: 16px;
-  border: 1px solid #e5ebef;
-  background: #fbfcfd;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface-soft);
   border-radius: 12px;
 }
 .serviceState {
@@ -349,7 +349,7 @@
   font-size: 0.75rem;
 }
 .week {
-  border: 1px solid #e5ebef;
+  border: 1px solid var(--ui-border);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -361,7 +361,7 @@
   padding: 10px 16px;
 }
 .weekday + .weekday {
-  border-top: 1px solid #e9eef2;
+  border-top: 1px solid var(--ui-border);
 }
 .daySwitch {
   font-weight: 600;
@@ -379,10 +379,10 @@
   align-items: center;
 }
 .windows > :where(div) > span {
-  color: #94a2ad;
+  color: var(--ui-muted);
 }
 .closed {
-  color: #84939f;
+  color: var(--ui-muted);
   font-size: 0.8rem;
 }
 .formActions {
@@ -394,7 +394,7 @@
 }
 .conflict {
   margin-top: 18px;
-  background: #fcf8ee;
+  background: var(--ui-warning-soft);
 }
 .conflict button {
   margin-top: 10px;
@@ -430,11 +430,11 @@
   width: 44px;
   height: 44px;
   border-radius: 10px;
-  color: #173047;
+  color: var(--ui-text);
   flex-shrink: 0;
 }
 .monthHeading button:hover:not(:disabled) {
-  background: #f0f4f7;
+  background: var(--ui-surface-hover);
 }
 .monthHeading :where(button:first-child svg) {
   transform: rotate(180deg);
@@ -450,7 +450,7 @@
 }
 .dayNames span {
   text-align: center;
-  color: #8a98a3;
+  color: var(--ui-muted);
   font-size: 0.7rem;
   font-weight: 650;
   line-height: 2;
@@ -459,7 +459,7 @@
   background: transparent;
   border: 1px solid transparent;
   border-radius: 11px;
-  color: #173047;
+  color: var(--ui-text);
   min-width: 0;
   min-height: 44px;
   font-size: 0.85rem;
@@ -467,19 +467,19 @@
   padding: 6px 2px 10px;
 }
 .days button:hover {
-  background: #f2f5f7;
+  background: var(--ui-surface-hover);
 }
 .days button[data-outside="true"] {
-  color: #a4afb8;
+  color: var(--ui-subtle);
 }
 .days button[data-today="true"] {
-  border-color: #d4b878;
+  border-color: var(--ui-accent-border);
   font-weight: 700;
 }
 .days button[aria-pressed="true"] {
-  background: #173047;
-  color: #fff;
-  border-color: #173047;
+  background: var(--ui-primary);
+  color: var(--ui-on-primary);
+  border-color: var(--ui-primary);
 }
 .dayDot {
   position: absolute;
@@ -488,7 +488,7 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #c6a45e;
+  background: var(--ui-accent);
 }
 .today {
   display: block;
@@ -497,8 +497,8 @@
   padding: 8px 20px;
   border: 1px solid var(--booking-line);
   border-radius: 10px;
-  color: #173047;
-  background: #fff;
+  color: var(--ui-text);
+  background: var(--ui-surface);
   font-size: 0.8rem;
   font-weight: 600;
 }
@@ -507,7 +507,7 @@
   justify-content: center;
   align-items: center;
   gap: 8px;
-  color: #7c8d9b;
+  color: var(--ui-muted);
   font-size: 0.65rem;
   line-height: 1.5;
 }
@@ -535,8 +535,8 @@
   font-size: 0.8rem;
 }
 .createForm {
-  border: 1px solid #dce5eb;
-  background: #f7fafc;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface-soft);
   padding: 18px;
   border-radius: 12px;
   margin-bottom: 20px;
@@ -564,12 +564,12 @@
 }
 .empty {
   text-align: center;
-  border: 1px dashed #dce5eb;
+  border: 1px dashed var(--ui-border);
   border-radius: 12px;
   padding: 38px 20px;
 }
 .empty > svg {
-  color: #9cadb9;
+  color: var(--ui-subtle);
   width: 30px;
   height: 30px;
   margin-bottom: 12px;
@@ -591,12 +591,12 @@
 .entries > article {
   display: grid;
   grid-template-columns: 110px minmax(0, 1fr);
-  border: 1px solid #e0e7ec;
+  border: 1px solid var(--ui-border);
   border-radius: 12px;
   overflow: hidden;
 }
 .entries > article[data-closed="true"] {
-  background: #fbfcfd;
+  background: var(--ui-surface-soft);
 }
 .entryTime {
   display: flex;
@@ -604,10 +604,10 @@
   align-items: flex-start;
   gap: 8px;
   padding: 17px 14px;
-  background: #f3f6f8;
+  background: var(--ui-surface-soft);
 }
 .entryTime > svg {
-  color: #6c8293;
+  color: var(--ui-muted);
   width: 16px;
   height: 16px;
 }
@@ -639,8 +639,8 @@
   overflow-wrap: anywhere;
 }
 .entryTitle > span {
-  background: #eef3f6;
-  color: #536b7c;
+  background: var(--ui-surface-soft);
+  color: var(--ui-text-secondary);
   font-size: 0.65rem;
   font-weight: 650;
   border-radius: 20px;
@@ -649,16 +649,16 @@
   white-space: nowrap;
 }
 .entryTitle > span[data-status="requested"] {
-  background: #faf1dc;
-  color: #7e652f;
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
 }
 .entryTitle > span[data-status="completed"] {
-  background: #eaf3ec;
-  color: #3d6c4e;
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
 }
 .entryTitle > span:is([data-status="cancelled"], [data-status="declined"]) {
-  background: #f5eeee;
-  color: #8a6666;
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
 }
 .entryDetails > p {
   color: var(--booking-muted);
@@ -668,7 +668,7 @@
   overflow-wrap: anywhere;
 }
 .entryDetails > .client {
-  color: #405b6e;
+  color: var(--ui-text-secondary);
 }
 .entryActions {
   display: flex;

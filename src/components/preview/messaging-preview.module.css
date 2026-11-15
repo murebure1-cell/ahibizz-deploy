@@ -9,35 +9,35 @@
   gap: 10px;
   margin-bottom: 18px;
   font-size: 12px;
-  color: #687987;
+  color: var(--ui-text-secondary);
 }
 .examples a {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
-  border: 1px solid #d8e1e7;
+  border: 1px solid var(--ui-border);
   padding: 9px 13px;
   border-radius: 10px;
-  background: #fff;
-  color: #173047;
+  background: var(--ui-surface);
+  color: var(--ui-text);
   font-weight: 600;
 }
 .examples a:hover {
-  background: #f4f7f9;
+  background: var(--ui-surface-hover);
 }
 .examples a:focus-visible {
-  outline: 2px solid #a47d30;
+  outline: 2px solid var(--ui-focus);
   outline-offset: 3px;
 }
 .error {
-  color: #8a3d32;
+  color: var(--ui-danger);
   line-height: 1.6;
   margin-block: 12px;
 }
 .placeholder {
   height: min(640px, 70vh);
-  border: 1px solid #e1e7ec;
-  background: #fff;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface);
   border-radius: 18px;
 }
 @media (max-width: 600px) {

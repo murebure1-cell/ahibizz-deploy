@@ -550,6 +550,54 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
       await t.test(
+        "appearance CAS rejects stale preferences without changing profile, locale or saved preference",
+        async () => {
+          const headers = accountHeaders(first);
+          const before = await accounts.read(headers);
+          const updated = await accounts.update(headers, {
+            appearance: "light",
+            expectedAppearance: "dark",
+          });
+          assert.deepEqual(updated, { ...before, appearance: "light" });
+          const preference = (
+            await pool.query("SELECT * FROM auth_account_preferences WHERE user_id=$1", [userId])
+          ).rows;
+          await denied(
+            () =>
+              accounts.update(headers, {
+                name: "Must not overwrite",
+                locale: "de",
+                appearance: "system",
+                expectedAppearance: "dark",
+              }),
+            409,
+            "APPEARANCE_CONFLICT",
+          );
+          assert.deepEqual(await accounts.read(headers), updated);
+          assert.deepEqual(
+            (await pool.query("SELECT * FROM auth_account_preferences WHERE user_id=$1", [userId]))
+              .rows,
+            preference,
+          );
+          const response = await request("PATCH", "/api/account", {
+            cookies: first,
+            body: { appearance: "system", expectedAppearance: "dark" },
+          });
+          assert.equal(response.response.status, 409);
+          assert.deepEqual(response.data, { code: "APPEARANCE_CONFLICT" });
+          assert.equal((await accounts.read(headers)).appearance, "light");
+          assert.equal(
+            (
+              await accounts.update(headers, {
+                appearance: "dark",
+                expectedAppearance: "light",
+              })
+            ).appearance,
+            "dark",
+          );
+        },
+      );
+      await t.test(
         "explicit fixture owner bootstrap and approval CAS enforce fresh authority and revoke sessions",
         async () => {
           const signup = await request("POST", "/api/auth/sign-up/email", {

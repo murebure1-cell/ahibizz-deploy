@@ -11,12 +11,14 @@ import {
 import type { MessageTarget } from "../../lib/messaging";
 import { type PersonalProfile, profileImageUrl } from "../../lib/people";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
+import { useAppAppearance } from "../appearance/AppAppearance";
 import { CustomerAppointments } from "../booking/CustomerAppointments";
 import { ConnectionsPanel } from "../connections/ConnectionsPanel";
 import { BusinessManager } from "../directory/BusinessManager";
 import { Icon } from "../Icon";
 import { MessagingInbox } from "../messaging/MessagingInbox";
 import { PersonalProfileWorkspace } from "../people/PersonalProfileWorkspace";
+import { AccountSettings } from "./AccountSettings";
 import styles from "./account.module.css";
 export function AccountDashboard({
   initial,
@@ -34,6 +36,10 @@ export function AccountDashboard({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const searchParams = useSearchParams();
+  const { setAppearance, resetAppearance } = useAppAppearance();
+  useEffect(() => {
+    if (initial.id) setAppearance(initial.appearance);
+  }, [initial.id, initial.appearance, setAppearance]);
   const query = searchParams?.toString();
   const navigation = useRef<HTMLElement>(null);
   const view = useMemo(
@@ -82,6 +88,7 @@ export function AccountDashboard({
         setError("Odjava nije uspjela. Pokušaj ponovo.");
         return;
       }
+      resetAppearance();
       window.location.assign("/prijava");
     } catch {
       setError("Odjava nije uspjela. Pokušaj ponovo.");
@@ -125,6 +132,7 @@ export function AccountDashboard({
               { id: "messages", label: "Poruke", icon: "message" },
               { id: "appointments", label: "Moji termini", icon: "calendar" },
               { id: "connections", label: "Prijatelji", icon: "user" },
+              { id: "settings", label: "Postavke", icon: "sliders" },
             ] as const
           ).map((item) => (
             <button
@@ -182,6 +190,20 @@ export function AccountDashboard({
             </p>
           )}
           <MessagingInbox active={section === "messages"} initialTarget={view.messageTarget} />
+        </div>
+        <div hidden={section !== "settings"}>
+          <AccountSettings
+            key={initial.id}
+            initial={initial}
+            active={section === "settings"}
+            onConfirmed={(next) =>
+              setProfile((current) => ({
+                ...current,
+                locale: next.locale,
+                appearance: next.appearance,
+              }))
+            }
+          />
         </div>
       </section>
     </main>
