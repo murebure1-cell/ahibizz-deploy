@@ -29,9 +29,23 @@ export async function connectionRequest(
     );
   return result;
 }
+/** The signed session remains authoritative; this only binds a mounted workspace to its actor. */
+export function connectionAccountRequest(
+  request: typeof connectionRequest,
+  expectedAccountId: string | undefined,
+  path: string,
+  options: RequestInit = {},
+): Promise<Record<string, unknown>> {
+  if (typeof expectedAccountId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(expectedAccountId))
+    return Promise.reject(new ConnectionRequestError(401, "ACCOUNT_IDENTITY_CHANGED"));
+  const headers = new Headers(options.headers);
+  headers.set("X-AhiBizz-Account-ID", expectedAccountId);
+  return request(path, { ...options, headers });
+}
 export function connectionError(error: unknown): string {
   const code = error instanceof ConnectionRequestError ? error.code : "";
   if (code === "AUTHENTICATION_REQUIRED") return "Prijavi se ponovo.";
+  if (code === "ACCOUNT_IDENTITY_CHANGED") return "Prijavi se ponovo svojim nalogom.";
   if (code === "PUBLIC_PROFILE_REQUIRED") return "Prvo uključi javni profil u svom nalogu.";
   if (["PERSON_NOT_FOUND", "NOT_FOUND"].includes(code)) return "Profil nije javno dostupan.";
   if (

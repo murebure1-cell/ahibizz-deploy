@@ -107,6 +107,7 @@ export function messagingWrite(body: unknown, key?: string): RequestInit {
 export function messagingError(error: unknown): string {
   const code = error instanceof MessagingRequestError ? error.code : "";
   if (code === "AUTHENTICATION_REQUIRED") return "Prijavi se ponovo.";
+  if (code === "ACCOUNT_IDENTITY_CHANGED") return "Prijavi se ponovo svojim nalogom.";
   if (code === "THREAD_NOT_FOUND") return "Razgovor nije dostupan.";
   if (["PERSON_NOT_FOUND", "BUSINESS_NOT_FOUND"].includes(code))
     return "Profil trenutno nije dostupan.";

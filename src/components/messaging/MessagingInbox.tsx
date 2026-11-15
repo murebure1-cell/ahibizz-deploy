@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type ChatConversation,
@@ -10,6 +11,7 @@ import {
   conversationReadThrough,
   type MessageInbox,
   type MessageTarget,
+  messageIdentifier,
   normalizeMessageBody,
   readChatConversation,
   readChatReceipt,
@@ -22,6 +24,10 @@ import {
   messagingRequest,
   messagingWrite,
 } from "../../lib/messaging-client";
+import {
+  messagingAccessDenied,
+  messagingCommandNeedsRecovery,
+} from "../../lib/messaging-command-state";
 import { Icon } from "../Icon";
 import styles from "./messaging.module.css";
 
@@ -33,6 +39,7 @@ type Intent = {
   threadId: string | null;
   target?: MessageTarget;
   receipt?: ChatReceipt;
+  uncertain?: boolean;
 };
 function initials(name: string) {
   return name
@@ -85,6 +92,7 @@ export function MessagingInbox({
   initialTarget,
   heading = true,
   onSimulateReply,
+  expectedAccountId,
 }: {
   active?: boolean;
   preview?: boolean;
@@ -92,6 +100,7 @@ export function MessagingInbox({
   initialTarget?: MessageTarget;
   heading?: boolean;
   onSimulateReply?: (threadId: string) => void | Promise<void>;
+  expectedAccountId?: string;
 }) {
   const [inbox, setInbox] = useState<MessageInbox>("personal");
   const [page, setPage] = useState(1);
@@ -107,6 +116,7 @@ export function MessagingInbox({
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<Intent | null>(null);
   const [error, setError] = useState("");
+  const [requiresLogin, setRequiresLogin] = useState(false);
   const alive = useRef(false);
   const scope = useRef(0);
   const listRevision = useRef(0);
@@ -119,23 +129,41 @@ export function MessagingInbox({
   const enabled = useRef(active);
   const listCache = useRef(new Map<string, ChatThreadPage>());
   const conversationCache = useRef(new Map<string, ChatConversation>());
+  const draftCache = useRef(new Map<string, string>());
   const handledTarget = useRef("");
   const controllers = useRef(new Set<AbortController>());
-  const previousTransport = useRef({ request, preview });
+  const previousTransport = useRef({ request, preview, expectedAccountId });
   const scroll = useRef<HTMLDivElement | null>(null);
   const previousLast = useRef<string | null>(null);
   view.current = { inbox, page };
   enabled.current = active;
-  const usable = !(preview && request === messagingRequest);
+  const usable = messageIdentifier(expectedAccountId) && !(preview && request === messagingRequest);
+  const scopedRequest = useCallback<MessagingRequest>(
+    (path, options = {}) => {
+      const headers = new Headers(options.headers);
+      if (!messageIdentifier(expectedAccountId))
+        return Promise.reject(new MessagingRequestError(401, "ACCOUNT_IDENTITY_CHANGED"));
+      headers.set("X-AhiBizz-Account-ID", expectedAccountId);
+      return request(path, { ...options, headers });
+    },
+    [expectedAccountId, request],
+  );
 
-  const clearPrivate = useCallback((resetTarget = false) => {
+  const clearPrivate = useCallback((resetTarget = false, preserveRecovery = false) => {
+    const command = pendingRef.current;
+    // A denied concurrent read cannot prove that a dispatched first write did not commit.
+    const recovery =
+      preserveRecovery && command && (command.uncertain || command.receipt || writing.current)
+        ? { ...command, uncertain: true }
+        : null;
     scope.current++;
     for (const controller of controllers.current) controller.abort();
     controllers.current.clear();
     listCache.current.clear();
     conversationCache.current.clear();
+    draftCache.current.clear();
     selection.current = null;
-    pendingRef.current = null;
+    pendingRef.current = recovery;
     writing.current = false;
     if (resetTarget) handledTarget.current = "";
     setSelected(null);
@@ -144,16 +172,19 @@ export function MessagingInbox({
     setHasMore(false);
     setListReady(false);
     setDraft("");
-    setPending(null);
+    setPending(recovery);
     setBusy(false);
     setLoading(false);
     setReading(false);
     setOlder(false);
+    setRequiresLogin(false);
   }, []);
   const fail = useCallback(
     (failure: unknown) => {
-      if (failure instanceof MessagingRequestError && [401, 403, 404].includes(failure.status))
-        clearPrivate();
+      if (failure instanceof MessagingRequestError && [401, 403, 404].includes(failure.status)) {
+        clearPrivate(false, true);
+        if (failure.status !== 404) setRequiresLogin(true);
+      }
       setError(messagingError(failure));
     },
     [clearPrivate],
@@ -188,7 +219,7 @@ export function MessagingInbox({
       controllers.current.add(controller);
       try {
         const value = readChatThreadPage(
-          await request(`threads?inbox=${selectedInbox}&page=${selectedPage}`, {
+          await scopedRequest(`threads?inbox=${selectedInbox}&page=${selectedPage}`, {
             signal: controller.signal,
           }),
         );
@@ -205,6 +236,7 @@ export function MessagingInbox({
         )
           return;
         listCache.current.set(key, value);
+        setRequiresLogin(false);
         if (view.current.inbox === selectedInbox && view.current.page === selectedPage) {
           setThreads(value.items);
           setHasMore(value.hasMore);
@@ -213,9 +245,9 @@ export function MessagingInbox({
       } catch (failure) {
         if (
           alive.current &&
-          !controller.signal.aborted &&
           scope.current === generation &&
-          ticket === listRevision.current
+          (messagingAccessDenied(failure) ||
+            (!controller.signal.aborted && ticket === listRevision.current))
         )
           fail(failure);
       } finally {
@@ -224,7 +256,7 @@ export function MessagingInbox({
           setLoading(false);
       }
     },
-    [fail, request, usable],
+    [fail, scopedRequest, usable],
   );
 
   const loadConversation = useCallback(
@@ -238,7 +270,7 @@ export function MessagingInbox({
       else if (!conversationCache.current.has(id)) setReading(true);
       try {
         const value = readChatConversation(
-          await request(`threads/${id}${before ? `?before=${before}` : ""}`, {
+          await scopedRequest(`threads/${id}${before ? `?before=${before}` : ""}`, {
             signal: controller.signal,
           }),
         );
@@ -281,7 +313,7 @@ export function MessagingInbox({
           document.visibilityState === "visible" &&
           next.thread.unreadCount > 0
         ) {
-          const result = await request(
+          const result = await scopedRequest(
             `threads/${id}/read`,
             messagingWrite({ throughSequence: readThrough }),
           );
@@ -318,9 +350,9 @@ export function MessagingInbox({
       } catch (failure) {
         if (
           alive.current &&
-          !controller.signal.aborted &&
           scope.current === generation &&
-          selection.current === id
+          (messagingAccessDenied(failure) ||
+            (!controller.signal.aborted && selection.current === id))
         )
           fail(failure);
         return null;
@@ -332,7 +364,7 @@ export function MessagingInbox({
         }
       }
     },
-    [fail, request, updateThread, usable],
+    [fail, scopedRequest, updateThread, usable],
   );
 
   const commit = useCallback(
@@ -348,7 +380,7 @@ export function MessagingInbox({
         const receipt =
           intent.receipt ??
           readChatReceipt(
-            (await request(intent.path, messagingWrite(intent.body, intent.key))).receipt,
+            (await scopedRequest(intent.path, messagingWrite(intent.body, intent.key))).receipt,
           );
         if (
           (intent.threadId && receipt.threadId !== intent.threadId) ||
@@ -359,7 +391,8 @@ export function MessagingInbox({
         const acknowledged = { ...intent, receipt };
         pendingRef.current = acknowledged;
         setPending(acknowledged);
-        if (intent.action === "open" && selection.current !== receipt.threadId) setDraft("");
+        if (intent.action === "open" && selection.current !== receipt.threadId)
+          setDraft(draftCache.current.get(receipt.threadId) ?? "");
         selection.current = receipt.threadId;
         setSelected(receipt.threadId);
         const fresh = await loadConversation(receipt.threadId, undefined, false);
@@ -378,25 +411,30 @@ export function MessagingInbox({
           throw new Error("unconfirmed_message_action");
         pendingRef.current = null;
         setPending(null);
-        if (intent.action === "send") setDraft("");
+        setRequiresLogin(false);
+        if (intent.action === "send") {
+          draftCache.current.delete(receipt.threadId);
+          if (selection.current === receipt.threadId) setDraft("");
+        }
         setInbox(fresh.thread.inbox);
         setPage(1);
         view.current = { inbox: fresh.thread.inbox, page: 1 };
         await loadList(fresh.thread.inbox, 1, true);
+        if (!alive.current || scope.current !== generation) return;
         if (enabled.current && document.visibilityState === "visible")
           await loadConversation(receipt.threadId);
       } catch (failure) {
         if (!alive.current || scope.current !== generation) return;
-        fail(failure);
-        if (
-          !intent.receipt &&
-          failure instanceof MessagingRequestError &&
-          failure.status >= 400 &&
-          failure.status < 500
-        ) {
+        const command = pendingRef.current?.key === intent.key ? pendingRef.current : intent;
+        if (messagingCommandNeedsRecovery(command, failure)) {
+          const recovery = { ...command, uncertain: true };
+          pendingRef.current = recovery;
+          setPending(recovery);
+        } else {
           pendingRef.current = null;
           setPending(null);
         }
+        fail(failure);
       } finally {
         if (alive.current && scope.current === generation) {
           writing.current = false;
@@ -404,7 +442,7 @@ export function MessagingInbox({
         }
       }
     },
-    [fail, loadConversation, loadList, request, usable],
+    [fail, loadConversation, loadList, scopedRequest, usable],
   );
 
   useEffect(() => {
@@ -418,13 +456,14 @@ export function MessagingInbox({
   useEffect(() => {
     if (
       previousTransport.current.request !== request ||
-      previousTransport.current.preview !== preview
+      previousTransport.current.preview !== preview ||
+      previousTransport.current.expectedAccountId !== expectedAccountId
     ) {
-      previousTransport.current = { request, preview };
+      previousTransport.current = { request, preview, expectedAccountId };
       clearPrivate(true);
       setError("");
     }
-  }, [clearPrivate, request, preview]);
+  }, [clearPrivate, request, preview, expectedAccountId]);
   useEffect(() => {
     if (active) void loadList(inbox, page);
     return () => {
@@ -484,10 +523,10 @@ export function MessagingInbox({
   }, [conversation]);
 
   function choose(thread: ChatThread) {
-    if (busy || pending) return;
+    if (busy || pending || selection.current === thread.id) return;
     selection.current = thread.id;
     setSelected(thread.id);
-    setDraft("");
+    setDraft(draftCache.current.get(thread.id) ?? "");
     setError("");
     setConversation(conversationCache.current.get(thread.id) ?? null);
     void loadConversation(thread.id);
@@ -548,9 +587,19 @@ export function MessagingInbox({
         </header>
       )}
       {error && (
-        <p role="alert" className={styles.error}>
-          {error}
-        </p>
+        <div role="alert" className={styles.error}>
+          <p>{error}</p>
+          {requiresLogin && !preview && (
+            <Link
+              href="/prijava?nastavi=%2Fnalog%3Fodjeljak%3Dporuke"
+              target={pending ? "_blank" : undefined}
+              rel={pending ? "noopener" : undefined}
+              aria-label={pending ? "Prijavi se u novoj kartici" : undefined}
+            >
+              Prijavi se
+            </Link>
+          )}
+        </div>
       )}
       {pending && (
         <div role="status" className={styles.pending}>
@@ -788,7 +837,14 @@ export function MessagingInbox({
                   value={draft}
                   placeholder="Napiši poruku…"
                   disabled={!thread?.canSend || busy || Boolean(pending)}
-                  onChange={(event) => setDraft(event.target.value)}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (selected) {
+                      if (value) draftCache.current.set(selected, value);
+                      else draftCache.current.delete(selected);
+                    }
+                    setDraft(value);
+                  }}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
                       event.preventDefault();

@@ -33,7 +33,7 @@ import {
 } from "./validation";
 
 type Query = Pick<PoolClient, "query">;
-type SignedSession = { id: string; userId: string; token: string };
+type SignedSession = { id: string; userId: string; token: string; expectedAccountId?: string };
 type Image = { bytes: Buffer; mime: "image/webp"; width: number; height: number; version: number };
 type Pair = {
   id: string;
@@ -104,6 +104,8 @@ async function authority(client: PoolClient, session: SignedSession, otherIds: s
   ).rows;
   const actor = users.find((user) => user.id === session.userId);
   eligible(actor);
+  if (session.expectedAccountId !== undefined && actor.id !== session.expectedAccountId)
+    fail(401, "ACCOUNT_IDENTITY_CHANGED");
   const signed = await client.query(
     'WITH locked_session AS MATERIALIZED (SELECT id,"expiresAt" FROM auth_session WHERE id=$1 AND "userId"=$2 AND token=$3 FOR UPDATE) SELECT id FROM locked_session WHERE "expiresAt">clock_timestamp()',
     [session.id, session.userId, session.token],
@@ -245,6 +247,8 @@ export function createConnectionsService({
 }) {
   async function session(headers: Headers): Promise<SignedSession> {
     return safe(async () => {
+      const expectedAccountId = headers.get("X-AhiBizz-Account-ID");
+      if (expectedAccountId !== null) personId(expectedAccountId);
       const identity = await accounts.read(headers);
       const value = await auth.api.getSession({
         headers,
@@ -252,7 +256,12 @@ export function createConnectionsService({
       });
       if (!value?.session || value.session.userId !== identity.id || value.user.id !== identity.id)
         fail(401, "AUTHENTICATION_REQUIRED");
-      return value.session;
+      return {
+        id: value.session.id,
+        userId: value.session.userId,
+        token: value.session.token,
+        ...(expectedAccountId === null ? {} : { expectedAccountId }),
+      };
     });
   }
   return {

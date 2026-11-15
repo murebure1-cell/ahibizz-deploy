@@ -7,6 +7,7 @@ import { type MessageTarget, messageLink, readMessageTarget } from "../../lib/me
 import { MessagingInbox } from "../messaging/MessagingInbox";
 import { useMessagingPreview } from "./MessagingPreviewState";
 import styles from "./messaging-preview.module.css";
+import { usePeoplePreview } from "./PeoplePreviewState";
 
 export function MessagingPreview({
   active = true,
@@ -16,6 +17,7 @@ export function MessagingPreview({
   embedded?: boolean;
 }) {
   const { api, ready } = useMessagingPreview();
+  const people = usePeoplePreview();
   const search = useSearchParams().toString();
   const [target, setTarget] = useState<MessageTarget | null>(null),
     [invalid, setInvalid] = useState(false);
@@ -59,6 +61,7 @@ export function MessagingPreview({
           heading={!embedded}
           preview
           request={api.request}
+          expectedAccountId={people.getProfile().id}
           initialTarget={target ?? undefined}
           onSimulateReply={async (id) => {
             await api.simulatePeerReply(

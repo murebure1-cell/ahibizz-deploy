@@ -12,6 +12,7 @@ import {
 } from "../../lib/connections";
 import {
   ConnectionRequestError,
+  connectionAccountRequest,
   connectionError,
   connectionRequest,
 } from "../../lib/connections-client";
@@ -45,6 +46,7 @@ export function ConnectionsPanel({
   profileHref = (id: string) => `/ljudi/${encodeURIComponent(id)}`,
   peopleHref = "/ljudi",
   imageUrl,
+  expectedAccountId,
 }: {
   active?: boolean;
   heading?: boolean;
@@ -53,6 +55,7 @@ export function ConnectionsPanel({
   profileHref?: (id: string) => string;
   peopleHref?: string;
   imageUrl?: PersonMediaUrl;
+  expectedAccountId?: string;
 }) {
   const [view, setView] = useState<ConnectionView>("contacts"),
     [page, setPage] = useState(1),
@@ -70,8 +73,17 @@ export function ConnectionsPanel({
     controller = useRef<AbortController | null>(null),
     writing = useRef(false),
     live = useRef(false),
+    actor = useRef(expectedAccountId),
+    previousActor = useRef(expectedAccountId),
+    accessEpoch = useRef(0),
     cache = useRef(new Map<string, ConnectionPage>());
   api.current = request;
+  actor.current = expectedAccountId;
+  const scopedRequest = useCallback(
+    (path: string, options: RequestInit = {}) =>
+      connectionAccountRequest(api.current, expectedAccountId, path, options),
+    [expectedAccountId],
+  );
 
   useEffect(() => {
     live.current = true;
@@ -82,11 +94,38 @@ export function ConnectionsPanel({
     };
   }, []);
 
+  const clearDeniedAccess = useCallback((failure: ConnectionRequestError) => {
+    // Every in-flight read/write from before this denial loses permission to refill private state.
+    accessEpoch.current++;
+    revision.current++;
+    controller.current?.abort();
+    cache.current.clear();
+    writing.current = false;
+    setItems([]);
+    setHasMore(false);
+    setReady(false);
+    setLoading(false);
+    setBusy(false);
+    setPending(null);
+    setConfirmRemove(null);
+    setNotice("");
+    setError(connectionError(failure));
+  }, []);
+
+  useEffect(() => {
+    if (previousActor.current !== expectedAccountId) {
+      previousActor.current = expectedAccountId;
+      clearDeniedAccess(new ConnectionRequestError(401, "ACCOUNT_IDENTITY_CHANGED"));
+    }
+  }, [clearDeniedAccess, expectedAccountId]);
+
   const load = useCallback(async () => {
     controller.current?.abort();
     const current = ++revision.current,
       nextController = new AbortController(),
-      key = `${view}:${page}`;
+      key = `${view}:${page}`,
+      access = accessEpoch.current,
+      expectedActor = expectedAccountId;
     controller.current = nextController;
     const previous = cache.current.get(key);
     setItems(previous?.items ?? []);
@@ -99,7 +138,7 @@ export function ConnectionsPanel({
     setLoading(true);
     setError("");
     try {
-      const result = await api.current(`connections?view=${view}&page=${page}`, {
+      const result = await scopedRequest(`connections?view=${view}&page=${page}`, {
         signal: nextController.signal,
       });
       if (
@@ -117,19 +156,41 @@ export function ConnectionsPanel({
         )
       )
         throw new Error("invalid_connections_view");
-      if (!live.current || nextController.signal.aborted || current !== revision.current) return;
+      if (
+        !live.current ||
+        actor.current !== expectedActor ||
+        access !== accessEpoch.current ||
+        nextController.signal.aborted ||
+        current !== revision.current
+      )
+        return;
       const next = { items: nextItems, page, hasMore: result.hasMore };
       cache.current.set(key, next);
       setItems(next.items);
       setHasMore(next.hasMore);
       setReady(true);
     } catch (failure) {
-      if (live.current && !nextController.signal.aborted && current === revision.current)
+      if (!live.current || actor.current !== expectedActor || access !== accessEpoch.current)
+        return;
+      if (
+        failure instanceof ConnectionRequestError &&
+        (failure.status === 401 || failure.status === 403)
+      ) {
+        clearDeniedAccess(failure);
+        return;
+      }
+      if (!nextController.signal.aborted && current === revision.current)
         setError(connectionError(failure));
     } finally {
-      if (live.current && current === revision.current) setLoading(false);
+      if (
+        live.current &&
+        actor.current === expectedActor &&
+        access === accessEpoch.current &&
+        current === revision.current
+      )
+        setLoading(false);
     }
-  }, [page, preview, view]);
+  }, [page, preview, view, clearDeniedAccess, scopedRequest, expectedAccountId]);
 
   useEffect(() => {
     if (active) void load();
@@ -141,6 +202,8 @@ export function ConnectionsPanel({
 
   async function send(intent: PendingWrite) {
     if (writing.current || (preview && api.current === connectionRequest)) return;
+    const access = accessEpoch.current,
+      expectedActor = expectedAccountId;
     writing.current = true;
     revision.current++;
     controller.current?.abort();
@@ -150,7 +213,7 @@ export function ConnectionsPanel({
     setConfirmRemove(null);
     setPending(intent);
     try {
-      const result = await api.current(intent.path, {
+      const result = await scopedRequest(intent.path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: intent.body,
@@ -162,14 +225,21 @@ export function ConnectionsPanel({
         next.version <= intent.expectedVersion
       )
         throw new Error("unconfirmed_connection_action");
-      if (live.current) {
+      if (live.current && actor.current === expectedActor && access === accessEpoch.current) {
         setPending(null);
         cache.current.clear();
         setNotice("Prijateljstva su ažurirana.");
         await load();
       }
     } catch (failure) {
-      if (live.current) {
+      if (live.current && actor.current === expectedActor && access === accessEpoch.current) {
+        if (
+          failure instanceof ConnectionRequestError &&
+          (failure.status === 401 || failure.status === 403)
+        ) {
+          clearDeniedAccess(failure);
+          return;
+        }
         setError(connectionError(failure));
         if (
           failure instanceof ConnectionRequestError &&
@@ -180,13 +250,16 @@ export function ConnectionsPanel({
           if (failure.status === 409) {
             cache.current.clear();
             await load();
-            setNotice("Zahtjev je izmijenjen. Prikaz je osvježen.");
+            if (live.current && actor.current === expectedActor && access === accessEpoch.current)
+              setNotice("Zahtjev je izmijenjen. Prikaz je osvježen.");
           }
         }
       }
     } finally {
-      writing.current = false;
-      if (live.current) setBusy(false);
+      if (actor.current === expectedActor && access === accessEpoch.current) {
+        writing.current = false;
+        if (live.current) setBusy(false);
+      }
     }
   }
 

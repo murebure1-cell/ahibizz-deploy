@@ -210,6 +210,11 @@ export function createMessagingPreviewApi(options: Options) {
   const request: typeof messagingRequest = async (path, init = {}) => {
     if (init.signal?.aborted) throw new DOMException("Aborted", "AbortError");
     const actor = self();
+    const expectedAccountId = new Headers(init.headers).get("X-AhiBizz-Account-ID");
+    if (expectedAccountId !== null && !identifier.test(expectedAccountId))
+      fail(400, "INVALID_MESSAGING_INPUT");
+    if (expectedAccountId !== null && expectedAccountId !== actor.id)
+      fail(401, "ACCOUNT_IDENTITY_CHANGED");
     if (
       !/^threads(?:\?|\/|$)/.test(path) ||
       path.includes("..") ||

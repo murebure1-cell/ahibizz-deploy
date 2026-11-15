@@ -28,7 +28,7 @@ import {
   uuid,
 } from "./validation";
 
-type SignedSession = { id: string; userId: string; token: string };
+type SignedSession = { id: string; userId: string; token: string; expectedAccountId?: string };
 type ThreadRow = {
   id: string;
   kind: "person" | "business";
@@ -106,6 +106,8 @@ async function authority(client: PoolClient, signed: SignedSession, others: stri
   ).rows;
   const actor = users.find((u) => u.id === signed.userId);
   eligible(actor);
+  if (signed.expectedAccountId !== undefined && actor.id !== signed.expectedAccountId)
+    fail(401, "ACCOUNT_IDENTITY_CHANGED");
   const session = await client.query(
     'WITH locked_session AS MATERIALIZED (SELECT id,"expiresAt" FROM auth_session WHERE id=$1 AND "userId"=$2 AND token=$3 FOR UPDATE) SELECT id FROM locked_session WHERE "expiresAt">clock_timestamp()',
     [signed.id, signed.userId, signed.token],
@@ -282,6 +284,9 @@ export function createMessagingService({
 }) {
   async function session(headers: Headers): Promise<SignedSession> {
     return safe(async () => {
+      const expectedAccountId = headers.get("X-AhiBizz-Account-ID");
+      if (expectedAccountId !== null && !/^[A-Za-z0-9_-]{1,128}$/.test(expectedAccountId))
+        fail(400, "INVALID_MESSAGING_INPUT");
       const account = await accounts.read(headers),
         value = await auth.api.getSession({
           headers,
@@ -289,7 +294,12 @@ export function createMessagingService({
         });
       if (!value?.session || value.session.userId !== account.id || value.user.id !== account.id)
         fail(401, "AUTHENTICATION_REQUIRED");
-      return value.session;
+      return {
+        id: value.session.id,
+        userId: value.session.userId,
+        token: value.session.token,
+        ...(expectedAccountId === null ? {} : { expectedAccountId }),
+      };
     });
   }
   return {

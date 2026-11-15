@@ -298,6 +298,7 @@ export function AccountPreview() {
           </div>
           <div hidden={section !== "connections"}>
             <ConnectionsPanel
+              expectedAccountId={person.getProfile().id}
               active={section === "connections"}
               heading={false}
               preview

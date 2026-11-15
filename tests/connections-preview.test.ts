@@ -9,7 +9,7 @@ import {
   readPublicPerson,
   readRelationship,
 } from "../src/lib/connections";
-import { ConnectionRequestError } from "../src/lib/connections-client";
+import { ConnectionRequestError, connectionAccountRequest } from "../src/lib/connections-client";
 
 function fixture() {
   const people = createPeoplePreviewApi(),
@@ -26,6 +26,69 @@ function fixture() {
     });
   return { people, connections, write };
 }
+
+test("account-bound preview reads and writes reject another actor before state changes", async () => {
+  const f = fixture();
+  const expected = f.people.getProfile().id;
+  const before = f.people.getProfile();
+  for (const path of ["connections?view=incoming", "visibility"]) {
+    const options =
+      path === "visibility"
+        ? {
+            method: "PATCH",
+            body: JSON.stringify({
+              isPublic: true,
+              expectedVersion: 0,
+              idempotencyKey: randomUUID(),
+            }),
+          }
+        : {};
+    await assert.rejects(
+      connectionAccountRequest(f.connections.request, "another_actor", path, options),
+      { status: 401, code: "ACCOUNT_IDENTITY_CHANGED" },
+    );
+  }
+  for (const expectedAccountId of ["", "bad actor", "../another", "x".repeat(129)]) {
+    const headers = new Headers({ "X-AhiBizz-Account-ID": expectedAccountId });
+    await assert.rejects(f.connections.request("connections", { headers }), {
+      status: 400,
+      code: "INVALID_CONNECTION_INPUT",
+    });
+  }
+  assert.deepEqual(f.people.getProfile(), before);
+  const incoming = await connectionAccountRequest(
+    f.connections.request,
+    expected,
+    "connections?view=incoming",
+  );
+  assert.equal((incoming.items as unknown[]).length, 1);
+  assert.deepEqual(await f.connections.request("connections?view=incoming"), incoming);
+});
+
+test("actor binding preserves exact command and headers and refuses malformed identities before transport", async () => {
+  const calls: { path: string; options: RequestInit }[] = [];
+  const request = async (path: string, options: RequestInit = {}) => {
+    calls.push({ path, options });
+    return {};
+  };
+  const options = {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-AhiBizz-Account-ID": "wrong_actor" },
+    body: '{"expectedVersion":1,"idempotencyKey":"fixture-key"}',
+  };
+  await connectionAccountRequest(request, "current_actor", "connections/fixture/accept", options);
+  assert.equal(calls[0]?.options.body, options.body);
+  assert.equal(calls[0]?.options.method, "POST");
+  const headers = new Headers(calls[0]?.options.headers);
+  assert.equal(headers.get("X-AhiBizz-Account-ID"), "current_actor");
+  assert.equal(headers.get("Content-Type"), "application/json");
+  for (const value of [undefined, "", "bad actor", "../another", "x".repeat(129)])
+    await assert.rejects(connectionAccountRequest(request, value, "connections"), {
+      status: 401,
+      code: "ACCOUNT_IDENTITY_CHANGED",
+    });
+  assert.equal(calls.length, 1);
+});
 test("preview starts private, exposes only safe public projection and opt-in shares one profile CAS", async () => {
   const f = fixture();
   assert.deepEqual((await f.connections.request("visibility")).visibility, {

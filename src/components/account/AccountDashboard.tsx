@@ -181,7 +181,7 @@ export function AccountDashboard({
           <CustomerAppointments active={section === "appointments"} />
         </div>
         <div hidden={section !== "connections"}>
-          <ConnectionsPanel active={section === "connections"} />
+          <ConnectionsPanel active={section === "connections"} expectedAccountId={initial.id} />
         </div>
         <div hidden={section !== "messages"}>
           {view.invalidMessageTarget && (
@@ -189,7 +189,11 @@ export function AccountDashboard({
               Link za razgovor nije ispravan.
             </p>
           )}
-          <MessagingInbox active={section === "messages"} initialTarget={view.messageTarget} />
+          <MessagingInbox
+            active={section === "messages"}
+            initialTarget={view.messageTarget}
+            expectedAccountId={initial.id}
+          />
         </div>
         <div hidden={section !== "settings"}>
           <AccountSettings

@@ -75,6 +75,11 @@ export function createConnectionsPreviewApi(people: ReturnType<typeof createPeop
   };
   const request: typeof connectionRequest = async (path, options = {}) => {
     if (options.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    const expectedAccountId = new Headers(options.headers).get("X-AhiBizz-Account-ID");
+    if (expectedAccountId !== null && !/^[A-Za-z0-9_-]{1,128}$/.test(expectedAccountId))
+      fail(400, "INVALID_CONNECTION_INPUT");
+    if (expectedAccountId !== null && expectedAccountId !== people.getProfile().id)
+      fail(401, "ACCOUNT_IDENTITY_CHANGED");
     if (
       !/^(people(?:\?|\/|$)|connections(?:\?|\/|$)|visibility$)/.test(path) ||
       path.includes("..") ||

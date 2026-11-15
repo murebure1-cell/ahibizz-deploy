@@ -378,6 +378,55 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       );
 
       await t.test(
+        "expected account header binds commands and receipt recovery to the locked signed actor",
+        async () => {
+          const matching = new Headers(member.headers);
+          matching.set("X-AhiBizz-Account-ID", member.user.id);
+          const key = randomUUID(),
+            input = { body: "Account-bound command fixture" };
+          const accepted = await messaging.block(
+            matching,
+            personal.threadId,
+            { blocked: false },
+            key,
+          );
+          assert.deepEqual(
+            await messaging.block(matching, personal.threadId, { blocked: false }, key),
+            accepted,
+          );
+          const before = await snapshot();
+          const switched = new Headers(other.headers);
+          switched.set("X-AhiBizz-Account-ID", member.user.id);
+          for (const action of [
+            () => messaging.list(switched, { inbox: "personal" }),
+            () => messaging.read(switched, personal.threadId, {}),
+            () => messaging.send(switched, personal.threadId, input, key),
+            () => messaging.send(switched, personal.threadId, input, randomUUID()),
+            () => messaging.block(switched, personal.threadId, { blocked: true }, randomUUID()),
+            () => messaging.markRead(switched, personal.threadId, { throughSequence: 1 }),
+            () =>
+              messaging.open(switched, { kind: "person", targetId: member.user.id }, randomUUID()),
+          ])
+            await deny(action, 401, "ACCOUNT_IDENTITY_CHANGED");
+          for (const invalid of ["", "bad account", "../another", "x".repeat(129)]) {
+            const headers = new Headers(member.headers);
+            headers.set("X-AhiBizz-Account-ID", invalid);
+            await deny(
+              () => messaging.send(headers, personal.threadId, input, randomUUID()),
+              400,
+              "INVALID_MESSAGING_INPUT",
+            );
+          }
+          assert.deepEqual(await snapshot(), before);
+          assert.equal(
+            (await messaging.read(member.headers, personal.threadId, {})).items.length,
+            0,
+            "An omitted header retains compatibility; rejected expectations never write.",
+          );
+        },
+      );
+
+      await t.test(
         "actual blocked concurrent opens produce one pair and duplicate sends produce one immutable message receipt",
         async () => {
           await pool.query(
@@ -413,6 +462,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           const key = randomUUID(),
             body = { body: "  Pozdrav\r\nKako ste?  " },
             blocker = await pool.connect();
+          const boundHeaders = new Headers(member.headers);
+          boundHeaders.set("X-AhiBizz-Account-ID", member.user.id);
           let sends;
           try {
             await blocker.query("BEGIN");
@@ -420,7 +471,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
               member.user.id,
             ]);
             sends = Promise.allSettled([
-              messaging.send(member.headers, personal.threadId, body, key),
+              messaging.send(boundHeaders, personal.threadId, body, key),
               messaging.send(member.headers, personal.threadId, body, key),
             ]);
             await waitForTwoLockWaiters(pool, applicationName);

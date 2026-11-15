@@ -66,6 +66,40 @@ async function open(
   );
 }
 
+test("preview transport rejects foreign or malformed expected account before a command", async () => {
+  const { api } = fixture();
+  const opened = await open(api);
+  const command = messagingWrite({ body: "Account-bound fixture" }, crypto.randomUUID());
+  const matching = new Headers(command.headers);
+  matching.set("X-AhiBizz-Account-ID", "preview-self");
+  const accepted = await api.request(`threads/${opened.threadId}/messages`, {
+    ...command,
+    headers: matching,
+  });
+  for (const [expected, status, code] of [
+    ["preview-other", 401, "ACCOUNT_IDENTITY_CHANGED"],
+    ["bad account", 400, "INVALID_MESSAGING_INPUT"],
+    ["", 400, "INVALID_MESSAGING_INPUT"],
+  ] as const) {
+    const headers = new Headers(command.headers);
+    headers.set("X-AhiBizz-Account-ID", expected);
+    await denies(
+      () => api.request(`threads/${opened.threadId}/messages`, { ...command, headers }),
+      status,
+      code,
+    );
+    await denies(() => api.request(`threads/${opened.threadId}`, { headers }), status, code);
+  }
+  assert.deepEqual(
+    await api.request(`threads/${opened.threadId}/messages`, { ...command, headers: matching }),
+    accepted,
+  );
+  assert.equal(
+    readChatConversation(await api.request(`threads/${opened.threadId}`)).items.length,
+    1,
+  );
+});
+
 test("messaging preview starts empty, does not fetch and returns detached bounded DTOs", async () => {
   const { api } = fixture();
   const original = globalThis.fetch;

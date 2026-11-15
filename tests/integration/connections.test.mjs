@@ -516,6 +516,94 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
       await t.test(
+        "expected account header binds reads, transitions and receipts to the locked actor",
+        async () => {
+          async function snapshot() {
+            const result = {};
+            for (const table of [
+              "personal_profile",
+              "people_connection",
+              "people_connection_command",
+              "people_connection_event",
+              "personal_profile_visibility_command",
+              "personal_profile_visibility_event",
+            ])
+              result[table] = (
+                await pool.query(
+                  `SELECT to_jsonb(t) AS value FROM ${table} t ORDER BY to_jsonb(t)::text`,
+                )
+              ).rows;
+            return result;
+          }
+          const pair = await state(alice, bob);
+          const prior = (
+            await pool.query(
+              "SELECT request_id FROM people_connection_command WHERE actor_user_id=$1 AND person_id=$2 AND result_version=1",
+              [alice.user.id, bob.user.id],
+            )
+          ).rows[0];
+          assert.ok(prior);
+          const matching = new Headers(alice.headers);
+          matching.set("X-AhiBizz-Account-ID", alice.user.id);
+          const before = await snapshot();
+          assert.deepEqual(
+            await connections.list(matching, { view: "contacts" }),
+            await connections.list(alice.headers, { view: "contacts" }),
+          );
+          assert.equal(
+            (
+              await connections.request(
+                matching,
+                bob.user.id,
+                { expectedVersion: 0 },
+                prior.request_id,
+              )
+            ).version,
+            1,
+          );
+          const switched = new Headers(bob.headers);
+          switched.set("X-AhiBizz-Account-ID", alice.user.id);
+          for (const operation of [
+            () => connections.list(switched, { view: "contacts" }),
+            () => connections.readVisibility(switched),
+            () => connections.relationship(switched, alice.user.id),
+            () =>
+              connections.setVisibility(
+                switched,
+                { isPublic: false, expectedVersion: 1 },
+                randomUUID(),
+              ),
+            () =>
+              connections.request(switched, carol.user.id, { expectedVersion: 0 }, randomUUID()),
+            () =>
+              connections.request(
+                switched,
+                carol.user.id,
+                { expectedVersion: 0 },
+                prior.request_id,
+              ),
+            () =>
+              connections.transition(
+                switched,
+                pair.id,
+                { action: "remove", expectedVersion: pair.version },
+                randomUUID(),
+              ),
+          ])
+            await denied(operation, 401, "ACCOUNT_IDENTITY_CHANGED");
+          for (const value of ["", "bad actor", "../another", "x".repeat(129)]) {
+            const malformed = new Headers(alice.headers);
+            malformed.set("X-AhiBizz-Account-ID", value);
+            await denied(
+              () => connections.list(malformed, { view: "contacts" }),
+              400,
+              "INVALID_CONNECTION_INPUT",
+            );
+          }
+          assert.deepEqual(await snapshot(), before);
+        },
+      );
+      await t.test(
         "private contacts keep manageable opaque relationship without profile or media disclosure",
         async () => {
           await show(bob, false);
