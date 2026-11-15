@@ -16,6 +16,8 @@ import styles from "./admin.module.css";
 import { AdminRequestError, errorMessage, responseData } from "./responses";
 
 export type AdminAccountRequest = (path: string, init?: RequestInit) => Promise<Response>;
+// Keep the native browser fetch receiver separate from the React ref used below.
+const browserRequest: AdminAccountRequest = (path, init) => fetch(path, init);
 type ReadState = { key: string; data: AdminAccountPage | null; loading: boolean; error: string };
 const filters: { approval: AdminAccountApproval; label: string; empty: string }[] = [
   { approval: "pending", label: "Na čekanju", empty: "Nema prijava na čekanju." },
@@ -24,7 +26,7 @@ const filters: { approval: AdminAccountApproval; label: string; empty: string }[
 ];
 const initialView = adminAccountQuery("pending", 1);
 
-export function AccountApprovals({ request = fetch }: { request?: AdminAccountRequest }) {
+export function AccountApprovals({ request = browserRequest }: { request?: AdminAccountRequest }) {
   const [view, setView] = useState(initialView);
   const [search, setSearch] = useState("");
   const [inputError, setInputError] = useState("");

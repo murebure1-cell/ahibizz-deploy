@@ -9,15 +9,12 @@ import {
   bookingStatusLabels,
 } from "../../lib/booking";
 import { bookingError, bookingRequest, bookingWrite } from "../../lib/booking-client";
+import {
+  type CustomerAppointmentsState,
+  customerAppointmentsFailed,
+} from "../../lib/customer-appointments-state";
 import { Icon } from "../Icon";
 import styles from "./public-booking.module.css";
-
-type AppointmentPage = {
-  key: string;
-  entries: BookingEntry[];
-  more: boolean;
-  credits: number | null;
-};
 
 export function CustomerAppointments({
   active = true,
@@ -30,7 +27,10 @@ export function CustomerAppointments({
   preview?: boolean;
   request?: typeof bookingRequest;
 }) {
-  const [result, setResult] = useState<AppointmentPage | null>(null),
+  const [readState, setReadState] = useState<CustomerAppointmentsState>({
+      result: null,
+      requiresLogin: false,
+    }),
     [view, setView] = useState<BookingListView>("upcoming"),
     [page, setPage] = useState(1),
     [loading, setLoading] = useState(false),
@@ -42,6 +42,7 @@ export function CustomerAppointments({
     writing = useRef(false),
     api = useRef(request);
   api.current = request;
+  const { result, requiresLogin } = readState;
   const selection = `${view}:${page}`;
   const ready = result?.key === selection;
   const entries = ready ? result.entries : [];
@@ -71,16 +72,22 @@ export function CustomerAppointments({
           setPage(page - 1);
           return;
         }
-        setResult({
-          key: `${view}:${page}`,
-          entries: data.entries,
-          more: data.hasMore,
-          credits: Number.isInteger(data.credits) ? data.credits : null,
+        setReadState({
+          result: {
+            key: `${view}:${page}`,
+            entries: data.entries,
+            more: data.hasMore,
+            credits: Number.isInteger(data.credits) ? data.credits : null,
+          },
+          requiresLogin: false,
         });
       })
       .catch((failure) => {
-        if (!controller.signal.aborted && current === revision.current)
+        if (!controller.signal.aborted && current === revision.current) {
+          setReadState((previous) => customerAppointmentsFailed(previous, failure));
+          setNotice("");
           setError(bookingError(failure));
+        }
       })
       .finally(() => {
         if (current === revision.current) setLoading(false);
@@ -91,7 +98,7 @@ export function CustomerAppointments({
     };
   }, [active, page, view, refresh, preview]);
   async function cancel(entry: BookingEntry) {
-    if (writing.current || (preview && api.current === bookingRequest)) return;
+    if (requiresLogin || writing.current || (preview && api.current === bookingRequest)) return;
     writing.current = true;
     setBusy(true);
     setError("");
@@ -111,6 +118,7 @@ export function CustomerAppointments({
         throw new Error("unconfirmed_cancel");
       setNotice(preview ? "Termin je otkazan u pregledu." : "Termin je otkazan.");
     } catch (failure) {
+      setReadState((previous) => customerAppointmentsFailed(previous, failure));
       setError(bookingError(failure));
     } finally {
       writing.current = false;
@@ -156,9 +164,19 @@ export function CustomerAppointments({
       {preview && <p className={styles.note}>Proba bez stvarnog zakazivanja.</p>}
       {credits !== null && credits > 0 && <p className={styles.credit}>Ahi Credits: {credits}</p>}
       {error && (
-        <p role="alert" className={styles.error}>
-          {error}
-        </p>
+        <div role="alert" className={styles.error}>
+          <p>{error}</p>
+          {requiresLogin && (
+            <div className={styles.actions}>
+              <Link
+                className={styles.secondary}
+                href="/prijava?nastavi=%2Fnalog%3Fodjeljak%3Dtermini"
+              >
+                Prijavi se
+              </Link>
+            </div>
+          )}
+        </div>
       )}
       {notice && (
         <p role="status" className={styles.success}>
@@ -215,7 +233,7 @@ export function CustomerAppointments({
           </article>
         ))}
       </div>
-      {(page > 1 || more) && (
+      {ready && (page > 1 || more) && (
         <nav className={styles.pagination} aria-label="Stranice termina">
           <button type="button" disabled={busy || page === 1} onClick={() => setPage(page - 1)}>
             Prethodna

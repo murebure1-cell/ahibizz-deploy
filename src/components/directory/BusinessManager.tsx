@@ -7,6 +7,11 @@ import type { BookingSettings } from "../../lib/booking";
 import { bookingError, bookingRequest, bookingWrite } from "../../lib/booking-client";
 import { isTimeZone } from "../../lib/booking-time";
 import { type BusinessMediaManifest, businessMediaUrl } from "../../lib/business-media";
+import {
+  createDirectoryCreation,
+  type DirectoryCreateIntent,
+  DirectoryRequestError as RequestError,
+} from "../../lib/directory-create-submission";
 import type { DirectoryBusiness } from "../../server/directory/types";
 import { BusinessBookingManager } from "../booking/BusinessBookingManager";
 import { Icon } from "../Icon";
@@ -21,14 +26,6 @@ const statuses = {
   published: "Objavljeno",
   archived: "Arhivirano",
 };
-class RequestError extends Error {
-  constructor(
-    readonly code: string,
-    readonly status = 503,
-  ) {
-    super("Directory request failed.");
-  }
-}
 function errorMessage(error: unknown) {
   const code = error instanceof RequestError ? error.code : "";
   if (code === "BUSINESS_LIMIT_REACHED") return "Tvoj nalog je dosegao broj djelatnosti u paketu.";
@@ -48,12 +45,6 @@ async function request(path: string, options: RequestInit = {}) {
   if (!data || typeof data !== "object") throw new RequestError("UNAVAILABLE");
   return data;
 }
-type CreateIntent = {
-  fields: BusinessFields;
-  body: string;
-  key: string;
-  publish: boolean;
-};
 function write(method: string, body: unknown, requestId?: string): RequestInit {
   return {
     method,
@@ -142,14 +133,15 @@ export function BusinessManager({
   const [hasMore, setHasMore] = useState(false);
   const [bookingBusiness, setBookingBusiness] = useState<DirectoryBusiness | null>(null);
   const [mediaBusiness, setMediaBusiness] = useState<DirectoryBusiness | null>(null);
-  const [pendingCreate, setPendingCreate] = useState<CreateIntent | null>(null);
+  const [pendingCreate, setPendingCreate] = useState<DirectoryCreateIntent | null>(null);
+  const [loginRequired, setLoginRequired] = useState(false);
   const [bookingOption, setBookingOption] = useState<{ id: string; enabled: boolean } | null>(null);
   const [bookingNote, setBookingNote] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const reads = useRef(0);
   const bookingReads = useRef(0);
   const writing = useRef<AbortController | null>(null);
-  const createIntent = useRef<CreateIntent | null>(null);
+  const creation = useRef(createDirectoryCreation());
   const loadedSelection = useRef("");
   const editingId = editing?.id;
   const locked = busy || pendingCreate !== null;
@@ -293,12 +285,12 @@ export function BusinessManager({
         );
     }
   }
-  async function save(fields: BusinessFields, publish: boolean, replay?: CreateIntent) {
+  async function save(fields: BusinessFields, publish: boolean, replay?: DirectoryCreateIntent) {
     if (
       writing.current ||
       !active ||
-      (createIntent.current && !replay) ||
-      (replay && replay !== createIntent.current)
+      (creation.current.intent && !replay) ||
+      (replay && replay !== creation.current.intent)
     )
       return;
     const current = replay ? null : editing;
@@ -324,40 +316,29 @@ export function BusinessManager({
     setError("");
     setNotice("");
     setBookingNote("");
+    setLoginRequired(false);
     reads.current++;
     let committed: DirectoryBusiness | null = null;
     try {
-      const intent = current
-        ? null
-        : (replay ?? {
-            fields: Object.freeze({ ...fields }),
-            body: JSON.stringify(directoryFields),
-            key: crypto.randomUUID(),
-            publish,
-          });
+      const intent = current ? null : (replay ?? creation.current.begin(fields, publish));
       if (intent) {
-        createIntent.current = intent;
         setPendingCreate(intent);
       }
-      const data = await call(
-        current ? `mine/${current.id}` : "mine",
-        current
-          ? write("PATCH", { ...directoryFields, expectedVersion: current.version })
-          : {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Idempotency-Key": (intent as CreateIntent).key,
-              },
-              body: (intent as CreateIntent).body,
-            },
-      );
+      const data = current
+        ? await call(
+            `mine/${current.id}`,
+            write("PATCH", { ...directoryFields, expectedVersion: current.version }),
+          )
+        : {
+            business: await creation.current.send(intent as DirectoryCreateIntent, (options) =>
+              call("mine", options),
+            ),
+          };
       if (!data.business?.id || !Number.isInteger(data.business.version))
         throw new RequestError("UNAVAILABLE");
       let business = data.business as DirectoryBusiness;
       committed = business;
       setEditing(business);
-      createIntent.current = null;
       setPendingCreate(null);
       if (publish && isOwner && business.status !== "published") {
         const published = await call(
@@ -396,16 +377,13 @@ export function BusinessManager({
           setError("Podaci su sačuvani. Osvježi spisak radi provjere objave.");
         }
       } else {
-        if (error instanceof RequestError && error.status >= 400 && error.status < 500) {
-          createIntent.current = null;
-          setPendingCreate(null);
-          setError(errorMessage(error));
-        } else
-          setError(
-            wasNew
-              ? "Ishod unosa nije potvrđen. Ponovi isti unos da provjerimo sačuvanu djelatnost."
-              : errorMessage(error),
-          );
+        setPendingCreate(creation.current.intent);
+        setLoginRequired(error instanceof RequestError && error.status === 401);
+        setError(
+          creation.current.intent
+            ? "Ishod unosa nije potvrđen. Ponovi isti unos da provjerimo sačuvanu djelatnost."
+            : errorMessage(error),
+        );
       }
     } finally {
       if (
@@ -425,7 +403,7 @@ export function BusinessManager({
     }
   }
   async function move(item: DirectoryBusiness, action: "publish" | "archive" | "recover") {
-    if (writing.current || !active || createIntent.current) return;
+    if (writing.current || !active || creation.current.intent) return;
     const controller = new AbortController();
     writing.current = controller;
     setBusy(true);
@@ -531,7 +509,7 @@ export function BusinessManager({
             className={styles.primary}
             disabled={locked || loading || categories.length === 0}
             onClick={() => {
-              if (createIntent.current) return;
+              if (creation.current.intent) return;
               setEditing(null);
               setError("");
               setNotice("");
@@ -547,6 +525,19 @@ export function BusinessManager({
         <p role="alert" className={styles.error}>
           {error || readError}
         </p>
+      )}
+      {loginRequired && !busy && (
+        <div className={styles.notice}>
+          <Link
+            className={styles.secondary}
+            href="/prijava?nastavi=%2Fnalog%3Fodjeljak%3Ddjelatnosti"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Obnovi prijavu u novoj kartici"
+          >
+            Obnovi prijavu
+          </Link>
+        </div>
       )}
       {pendingCreate && !busy && (
         <div className={styles.notice} role="status">
@@ -585,7 +576,7 @@ export function BusinessManager({
           }
           onSave={save}
           onCancel={() => {
-            if (createIntent.current) return;
+            if (creation.current.intent) return;
             setEditing(undefined);
             setError("");
             setBookingNote("");
