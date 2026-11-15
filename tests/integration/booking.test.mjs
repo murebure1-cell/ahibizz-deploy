@@ -14,6 +14,7 @@ const emails = [
   "professional@booking-fixture.invalid",
   "customer@booking-fixture.invalid",
   "other@booking-fixture.invalid",
+  "pagination@booking-fixture.invalid",
 ];
 const bookingTables = [
   "booking_settings",
@@ -219,7 +220,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         actors.push({ headers, user: session.user });
       }
       assert.equal(captured.size, emails.length);
-      const [operator, professional, customer, other] = actors;
+      const [operator, professional, customer, other, paginationCustomer] = actors;
       assert.equal(
         professional.user.role,
         "member",
@@ -1097,11 +1098,20 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           const beforeClock = new Date(clock);
           try {
             clock = new Date("2030-01-20T12:00:00.000Z");
+            // Either earlier racing customer may retain history; pagination owns a separate actor.
+            for (const view of ["upcoming", "history"]) {
+              const empty = await request("GET", `/mine?view=${view}`, {
+                actor: paginationCustomer,
+              });
+              assert.equal(empty.status, 200);
+              assert.deepEqual(empty.data.entries, []);
+              assert.equal(empty.data.hasMore, false);
+            }
             const entries = [];
             for (let index = 0; index < 30; index++) {
               const startsAt = `2030-01-${21 + Math.floor(index / 6)}T${String(9 + (index % 6)).padStart(2, "0")}:00:00.000Z`;
               const created = await request("POST", `${publicPath}/requests`, {
-                actor: other,
+                actor: paginationCustomer,
                 key: randomUUID(),
                 body: quote(serviceId, startsAt),
               });
@@ -1124,10 +1134,14 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             }
             clock = new Date("2030-01-21T12:45:00.000Z");
             const snapshot = await bookingSnapshot();
-            const current = await request("GET", "/mine?view=upcoming&page=1", { actor: other }),
-              second = await request("GET", "/mine?view=upcoming&page=2", { actor: other }),
-              history = await request("GET", "/mine?view=history", { actor: other }),
-              original = await request("GET", "/mine?page=1", { actor: other });
+            const current = await request("GET", "/mine?view=upcoming&page=1", {
+                actor: paginationCustomer,
+              }),
+              second = await request("GET", "/mine?view=upcoming&page=2", {
+                actor: paginationCustomer,
+              }),
+              history = await request("GET", "/mine?view=history", { actor: paginationCustomer }),
+              original = await request("GET", "/mine?page=1", { actor: paginationCustomer });
             assert.equal(current.status, 200);
             assert.equal(current.data.asOf, clock.toISOString());
             assert.equal(current.data.view, "upcoming");
@@ -1177,7 +1191,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
               "/mine?view=upcoming&view=history",
               "/mine?view=history&page=501",
             ])
-              assert.equal((await request("GET", path, { actor: other })).status, 400);
+              assert.equal((await request("GET", path, { actor: paginationCustomer })).status, 400);
             assert.deepEqual(
               await bookingSnapshot(),
               snapshot,
@@ -1185,26 +1199,31 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             );
             clock = new Date("2030-01-21T13:15:00.000Z");
             assert.equal(
-              (await request("GET", "/mine?view=upcoming", { actor: other })).data.entries[0].id,
+              (await request("GET", "/mine?view=upcoming", { actor: paginationCustomer })).data
+                .entries[0].id,
               entries[4].id,
               "An appointment in progress remains current.",
             );
             clock = new Date("2030-01-21T13:45:00.000Z");
             assert.equal(
-              (await request("GET", "/mine?view=history", { actor: other })).data.entries.some(
-                (entry) => entry.id === entries[4].id,
-              ),
+              (
+                await request("GET", "/mine?view=history", { actor: paginationCustomer })
+              ).data.entries.some((entry) => entry.id === entries[4].id),
               true,
             );
             assert.equal(
-              (await request("GET", "/mine?view=upcoming", { actor: other })).data.entries.some(
-                (entry) => entry.id === entries[4].id,
-              ),
+              (
+                await request("GET", "/mine?view=upcoming", { actor: paginationCustomer })
+              ).data.entries.some((entry) => entry.id === entries[4].id),
               false,
             );
             clock = new Date("2030-01-26T00:00:00.000Z");
-            const older = await request("GET", "/mine?view=history&page=1", { actor: other }),
-              oldest = await request("GET", "/mine?view=history&page=2", { actor: other });
+            const older = await request("GET", "/mine?view=history&page=1", {
+                actor: paginationCustomer,
+              }),
+              oldest = await request("GET", "/mine?view=history&page=2", {
+                actor: paginationCustomer,
+              });
             assert.equal(older.data.hasMore, true);
             assert.equal(oldest.data.hasMore, false);
             assert.deepEqual(
@@ -1212,7 +1231,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
               entries.toReversed().map((entry) => entry.id),
             );
             assert.equal(
-              (await request("GET", "/mine?view=upcoming", { actor: other })).data.entries.length,
+              (await request("GET", "/mine?view=upcoming", { actor: paginationCustomer })).data
+                .entries.length,
               0,
             );
           } finally {
