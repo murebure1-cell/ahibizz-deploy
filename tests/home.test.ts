@@ -24,6 +24,8 @@ test("live home category shortcuts use actual parent IDs and the live search con
   assert.equal(links.length, 2);
   assert.equal(links[0]?.label, "Zdravlje");
   assert.equal(links[1]?.label, "Dom i uređenje");
+  assert.equal(links[0]?.icon, "heart");
+  assert.equal(links[1]?.icon, "home");
   for (const item of links) {
     const url = new URL(item.href, "https://app.example.invalid");
     assert.equal(url.pathname, "/pretraga");
@@ -40,5 +42,21 @@ test("live home category shortcuts use actual parent IDs and the live search con
       })),
     ).length,
     4,
+  );
+});
+
+test("home shortcuts distinguish hospitality and services without changing category destinations", () => {
+  const links = homeCategories([
+    { id: "food", name: "Ugostiteljski objekti", parentId: null },
+    { id: "service", name: "Servisi", parentId: null },
+    { id: "unknown", name: "Ostalo", parentId: null },
+  ]);
+  assert.deepEqual(
+    links.map(({ icon }) => icon),
+    ["coffee", "shop", "shop"],
+  );
+  assert.deepEqual(
+    links.map(({ href }) => href),
+    ["/pretraga?categoryId=food", "/pretraga?categoryId=service", "/pretraga?categoryId=unknown"],
   );
 });

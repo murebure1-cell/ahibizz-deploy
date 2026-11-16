@@ -57,7 +57,7 @@ export function HomeSurface({
       <section className={styles.hero} aria-labelledby="home-title">
         <Image
           className={styles.heroPhoto}
-          src="/preview/hero.webp"
+          src="/images/business-community.webp"
           alt=""
           fill
           sizes="100vw"
@@ -72,7 +72,7 @@ export function HomeSurface({
             <br />
             uslugu<span>.</span>
           </h1>
-          <p>Od dobrog majstora do mjesta za predah.</p>
+          <p>Poveži se s lokalnim firmama i stručnjacima.</p>
           <Form action={searchAction} className={styles.search}>
             <label>
               <Icon name="search" />

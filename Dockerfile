@@ -29,7 +29,7 @@ RUN apk add --no-cache --upgrade 'zlib>=1.4-r0' \
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
 COPY --from=build --chown=node:node /app/public ./public
-COPY --from=build --chown=node:node /app/scripts/start.mjs /app/scripts/migrate.mjs /app/scripts/initial-owner.mjs ./scripts/
+COPY --from=build --chown=node:node /app/scripts/start.mjs /app/scripts/migrate.mjs /app/scripts/initial-owner.mjs /app/scripts/ingress-observe.mjs ./scripts/
 COPY --from=build --chown=node:node /app/db/migrations ./db/migrations
 COPY --from=build --chown=node:node /app/src/server/env.ts ./src/server/env.ts
 COPY --from=build --chown=node:node /app/src/server/auth/initial-owner.ts ./src/server/auth/initial-owner.ts

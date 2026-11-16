@@ -296,6 +296,11 @@ export function BusinessManager({
   const editingId = editing?.id;
   const commandLocked = busy || pendingCreate !== null || pendingMutation !== null;
   const locked = commandLocked || returning !== null;
+  const canContinue =
+    items !== null &&
+    loadedSelection.current ===
+      `${all && isOwner ? "admin" : "mine"}?page=${page}${archived ? "&status=archived" : ""}` &&
+    hasMore;
   // A dispatched command keeps its result and lock while another account section is visible.
   // Only a changed actor/transport/role or unmount invalidates that private workspace.
   useEffect(() => {
@@ -1245,7 +1250,7 @@ export function BusinessManager({
               </article>
             ))}
           </div>
-          {items && (page > 1 || hasMore) && (
+          {!loginRequired && (page > 1 || canContinue) && (
             <div className={styles.pagination}>
               <button
                 type="button"
@@ -1259,7 +1264,7 @@ export function BusinessManager({
               <button
                 type="button"
                 className={styles.secondary}
-                disabled={!hasMore || locked || loading}
+                disabled={!canContinue || locked || loading}
                 onClick={() => setPage(page + 1)}
               >
                 Sljedeća

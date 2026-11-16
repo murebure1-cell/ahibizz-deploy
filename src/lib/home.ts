@@ -25,6 +25,14 @@ export function homeCategories(
       id: category.id,
       label: category.name,
       href: `/pretraga?${new URLSearchParams({ categoryId: category.id })}`,
-      icon: "shop",
+      icon: categoryIcon(category.name),
     }));
+}
+
+function categoryIcon(name: string): HomeCategory["icon"] {
+  const label = name.toLocaleLowerCase("bs");
+  if (/zdrav|ljepot/.test(label)) return "heart";
+  if (/\bdom\b|namje[šs]taj|ure[đd]enje/.test(label)) return "home";
+  if (/ugostitelj|restoran|kafi[ćc]|prehran/.test(label)) return "coffee";
+  return "shop";
 }

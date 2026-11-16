@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const port = process.env.PORT;
@@ -23,9 +23,13 @@ if (!server) {
 const env = { ...process.env, NODE_ENV: "production", HOSTNAME: "0.0.0.0" };
 let stopping = false;
 
-function run(file) {
+function run(file, observeIngress = false) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [file], { cwd: root, env, stdio: "inherit" });
+    const args =
+      observeIngress && process.env.AHIBIZZ_INGRESS_OBSERVE === "true"
+        ? ["--import", pathToFileURL(path.join(root, "scripts/ingress-observe.mjs")).href, file]
+        : [file];
+    const child = spawn(process.execPath, args, { cwd: root, env, stdio: "inherit" });
     const forward = (signal) => {
       stopping = true;
       child.kill(signal);
@@ -56,7 +60,7 @@ try {
   } else {
     console.warn("DATABASE_URL is not configured; starting without database readiness.");
   }
-  if (!stopping) process.exitCode = await run(server);
+  if (!stopping) process.exitCode = await run(server, true);
 } catch {
   console.error("Production startup failed before the server could finish.");
   process.exitCode = 1;
