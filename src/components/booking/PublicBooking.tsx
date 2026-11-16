@@ -16,15 +16,16 @@ import {
   bookingError,
   bookingRequest,
 } from "../../lib/booking-client";
-import { createBookingSubmission } from "../../lib/booking-submission";
+import { type BookingQuote, createBookingSubmission } from "../../lib/booking-submission";
 import { addDays, dateKey } from "../../lib/booking-time";
+import { createPublicBookingOffer } from "../../lib/public-booking-offer";
 import { Icon } from "../Icon";
 import { CalendarDays } from "./CalendarDays";
 import styles from "./public-booking.module.css";
 
 type Props = {
   businessId: string;
-  configuration: PublicBookingConfiguration;
+  configuration: PublicBookingConfiguration | null;
   preview?: boolean;
   request?: typeof bookingRequest;
   expectedAccountId?: string;
@@ -46,11 +47,13 @@ function BookingWorkspace({
   request = bookingRequest,
   expectedAccountId,
 }: Props) {
-  const [configuration, setConfiguration] = useState(initialConfiguration),
+  const [offers] = useState(() => createPublicBookingOffer(initialConfiguration));
+  const [offer, setOffer] = useState(offers.applied),
     [changeNotice, setChangeNotice] = useState("");
+  const configuration = offer.configuration;
   const prefix = useId(),
-    [serviceId, setService] = useState(configuration.services[0]?.id ?? ""),
-    [date, setDate] = useState(() => dateKey(new Date(), configuration.timezone)),
+    [serviceId, setService] = useState(configuration?.services[0]?.id ?? ""),
+    [date, setDate] = useState(() => dateKey(new Date(), configuration?.timezone ?? "UTC")),
     [slots, setSlots] = useState<BookingSlot[]>([]),
     [selection, setSelection] = useState(""),
     [loading, setLoading] = useState(false),
@@ -65,49 +68,102 @@ function BookingWorkspace({
     needsConfiguration = useRef(false),
     submitting = useRef(false),
     submissionActor = useRef<string | null>(expectedAccountId ?? null),
+    submissionRequest = useRef<typeof bookingRequest | null>(null),
+    readController = useRef<AbortController | null>(null),
+    appliedOffer = useRef(offer),
+    receipt = useRef(done),
     operation = useRef(createBookingSubmission(businessId));
   const api = useRef(request);
   api.current = request;
-  const service = configuration.services.find((item) => item.id === serviceId);
-  const today = dateKey(new Date(), configuration.timezone);
+  receipt.current = done;
+  const service = configuration?.services.find((item) => item.id === serviceId);
+  const today = dateKey(new Date(), configuration?.timezone ?? "UTC");
+  const canBook = offer.available && configuration?.enabled && Boolean(service);
   useEffect(() => {
     live.current = true;
     return () => {
       live.current = false;
       revision.current++;
+      readController.current?.abort();
     };
   }, []);
+  const applyLatest = useCallback(() => {
+    const next = offers.apply(
+      submitting.current || operation.current.uncertain || receipt.current !== null,
+    );
+    if (next === appliedOffer.current) return;
+    const previous = appliedOffer.current.configuration;
+    appliedOffer.current = next;
+    revision.current++;
+    readController.current?.abort();
+    needsConfiguration.current = false;
+    setOffer(next);
+    setSelection("");
+    setSlots([]);
+    setLoading(false);
+    setError("");
+    setLogin(false);
+    setService((selected) =>
+      next.configuration?.services.some((item) => item.id === selected)
+        ? selected
+        : (next.configuration?.services[0]?.id ?? ""),
+    );
+    if (next.configuration && previous?.timezone !== next.configuration.timezone)
+      setDate(dateKey(new Date(), next.configuration.timezone));
+    if (previous) setChangeNotice("Usluga ili raspored su izmijenjeni. Provjeri novi odabir.");
+  }, [offers]);
+  const receiveProps = useCallback(() => {
+    if (!offers.receive(initialConfiguration)) return;
+    revision.current++;
+    readController.current?.abort();
+    needsConfiguration.current = false;
+    setLoading(false);
+    applyLatest();
+  }, [initialConfiguration, offers, applyLatest]);
+  useEffect(() => {
+    receiveProps();
+  }, [receiveProps]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Settled command state releases a queued offer, never the operation or its original request.
+  useEffect(() => {
+    applyLatest();
+  }, [busy, uncertain, done, applyLatest]);
   const refreshConfiguration = useCallback(
-    async (current: number, signal: AbortSignal) => {
-      const result = await api.current(`businesses/${businessId}`, { signal });
-      if (!live.current || signal.aborted || current !== revision.current) return;
+    async (current: number, offerRevision: number, signal: AbortSignal) => {
+      const result = await request(`businesses/${businessId}`, { signal });
+      if (
+        !live.current ||
+        signal.aborted ||
+        current !== revision.current ||
+        offerRevision !== offers.latest.revision
+      )
+        return;
       const next = result.booking as PublicBookingConfiguration;
       if (!next || !Number.isInteger(next.version) || !Array.isArray(next.services))
         throw new Error("invalid_booking_configuration");
-      setSelection("");
-      setSlots([]);
-      setConfiguration(next);
-      setService((selected) =>
-        next.services.some((item) => item.id === selected)
-          ? selected
-          : (next.services[0]?.id ?? ""),
-      );
       needsConfiguration.current = false;
+      if (offers.receiveRead(next, offerRevision)) applyLatest();
       setChangeNotice("Usluga ili raspored su izmijenjeni. Provjeri novi odabir.");
     },
-    [businessId],
+    [businessId, request, offers, applyLatest],
   );
   // biome-ignore lint/correctness/useExhaustiveDependencies: The refresh counter deliberately repeats the same read after a user action.
   useEffect(() => {
     const current = ++revision.current,
       controller = new AbortController();
+    readController.current = controller;
+    const offerRevision = offers.latest.revision;
+    const config = configuration;
     if (
+      busy ||
       uncertain ||
-      !configuration.enabled ||
+      done ||
+      !offer.available ||
+      !config?.enabled ||
       !serviceId ||
       (preview && api.current === bookingRequest)
     )
       return;
+    const configurationVersion = config.version;
     setLoading(true);
     setError("");
     setSelection("");
@@ -115,19 +171,19 @@ function BookingWorkspace({
     async function read() {
       try {
         if (needsConfiguration.current) {
-          await refreshConfiguration(current, controller.signal);
+          await refreshConfiguration(current, offerRevision, controller.signal);
           return;
         }
-        const data = await api.current(
+        const data = await request(
           `businesses/${businessId}/slots?${new URLSearchParams({ serviceId, date })}`,
           { signal: controller.signal },
         );
         if (!live.current || controller.signal.aborted || current !== revision.current) return;
         if (!Array.isArray(data.slots) || data.serviceId !== serviceId || data.date !== date)
           throw new Error("invalid_slots");
-        if (data.configurationVersion !== configuration.version) {
+        if (data.configurationVersion !== configurationVersion) {
           needsConfiguration.current = true;
-          await refreshConfiguration(current, controller.signal);
+          await refreshConfiguration(current, offerRevision, controller.signal);
           return;
         }
         setSlots(data.slots);
@@ -139,7 +195,7 @@ function BookingWorkspace({
         ) {
           needsConfiguration.current = true;
           try {
-            await refreshConfiguration(current, controller.signal);
+            await refreshConfiguration(current, offerRevision, controller.signal);
           } catch (refreshFailure) {
             if (live.current && !controller.signal.aborted && current === revision.current)
               setError(bookingError(refreshFailure));
@@ -155,24 +211,39 @@ function BookingWorkspace({
     return () => {
       revision.current++;
       controller.abort();
+      if (readController.current === controller) readController.current = null;
     };
   }, [
     businessId,
-    configuration.enabled,
-    configuration.version,
+    configuration?.enabled,
+    configuration?.version,
+    offer.available,
+    offer.revision,
     date,
     serviceId,
     refresh,
     preview,
     refreshConfiguration,
+    request,
+    busy,
     uncertain,
+    done,
   ]);
-  if (!configuration.enabled || !service) return null;
   const selected = slots.find((item) => item.startsAt === selection);
   async function submit(retry = false) {
+    // A parent refresh can arrive before its effect. Never dispatch from that older render.
+    receiveProps();
+    const quote: BookingQuote | null =
+      selected && service && configuration
+        ? {
+            serviceId,
+            startsAt: selected.startsAt,
+            configurationVersion: configuration.version,
+          }
+        : null;
     if (
       submitting.current ||
-      (!retry && (uncertain || !selected || !service)) ||
+      (!retry && (uncertain || !quote || !offers.canDispatch(quote))) ||
       (retry && !operation.current.uncertain) ||
       (preview && api.current === bookingRequest)
     )
@@ -184,24 +255,41 @@ function BookingWorkspace({
     try {
       let entry: BookingEntry;
       if (!retry) {
+        const transport = api.current;
+        const offerRevision = offers.latest.revision;
         submissionActor.current =
           expectedAccountId ??
-          (!preview && api.current === bookingRequest ? await bookingAccountId() : null);
+          (!preview && transport === bookingRequest ? await bookingAccountId() : null);
+        if (!live.current) return;
+        if (
+          !quote ||
+          api.current !== transport ||
+          offerRevision !== offers.latest.revision ||
+          !offers.canDispatch(quote)
+        ) {
+          setSelection("");
+          setSlots([]);
+          setChangeNotice("Usluga ili raspored su izmijenjeni. Provjeri novi odabir.");
+          return;
+        }
+        submissionRequest.current = submissionActor.current
+          ? bookingActorRequest(submissionActor.current, transport)
+          : transport;
       }
-      const submissionRequest = submissionActor.current
-        ? bookingActorRequest(submissionActor.current, api.current)
-        : api.current;
-      if (retry) entry = await operation.current.retry(submissionRequest);
+      const transport = submissionRequest.current;
+      if (!transport) throw new Error("missing_booking_request");
+      if (retry) entry = await operation.current.retry(transport);
       else {
-        if (!selected) return;
-        entry = await operation.current.submit(
-          { serviceId, startsAt: selected.startsAt, configurationVersion: configuration.version },
-          submissionRequest,
-        );
+        if (!quote) return;
+        entry = await operation.current.submit(quote, transport);
       }
       if (live.current) {
+        receipt.current = entry;
         setDone(entry);
         setUncertain(false);
+        setSelection("");
+        setSlots([]);
+        submissionRequest.current = null;
       }
     } catch (failure) {
       if (!live.current) return;
@@ -216,6 +304,7 @@ function BookingWorkspace({
         return;
       }
       setUncertain(false);
+      submissionRequest.current = null;
       if (
         failure instanceof BookingRequestError &&
         ["BOOKING_CONFIGURATION_CHANGED", "BOOKING_SERVICE_NOT_FOUND", "BOOKING_DISABLED"].includes(
@@ -235,7 +324,9 @@ function BookingWorkspace({
       if (live.current) setBusy(false);
     }
   }
-  const moment = (value: string) => bookingDate(value, configuration.timezone, { time: true });
+  if (!done && !busy && !uncertain && !canBook) return null;
+  const moment = (value: string, timezone = configuration?.timezone ?? "UTC") =>
+    bookingDate(value, timezone, { time: true });
   return (
     <section className={styles.booking} aria-label="Zakazivanje termina">
       <header className={styles.heading}>
@@ -252,7 +343,10 @@ function BookingWorkspace({
           <Icon name="check" />
           <h3>{preview ? "Zahtjev je sačuvan u pregledu." : "Zahtjev je poslan."}</h3>
           <strong>{done.serviceName}</strong>
-          <p>{moment(done.startsAt)}</p>
+          <p>{moment(done.startsAt, done.timezone)}</p>
+          <p>
+            {done.durationMinutes} min · {bookingMoney(done.priceMinor)}
+          </p>
           <p>{bookingStatusLabels[done.status]}</p>
           <Link
             href={preview ? "/pregled/prostor/nalog?odjeljak=termini" : "/nalog?odjeljak=termini"}
@@ -263,13 +357,15 @@ function BookingWorkspace({
             type="button"
             onClick={() => {
               setDone(null);
+              receipt.current = null;
+              applyLatest();
               setRefresh((value) => value + 1);
             }}
           >
             Izaberi drugi termin
           </button>
         </div>
-      ) : (
+      ) : configuration && service ? (
         <>
           {changeNotice && (
             <p role="status" className={styles.note}>
@@ -409,7 +505,7 @@ function BookingWorkspace({
                 : "Pošalji zahtjev za termin"}
           </button>
         </>
-      )}
+      ) : null}
     </section>
   );
 }

@@ -599,7 +599,12 @@ function BookingWorkspace({
       if (!controller.signal.aborted) {
         const stale = failure instanceof BookingRequestError && failure.status === 409;
         setSettingsError(bookingError(failure));
-        if (stale || !(failure instanceof BookingRequestError) || failure.status >= 500) {
+        if (
+          stale ||
+          !(failure instanceof BookingRequestError) ||
+          failure.status === 408 ||
+          failure.status >= 500
+        ) {
           setSettingsBlocked(true);
           await loadSettings(false);
         }

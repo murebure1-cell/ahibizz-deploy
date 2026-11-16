@@ -170,7 +170,11 @@ export function PublicBusinessProfile({
 
       <nav className={styles.sectionNavigation} aria-label="Na ovoj stranici">
         <a href="#business-about">O djelatnosti</a>
-        {hasAppointments && <a href="#business-appointments">Termini</a>}
+        {hasAppointments && (
+          <a className={styles.appointmentsLink} href="#business-appointments">
+            Termini
+          </a>
+        )}
         {gallery.length > 0 && <a href="#business-gallery">Galerija</a>}
         <a href="#business-location">Lokacija</a>
         <a href="#business-contact">Kontakt</a>

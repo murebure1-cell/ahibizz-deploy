@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useId, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { initialLocationPoint } from "../../lib/business-location";
 import { profileCountries } from "../../lib/people";
 import { Icon } from "../Icon";
@@ -56,7 +56,10 @@ export function BusinessEditor({
   const [country, setCountry] = useState(initial?.countryCode ?? "");
   const knownBooking = bookingEnabled ?? (preview ? (initial?.bookingEnabled ?? false) : undefined);
   const [bookingChoice, setBookingChoice] = useState(knownBooking);
-  useEffect(() => setBookingChoice(knownBooking), [knownBooking]);
+  const bookingDirty = useRef(false);
+  useEffect(() => {
+    if (knownBooking !== undefined && !bookingDirty.current) setBookingChoice(knownBooking);
+  }, [knownBooking]);
   const roots = categories.filter((item) => item.parentId === null);
   const children = categories.filter((item) => item.parentId === category);
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -277,7 +280,10 @@ export function BusinessEditor({
                   type="checkbox"
                   style={{ width: 18, height: 18, minHeight: 18, padding: 0, flexShrink: 0 }}
                   checked={bookingChoice ?? knownBooking}
-                  onChange={(event) => setBookingChoice(event.target.checked)}
+                  onChange={(event) => {
+                    bookingDirty.current = event.target.checked !== knownBooking;
+                    setBookingChoice(event.target.checked);
+                  }}
                 />{" "}
                 Omogući online booking
               </span>

@@ -32,9 +32,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
       return (
         <main id="glavni-sadrzaj">
           <PublicBusinessProfile business={publicBusinessView(business, categories)}>
-            {booking?.enabled && booking.services.length > 0 ? (
-              <PublicBooking businessId={id} configuration={booking} />
-            ) : null}
+            <PublicBooking businessId={id} configuration={booking ?? null} />
           </PublicBusinessProfile>
         </main>
       );
