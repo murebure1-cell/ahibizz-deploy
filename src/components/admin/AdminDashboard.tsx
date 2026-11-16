@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
+import { BillingAdmin } from "../billing/BillingAdmin";
 import { BusinessManager } from "../directory/BusinessManager";
 import { Icon, type IconName } from "../Icon";
 import { AccountApprovals } from "./AccountApprovals";
@@ -31,6 +32,13 @@ const sections = [
     title: "Djelatnosti",
     description: "Pregled i upravljanje profilima na platformi.",
   },
+  {
+    id: "billing",
+    label: "Naplata i razvoj",
+    icon: "shop",
+    title: "Naplata i razvoj",
+    description: "Uplate, korekcije i izdvajanje za razvoj.",
+  },
 ] as const satisfies readonly {
   id: string;
   label: string;
@@ -42,7 +50,12 @@ const sections = [
 /** The server page authorizes access; each endpoint independently checks the current owner. */
 export function AdminDashboard({ initial }: { initial: SafeAccountProfile }) {
   const [section, setSection] = useState<(typeof sections)[number]["id"]>("accounts");
-  const [visited, setVisited] = useState({ accounts: true, categories: false, businesses: false });
+  const [visited, setVisited] = useState({
+    accounts: true,
+    categories: false,
+    businesses: false,
+    billing: false,
+  });
   const current = sections.find((item) => item.id === section) ?? sections[0];
   return (
     <main id="glavni-sadrzaj" className={styles.layout}>
@@ -103,6 +116,15 @@ export function AdminDashboard({ initial }: { initial: SafeAccountProfile }) {
               isOwner
               initialAll
               embedded
+            />
+          )}
+        </div>
+        <div hidden={section !== "billing"}>
+          {visited.billing && (
+            <BillingAdmin
+              key={initial.id}
+              expectedAccountId={initial.id}
+              active={section === "billing"}
             />
           )}
         </div>

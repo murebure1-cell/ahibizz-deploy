@@ -12,6 +12,7 @@ const links = [
   { href: "/ljudi", label: "Ljudi" },
   { href: "/nalog?odjeljak=poruke", label: "Poruke" },
   { href: "/nalog", label: "Moj nalog" },
+  { href: "/paketi", label: "Paketi" },
   { href: "/o-nama", label: "O AhiBizzu" },
   { href: "/instaliraj", label: "Instaliraj AhiBizz" },
 ];

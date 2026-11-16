@@ -17,6 +17,7 @@ test("login retains only exact known messaging destinations and previous safe pr
     "/nalog?odjeljak=prijatelji",
     "/nalog?odjeljak=poruke",
     "/nalog?odjeljak=postavke",
+    "/nalog?odjeljak=paketi",
     "/nalog?odjeljak=poruke&osoba=person_1-A",
     `/nalog?odjeljak=poruke&djelatnost=${business}`,
     `/djelatnosti/${business}#business-appointments`,
@@ -45,6 +46,7 @@ test("login retains only exact known messaging destinations and previous safe pr
     "/nalog?odjeljak=termini#other",
     "/nalog?odjeljak=postavke&odjeljak=profil",
     "/nalog?odjeljak=postavke&appearance=dark",
+    "/nalog?odjeljak=paketi&pretplata=paid",
     "/nalog?odjeljak=constructor",
     "/nalog?odjeljak=%74ermini",
     "/nalog?odjeljak=poruke%26osoba%3Dsomeone",
@@ -62,6 +64,7 @@ test("known account deep links retain their section through sign-in without expo
     ["prijatelji", "connections"],
     ["poruke", "messages"],
     ["postavke", "settings"],
+    ["paketi", "membership"],
   ] as const;
   for (const [query, expected] of sections) {
     const loginReturn = accountReturnPath(`/nalog?odjeljak=${query}`);
@@ -95,6 +98,7 @@ test("account pane addresses round-trip for refresh and browser history without 
     "connections",
     "messages",
     "settings",
+    "membership",
   ] as const) {
     const href = accountSectionPath(section);
     assert.equal(accountReturnPath(href), href);

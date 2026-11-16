@@ -13,6 +13,7 @@ import { clearBrowserMessagingRecovery } from "../../lib/messaging-recovery-stor
 import { type PersonalProfile, profileImageUrl } from "../../lib/people";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { useAppAppearance } from "../appearance/AppAppearance";
+import { PricingCatalog } from "../billing/PricingCatalog";
 import { CustomerAppointments } from "../booking/CustomerAppointments";
 import { ConnectionsPanel } from "../connections/ConnectionsPanel";
 import { BusinessManager } from "../directory/BusinessManager";
@@ -135,6 +136,7 @@ export function AccountDashboard({
               { id: "appointments", label: "Moji termini", icon: "calendar" },
               { id: "connections", label: "Prijatelji", icon: "user" },
               { id: "settings", label: "Postavke", icon: "sliders" },
+              { id: "membership", label: "Paketi", icon: "shop" },
             ] as const
           ).map((item) => (
             <button
@@ -219,6 +221,9 @@ export function AccountDashboard({
               }))
             }
           />
+        </div>
+        <div hidden={section !== "membership"}>
+          <PricingCatalog embedded />
         </div>
       </section>
     </main>
