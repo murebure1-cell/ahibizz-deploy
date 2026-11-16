@@ -28,6 +28,13 @@ import {
   type DirectoryCreateIntent,
   DirectoryRequestError as RequestError,
 } from "../../lib/directory-create-submission";
+import {
+  type DirectoryMutation,
+  directoryMutationFieldsMatch,
+  directoryMutationState,
+  patchDirectoryBusinessCache,
+  uncertainDirectoryMutation,
+} from "../../lib/directory-mutation-recovery";
 import type { DirectoryBusiness } from "../../server/directory/types";
 import { BusinessBookingManager } from "../booking/BusinessBookingManager";
 import { Icon } from "../Icon";
@@ -160,6 +167,7 @@ export function BusinessManager({
     "id" | "title"
   > | null>(null);
   const [pendingCreate, setPendingCreate] = useState<DirectoryCreateIntent | null>(null);
+  const [pendingMutation, setPendingMutation] = useState<DirectoryMutation | null>(null);
   const [loginRequired, setLoginRequired] = useState(false);
   const [bookingOption, setBookingOption] = useState<{ id: string; enabled: boolean } | null>(null);
   const [bookingNote, setBookingNote] = useState("");
@@ -168,6 +176,7 @@ export function BusinessManager({
   const bookingReads = useRef(0);
   const writing = useRef<AbortController | null>(null);
   const creation = useRef(createDirectoryCreation());
+  const mutation = useRef<DirectoryMutation | null>(null);
   const loadedSelection = useRef("");
   const live = useRef(false);
   const epoch = useRef(0);
@@ -225,6 +234,8 @@ export function BusinessManager({
     setReadError("");
     if (!preserveCreation) creation.current = createDirectoryCreation();
     setPendingCreate(creation.current.intent);
+    if (!preserveCreation) mutation.current = null;
+    setPendingMutation(mutation.current);
   }, []);
   const denied = useCallback(
     (failure: unknown) => {
@@ -264,7 +275,7 @@ export function BusinessManager({
     }
   }, [expectedAccountId, directoryApi, bookingApi, mediaApi, isOwner, initialAll, clearPrivate]);
   const editingId = editing?.id;
-  const locked = busy || pendingCreate !== null;
+  const locked = busy || pendingCreate !== null || pendingMutation !== null;
   // A dispatched command keeps its result and lock while another account section is visible.
   // Only a changed actor/transport/role or unmount invalidates that private workspace.
   useEffect(() => {
@@ -356,6 +367,109 @@ export function BusinessManager({
     current,
   ]);
 
+  function cacheBusiness(business: DirectoryBusiness) {
+    reads.current++;
+    setItems((rows) =>
+      patchDirectoryBusinessCache(
+        rows,
+        business,
+        archived,
+        page === 1 && ((all && isOwner) || business.ownerId === expectedAccountId),
+      ),
+    );
+  }
+  function forgetMutation() {
+    mutation.current = null;
+    setPendingMutation(null);
+  }
+  function mutationNotice(intent: DirectoryMutation) {
+    return intent.action === "archive"
+      ? "Djelatnost je arhivirana."
+      : intent.action === "recover"
+        ? "Djelatnost je vraćena u nacrte."
+        : intent.desiredStatus === "published"
+          ? "Djelatnost je objavljena."
+          : intent.desiredStatus === "pending"
+            ? "Izmjene su poslane na pregled."
+            : "Nacrt je sačuvan.";
+  }
+  async function inspectMutation(
+    intent: DirectoryMutation,
+    controller: AbortController,
+    access: number,
+  ) {
+    try {
+      const data = await request(`mine/${encodeURIComponent(intent.before.id)}`, {
+        signal: controller.signal,
+      });
+      if (!current(access) || controller.signal.aborted || mutation.current !== intent) return;
+      if (!data.business) throw new RequestError("UNAVAILABLE");
+      const state = directoryMutationState(intent, data.business);
+      cacheBusiness(data.business);
+      setLoginRequired(false);
+      if (state === "pending") {
+        setError("Prethodna izmjena još nije potvrđena. Provjeri ponovo.");
+        return;
+      }
+      forgetMutation();
+      const needsPublication =
+        state === "matched" &&
+        intent.action === "edit" &&
+        intent.publish &&
+        isOwner &&
+        data.business.status !== "published";
+      setEditing(
+        (state === "changed" || needsPublication) &&
+          ["edit", "publish"].includes(intent.action) &&
+          data.business.status !== "archived"
+          ? data.business
+          : undefined,
+      );
+      setError(
+        state === "changed"
+          ? "Djelatnost je u međuvremenu izmijenjena. Provjeri učitano stanje."
+          : needsPublication
+            ? "Podaci su sačuvani. Objava nije potvrđena."
+            : "",
+      );
+      if (state === "matched" && !needsPublication) setNotice(mutationNotice(intent));
+      if (state === "matched" && typeof intent.bookingEnabled === "boolean")
+        await updateBookingFlag(
+          data.business,
+          intent.bookingEnabled,
+          intent.wasNew ?? false,
+          controller,
+          access,
+        );
+    } catch (failure) {
+      if (!current(access) || controller.signal.aborted || mutation.current !== intent) return;
+      if (denied(failure)) return;
+      setError("Prethodna izmjena nije potvrđena. Provjeri ponovo.");
+    }
+  }
+  async function checkPreviousMutation() {
+    const intent = mutation.current;
+    if (!intent || writing.current || !active) return;
+    const controller = new AbortController(),
+      access = epoch.current;
+    writing.current = controller;
+    reads.current++;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await inspectMutation(intent, controller, access);
+    } finally {
+      if (writing.current === controller) {
+        writing.current = null;
+        if (current(access) && !controller.signal.aborted) {
+          setBusy(false);
+          setRefresh((value) => value + 1);
+        }
+      }
+    }
+  }
+
   async function updateBookingFlag(
     business: DirectoryBusiness,
     enabled: boolean,
@@ -369,6 +483,7 @@ export function BusinessManager({
       const fresh = await booking(bookingPath, { signal: controller.signal });
       if (!current(access) || controller.signal.aborted) return;
       const before = readBookingSettings(fresh.settings);
+      let confirmed = before;
       if (before.enabled !== enabled) {
         const body = {
           expectedVersion: before.version,
@@ -413,21 +528,31 @@ export function BusinessManager({
           configuration(after) !== configuration(before)
         )
           throw new Error("invalid_booking_ack");
+        confirmed = after;
       }
+      bookingReads.current++;
+      setBookingLoading(false);
+      setBookingOption({ id: business.id, enabled: confirmed.enabled });
+      setBookingNote("");
       if (wasNew && enabled) setBookingBusiness(business);
     } catch (failure) {
       if (!current(access)) return;
       if (!controller.signal.aborted && denied(failure)) return;
-      if (!controller.signal.aborted)
+      if (!controller.signal.aborted) {
+        bookingReads.current++;
+        setBookingLoading(false);
+        setBookingOption(null);
         setBookingNote(
           `Podaci djelatnosti su sačuvani. Promjena bookinga nije potvrđena. ${bookingError(failure)} Otvori Booking i provjeri postavke.`,
         );
+      }
     }
   }
   async function save(fields: BusinessFields, publish: boolean, replay?: DirectoryCreateIntent) {
     if (
       writing.current ||
       !active ||
+      mutation.current ||
       (creation.current.intent && !replay) ||
       (replay && replay !== creation.current.intent)
     )
@@ -459,11 +584,22 @@ export function BusinessManager({
     setLoginRequired(false);
     reads.current++;
     let committed: DirectoryBusiness | null = null;
+    let bookingPermitted = true;
     try {
       const intent = editingBusiness ? null : (replay ?? creation.current.begin(fields, publish));
       if (intent) {
         setPendingCreate(intent);
       }
+      if (editingBusiness)
+        mutation.current = {
+          before: editingBusiness,
+          action: "edit",
+          fields: directoryFields,
+          desiredStatus:
+            !isOwner && editingBusiness.status === "published" ? "pending" : editingBusiness.status,
+          publish,
+          ...(updateBooking ? { bookingEnabled } : {}),
+        };
       const data = editingBusiness
         ? await call(
             `mine/${editingBusiness.id}`,
@@ -474,20 +610,45 @@ export function BusinessManager({
               call("mine", options),
             ),
           };
-      if (!data.business?.id || !Number.isInteger(data.business.version))
+      if (
+        !data.business?.id ||
+        !Number.isInteger(data.business.version) ||
+        data.business.version < 1 ||
+        (editingBusiness &&
+          (data.business.id !== editingBusiness.id ||
+            data.business.version <= editingBusiness.version))
+      )
         throw new RequestError("UNAVAILABLE");
       let business = data.business as DirectoryBusiness;
       committed = business;
+      forgetMutation();
+      cacheBusiness(business);
       setEditing(business);
       setPendingCreate(null);
       if (publish && isOwner && business.status !== "published") {
+        mutation.current = {
+          before: business,
+          action: "publish",
+          desiredStatus: "published",
+          fields: directoryFields,
+          wasNew,
+          ...(updateBooking ? { bookingEnabled } : {}),
+        };
         const published = await call(
           `mine/${business.id}/publish`,
           write("POST", { expectedVersion: business.version }),
         );
-        if (published.business?.id !== business.id || published.business?.status !== "published")
+        if (
+          published.business?.id !== business.id ||
+          published.business?.status !== "published" ||
+          !Number.isInteger(published.business.version) ||
+          published.business.version <= business.version
+        )
           throw new RequestError("UNAVAILABLE");
         business = published.business;
+        committed = business;
+        forgetMutation();
+        cacheBusiness(business);
       }
       setNotice(
         business.status === "published"
@@ -499,12 +660,25 @@ export function BusinessManager({
       setEditing(undefined);
     } catch (error) {
       if (!current(access) || controller.signal.aborted) return;
+      if (mutation.current && !uncertainDirectoryMutation(error)) forgetMutation();
       if (denied(error)) return;
-      if (committed) {
+      if (mutation.current) {
+        const intent = mutation.current;
+        bookingPermitted = false;
+        setPendingMutation(intent);
+        await inspectMutation(intent, controller, access);
+      } else if (committed) {
+        bookingPermitted = false;
         try {
           const latest = await call(`mine/${committed.id}`);
-          if (latest.business?.id !== committed.id || !Number.isInteger(latest.business.version))
+          if (
+            latest.business?.id !== committed.id ||
+            !Number.isInteger(latest.business.version) ||
+            latest.business.version < committed.version
+          )
             throw new RequestError("UNAVAILABLE");
+          cacheBusiness(latest.business);
+          bookingPermitted = directoryMutationFieldsMatch(directoryFields, latest.business);
           if (latest.business.status === "published") {
             setNotice("Djelatnost je objavljena.");
             setEditing(undefined);
@@ -530,6 +704,7 @@ export function BusinessManager({
     } finally {
       if (
         committed &&
+        bookingPermitted &&
         updateBooking &&
         typeof bookingEnabled === "boolean" &&
         current(access) &&
@@ -546,7 +721,7 @@ export function BusinessManager({
     }
   }
   async function move(item: DirectoryBusiness, action: "publish" | "archive" | "recover") {
-    if (writing.current || !active || creation.current.intent) return;
+    if (writing.current || !active || creation.current.intent || mutation.current) return;
     const controller = new AbortController();
     const access = epoch.current;
     writing.current = controller;
@@ -554,26 +729,43 @@ export function BusinessManager({
     setError("");
     setNotice("");
     reads.current++;
+    const intent: DirectoryMutation = {
+      before: item,
+      action,
+      desiredStatus:
+        action === "archive"
+          ? "archived"
+          : action === "recover"
+            ? "draft"
+            : isOwner
+              ? "published"
+              : "pending",
+    };
+    mutation.current = intent;
     try {
       const data = await request(`mine/${item.id}/${action}`, {
         ...write("POST", { expectedVersion: item.version }),
         signal: controller.signal,
       });
       if (!current(access) || controller.signal.aborted) return;
-      if (data.business?.id !== item.id) throw new RequestError("UNAVAILABLE");
-      setNotice(
-        action === "archive"
-          ? "Djelatnost je arhivirana."
-          : action === "recover"
-            ? "Djelatnost je vraćena u nacrte."
-            : isOwner
-              ? "Djelatnost je objavljena."
-              : "Djelatnost je poslana na pregled.",
-      );
+      if (
+        data.business?.id !== item.id ||
+        !Number.isInteger(data.business.version) ||
+        data.business.version < item.version ||
+        data.business.status !== intent.desiredStatus
+      )
+        throw new RequestError("UNAVAILABLE");
+      cacheBusiness(data.business);
+      forgetMutation();
+      setNotice(mutationNotice(intent));
     } catch (error) {
-      if (!current(access)) return;
-      if (!controller.signal.aborted && denied(error)) return;
-      if (!controller.signal.aborted) setError(errorMessage(error));
+      if (!current(access) || controller.signal.aborted) return;
+      if (!uncertainDirectoryMutation(error)) forgetMutation();
+      if (denied(error)) return;
+      if (mutation.current) {
+        setPendingMutation(intent);
+        await inspectMutation(intent, controller, access);
+      } else setError(errorMessage(error));
     } finally {
       if (writing.current === controller) {
         writing.current = null;
@@ -706,6 +898,19 @@ export function BusinessManager({
           </button>
         </div>
       )}
+      {pendingMutation && !busy && (
+        <div className={styles.notice} role="status">
+          <p>Prethodna izmjena još nije potvrđena.</p>
+          <button
+            type="button"
+            className={styles.primary}
+            disabled={!active}
+            onClick={() => void checkPreviousMutation()}
+          >
+            Provjeri prethodnu izmjenu
+          </button>
+        </div>
+      )}
       {notice && (
         <p role="status" className={styles.notice}>
           {notice}
@@ -719,7 +924,7 @@ export function BusinessManager({
       {bookingLoading && <p role="status">Dohvaćanje booking postavki…</p>}
       {editing !== undefined ? (
         <BusinessEditor
-          key={editing?.id ?? "new"}
+          key={editing ? `${editing.id}:${editing.version}` : "new"}
           initial={editing ?? undefined}
           categories={categories}
           busy={locked}
@@ -730,7 +935,7 @@ export function BusinessManager({
           }
           onSave={save}
           onCancel={() => {
-            if (creation.current.intent) return;
+            if (creation.current.intent || mutation.current) return;
             setEditing(undefined);
             setError("");
             setBookingNote("");
