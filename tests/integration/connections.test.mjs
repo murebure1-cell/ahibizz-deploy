@@ -967,9 +967,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
               "INSERT INTO auth_user(id,name,email,\"emailVerified\",role,approval) VALUES($1,$2,$3,true,'member','approved')",
               [id, "Same public name", `${id}@person-businesses.invalid`],
             );
-            await pool.query("INSERT INTO personal_profile(user_id,is_public) VALUES($1,true)", [
-              id,
-            ]);
+            await pool.query(
+              "INSERT INTO personal_profile(user_id,is_public,version) VALUES($1,true,1)",
+              [id],
+            );
           }
           await pool.query(
             "INSERT INTO directory_category(id,name,slug) VALUES($1,'Public services','public-person-businesses-fixture')",
