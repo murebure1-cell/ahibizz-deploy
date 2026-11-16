@@ -272,8 +272,9 @@
   border: 1px solid var(--ui-border);
   border-radius: 13px;
   padding: 21px;
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr);
+  align-items: start;
   gap: 15px;
 }
 .monogram {
@@ -288,7 +289,6 @@
   font-weight: 650;
 }
 .businessInfo {
-  flex: 1;
   min-width: 0;
 }
 .business h2 {
@@ -315,8 +315,11 @@
 }
 .businessActions {
   display: flex;
+  grid-column: 1 / -1;
+  min-width: 0;
   gap: 8px;
   flex-wrap: wrap;
+  padding-left: 65px;
 }
 .toolbar {
   display: flex;
@@ -336,14 +339,6 @@
   accent-color: var(--ui-primary);
 }
 @media (max-width: 800px) {
-  .business {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-  .businessActions {
-    width: 100%;
-    padding-left: 65px;
-  }
   .editor {
     padding: 25px;
   }
