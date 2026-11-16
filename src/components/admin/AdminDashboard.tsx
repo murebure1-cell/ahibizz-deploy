@@ -16,35 +16,30 @@ const sections = [
     label: "Nalozi",
     icon: "user",
     title: "Nalozi",
-    description: "Prijave, aktivni korisnici i pristup platformi.",
   },
   {
     id: "categories",
     label: "Kategorije",
     icon: "sliders",
     title: "Kategorije",
-    description: "Uredi kako korisnici pronalaze djelatnosti.",
   },
   {
     id: "businesses",
     label: "Djelatnosti",
     icon: "shop",
     title: "Djelatnosti",
-    description: "Pregled i upravljanje profilima na platformi.",
   },
   {
     id: "billing",
     label: "Naplata i razvoj",
     icon: "shop",
     title: "Naplata i razvoj",
-    description: "Uplate, korekcije i izdvajanje za razvoj.",
   },
 ] as const satisfies readonly {
   id: string;
   label: string;
   icon: IconName;
   title: string;
-  description: string;
 }[];
 
 /** The server page authorizes access; each endpoint independently checks the current owner. */
@@ -95,12 +90,12 @@ export function AdminDashboard({ initial }: { initial: SafeAccountProfile }) {
       </aside>
       <section id="admin-content" className={styles.content}>
         <header className={styles.pageHeading}>
-          <span>ADMINISTRACIJA</span>
           <h1>{current.title}</h1>
-          <p>{current.description}</p>
         </header>
         <div hidden={section !== "accounts"}>
-          {visited.accounts && <AccountApprovals key={initial.id} expectedAccountId={initial.id} />}
+          {visited.accounts && (
+            <AccountApprovals key={initial.id} expectedAccountId={initial.id} embedded />
+          )}
         </div>
         <div hidden={section !== "categories"}>
           {visited.categories && (
@@ -125,6 +120,7 @@ export function AdminDashboard({ initial }: { initial: SafeAccountProfile }) {
               key={initial.id}
               expectedAccountId={initial.id}
               active={section === "billing"}
+              embedded
             />
           )}
         </div>

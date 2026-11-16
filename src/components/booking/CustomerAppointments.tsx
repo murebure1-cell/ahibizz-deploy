@@ -17,7 +17,10 @@ import {
 } from "../../lib/booking-client";
 import {
   type CustomerAppointmentsState,
+  customerAppointmentCancelled,
   customerAppointmentsFailed,
+  readCustomerCancellation,
+  reconcileCustomerCancellations,
 } from "../../lib/customer-appointments-state";
 import { Icon } from "../Icon";
 import styles from "./public-booking.module.css";
@@ -57,6 +60,7 @@ function AppointmentsWorkspace({
     live = useRef(false),
     controllers = useRef(new Set<AbortController>()),
     writing = useRef(false),
+    cancellations = useRef(new Map<string, BookingEntry>()),
     api = useMemo(
       () => bookingActorRequest(expectedAccountId, request),
       [expectedAccountId, request],
@@ -67,6 +71,7 @@ function AppointmentsWorkspace({
     for (const controller of controllers.current) controller.abort();
     controllers.current.clear();
     writing.current = false;
+    cancellations.current.clear();
     setReadState({ result: null, requiresLogin: true });
     setNotice("");
     setError(bookingError(failure));
@@ -82,6 +87,7 @@ function AppointmentsWorkspace({
       revision.current++;
       for (const controller of controllers.current) controller.abort();
       controllers.current.clear();
+      cancellations.current.clear();
     };
   }, []);
   useEffect(() => {
@@ -95,6 +101,7 @@ function AppointmentsWorkspace({
     setNotice("");
     setError("");
     writing.current = false;
+    cancellations.current.clear();
     setBusy(false);
   }, [api]);
   const { result, requiresLogin } = readState;
@@ -135,12 +142,15 @@ function AppointmentsWorkspace({
           return;
         }
         setReadState({
-          result: {
-            key: `${view}:${page}`,
-            entries: data.entries,
-            more: data.hasMore,
-            credits: Number.isInteger(data.credits) ? data.credits : null,
-          },
+          result: reconcileCustomerCancellations(
+            {
+              key: `${view}:${page}`,
+              entries: data.entries,
+              more: data.hasMore,
+              credits: Number.isInteger(data.credits) ? data.credits : null,
+            },
+            cancellations.current.values(),
+          ),
           requiresLogin: false,
         });
       })
@@ -152,7 +162,6 @@ function AppointmentsWorkspace({
         }
         if (!controller.signal.aborted && current === revision.current) {
           setReadState((previous) => customerAppointmentsFailed(previous, failure));
-          setNotice("");
           setError(bookingError(failure));
         }
       })
@@ -172,6 +181,8 @@ function AppointmentsWorkspace({
       controller = new AbortController();
     controllers.current.add(controller);
     writing.current = true;
+    revision.current++;
+    setLoading(false);
     setBusy(true);
     setError("");
     setNotice("");
@@ -181,14 +192,11 @@ function AppointmentsWorkspace({
         signal: controller.signal,
       });
       if (!live.current || generation !== authority.current || controller.signal.aborted) return;
-      if (
-        result.entry?.id !== entry.id ||
-        result.entry?.businessId !== entry.businessId ||
-        result.entry?.status !== "cancelled" ||
-        !Number.isInteger(result.entry.version) ||
-        result.entry.version <= entry.version
-      )
-        throw new Error("unconfirmed_cancel");
+      const cancelled = readCustomerCancellation(result.entry, entry, expectedAccountId);
+      revision.current++;
+      setLoading(false);
+      cancellations.current.set(cancelled.id, cancelled);
+      setReadState((previous) => customerAppointmentCancelled(previous, cancelled));
       setNotice(preview ? "Termin je otkazan u pregledu." : "Termin je otkazan.");
     } catch (failure) {
       if (!live.current || generation !== authority.current) return;

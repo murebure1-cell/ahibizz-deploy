@@ -290,7 +290,7 @@ function CategoryWorkspace({ expectedAccountId, request: transport = browserAdmi
       </section>
       <section className={styles.card} aria-labelledby="admin-category-list-heading">
         <div className={styles.cardHeading}>
-          <h2 id="admin-category-list-heading">Kategorije</h2>
+          <h2 id="admin-category-list-heading">Postojeće kategorije</h2>
           <button
             className={styles.secondary}
             type="button"

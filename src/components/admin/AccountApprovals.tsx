@@ -32,11 +32,15 @@ const filters: { approval: AdminAccountApproval; label: string; empty: string }[
 ];
 const initialView = adminAccountQuery("pending", 1);
 
-type Props = { request?: AdminAccountRequest; expectedAccountId?: string };
+type Props = { request?: AdminAccountRequest; expectedAccountId?: string; embedded?: boolean };
 export function AccountApprovals(props: Props) {
   return <ApprovalWorkspace key={props.expectedAccountId ?? "unavailable"} {...props} />;
 }
-function ApprovalWorkspace({ request = browserAdminRequest, expectedAccountId }: Props) {
+function ApprovalWorkspace({
+  request = browserAdminRequest,
+  expectedAccountId,
+  embedded = false,
+}: Props) {
   const scopedRequest = useMemo(
     () => adminActorRequest(expectedAccountId, request),
     [expectedAccountId, request],
@@ -323,12 +327,18 @@ function ApprovalWorkspace({ request = browserAdminRequest, expectedAccountId }:
 
   const disabled = pending !== null || loading || needsReview || !!error;
   return (
-    <section className={styles.card} aria-labelledby="admin-approval-heading">
-      <div className={styles.cardHeading}>
-        <div>
-          <h2 id="admin-approval-heading">Nalozi</h2>
-          <p>Prijave i pristup korisnika.</p>
-        </div>
+    <section
+      className={styles.card}
+      aria-label={embedded ? "Nalozi" : undefined}
+      aria-labelledby={embedded ? undefined : "admin-approval-heading"}
+    >
+      <div className={embedded ? styles.cardToolbar : styles.cardHeading}>
+        {!embedded && (
+          <div>
+            <h2 id="admin-approval-heading">Nalozi</h2>
+            <p>Prijave i pristup korisnika.</p>
+          </div>
+        )}
         <button
           className={styles.secondary}
           type="button"

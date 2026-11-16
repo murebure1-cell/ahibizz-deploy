@@ -5,7 +5,10 @@ import type { BookingSlot } from "../src/lib/booking";
 import { BookingRequestError, bookingWrite } from "../src/lib/booking-client";
 import {
   type CustomerAppointmentsState,
+  customerAppointmentCancelled,
   customerAppointmentsFailed,
+  readCustomerCancellation,
+  reconcileCustomerCancellations,
 } from "../src/lib/customer-appointments-state";
 
 async function loadedAppointments(): Promise<CustomerAppointmentsState> {
@@ -78,4 +81,95 @@ test("a transient 503 or lost connection retains a previously accepted appointme
     assert.equal(next.result?.entries[0]?.status, "requested");
     assert.equal(next.requiresLogin, false);
   }
+});
+
+async function cancellationFixture() {
+  const loaded = await loadedAppointments();
+  const entry = loaded.result?.entries[0];
+  assert.ok(entry?.customerId);
+  const cancelled = readCustomerCancellation(
+    { ...entry, status: "cancelled", version: entry.version + 1 },
+    entry,
+    entry.customerId,
+  );
+  return { loaded, entry, cancelled };
+}
+
+test("confirmed cancellation removes the upcoming action before a fallible refresh", async () => {
+  const { loaded, entry, cancelled } = await cancellationFixture();
+  const corrected = customerAppointmentCancelled(loaded, cancelled);
+  assert.equal(corrected.result?.entries.length, 0);
+  assert.equal(corrected.result?.key, loaded.result?.key);
+  assert.equal(corrected.result?.credits, loaded.result?.credits);
+  assert.equal(corrected.result?.more, loaded.result?.more);
+  assert.equal(loaded.result?.entries[0], entry, "The accepted source snapshot is not mutated.");
+  assert.equal(entry.status, "requested");
+  for (const failure of [
+    new BookingRequestError("BOOKING_UNAVAILABLE", 503),
+    new TypeError("offline"),
+  ])
+    assert.equal(customerAppointmentsFailed(corrected, failure), corrected);
+});
+
+test("history adopts the confirmed version but cancellation cannot resurrect denied or absent pages", async () => {
+  const { loaded, cancelled } = await cancellationFixture();
+  assert.ok(loaded.result);
+  const history = { ...loaded, result: { ...loaded.result, key: "history:1" } };
+  const corrected = customerAppointmentCancelled(history, cancelled);
+  assert.equal(corrected.result?.entries[0]?.status, "cancelled");
+  assert.equal(corrected.result?.entries[0]?.version, cancelled.version);
+  const denied = customerAppointmentsFailed(
+    history,
+    new BookingRequestError("ACCOUNT_SUSPENDED", 403),
+  );
+  assert.equal(customerAppointmentCancelled(denied, cancelled), denied);
+  const empty: CustomerAppointmentsState = { result: null, requiresLogin: false };
+  assert.equal(customerAppointmentCancelled(empty, cancelled), empty);
+});
+
+test("a cancellation acknowledgement must belong to the original actor and immutable appointment quote", async () => {
+  const { entry, cancelled } = await cancellationFixture();
+  for (const value of [
+    null,
+    { ...cancelled, id: "other" },
+    { ...cancelled, businessId: "other" },
+    { ...cancelled, customerId: "other" },
+    { ...cancelled, kind: "manual" },
+    { ...cancelled, status: "confirmed" },
+    { ...cancelled, version: entry.version },
+    { ...cancelled, version: 2147483648 },
+    { ...cancelled, version: 2.5 },
+    { ...cancelled, priceMinor: entry.priceMinor + 1 },
+    { ...cancelled, serviceName: "Changed quote" },
+    { ...cancelled, startsAt: "2031-01-01T00:00:00Z" },
+  ])
+    assert.throws(() => readCustomerCancellation(value, entry, entry.customerId ?? undefined));
+  assert.throws(() => readCustomerCancellation(cancelled, entry, "another-actor"));
+  assert.throws(() => readCustomerCancellation(cancelled, entry, undefined));
+});
+
+test("terminal cancellation snapshots reject regression and reconcile late list versions monotonically", async () => {
+  const { loaded, entry, cancelled } = await cancellationFixture();
+  assert.ok(loaded.result);
+  const page = loaded.result;
+  const known = [cancelled];
+  assert.deepEqual(reconcileCustomerCancellations(loaded.result, known).entries, []);
+  const history = reconcileCustomerCancellations({ ...loaded.result, key: "history:1" }, known);
+  assert.deepEqual(history.entries, [cancelled]);
+  const newer = { ...cancelled, version: cancelled.version + 1 };
+  const current = { ...loaded, result: { ...loaded.result, key: "history:1", entries: [newer] } };
+  assert.equal(customerAppointmentCancelled(current, cancelled), current);
+  assert.deepEqual(reconcileCustomerCancellations(current.result, known).entries, [newer]);
+  assert.throws(() =>
+    reconcileCustomerCancellations(
+      { ...page, entries: [{ ...entry, version: cancelled.version + 1 }] },
+      known,
+    ),
+  );
+  assert.throws(() =>
+    reconcileCustomerCancellations(
+      { ...page, entries: [{ ...entry, customerId: "another-actor" }] },
+      known,
+    ),
+  );
 });

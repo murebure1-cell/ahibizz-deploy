@@ -28,7 +28,12 @@ import {
 } from "./model";
 import { type BillingBusinessChoice, ReceiptForm } from "./ReceiptForm";
 
-type Props = { expectedAccountId?: string; request?: BillingRequest; active?: boolean };
+type Props = {
+  expectedAccountId?: string;
+  request?: BillingRequest;
+  active?: boolean;
+  embedded?: boolean;
+};
 type Pending = { kind: "create"; key: string } | { kind: "adjust"; id: string; version: number };
 const kindLabels = { subscription: "Pretplata", photo_video: "Foto i video" };
 const sources = { bank: "Bankovna uplata", paypal: "PayPal", cash: "Gotovina", other: "Drugo" };
@@ -54,6 +59,7 @@ function BillingWorkspace({
   expectedAccountId,
   request: rawRequest = billingRequest,
   active = true,
+  embedded = false,
 }: Props) {
   const request = useMemo(
     () => billingActorRequest(expectedAccountId, rawRequest),
@@ -473,7 +479,7 @@ function BillingWorkspace({
   return (
     <section className={styles.workspace} aria-label="Naplata i razvoj">
       <header className={styles.heading}>
-        <h1>Naplata i razvoj</h1>
+        {!embedded && <h1>Naplata i razvoj</h1>}
         <span className={styles.badge}>Ručna evidencija</span>
       </header>
       {error && (
