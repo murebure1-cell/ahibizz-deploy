@@ -56,12 +56,46 @@ test("directory endpoint input cannot escape the private directory path", async 
       "mine?page=1#x",
       "//foreign.invalid",
       "mine\\admin",
+      "review",
+      "review/id/archive",
+      "review/../admin",
+      "review/id?next=mine",
     ])
       await assert.rejects(
         directoryRequest(route),
         (error) => error instanceof DirectoryRequestError && error.status === 400,
       );
     assert.equal(calls, 0);
+  } finally {
+    globalThis.fetch = old;
+  }
+});
+
+test("draft return sends the captured actor and reason only to its private moderation endpoint", async () => {
+  const old = globalThis.fetch;
+  const calls: { url: string; options: RequestInit }[] = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url: String(url), options });
+    return new Response(JSON.stringify({ business: { id: "business-one", version: 2 } }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+  try {
+    const body = JSON.stringify({ status: "draft", expectedVersion: 1, reason: "Dopuni kontakt" });
+    await directoryActorRequest("admin-A")("review/business-one", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0]?.url, "/api/directory/review/business-one");
+    assert.equal(calls[0]?.options.method, "PATCH");
+    assert.equal(calls[0]?.options.body, body);
+    assert.equal(new Headers(calls[0]?.options.headers).get("X-AhiBizz-Account-ID"), "admin-A");
+    assert.equal(calls[0]?.options.credentials, "same-origin");
+    assert.equal(calls[0]?.options.cache, "no-store");
+    assert.equal(calls[0]?.options.redirect, "error");
   } finally {
     globalThis.fetch = old;
   }

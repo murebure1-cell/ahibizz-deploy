@@ -40,6 +40,39 @@ const edit: DirectoryMutation = {
   fields: { ...before, title: "New title" },
 };
 
+test("a draft return needs the captured reason on the current audit version before confirmation", () => {
+  const intent: DirectoryMutation = {
+    before,
+    action: "return-to-draft",
+    desiredStatus: "draft",
+    reason: "Dopuni kontakt",
+  };
+  const note = { reason: "Dopuni kontakt", createdAt: before.createdAt, version: 2 };
+  const returned: DirectoryBusiness = {
+    ...before,
+    status: "draft",
+    version: 2,
+    moderationReturn: note,
+  };
+  assert.equal(directoryMutationState(intent, before), "pending");
+  assert.equal(directoryMutationState(intent, returned), "matched");
+  assert.equal(directoryMutationState(intent, { ...returned, moderationReturn: null }), "changed");
+  assert.equal(
+    directoryMutationState(intent, {
+      ...returned,
+      moderationReturn: { ...note, reason: "Drugi razlog" },
+    }),
+    "changed",
+  );
+  assert.equal(
+    directoryMutationState(intent, {
+      ...returned,
+      moderationReturn: { ...note, version: 1 },
+    }),
+    "changed",
+  );
+});
+
 test("unknown directory writes require read-only recovery, unlike a definite rejection", () => {
   for (const failure of [
     new Error("network"),

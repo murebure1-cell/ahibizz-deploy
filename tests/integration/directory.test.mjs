@@ -651,6 +651,178 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       );
 
       await t.test(
+        "return-to-draft reasons are current, owner-private and atomically versioned",
+        async () => {
+          memberBusiness = await directory.update(member.headers, memberBusiness.id, {
+            title: "Member profile awaiting review",
+            expectedVersion: memberBusiness.version,
+          });
+          assert.equal(memberBusiness.status, "pending");
+          const auditCount = async () =>
+            (await pool.query("SELECT count(*)::integer AS n FROM directory_moderation_audit"))
+              .rows[0].n;
+          const beforeEvents = await auditCount();
+          const before = memberBusiness;
+          for (const reason of [undefined, null, "", "x", "   ", "x".repeat(501)]) {
+            const result = await directoryRequest("PATCH", `/api/directory/review/${before.id}`, {
+              actor: owner,
+              expectedAccountId: owner.user.id,
+              body: { status: "draft", expectedVersion: before.version, reason },
+            });
+            assert.equal(result.status, 400);
+            assert.equal(result.data.code, "INVALID_DIRECTORY_INPUT");
+          }
+          const foreign = await directoryRequest("PATCH", `/api/directory/review/${before.id}`, {
+            actor: other,
+            expectedAccountId: other.user.id,
+            body: { status: "draft", expectedVersion: before.version, reason: "Forbidden" },
+          });
+          assert.equal(foreign.status, 404);
+          const notAdmin = await directoryRequest("PATCH", `/api/directory/review/${before.id}`, {
+            actor: member,
+            expectedAccountId: member.user.id,
+            body: { status: "draft", expectedVersion: before.version, reason: "Forbidden" },
+          });
+          assert.equal(notAdmin.status, 403);
+          assert.equal(notAdmin.data.code, "OWNER_REQUIRED");
+          assert.equal(await auditCount(), beforeEvents);
+          assert.equal(
+            (await directory.readOwn(member.headers, before.id)).version,
+            before.version,
+          );
+
+          const reason = "Unesi tačno radno vrijeme i kontakt.";
+          const returned = await directoryRequest("PATCH", `/api/directory/review/${before.id}`, {
+            actor: owner,
+            expectedAccountId: owner.user.id,
+            body: { status: "draft", expectedVersion: before.version, reason: ` ${reason} ` },
+          });
+          assert.equal(returned.status, 200);
+          memberBusiness = returned.data.business;
+          const note = memberBusiness.moderationReturn;
+          assert.equal(memberBusiness.status, "draft");
+          assert.equal(memberBusiness.version, before.version + 1);
+          assert.equal(note.reason, reason);
+          assert.equal(note.version, memberBusiness.version);
+          assert.equal(new Date(note.createdAt).toISOString(), note.createdAt);
+          assert.equal(await auditCount(), beforeEvents + 1);
+          for (const [actor, route] of [
+            [member, `/api/directory/mine/${before.id}`],
+            [owner, `/api/directory/mine/${before.id}`],
+            [member, "/api/directory/mine"],
+            [owner, "/api/directory/admin"],
+          ]) {
+            const result = await directoryRequest("GET", route, {
+              actor,
+              expectedAccountId: actor.user.id,
+            });
+            assert.equal(result.status, 200);
+            const business =
+              result.data.business ?? result.data.items.find((row) => row.id === before.id);
+            assert.deepEqual(business.moderationReturn, note);
+          }
+          const hidden = await directoryRequest("GET", `/api/directory/mine/${before.id}`, {
+            actor: other,
+            expectedAccountId: other.user.id,
+          });
+          assert.equal(hidden.status, 404);
+          assert.equal(JSON.stringify(hidden.data).includes(reason), false);
+          assert.equal(
+            (await directory.listOwn(other.headers)).items.some((row) => row.id === before.id),
+            false,
+          );
+          await denied(() => directory.readPublic(before.id), 404, "BUSINESS_NOT_FOUND");
+          assert.deepEqual((await directory.listPublic({ q: reason })).items, []);
+          const stale = await directoryRequest("PATCH", `/api/directory/review/${before.id}`, {
+            actor: owner,
+            expectedAccountId: owner.user.id,
+            body: { status: "draft", expectedVersion: before.version, reason: "Stale reason" },
+          });
+          assert.equal(stale.status, 409);
+          assert.equal(stale.data.code, "VERSION_CONFLICT");
+          assert.equal(await auditCount(), beforeEvents + 1);
+          assert.deepEqual(
+            (await directory.readOwn(member.headers, before.id)).moderationReturn,
+            note,
+          );
+        },
+      );
+
+      await t.test(
+        "a returned reason clears on edit, publication, archive and recovery without deleting its audit",
+        async () => {
+          const id = memberBusiness.id;
+          memberBusiness = await directory.update(member.headers, id, {
+            title: "Corrected member profile",
+            expectedVersion: memberBusiness.version,
+          });
+          assert.equal(memberBusiness.status, "draft");
+          assert.equal(memberBusiness.moderationReturn, null);
+          assert.equal((await directory.readOwn(member.headers, id)).moderationReturn, null);
+          memberBusiness = await directory.publish(member.headers, id, {
+            expectedVersion: memberBusiness.version,
+          });
+          assert.equal(memberBusiness.status, "pending");
+          assert.equal(memberBusiness.moderationReturn, null);
+          memberBusiness = await directory.moderate(owner.headers, id, {
+            status: "published",
+            expectedVersion: memberBusiness.version,
+          });
+          assert.equal(memberBusiness.moderationReturn, null);
+          for (const business of [
+            await directory.readPublic(id),
+            ...(await directory.listPublic()).items,
+          ])
+            assert.equal(Object.hasOwn(business, "moderationReturn"), false);
+          const audit = await pool.query(
+            "SELECT reason FROM directory_moderation_audit WHERE business_id=$1 AND next_status='draft' ORDER BY next_version",
+            [id],
+          );
+          assert.deepEqual(
+            audit.rows.map((row) => row.reason),
+            ["Unesi tačno radno vrijeme i kontakt."],
+          );
+          memberBusiness = await directory.moderate(owner.headers, id, {
+            status: "draft",
+            expectedVersion: memberBusiness.version,
+            reason: "Dopuni adresu.",
+          });
+          assert.equal(memberBusiness.moderationReturn.reason, "Dopuni adresu.");
+          memberBusiness = await directory.archive(member.headers, id, {
+            expectedVersion: memberBusiness.version,
+          });
+          assert.equal(memberBusiness.moderationReturn, null);
+          assert.equal((await directory.readOwn(member.headers, id)).moderationReturn, null);
+          assert.equal(
+            (await directory.listOwn(member.headers, { status: "archived" })).items.find(
+              (row) => row.id === id,
+            ).moderationReturn,
+            null,
+          );
+          memberBusiness = await directory.recover(member.headers, id, {
+            expectedVersion: memberBusiness.version,
+          });
+          assert.equal(memberBusiness.status, "draft");
+          assert.equal(memberBusiness.moderationReturn, null);
+          assert.equal((await directory.readOwn(member.headers, id)).moderationReturn, null);
+          memberBusiness = await directory.publish(owner.headers, id, {
+            expectedVersion: memberBusiness.version,
+          });
+          assert.equal(memberBusiness.status, "published");
+          assert.equal(memberBusiness.moderationReturn, null);
+          assert.equal(
+            (
+              await pool.query(
+                "SELECT count(*)::integer AS n FROM directory_moderation_audit WHERE business_id=$1 AND next_status='draft'",
+                [id],
+              )
+            ).rows[0].n,
+            2,
+          );
+        },
+      );
+
+      await t.test(
         "database-only public reads preserve publication and owner eligibility without SMTP or private auth",
         async () => {
           const publicDirectory = createPublicDirectoryService({ database: pool });

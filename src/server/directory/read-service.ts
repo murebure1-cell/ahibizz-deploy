@@ -27,7 +27,7 @@ export const columnMap: Record<keyof BusinessFields, string> = {
   latitude: "latitude",
   longitude: "longitude",
 };
-export const columns = [
+const publicColumns = [
   "b.id",
   'b.owner_user_id AS "ownerId"',
   ...businessKeys.map((key) => `b.${columnMap[key]} AS "${key}"`),
@@ -40,6 +40,10 @@ export const columns = [
   'b.published_at AS "publishedAt"',
   'b.archived_at AS "archivedAt"',
   `${businessMediaProjection} AS media`,
+].join(", ");
+export const columns = [
+  publicColumns,
+  `(SELECT jsonb_build_object('reason', a.reason, 'createdAt', a.created_at, 'version', a.next_version) FROM directory_moderation_audit a WHERE b.status = 'draft' AND a.business_id = b.id AND a.action = 'moderate' AND a.next_status = 'draft' AND a.next_version = b.version AND a.reason IS NOT NULL ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS "moderationReturn"`,
 ].join(", ");
 export type Row = Omit<
   DirectoryBusiness,
@@ -57,6 +61,12 @@ export function dto(row: Row): DirectoryBusiness {
     updatedAt: row.updatedAt.toISOString(),
     publishedAt: row.publishedAt?.toISOString() ?? null,
     archivedAt: row.archivedAt?.toISOString() ?? null,
+    moderationReturn: row.moderationReturn
+      ? {
+          ...row.moderationReturn,
+          createdAt: new Date(row.moderationReturn.createdAt).toISOString(),
+        }
+      : null,
   };
 }
 function publicDto(value: DirectoryBusiness): PublicDirectoryBusiness {
@@ -66,6 +76,7 @@ function publicDto(value: DirectoryBusiness): PublicDirectoryBusiness {
     version: _version,
     archivedAt: _archived,
     updatedAt: _updated,
+    moderationReturn: _moderationReturn,
     ...publicValue
   } = value;
   return publicValue;
@@ -112,7 +123,7 @@ export async function listDirectory(
   const limitIndex = values.push(pageSize + 1),
     offsetIndex = values.push((page - 1) * pageSize);
   const result = await database.query(
-    `SELECT ${columns} FROM directory_business b ${publicOnly ? "JOIN auth_user u ON u.id = b.owner_user_id" : ""} WHERE ${filters.join(" AND ")} ORDER BY b.created_at DESC, b.id DESC LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
+    `SELECT ${publicOnly ? publicColumns : columns} FROM directory_business b ${publicOnly ? "JOIN auth_user u ON u.id = b.owner_user_id" : ""} WHERE ${filters.join(" AND ")} ORDER BY b.created_at DESC, b.id DESC LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
     values,
   );
   const items = (result.rows as Row[]).slice(0, pageSize).map(dto);
@@ -147,7 +158,7 @@ export function createPublicDirectoryService({ database }: { database: Directory
       const key = uuid(id);
       return safeRead(async () => {
         const result = await database.query(
-          `SELECT ${columns} FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id WHERE b.id = $1 AND b.status = 'published' AND u.approval = 'approved' AND u."emailVerified" = true`,
+          `SELECT ${publicColumns} FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id WHERE b.id = $1 AND b.status = 'published' AND u.approval = 'approved' AND u."emailVerified" = true`,
           [key],
         );
         if (!result.rows[0]) fail(404, "BUSINESS_NOT_FOUND");

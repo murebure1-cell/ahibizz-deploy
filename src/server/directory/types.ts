@@ -17,6 +17,7 @@ export type BusinessFields = {
 };
 export type DirectoryBusiness = BusinessFields & {
   media?: BusinessMediaSummary;
+  moderationReturn?: { reason: string; createdAt: string; version: number } | null;
   id: string;
   ownerId: string;
   status: BusinessStatus;
@@ -30,7 +31,7 @@ export type DirectoryBusiness = BusinessFields & {
 };
 export type PublicDirectoryBusiness = Omit<
   DirectoryBusiness,
-  "ownerId" | "status" | "version" | "archivedAt" | "updatedAt"
+  "ownerId" | "status" | "version" | "archivedAt" | "updatedAt" | "moderationReturn"
 >;
 export class DirectoryAccessError extends Error {
   constructor(

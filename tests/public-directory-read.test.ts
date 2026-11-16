@@ -38,6 +38,11 @@ const row = {
   publishedAt: new Date("2026-01-02T00:00:00Z"),
   archivedAt: null,
   media: { logo: null, cover: null, gallery: [] },
+  moderationReturn: {
+    reason: "Private moderation fixture must never be public",
+    createdAt: "2026-01-02T00:00:00Z",
+    version: 2,
+  },
 };
 
 function fixture(options: { unavailable?: boolean; missing?: boolean } = {}) {
@@ -136,7 +141,15 @@ test("public list and detail retain eligibility predicates and the existing publ
   assert.deepEqual(list.items, [detail.business]);
   assert.equal(detail.business.id, id);
   assert.equal(detail.business.publishedAt, row.publishedAt.toISOString());
-  for (const field of ["ownerId", "status", "version", "archivedAt", "updatedAt", "bytes"])
+  for (const field of [
+    "ownerId",
+    "status",
+    "version",
+    "archivedAt",
+    "updatedAt",
+    "bytes",
+    "moderationReturn",
+  ])
     assert.equal(Object.hasOwn(detail.business, field), false, field);
   for (const query of f.queries) {
     assert.match(query.sql, /JOIN auth_user u ON u.id = b.owner_user_id/);
@@ -145,6 +158,7 @@ test("public list and detail retain eligibility predicates and the existing publ
       /b.status = 'published' AND u.approval = 'approved' AND u\."emailVerified" = true/,
     );
     assert.doesNotMatch(query.sql, /\bbytes\b/);
+    assert.doesNotMatch(query.sql, /directory_moderation_audit|moderationReturn/);
   }
   assert.deepEqual(f.queries[1]?.values, [id]);
 });

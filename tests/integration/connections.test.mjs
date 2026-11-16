@@ -951,6 +951,110 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           );
         },
       );
+      const { createPublicPersonBusinessesService } = await import(
+        "../../src/server/public-person-businesses.ts"
+      );
+      const publicBusinesses = createPublicPersonBusinessesService(pool);
+      const businessPerson = "public-business-person";
+      const sameNamePerson = "other-public-business-person";
+      const emptyPerson = "empty-public-business-person";
+      const businessCategory = randomUUID();
+      await t.test(
+        "public person businesses use owner FK, published-only paging and an explicit public card projection",
+        async () => {
+          for (const id of [businessPerson, sameNamePerson, emptyPerson]) {
+            await pool.query(
+              "INSERT INTO auth_user(id,name,email,\"emailVerified\",role,approval) VALUES($1,$2,$3,true,'member','approved')",
+              [id, "Same public name", `${id}@person-businesses.invalid`],
+            );
+            await pool.query("INSERT INTO personal_profile(user_id,is_public) VALUES($1,true)", [
+              id,
+            ]);
+          }
+          await pool.query(
+            "INSERT INTO directory_category(id,name,slug) VALUES($1,'Public services','public-person-businesses-fixture')",
+            [businessCategory],
+          );
+          for (let index = 0; index < 16; index++) {
+            const status = index < 13 ? "published" : ["draft", "pending", "archived"][index - 13];
+            await pool.query(
+              "INSERT INTO directory_business(id,owner_user_id,title,category_id,status,published_at,archived_at,contact_email,city) VALUES($1,$2,$3,$4,$5,CASE WHEN $5='published' THEN now() ELSE NULL END,CASE WHEN $5='archived' THEN now() ELSE NULL END,'business-only@example.invalid','Tuzla')",
+              [randomUUID(), businessPerson, `Owned ${index}`, businessCategory, status],
+            );
+          }
+          await pool.query(
+            "INSERT INTO directory_business(id,owner_user_id,title,category_id,status,published_at) VALUES($1,$2,'Wrong owner same name',$3,'published',now())",
+            [randomUUID(), sameNamePerson, businessCategory],
+          );
+          const first = await publicBusinesses.list(businessPerson, 1);
+          const second = await publicBusinesses.list(businessPerson, 2);
+          assert.equal(first.items.length, 12);
+          assert.equal(first.hasMore, true);
+          assert.equal(second.items.length, 1);
+          assert.equal(second.hasMore, false);
+          assert.equal(new Set([...first.items, ...second.items].map((row) => row.id)).size, 13);
+          assert.ok(
+            [...first.items, ...second.items].every((row) => row.title.startsWith("Owned ")),
+          );
+          for (const row of [...first.items, ...second.items]) {
+            assert.equal(row.contactEmail, null);
+            for (const key of [
+              "ownerId",
+              "status",
+              "version",
+              "moderationReturn",
+              "email",
+              "birthDate",
+            ])
+              assert.equal(Object.hasOwn(row, key), false);
+          }
+          assert.deepEqual(await publicBusinesses.list(emptyPerson), {
+            items: [],
+            page: 1,
+            hasMore: false,
+          });
+        },
+      );
+      await t.test(
+        "opting out hides public person businesses immediately, including previously paged results",
+        async () => {
+          await pool.query("UPDATE personal_profile SET is_public=false WHERE user_id=$1", [
+            businessPerson,
+          ]);
+          await denied(() => publicBusinesses.list(businessPerson, 1), 404);
+          await denied(() => publicBusinesses.list(businessPerson, 2), 404);
+          await pool.query("UPDATE personal_profile SET is_public=true WHERE user_id=$1", [
+            businessPerson,
+          ]);
+          assert.equal((await publicBusinesses.list(businessPerson)).items.length, 12);
+        },
+      );
+      await t.test(
+        "unverified, pending and suspended owners cannot expose person business associations",
+        async () => {
+          await pool.query('UPDATE auth_user SET "emailVerified"=false WHERE id=$1', [
+            businessPerson,
+          ]);
+          await denied(() => publicBusinesses.list(businessPerson), 404);
+          await pool.query(
+            "UPDATE auth_user SET \"emailVerified\"=true,approval='pending' WHERE id=$1",
+            [businessPerson],
+          );
+          await denied(() => publicBusinesses.list(businessPerson), 404);
+          await pool.query("UPDATE auth_user SET approval='suspended' WHERE id=$1", [
+            businessPerson,
+          ]);
+          await denied(() => publicBusinesses.list(businessPerson), 404);
+          await pool.query("UPDATE auth_user SET approval='approved',role='owner' WHERE id=$1", [
+            businessPerson,
+          ]);
+          assert.equal((await publicBusinesses.list(businessPerson)).items.length, 12);
+          assert.equal(
+            (await publicBusinesses.list(sameNamePerson)).items[0].title,
+            "Wrong owner same name",
+          );
+        },
+      );
       assert.equal(outboundAttempts, 0);
       assert.deepEqual(await outsideTables(administration, schema), outside);
     } finally {

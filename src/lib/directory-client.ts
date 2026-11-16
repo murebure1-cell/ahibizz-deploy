@@ -11,7 +11,7 @@ export type DirectoryRequest = (path: string, options?: RequestInit) => Promise<
 
 export const directoryRequest: DirectoryRequest = async (path, options = {}) => {
   if (
-    !/^(?:categories|(?:mine|admin)(?:\?page=[1-9]\d{0,2}(?:&status=archived)?)?|mine\/[A-Za-z0-9_-]{1,128}(?:\/(?:publish|archive|recover))?)$/.test(
+    !/^(?:categories|(?:mine|admin)(?:\?page=[1-9]\d{0,2}(?:&status=archived)?)?|mine\/[A-Za-z0-9_-]{1,128}(?:\/(?:publish|archive|recover))?|review\/[A-Za-z0-9_-]{1,128})$/.test(
       path,
     )
   )

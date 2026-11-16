@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { BookingSettings } from "../../lib/booking";
 import {
   bookingActorRequest,
@@ -49,6 +49,16 @@ const statuses = {
   published: "Objavljeno",
   archived: "Arhivirano",
 };
+function ReturnedBusinessNote({ business }: { business?: DirectoryBusiness | null }) {
+  const note = business?.moderationReturn;
+  if (business?.status !== "draft" || !note || note.version !== business.version) return null;
+  return (
+    <div className={styles.returnNote} role="note" aria-label="Razlog vraćanja u nacrt">
+      <strong>Razlog vraćanja u nacrt</strong>
+      <p>{note.reason}</p>
+    </div>
+  );
+}
 function errorMessage(error: unknown) {
   const code = error instanceof RequestError ? error.code : "";
   if (code === "BUSINESS_LIMIT_REACHED") return "Tvoj nalog je dosegao broj djelatnosti u paketu.";
@@ -168,6 +178,13 @@ export function BusinessManager({
   > | null>(null);
   const [pendingCreate, setPendingCreate] = useState<DirectoryCreateIntent | null>(null);
   const [pendingMutation, setPendingMutation] = useState<DirectoryMutation | null>(null);
+  const [returning, setReturning] = useState<DirectoryBusiness | null>(null);
+  const [returnReason, setReturnReason] = useState("");
+  const returnReasonId = useId();
+  const returnInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (active && returning) returnInput.current?.focus();
+  }, [active, returning]);
   const [loginRequired, setLoginRequired] = useState(false);
   const [bookingOption, setBookingOption] = useState<{ id: string; enabled: boolean } | null>(null);
   const [bookingNote, setBookingNote] = useState("");
@@ -218,6 +235,8 @@ export function BusinessManager({
     setCategories([]);
     setHasMore(false);
     setEditing(undefined);
+    setReturning(null);
+    setReturnReason("");
     // An unknown child command must keep its mounted recovery state, without a private title.
     setBookingBusiness((current) =>
       preserveCreation && current ? { id: current.id, title: "Booking" } : null,
@@ -275,7 +294,8 @@ export function BusinessManager({
     }
   }, [expectedAccountId, directoryApi, bookingApi, mediaApi, isOwner, initialAll, clearPrivate]);
   const editingId = editing?.id;
-  const locked = busy || pendingCreate !== null || pendingMutation !== null;
+  const commandLocked = busy || pendingCreate !== null || pendingMutation !== null;
+  const locked = commandLocked || returning !== null;
   // A dispatched command keeps its result and lock while another account section is visible.
   // Only a changed actor/transport/role or unmount invalidates that private workspace.
   useEffect(() => {
@@ -383,15 +403,17 @@ export function BusinessManager({
     setPendingMutation(null);
   }
   function mutationNotice(intent: DirectoryMutation) {
-    return intent.action === "archive"
-      ? "Djelatnost je arhivirana."
-      : intent.action === "recover"
-        ? "Djelatnost je vraćena u nacrte."
-        : intent.desiredStatus === "published"
-          ? "Djelatnost je objavljena."
-          : intent.desiredStatus === "pending"
-            ? "Izmjene su poslane na pregled."
-            : "Nacrt je sačuvan.";
+    return intent.action === "return-to-draft"
+      ? "Djelatnost je vraćena u nacrt."
+      : intent.action === "archive"
+        ? "Djelatnost je arhivirana."
+        : intent.action === "recover"
+          ? "Djelatnost je vraćena u nacrte."
+          : intent.desiredStatus === "published"
+            ? "Djelatnost je objavljena."
+            : intent.desiredStatus === "pending"
+              ? "Izmjene su poslane na pregled."
+              : "Nacrt je sačuvan.";
   }
   async function inspectMutation(
     intent: DirectoryMutation,
@@ -720,8 +742,24 @@ export function BusinessManager({
       }
     }
   }
-  async function move(item: DirectoryBusiness, action: "publish" | "archive" | "recover") {
+  async function move(
+    item: DirectoryBusiness,
+    action: "publish" | "archive" | "recover" | "return-to-draft",
+    reason?: string,
+  ) {
     if (writing.current || !active || creation.current.intent || mutation.current) return;
+    const returningToDraft = action === "return-to-draft";
+    const trimmedReason = reason?.trim() ?? "";
+    if (
+      returningToDraft &&
+      (!isOwner ||
+        !["pending", "published"].includes(item.status) ||
+        trimmedReason.length < 2 ||
+        trimmedReason.length > 500)
+    ) {
+      setError("Upiši razlog od 2 do 500 znakova.");
+      return;
+    }
     const controller = new AbortController();
     const access = epoch.current;
     writing.current = controller;
@@ -732,10 +770,11 @@ export function BusinessManager({
     const intent: DirectoryMutation = {
       before: item,
       action,
+      ...(returningToDraft ? { reason: trimmedReason } : {}),
       desiredStatus:
         action === "archive"
           ? "archived"
-          : action === "recover"
+          : action === "recover" || returningToDraft
             ? "draft"
             : isOwner
               ? "published"
@@ -743,29 +782,62 @@ export function BusinessManager({
     };
     mutation.current = intent;
     try {
-      const data = await request(`mine/${item.id}/${action}`, {
-        ...write("POST", { expectedVersion: item.version }),
-        signal: controller.signal,
-      });
+      const data = await request(
+        returningToDraft ? `review/${item.id}` : `mine/${item.id}/${action}`,
+        {
+          ...write(
+            returningToDraft ? "PATCH" : "POST",
+            returningToDraft
+              ? { status: "draft", expectedVersion: item.version, reason: trimmedReason }
+              : { expectedVersion: item.version },
+          ),
+          signal: controller.signal,
+        },
+      );
       if (!current(access) || controller.signal.aborted) return;
       if (
         data.business?.id !== item.id ||
         !Number.isInteger(data.business.version) ||
         data.business.version < item.version ||
-        data.business.status !== intent.desiredStatus
+        data.business.status !== intent.desiredStatus ||
+        (returningToDraft && directoryMutationState(intent, data.business) !== "matched")
       )
         throw new RequestError("UNAVAILABLE");
       cacheBusiness(data.business);
       forgetMutation();
+      setReturning(null);
+      setReturnReason("");
       setNotice(mutationNotice(intent));
     } catch (error) {
       if (!current(access) || controller.signal.aborted) return;
       if (!uncertainDirectoryMutation(error)) forgetMutation();
       if (denied(error)) return;
       if (mutation.current) {
+        setReturning(null);
+        setReturnReason("");
         setPendingMutation(intent);
         await inspectMutation(intent, controller, access);
-      } else setError(errorMessage(error));
+      } else {
+        if (returningToDraft && error instanceof RequestError && error.status === 409) {
+          setReturning(null);
+          try {
+            const latest = await request(`mine/${item.id}`, { signal: controller.signal });
+            if (!current(access) || controller.signal.aborted) return;
+            if (
+              !latest.business ||
+              latest.business.id !== item.id ||
+              !Number.isInteger(latest.business.version) ||
+              latest.business.version < item.version
+            )
+              throw new RequestError("UNAVAILABLE");
+            cacheBusiness(latest.business);
+          } catch (failure) {
+            if (!current(access) || controller.signal.aborted) return;
+            if (denied(failure)) return;
+          }
+        }
+        setError(errorMessage(error));
+      }
     } finally {
       if (writing.current === controller) {
         writing.current = null;
@@ -923,26 +995,77 @@ export function BusinessManager({
       )}
       {bookingLoading && <p role="status">Dohvaćanje booking postavki…</p>}
       {editing !== undefined ? (
-        <BusinessEditor
-          key={editing ? `${editing.id}:${editing.version}` : "new"}
-          initial={editing ?? undefined}
-          categories={categories}
-          busy={locked}
-          canPublish={isOwner}
-          currentStatus={editing?.status}
-          bookingEnabled={
-            editing ? (bookingOption?.id === editing.id ? bookingOption.enabled : undefined) : false
-          }
-          onSave={save}
-          onCancel={() => {
-            if (creation.current.intent || mutation.current) return;
-            setEditing(undefined);
-            setError("");
-            setBookingNote("");
-          }}
-        />
+        <>
+          <ReturnedBusinessNote business={editing} />
+          <BusinessEditor
+            key={editing ? `${editing.id}:${editing.version}` : "new"}
+            initial={editing ?? undefined}
+            categories={categories}
+            busy={locked}
+            canPublish={isOwner}
+            currentStatus={editing?.status}
+            bookingEnabled={
+              editing
+                ? bookingOption?.id === editing.id
+                  ? bookingOption.enabled
+                  : undefined
+                : false
+            }
+            onSave={save}
+            onCancel={() => {
+              if (creation.current.intent || mutation.current) return;
+              setEditing(undefined);
+              setError("");
+              setBookingNote("");
+            }}
+          />
+        </>
       ) : (
         <>
+          {returning && (
+            <form
+              className={styles.returnForm}
+              aria-label="Vraćanje djelatnosti u nacrt"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void move(returning, "return-to-draft", returnReason);
+              }}
+            >
+              <fieldset disabled={commandLocked}>
+                <h2>Vrati u nacrt</h2>
+                <p>{returning.title}</p>
+                <label htmlFor={returnReasonId}>
+                  Razlog vraćanja
+                  <input
+                    id={returnReasonId}
+                    ref={returnInput}
+                    value={returnReason}
+                    onChange={(event) => setReturnReason(event.target.value)}
+                    minLength={2}
+                    maxLength={500}
+                    required
+                    autoComplete="off"
+                  />
+                </label>
+                <div className={styles.returnActions}>
+                  <button type="submit" className={styles.primary}>
+                    {busy ? "Spremanje…" : "Vrati u nacrt"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.cancel}
+                    onClick={() => {
+                      setReturning(null);
+                      setReturnReason("");
+                      setError("");
+                    }}
+                  >
+                    Odustani od vraćanja
+                  </button>
+                </div>
+              </fieldset>
+            </form>
+          )}
           <div className={styles.toolbar}>
             <div className={styles.filters}>
               {isOwner && (
@@ -1024,6 +1147,7 @@ export function BusinessManager({
                   <span className={styles.status} data-status={item.status}>
                     {statuses[item.status]}
                   </span>
+                  <ReturnedBusinessNote business={item} />
                 </div>
                 <div className={styles.businessActions}>
                   {item.status === "published" && (
@@ -1081,6 +1205,21 @@ export function BusinessManager({
                           onClick={() => move(item, "publish")}
                         >
                           {isOwner ? "Objavi" : "Pošalji na pregled"}
+                        </button>
+                      )}
+                      {isOwner && ["pending", "published"].includes(item.status) && (
+                        <button
+                          type="button"
+                          className={styles.secondary}
+                          disabled={locked || loading}
+                          onClick={() => {
+                            setReturning(item);
+                            setReturnReason("");
+                            setError("");
+                            setNotice("");
+                          }}
+                        >
+                          Vrati u nacrt
                         </button>
                       )}
                       <button

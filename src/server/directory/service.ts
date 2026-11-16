@@ -450,7 +450,7 @@ export function createDirectoryService({
           value.status as "published" | "draft",
         );
         await audit(client, currentActor.id, before, after, "moderate", reason);
-        return after;
+        return business(client, after.id);
       });
     },
   };

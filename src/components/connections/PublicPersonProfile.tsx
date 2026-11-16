@@ -26,10 +26,12 @@ import {
 } from "../../lib/connections-client";
 import { messageLink } from "../../lib/messaging";
 import { workStatusLabels } from "../../lib/people";
+import type { PersonBusinessesRequest } from "../../lib/person-businesses";
 import { Icon } from "../Icon";
 import { personalProfileImage } from "../people/PersonalProfileCard";
 import styles from "./connections.module.css";
 import { PersonAvatar, type PersonMediaUrl, personLocation } from "./PeopleSearch";
+import { PublicPersonBusinesses } from "./PublicPersonBusinesses";
 
 type Action = "request" | "accept" | "decline" | "cancel" | "remove";
 type PendingWrite = {
@@ -60,6 +62,7 @@ type ProfileProps = {
   loginHref?: string;
   imageUrl?: PersonMediaUrl;
   messageHref?: string;
+  businessRequest?: PersonBusinessesRequest;
 };
 
 export function PublicPersonProfile(props: ProfileProps) {
@@ -81,12 +84,13 @@ function PersonProfile({
   loginHref,
   imageUrl = publicPersonImageUrl,
   messageHref,
+  businessRequest,
 }: ProfileProps) {
-  const [tab, setTab] = useState<"about" | "skills" | "photos">("about");
+  const [tab, setTab] = useState<"about" | "skills" | "businesses">("about");
   const tabId = useId(),
     tabButtons = useRef<(HTMLButtonElement | null)[]>([]);
   function tabKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    const tabs = ["about", "skills", "photos"] as const;
+    const tabs = ["about", "skills", "businesses"] as const;
     const next =
       event.key === "ArrowRight"
         ? (index + 1) % 3
@@ -282,7 +286,6 @@ function PersonProfile({
     void send(intent);
   }
 
-  const photo = person ? personalProfileImage(imageUrl(person, "photo")) : null;
   const cover = person ? personalProfileImage(imageUrl(person, "cover")) : null;
   const currentPerson = person?.id === personId;
   const disabled = busy || loading || pending !== null;
@@ -462,7 +465,7 @@ function PersonProfile({
               [
                 ["about", "O meni"],
                 ["skills", "Vještine"],
-                ["photos", "Fotografije"],
+                ["businesses", "Moje djelatnosti"],
               ] as const
             ).map(([id, label], index) => (
               <button
@@ -526,37 +529,18 @@ function PersonProfile({
                 )}
               </section>
             )}
-            {tab === "photos" && (
+            {tab === "businesses" && (
               <section
                 role="tabpanel"
-                id={`${tabId}-photos-panel`}
-                aria-labelledby={`${tabId}-photos-tab`}
+                id={`${tabId}-businesses-panel`}
+                aria-labelledby={`${tabId}-businesses-tab`}
               >
-                <h2>Fotografije</h2>
-                {photo || cover ? (
-                  <div className={styles.photoGrid}>
-                    {photo && (
-                      <Image
-                        src={photo}
-                        alt={`Profilna fotografija: ${person.name}`}
-                        width={512}
-                        height={512}
-                        unoptimized
-                      />
-                    )}
-                    {cover && (
-                      <Image
-                        src={cover}
-                        alt="Naslovna fotografija profila"
-                        width={1600}
-                        height={600}
-                        unoptimized
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <p className={styles.bio}>Još nema fotografija.</p>
-                )}
+                <PublicPersonBusinesses
+                  key={person.id}
+                  personId={person.id}
+                  request={businessRequest}
+                  preview={preview}
+                />
               </section>
             )}
           </div>
