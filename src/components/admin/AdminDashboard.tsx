@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type AdminSection,
+  adminSectionPath,
+  readAdminNavigation,
+} from "../../lib/admin-navigation";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { BillingAdmin } from "../billing/BillingAdmin";
 import { BusinessManager } from "../directory/BusinessManager";
@@ -43,14 +49,51 @@ const sections = [
 }[];
 
 /** The server page authorizes access; each endpoint independently checks the current owner. */
-export function AdminDashboard({ initial }: { initial: SafeAccountProfile }) {
-  const [section, setSection] = useState<(typeof sections)[number]["id"]>("accounts");
+export function AdminDashboard({
+  initial,
+  initialSection = "accounts",
+}: {
+  initial: SafeAccountProfile;
+  initialSection?: AdminSection;
+}) {
+  const searchParams = useSearchParams();
+  const query = searchParams?.toString();
+  const section = useMemo(
+    () => (query === undefined ? initialSection : readAdminNavigation(new URLSearchParams(query))),
+    [query, initialSection],
+  );
+  const navigation = useRef<HTMLElement>(null);
   const [visited, setVisited] = useState({
-    accounts: true,
-    categories: false,
-    businesses: false,
-    billing: false,
+    accounts: section === "accounts",
+    categories: section === "categories",
+    businesses: section === "businesses",
+    billing: section === "billing",
   });
+  useEffect(() => {
+    setVisited((previous) => (previous[section] ? previous : { ...previous, [section]: true }));
+  }, [section]);
+  useEffect(() => {
+    const nav = navigation.current;
+    if (!nav) return;
+    const reveal = () => {
+      const selected = nav.querySelector<HTMLElement>(`[data-admin-section="${section}"]`);
+      if (!selected || nav.scrollWidth <= nav.clientWidth) return;
+      const left = selected.getBoundingClientRect().left - nav.getBoundingClientRect().left;
+      const right = left + selected.offsetWidth;
+      if (left < 0) nav.scrollLeft += left;
+      else if (right > nav.clientWidth) nav.scrollLeft += right - nav.clientWidth;
+    };
+    reveal();
+    const observer = new ResizeObserver(reveal);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, [section]);
+  function changeSection(next: AdminSection) {
+    const href = adminSectionPath(next);
+    setVisited((previous) => (previous[next] ? previous : { ...previous, [next]: true }));
+    if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== href)
+      window.history.pushState(null, "", href);
+  }
   const current = sections.find((item) => item.id === section) ?? sections[0];
   return (
     <main id="glavni-sadrzaj" className={styles.layout}>
@@ -64,17 +107,15 @@ export function AdminDashboard({ initial }: { initial: SafeAccountProfile }) {
             <small>{initial.name}</small>
           </div>
         </div>
-        <nav aria-label="Administratorski odjeljci">
+        <nav ref={navigation} aria-label="Administratorski odjeljci">
           {sections.map((item) => (
             <button
               key={item.id}
               type="button"
+              data-admin-section={item.id}
               aria-current={section === item.id ? "page" : undefined}
               aria-controls="admin-content"
-              onClick={() => {
-                setVisited((previous) => ({ ...previous, [item.id]: true }));
-                setSection(item.id);
-              }}
+              onClick={() => changeSection(item.id)}
             >
               <Icon name={item.icon} />
               {item.label}
@@ -93,17 +134,17 @@ export function AdminDashboard({ initial }: { initial: SafeAccountProfile }) {
           <h1>{current.title}</h1>
         </header>
         <div hidden={section !== "accounts"}>
-          {visited.accounts && (
+          {(visited.accounts || section === "accounts") && (
             <AccountApprovals key={initial.id} expectedAccountId={initial.id} embedded />
           )}
         </div>
         <div hidden={section !== "categories"}>
-          {visited.categories && (
+          {(visited.categories || section === "categories") && (
             <CategoryManager key={initial.id} expectedAccountId={initial.id} />
           )}
         </div>
         <div hidden={section !== "businesses"}>
-          {visited.businesses && (
+          {(visited.businesses || section === "businesses") && (
             <BusinessManager
               key={initial.id}
               expectedAccountId={initial.id}
@@ -115,7 +156,7 @@ export function AdminDashboard({ initial }: { initial: SafeAccountProfile }) {
           )}
         </div>
         <div hidden={section !== "billing"}>
-          {visited.billing && (
+          {(visited.billing || section === "billing") && (
             <BillingAdmin
               key={initial.id}
               expectedAccountId={initial.id}

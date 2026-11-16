@@ -59,6 +59,7 @@ export function PublicPersonBusinesses({
       revision.current++;
     };
   }, [personId, page, request, preview, refresh]);
+  const hasMore = data?.page === page && data.hasMore;
   return (
     <section className={styles.workspace} aria-label="Moje djelatnosti" aria-busy={loading}>
       <h2>Moje djelatnosti</h2>
@@ -77,7 +78,7 @@ export function PublicPersonBusinesses({
           <DirectoryResultCard key={business.id} business={business} />
         ))}
       </div>
-      {data && (page > 1 || data.hasMore) && (
+      {(page > 1 || hasMore) && (
         <nav className={styles.pagination} aria-label="Stranice djelatnosti">
           <button
             type="button"
@@ -89,7 +90,7 @@ export function PublicPersonBusinesses({
           <span>{page}</span>
           <button
             type="button"
-            disabled={loading || !data.hasMore || page >= 999}
+            disabled={loading || !hasMore || page >= 999}
             onClick={() => setPage((value) => value + 1)}
           >
             Sljedeća

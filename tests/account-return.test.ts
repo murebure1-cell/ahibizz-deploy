@@ -8,6 +8,28 @@ import {
   readAccountNavigation,
 } from "../src/lib/account-return";
 
+test("sign-in accepts only exact known administration continuations", () => {
+  for (const path of [
+    "/administracija",
+    "/administracija?odjeljak=nalozi",
+    "/administracija?odjeljak=kategorije",
+    "/administracija?odjeljak=djelatnosti",
+    "/administracija?odjeljak=naplata",
+  ])
+    assert.equal(accountReturnPath(path), path);
+  for (const path of [
+    "/administracija/",
+    "/administracija?odjeljak=naplata#other",
+    "/administracija?odjeljak=naplata&odjeljak=nalozi",
+    "/administracija?odjeljak=constructor",
+    "/administracija?odjeljak=%6eaplata",
+    "/administracija?odjeljak=naplata&next=//evil.invalid",
+    "/administracija?odjeljak=naplata\n",
+    "//evil.invalid/administracija",
+  ])
+    assert.equal(accountReturnPath(path), "/nalog");
+});
+
 test("login retains only exact known messaging destinations and previous safe profile routes", () => {
   const business = "11111111-1111-4111-8111-111111111111";
   for (const value of [

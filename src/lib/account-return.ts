@@ -1,3 +1,4 @@
+import { adminReturnPath } from "./admin-navigation";
 import { bookingReturnPath } from "./booking-return";
 import { type MessageTarget, messageLink, readMessageTarget } from "./messaging";
 
@@ -63,6 +64,8 @@ export function accountReturnPath(value: unknown): string {
     [...value].some((c) => c.charCodeAt(0) <= 32 || c.charCodeAt(0) > 126)
   )
     return "/nalog";
+  const administration = adminReturnPath(value);
+  if (administration) return administration;
   const previous = bookingReturnPath(value);
   if (previous !== "/nalog") return previous;
   const section = /^\/nalog\?odjeljak=([a-z]+)$/.exec(value)?.[1];
