@@ -342,7 +342,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             headers: ["X-AhiBizz-Ingress-Client-IP", clients.b, "X-Forwarded-For", clients.b],
           });
           assert.equal(limited.status, 429);
-          assert.ok(Number(limited.headers["retry-after"]) > 0);
+          assert.ok(Number(limited.headers["x-retry-after"]) > 0);
           assert.equal(
             (
               await send(clients.b, undefined, {
