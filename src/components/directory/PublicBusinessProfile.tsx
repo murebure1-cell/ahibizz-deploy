@@ -12,6 +12,7 @@ import {
   publicBusinessPoint,
   safeBusinessImage,
 } from "../../lib/public-business";
+import { FavoriteButton } from "../favorites/FavoriteButton";
 import { Icon } from "../Icon";
 import { BusinessReviews } from "../reviews/BusinessReviews";
 import { BusinessAmenities, BusinessHours } from "./BusinessDetails";
@@ -142,6 +143,7 @@ export function PublicBusinessProfile({
         </div>
         <div className={styles.quickActions}>
           {actions}
+          {!preview && <FavoriteButton businessId={business.id} title={business.title} />}
           {(!preview || messageHref) && (
             <Link
               className={styles.secondary}

@@ -7,6 +7,7 @@ import {
   publicBusinessPoint,
   safeBusinessImage,
 } from "../../lib/public-business";
+import { FavoriteButton } from "../favorites/FavoriteButton";
 import { Icon } from "../Icon";
 import { BusinessAmenities, BusinessOpenStatus } from "./BusinessDetails";
 import { BusinessLogo } from "./BusinessLogo";
@@ -32,6 +33,9 @@ export function DirectoryResultCard({ business }: { business: PublicBusinessView
   return (
     <article className={styles.card}>
       <div className={styles.media}>
+        <div className={styles.favorite}>
+          <FavoriteButton businessId={business.id} title={business.title} compact />
+        </div>
         <Link
           href={profile}
           className={styles.cover}

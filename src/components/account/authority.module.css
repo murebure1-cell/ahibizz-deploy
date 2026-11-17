@@ -1,0 +1,47 @@
+.notice {
+  width: min(620px, calc(100% - 36px));
+  margin: 52px auto 80px;
+  padding: 28px;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+.notice[hidden] {
+  display: none;
+}
+.notice h1 {
+  margin: 0 0 12px;
+  font-size: 24px;
+  font-weight: 700;
+}
+.notice p {
+  margin: 0 0 20px;
+  color: var(--ui-muted);
+  line-height: 1.5;
+}
+.notice > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.notice button,
+.notice a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+.notice button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

@@ -21,6 +21,10 @@ import {
 } from "../../lib/business-media";
 import { businessMediaRequest } from "../../lib/business-media-client";
 import {
+  type BusinessOwnershipApi,
+  businessOwnershipApi,
+} from "../../lib/business-ownership-client";
+import {
   type DirectoryRequest,
   directoryAccessDenied,
   directoryActorRequest,
@@ -45,6 +49,7 @@ import { BusinessDetailsManager } from "./BusinessDetailsManager";
 import { BusinessEditor, type BusinessFields, type CategoryOption } from "./BusinessEditor";
 import { BusinessLogo } from "./BusinessLogo";
 import { BusinessMediaManager } from "./BusinessMediaManager";
+import { BusinessOwnershipManager } from "./BusinessOwnershipManager";
 import styles from "./directory.module.css";
 
 const statuses = {
@@ -148,6 +153,7 @@ export function BusinessManager({
   bookingApi = bookingRequest,
   mediaApi = businessMediaRequest,
   detailsApi = businessDetailsRequest,
+  ownershipApi = businessOwnershipApi,
   mediaImageUrl = businessMediaUrl,
 }: {
   active: boolean;
@@ -159,12 +165,14 @@ export function BusinessManager({
   bookingApi?: typeof bookingRequest;
   mediaApi?: typeof businessMediaRequest;
   detailsApi?: BusinessDetailsRequest;
+  ownershipApi?: BusinessOwnershipApi;
   mediaImageUrl?: (id: string, asset: BusinessMediaAsset, area: "mine" | "public") => string | null;
 }) {
   const [items, setItems] = useState<DirectoryBusiness[] | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [editing, setEditing] = useState<DirectoryBusiness | null | undefined>(undefined);
   const [detailsBusiness, setDetailsBusiness] = useState<DirectoryBusiness | null>(null);
+  const [ownershipBusiness, setOwnershipBusiness] = useState<DirectoryBusiness | null>(null);
   const [editorDirty, setEditorDirty] = useState(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a fresh business version rekeys the base form and discards its dirty marker.
   useEffect(() => setEditorDirty(false), [editing?.id, editing?.version]);
@@ -246,6 +254,7 @@ export function BusinessManager({
     setHasMore(false);
     setEditing(undefined);
     setDetailsBusiness(null);
+    setOwnershipBusiness(null);
     setReturning(null);
     setReturnReason("");
     // An unknown child command must keep its mounted recovery state, without a private title.
@@ -883,6 +892,25 @@ export function BusinessManager({
       current?.id === manifest.businessId ? { ...current, ...patch } : current,
     );
   }
+  if (ownershipBusiness && isOwner)
+    return (
+      <BusinessOwnershipManager
+        key={`${ownershipBusiness.id}:${expectedAccountId ?? ""}`}
+        businessId={ownershipBusiness.id}
+        active={active}
+        expectedAccountId={expectedAccountId}
+        api={ownershipApi}
+        onAccessDenied={denied}
+        onChanged={(row) => {
+          cacheBusiness(row);
+          setEditing(row);
+        }}
+        onBack={() => {
+          setOwnershipBusiness(null);
+          setRefresh((value) => value + 1);
+        }}
+      />
+    );
   if (detailsBusiness)
     return (
       <BusinessDetailsManager
@@ -1046,6 +1074,18 @@ export function BusinessManager({
                 <Icon name="clock" />
                 Radno vrijeme i sadržaji
               </button>
+              {isOwner && (
+                <button
+                  type="button"
+                  className={styles.secondary}
+                  disabled={locked || editorDirty}
+                  title={editorDirty ? "Prvo sačuvaj izmjene djelatnosti" : undefined}
+                  onClick={() => setOwnershipBusiness(editing)}
+                >
+                  <Icon name="user" />
+                  Dodijeli vlasnika
+                </button>
+              )}
             </div>
           )}
           <BusinessEditor

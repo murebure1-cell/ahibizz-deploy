@@ -1,10 +1,10 @@
 # Izričita, zadano isključena ingress granica
 
 Ova cjelina povezuje Node transport, produkcijski startup i BetterAuth konfiguraciju.
-Kandidat još nije objavljen niti sam po sebi zatvara prepreku javnom lansiranju.
+Guard je objavljen na zasebnoj aplikaciji213; sam ne zatvara prepreku javnom lansiranju.
 Vanjski ingress guard i povjerenje client-IP headeru su odvojene kontrole.
-Planirana aktivacija uključuje samo guard, uz `AHIBIZZ_INGRESS_TRUST_CLIENT_IP=false`.
-Postojeći zajednički rezervni ključ atomskog DB limitera tada ostaje nepromijenjen;
+Aktivna konfiguracija uključuje samo guard, uz `AHIBIZZ_INGRESS_TRUST_CLIENT_IP=false`.
+Postojeći zajednički rezervni ključ atomskog DB limitera ostaje nepromijenjen;
 ovim korakom se ne proglašava riješen problem dijeljenja limita prijave.
 Bez `AHIBIZZ_INGRESS_ENFORCE=true` postojeći startup i prazna lista pouzdanih
 IP headera ostaju nepromijenjeni. Neispravna uključena konfiguracija prekida

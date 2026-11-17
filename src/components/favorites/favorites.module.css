@@ -1,0 +1,132 @@
+.control {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px 15px;
+  border: 1px solid var(--ui-border);
+  border-radius: 13px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+.button svg {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 auto;
+}
+.button[data-compact="true"] {
+  width: 44px;
+  height: 44px;
+  padding: 11px;
+  border-color: #ffffff60;
+  background: #18384bee;
+  color: #fff;
+  border-radius: 50%;
+  box-shadow: 0 3px 12px #10243722;
+}
+.button[data-saved="true"] {
+  color: var(--ui-accent-text);
+  background: var(--ui-accent-soft);
+}
+.button:hover:not(:disabled) {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+}
+.button:focus-visible {
+  outline: 3px solid var(--ui-focus);
+  outline-offset: 3px;
+}
+.button:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+.error {
+  max-width: 220px;
+  color: var(--ui-danger);
+  background: var(--ui-surface);
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 8px;
+  border-radius: 8px;
+}
+.recovery {
+  display: block;
+  margin-top: 8px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ui-text);
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.control[data-compact="true"] .error {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  width: 180px;
+  box-shadow: 0 3px 12px var(--ui-shadow);
+}
+.workspace {
+  min-width: 0;
+}
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 22px;
+}
+.heading h1 {
+  margin: 0;
+  font-size: 25px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+.empty {
+  padding: 26px 0;
+  color: var(--ui-muted);
+}
+.empty a {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--ui-accent-text);
+  font-weight: 650;
+}
+@media (max-width: 700px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+}

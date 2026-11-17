@@ -32,6 +32,12 @@
 .media {
   position: relative;
 }
+.favorite {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 3;
+}
 .cover {
   position: relative;
   display: grid;
@@ -118,6 +124,7 @@
 .brand[data-rating="true"] {
   top: 20px;
   bottom: auto;
+  left: 72px;
 }
 .rating {
   position: absolute;

@@ -46,7 +46,7 @@ const publicColumns = [
 ].join(", ");
 export const columns = [
   publicColumns,
-  `(SELECT jsonb_build_object('reason', a.reason, 'createdAt', a.created_at, 'version', a.next_version) FROM directory_moderation_audit a WHERE b.status = 'draft' AND a.business_id = b.id AND a.action = 'moderate' AND a.next_status = 'draft' AND a.next_version = b.version AND a.reason IS NOT NULL ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS "moderationReturn"`,
+  `(SELECT jsonb_build_object('reason', a.reason, 'createdAt', a.created_at, 'version', b.version) FROM directory_moderation_audit a WHERE b.status = 'draft' AND a.business_id = b.id AND a.action = 'moderate' AND a.next_status = 'draft' AND a.next_version <= b.version AND (a.next_version = b.version OR (SELECT count(*) FROM directory_ownership_transfer ot WHERE ot.business_id=b.id AND ot.previous_version>=a.next_version AND ot.result_version<=b.version)=b.version-a.next_version) AND a.reason IS NOT NULL ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS "moderationReturn"`,
 ].join(", ");
 export type Row = Omit<
   DirectoryBusiness,
@@ -72,7 +72,7 @@ export function dto(row: Row): DirectoryBusiness {
       : null,
   };
 }
-function publicDto(value: DirectoryBusiness): PublicDirectoryBusiness {
+export function publicDto(value: DirectoryBusiness): PublicDirectoryBusiness {
   const {
     ownerId: _owner,
     status: _status,

@@ -17,22 +17,29 @@ import { PricingCatalog } from "../billing/PricingCatalog";
 import { CustomerAppointments } from "../booking/CustomerAppointments";
 import { ConnectionsPanel } from "../connections/ConnectionsPanel";
 import { BusinessManager } from "../directory/BusinessManager";
+import { SavedBusinesses } from "../favorites/SavedBusinesses";
 import { Icon } from "../Icon";
 import { MessagingInbox } from "../messaging/MessagingInbox";
 import { PersonalProfileWorkspace } from "../people/PersonalProfileWorkspace";
+import { AccountAuthorityBoundary } from "./AccountAuthorityBoundary";
 import { AccountSettings } from "./AccountSettings";
 import styles from "./account.module.css";
-export function AccountDashboard({
-  initial,
-  initialSection = "profile",
-  messageTarget,
-  invalidMessageTarget = false,
-}: {
+
+type AccountDashboardProps = {
   initial: SafeAccountProfile;
   initialSection?: AccountSection;
   messageTarget?: MessageTarget;
   invalidMessageTarget?: boolean;
-}) {
+};
+export function AccountDashboard(props: AccountDashboardProps) {
+  return <AccountWorkspace key={`${props.initial.id}:${props.initial.role}`} {...props} />;
+}
+function AccountWorkspace({
+  initial,
+  initialSection = "profile",
+  messageTarget,
+  invalidMessageTarget = false,
+}: AccountDashboardProps) {
   const [profile, setProfile] = useState(initial),
     [personal, setPersonal] = useState<PersonalProfile | null>(null),
     [error, setError] = useState(""),
@@ -119,152 +126,165 @@ export function AccountDashboard({
     }
   }
   return (
-    <main id="glavni-sadrzaj" className={styles.layout}>
-      <aside className={styles.sidebar}>
-        <div className={styles.identity}>
-          <span aria-hidden="true">
-            {photo ? (
-              <Image
-                src={photo}
-                alt=""
-                width={43}
-                height={43}
-                unoptimized
-                style={{
-                  borderRadius: "inherit",
-                  objectFit: "cover",
-                  width: "100%",
-                  height: "100%",
-                }}
-              />
-            ) : (
-              profile.name.slice(0, 1).toLocaleUpperCase("bs")
-            )}
-          </span>
-          <div>
-            <strong>{profile.name}</strong>
-            <small>{profile.role === "owner" ? "Administrator" : "Moj AhiBizz"}</small>
-          </div>
-        </div>
-        <div className={styles.navigationViewport}>
-          <nav ref={navigation} aria-label="Moj nalog">
-            {(
-              [
-                { id: "profile", label: "Moj profil", icon: "user" },
-                { id: "businesses", label: "Djelatnosti", icon: "shop" },
-                { id: "messages", label: "Poruke", icon: "message" },
-                { id: "appointments", label: "Moji termini", icon: "calendar" },
-                { id: "connections", label: "Prijatelji", icon: "user" },
-                { id: "settings", label: "Postavke", icon: "sliders" },
-                { id: "membership", label: "Paketi", icon: "shop" },
-              ] as const
-            ).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                data-account-section={item.id}
-                aria-current={section === item.id ? "page" : undefined}
-                aria-controls="account-panel"
-                onClick={() => changeSection(item.id)}
+    <AccountAuthorityBoundary
+      expectedAccountId={initial.id}
+      expectedRole={initial.role}
+      loginHref={`/prijava?nastavi=${encodeURIComponent(accountSectionPath(section))}`}
+      onConfirmed={setProfile}
+    >
+      {() => (
+        <main id="glavni-sadrzaj" className={styles.layout}>
+          <aside className={styles.sidebar}>
+            <div className={styles.identity}>
+              <span aria-hidden="true">
+                {photo ? (
+                  <Image
+                    src={photo}
+                    alt=""
+                    width={43}
+                    height={43}
+                    unoptimized
+                    style={{
+                      borderRadius: "inherit",
+                      objectFit: "cover",
+                      width: "100%",
+                      height: "100%",
+                    }}
+                  />
+                ) : (
+                  profile.name.slice(0, 1).toLocaleUpperCase("bs")
+                )}
+              </span>
+              <div>
+                <strong>{profile.name}</strong>
+                <small>{profile.role === "owner" ? "Administrator" : "Moj AhiBizz"}</small>
+              </div>
+            </div>
+            <div className={styles.navigationViewport}>
+              <nav ref={navigation} aria-label="Moj nalog">
+                {(
+                  [
+                    { id: "profile", label: "Moj profil", icon: "user" },
+                    { id: "businesses", label: "Djelatnosti", icon: "shop" },
+                    { id: "messages", label: "Poruke", icon: "message" },
+                    { id: "appointments", label: "Moji termini", icon: "calendar" },
+                    { id: "saved", label: "Sačuvani", icon: "heart" },
+                    { id: "connections", label: "Prijatelji", icon: "user" },
+                    { id: "settings", label: "Postavke", icon: "sliders" },
+                    { id: "membership", label: "Paketi", icon: "shop" },
+                  ] as const
+                ).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    data-account-section={item.id}
+                    aria-current={section === item.id ? "page" : undefined}
+                    aria-controls="account-panel"
+                    onClick={() => changeSection(item.id)}
+                  >
+                    <Icon name={item.icon} />
+                    {item.label}
+                  </button>
+                ))}
+                {profile.role === "owner" && (
+                  <Link href="/administracija" className={styles.adminLink}>
+                    <Icon name="sliders" />
+                    Administracija
+                  </Link>
+                )}
+              </nav>
+            </div>
+            <button
+              className={styles.logout}
+              type="button"
+              aria-label="Odjava"
+              title="Odjava"
+              disabled={busy}
+              onClick={logout}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
               >
-                <Icon name={item.icon} />
-                {item.label}
-              </button>
-            ))}
-            {profile.role === "owner" && (
-              <Link href="/administracija" className={styles.adminLink}>
-                <Icon name="sliders" />
-                Administracija
-              </Link>
+                <path d="M10 4H5v16h5M9 12h12m-4-4 4 4-4 4" />
+              </svg>
+              <span>Odjava</span>
+            </button>
+          </aside>
+          <section id="account-panel" className={styles.content} data-section={section}>
+            {error && (
+              <p role="alert" className={styles.feedback}>
+                {error}
+              </p>
             )}
-          </nav>
-        </div>
-        <button
-          className={styles.logout}
-          type="button"
-          aria-label="Odjava"
-          title="Odjava"
-          disabled={busy}
-          onClick={logout}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M10 4H5v16h5M9 12h12m-4-4 4 4-4 4" />
-          </svg>
-          <span>Odjava</span>
-        </button>
-      </aside>
-      <section id="account-panel" className={styles.content} data-section={section}>
-        {error && (
-          <p role="alert" className={styles.feedback}>
-            {error}
-          </p>
-        )}
-        <div hidden={section !== "profile"}>
-          <PersonalProfileWorkspace
-            active={section === "profile"}
-            expectedAccountId={initial.id}
-            onAccessDenied={() => setPersonal(null)}
-            onProfileChanged={(next) => {
-              setPersonal(next);
-              setProfile((current) => ({ ...current, name: next.name }));
-            }}
-            onBusinesses={() => changeSection("businesses")}
-          />
-        </div>
-        <div hidden={section !== "businesses"}>
-          <BusinessManager
-            active={section === "businesses"}
-            isOwner={profile.role === "owner"}
-            expectedAccountId={initial.id}
-          />
-        </div>
-        <div hidden={section !== "appointments"}>
-          <CustomerAppointments
-            active={section === "appointments"}
-            expectedAccountId={initial.id}
-          />
-        </div>
-        <div hidden={section !== "connections"}>
-          <ConnectionsPanel active={section === "connections"} expectedAccountId={initial.id} />
-        </div>
-        <div hidden={section !== "messages"}>
-          {view.invalidMessageTarget && (
-            <p role="alert" className={styles.feedback}>
-              Link za razgovor nije ispravan.
-            </p>
-          )}
-          <MessagingInbox
-            active={section === "messages"}
-            initialTarget={view.messageTarget}
-            expectedAccountId={initial.id}
-          />
-        </div>
-        <div hidden={section !== "settings"}>
-          <AccountSettings
-            key={initial.id}
-            initial={initial}
-            active={section === "settings"}
-            onConfirmed={(next) =>
-              setProfile((current) => ({
-                ...current,
-                locale: next.locale,
-                appearance: next.appearance,
-              }))
-            }
-          />
-        </div>
-        <div hidden={section !== "membership"}>
-          <PricingCatalog embedded />
-        </div>
-      </section>
-    </main>
+            <div hidden={section !== "profile"}>
+              <PersonalProfileWorkspace
+                active={section === "profile"}
+                expectedAccountId={initial.id}
+                onAccessDenied={() => setPersonal(null)}
+                onProfileChanged={(next) => {
+                  setPersonal(next);
+                  setProfile((current) => ({ ...current, name: next.name }));
+                }}
+                onBusinesses={() => changeSection("businesses")}
+              />
+            </div>
+            <div hidden={section !== "businesses"}>
+              <BusinessManager
+                active={section === "businesses"}
+                isOwner={profile.role === "owner"}
+                expectedAccountId={initial.id}
+              />
+            </div>
+            <div hidden={section !== "appointments"}>
+              <CustomerAppointments
+                active={section === "appointments"}
+                expectedAccountId={initial.id}
+              />
+            </div>
+            <div hidden={section !== "saved"}>
+              <SavedBusinesses active={section === "saved"} expectedAccountId={initial.id} />
+            </div>
+            <div hidden={section !== "connections"}>
+              <ConnectionsPanel active={section === "connections"} expectedAccountId={initial.id} />
+            </div>
+            <div hidden={section !== "messages"}>
+              {view.invalidMessageTarget && (
+                <p role="alert" className={styles.feedback}>
+                  Link za razgovor nije ispravan.
+                </p>
+              )}
+              <MessagingInbox
+                active={section === "messages"}
+                initialTarget={view.messageTarget}
+                expectedAccountId={initial.id}
+              />
+            </div>
+            <div hidden={section !== "settings"}>
+              <AccountSettings
+                key={initial.id}
+                initial={initial}
+                active={section === "settings"}
+                onConfirmed={(next) =>
+                  setProfile((current) => ({
+                    ...current,
+                    locale: next.locale,
+                    appearance: next.appearance,
+                  }))
+                }
+              />
+            </div>
+            <div hidden={section !== "membership"}>
+              <PricingCatalog embedded />
+            </div>
+          </section>
+        </main>
+      )}
+    </AccountAuthorityBoundary>
   );
 }

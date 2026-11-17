@@ -10,6 +10,7 @@ const accountSections = {
   poruke: "messages",
   postavke: "settings",
   paketi: "membership",
+  sacuvani: "saved",
 } as const;
 
 export type AccountSection = (typeof accountSections)[keyof typeof accountSections];
@@ -22,6 +23,7 @@ const sectionQueries: Record<AccountSection, keyof typeof accountSections> = {
   messages: "poruke",
   settings: "postavke",
   membership: "paketi",
+  saved: "sacuvani",
 };
 
 /** A pane change drops old message targets and unrelated query parameters. */
@@ -69,7 +71,7 @@ export function accountReturnPath(value: unknown): string {
   const previous = bookingReturnPath(value);
   if (previous !== "/nalog") return previous;
   if (
-    /^\/djelatnosti\/[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}#recenzije$/i.test(
+    /^\/djelatnosti\/[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}#(?:recenzije|sacuvaj)$/i.test(
       value,
     )
   )
