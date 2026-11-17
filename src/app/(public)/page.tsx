@@ -1,8 +1,9 @@
-import Form from "next/form";
-import { DirectoryResultCard } from "../../components/directory/DirectoryResultCard";
+import {
+  HomeNearbyControl,
+  HomeNearbyProvider,
+  HomeNearbyResults,
+} from "../../components/home/HomeNearby";
 import { HomeEmptyState, HomeSurface } from "../../components/home/HomeSurface";
-import homeStyles from "../../components/home/home.module.css";
-import { Icon } from "../../components/Icon";
 import { homeCategories, homePlace } from "../../lib/home";
 import {
   type DirectoryCategory,
@@ -37,47 +38,24 @@ export default async function HomePage({
     /* An unavailable directory is distinct from a genuinely empty result. */
   }
   return (
-    <HomeSurface
-      searchAction="/pretraga"
-      placeField="mjesto"
+    <HomeNearbyProvider
+      key={place}
+      categories={categories}
+      initialBusinesses={businesses.map((business) => publicBusinessView(business, categories))}
+      available={available}
       place={place}
-      categories={homeCategories(categories)}
-      featuredHref="/pretraga"
-      featured={<HomeEmptyState>Isticanje je u pripremi.</HomeEmptyState>}
-      advertisingHref="mailto:info@ahibizz.com?subject=Ogla%C5%A1avanje%20na%20AhiBizzu"
-      nearbyControl={
-        <Form action="/" className={homeStyles.placeForm}>
-          <label htmlFor="home-place" className={homeStyles.srOnly}>
-            Grad ili mjesto
-          </label>
-          <input
-            id="home-place"
-            name="mjesto"
-            placeholder="Grad ili mjesto"
-            defaultValue={place}
-            maxLength={100}
-          />
-          <button type="submit" aria-label="Prikaži djelatnosti u ovom mjestu">
-            <Icon name="search" />
-          </button>
-        </Form>
-      }
-      nearby={
-        !available ? (
-          <HomeEmptyState>Imenik trenutno nije dostupan.</HomeEmptyState>
-        ) : !place ? (
-          <HomeEmptyState icon="pin">Odaberi grad za prikaz djelatnosti.</HomeEmptyState>
-        ) : businesses.length ? (
-          businesses.map((business) => (
-            <DirectoryResultCard
-              key={business.id}
-              business={publicBusinessView(business, categories)}
-            />
-          ))
-        ) : (
-          <HomeEmptyState>Još nema objavljenih djelatnosti za {place}.</HomeEmptyState>
-        )
-      }
-    />
+    >
+      <HomeSurface
+        searchAction="/pretraga"
+        placeField="mjesto"
+        place={place}
+        categories={homeCategories(categories)}
+        featuredHref="/pretraga"
+        featured={<HomeEmptyState>Isticanje je u pripremi.</HomeEmptyState>}
+        advertisingHref="mailto:info@ahibizz.com?subject=Ogla%C5%A1avanje%20na%20AhiBizzu"
+        nearbyControl={<HomeNearbyControl />}
+        nearby={<HomeNearbyResults />}
+      />
+    </HomeNearbyProvider>
   );
 }

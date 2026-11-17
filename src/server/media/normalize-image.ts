@@ -69,7 +69,12 @@ function requireStatic(data: Buffer, format: "jpeg" | "png" | "webp"): void {
 /** Decode only bounded static raster input, strip metadata, and own its bytes before awaiting. */
 export async function normalizeRasterImage(
   bytes: Uint8Array,
-  options: { width: number; height: number; fit: "cover" | "inside"; withoutEnlargement?: boolean },
+  options: {
+    width: number;
+    height: number;
+    fit: "cover" | "contain" | "inside";
+    withoutEnlargement?: boolean;
+  },
 ): Promise<{ bytes: Buffer; mime: "image/webp"; width: number; height: number }> {
   if (
     !(bytes instanceof Uint8Array) ||
@@ -81,7 +86,7 @@ export async function normalizeRasterImage(
     !Number.isInteger(options.height) ||
     options.height < 1 ||
     options.height > 1200 ||
-    !["cover", "inside"].includes(options.fit) ||
+    !["cover", "contain", "inside"].includes(options.fit) ||
     (options.withoutEnlargement !== undefined && typeof options.withoutEnlargement !== "boolean")
   )
     invalid();
@@ -118,6 +123,7 @@ export async function normalizeRasterImage(
         fit: target.fit,
         position: "centre",
         withoutEnlargement: target.withoutEnlargement ?? false,
+        ...(target.fit === "contain" ? { background: { r: 0, g: 0, b: 0, alpha: 0 } } : {}),
       })
       .webp({ quality: 84 })
       .toBuffer({ resolveWithObject: true });
@@ -130,7 +136,7 @@ export async function normalizeRasterImage(
       output.info.height < 1 ||
       output.info.width > target.width ||
       output.info.height > target.height ||
-      (target.fit === "cover" &&
+      ((target.fit === "cover" || target.fit === "contain") &&
         !target.withoutEnlargement &&
         (output.info.width !== target.width || output.info.height !== target.height))
     )

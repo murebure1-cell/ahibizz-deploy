@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { AppAppearance } from "../components/appearance/AppAppearance";
+import { DeviceLocationProvider } from "../components/location/DeviceLocation";
 import { AppPwaProvider } from "../components/pwa/AppPwa";
 import { appearanceBootstrap } from "../lib/appearance";
 import "./globals.css";
@@ -34,7 +35,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Preskoči na sadržaj
         </a>
         <AppAppearance>
-          <AppPwaProvider>{children}</AppPwaProvider>
+          <DeviceLocationProvider>
+            <AppPwaProvider>{children}</AppPwaProvider>
+          </DeviceLocationProvider>
         </AppAppearance>
       </body>
     </html>

@@ -20,7 +20,6 @@ export function homeCategories(
 ): HomeCategory[] {
   return categories
     .filter((category) => category.parentId === null)
-    .slice(0, 4)
     .map((category) => ({
       id: category.id,
       label: category.name,

@@ -255,3 +255,54 @@ test("missing public profiles and database failures remain distinct redacted res
     code: "DIRECTORY_UNAVAILABLE",
   });
 });
+
+test("public nearby filters are prepared numbers and retain eligibility and public projection", async () => {
+  const f = fixture();
+  const response = await f.handle(
+    request("/api/directory/businesses?latitude=0&longitude=0&radiusKm=25"),
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(f.queries[0]?.values, [0, 0, 25, 21, 0]);
+  assert.match(f.queries[0]?.sql ?? "", /ASIN\(SQRT\(LEAST\(1\.0/);
+  assert.match(f.queries[0]?.sql ?? "", /b.latitude IS NOT NULL AND b.longitude IS NOT NULL/);
+  assert.match(f.queries[0]?.sql ?? "", /ORDER BY .* ASC, b.id ASC LIMIT/s);
+  assert.match(f.queries[0]?.sql ?? "", /u\.approval = 'approved' AND u\."emailVerified" = true/);
+  const body = await response.json();
+  assert.equal(Object.hasOwn(body.items[0], "ownerId"), false);
+  assert.equal(f.privateServices, 0);
+});
+
+test("partial, duplicated, out-of-range and injected nearby arguments are rejected before SQL", async () => {
+  const f = fixture();
+  for (const query of [
+    "latitude=0",
+    "latitude=0&longitude=0",
+    "radiusKm=25",
+    "latitude=0&longitude=0&radiusKm=0",
+    "latitude=0&longitude=0&radiusKm=51",
+    "latitude=91&longitude=0&radiusKm=25",
+    "latitude=0&longitude=-181&radiusKm=25",
+    "latitude=NaN&longitude=0&radiusKm=25",
+    "latitude=0%20OR%201=1&longitude=0&radiusKm=25",
+    "latitude=1e1&longitude=0&radiusKm=25",
+    "latitude=0&latitude=1&longitude=0&radiusKm=25",
+    "latitude=0&longitude=0&radiusKm=25&status=draft",
+  ])
+    assert.equal(
+      (await f.handle(request(`/api/directory/businesses?${query}`))).status,
+      400,
+      query,
+    );
+  assert.equal(f.queries.length, 0);
+  for (const input of [
+    { latitude: "0", longitude: 0, radiusKm: 25 },
+    { latitude: 0, longitude: Number.POSITIVE_INFINITY, radiusKm: 25 },
+    { latitude: 0, longitude: 0, radiusKm: Number.NaN },
+  ])
+    await assert.rejects(
+      () => f.service?.listPublic(input) ?? Promise.reject(),
+      (error: unknown) =>
+        !!error && typeof error === "object" && "status" in error && error.status === 400,
+    );
+  assert.equal(f.queries.length, 0);
+});

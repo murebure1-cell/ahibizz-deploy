@@ -144,7 +144,7 @@ export function pageInput(input: unknown = {}, publicOnly = false) {
     "subcategoryId",
     "status",
     "q",
-    ...(publicOnly ? ["city"] : []),
+    ...(publicOnly ? ["city", "latitude", "longitude", "radiusKm"] : []),
   ]);
   const page = value.page ?? 1,
     pageSize = value.pageSize ?? 20;
@@ -168,6 +168,25 @@ export function pageInput(input: unknown = {}, publicOnly = false) {
     value.city === undefined || (typeof value.city === "string" && value.city.trim() === "")
       ? null
       : text(value.city, 100);
+  let nearby: { latitude: number; longitude: number; radiusKm: number } | null = null;
+  if (["latitude", "longitude", "radiusKm"].some((key) => Object.hasOwn(value, key))) {
+    if (
+      typeof value.latitude !== "number" ||
+      !Number.isFinite(value.latitude) ||
+      value.latitude < -90 ||
+      value.latitude > 90 ||
+      typeof value.longitude !== "number" ||
+      !Number.isFinite(value.longitude) ||
+      value.longitude < -180 ||
+      value.longitude > 180 ||
+      typeof value.radiusKm !== "number" ||
+      !Number.isFinite(value.radiusKm) ||
+      value.radiusKm < 1 ||
+      value.radiusKm > 50
+    )
+      fail(400, "INVALID_DIRECTORY_INPUT");
+    nearby = { latitude: value.latitude, longitude: value.longitude, radiusKm: value.radiusKm };
+  }
   return {
     page: page as number,
     pageSize: pageSize as number,
@@ -176,5 +195,6 @@ export function pageInput(input: unknown = {}, publicOnly = false) {
     status: value.status as string | undefined,
     q,
     city,
+    nearby,
   };
 }

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { Icon } from "../Icon";
+import { DevicePermissions } from "./AppPermissions";
 import { useAppPwa } from "./AppPwa";
 import styles from "./pwa.module.css";
 
@@ -37,9 +38,12 @@ export function InstallPage() {
         <h1 id="install-title">AhiBizz na telefonu.</h1>
         <p className={styles.intro}>Direktno s tvog početnog ekrana.</p>
         {pwa.installed ? (
-          <p className={styles.installed}>
-            <Icon name="check" /> Već koristiš AhiBizz kao aplikaciju.
-          </p>
+          <>
+            <p className={styles.installed}>
+              <Icon name="check" /> Već koristiš AhiBizz kao aplikaciju.
+            </p>
+            <DevicePermissions />
+          </>
         ) : (
           <>
             {pwa.embedded && (

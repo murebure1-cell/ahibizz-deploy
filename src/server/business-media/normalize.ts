@@ -11,7 +11,7 @@ export async function normalizeBusinessImage(
     return await normalizeRasterImage(bytes, {
       width: kind === "logo" ? 512 : 1600,
       height: kind === "logo" ? 512 : kind === "cover" ? 600 : 1200,
-      fit: kind === "gallery" ? "inside" : "cover",
+      fit: kind === "logo" ? "contain" : kind === "gallery" ? "inside" : "cover",
       withoutEnlargement: kind === "gallery",
     });
   } catch (error) {

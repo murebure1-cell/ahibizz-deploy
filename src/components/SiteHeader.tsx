@@ -26,7 +26,13 @@ const accessLinks = [
   { href: "/registracija", label: "Napravi nalog" },
 ];
 
-export function SiteHeader({ request = headerAccessRequest }: { request?: HeaderAccessRequest }) {
+export function SiteHeader({
+  request = headerAccessRequest,
+  supportAvailable = false,
+}: {
+  request?: HeaderAccessRequest;
+  supportAvailable?: boolean;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [currentHref, setCurrentHref] = useState<string | null>(null);
@@ -171,6 +177,12 @@ export function SiteHeader({ request = headerAccessRequest }: { request?: Header
               <Icon name="arrow" />
             </Link>
           ))}
+          {supportAvailable && (
+            <Link href="/podrzi" onClick={closeMenu}>
+              Podrži AhiBizz
+              <Icon name="arrow" />
+            </Link>
+          )}
           {access === "owner" && (
             <Link
               href="/administracija"

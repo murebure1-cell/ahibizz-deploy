@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { HomeCategory } from "../../lib/home";
 import { Icon, type IconName } from "../Icon";
+import { HomeCategories } from "./HomeCategories";
 import { HomeLogoMarquee } from "./HomeLogoMarquee";
 import styles from "./home.module.css";
 
@@ -96,28 +97,7 @@ export function HomeSurface({
           </Form>
         </div>
       </section>
-      <nav
-        className={`${styles.container} ${styles.categories}`}
-        aria-label="Kategorije djelatnosti"
-      >
-        {categories.length ? (
-          categories.map((category) => (
-            <Link key={category.id} href={category.href}>
-              <span>
-                <Icon name={category.icon ?? "shop"} />
-              </span>
-              {category.label}
-            </Link>
-          ))
-        ) : (
-          <Link href={searchAction}>
-            <span>
-              <Icon name="search" />
-            </span>
-            Sve djelatnosti
-          </Link>
-        )}
-      </nav>
+      <HomeCategories categories={categories} searchAction={searchAction} />
       <section
         className={`${styles.container} ${styles.section}`}
         aria-labelledby="featured-heading"

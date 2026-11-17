@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
+import { AppPermissionPrompt } from "./AppPermissions";
 
 type InstallPrompt = Event & {
   prompt(): Promise<void>;
@@ -38,10 +39,13 @@ export function AppPwaProvider({ children }: { children: ReactNode }) {
     setPlatform(ios ? "ios" : /Android/.test(agent) ? "android" : "other");
     setEmbedded(/FBAN|FBAV|Instagram|\bLine\/|; wv\)/i.test(agent));
     const media = window.matchMedia("(display-mode: standalone)");
-    const check = () =>
-      setInstalled(
-        media.matches || !!(navigator as Navigator & { standalone?: boolean }).standalone,
-      );
+    const check = () => {
+      const standalone =
+        media.matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+      setInstalled(standalone);
+      if (standalone) document.documentElement.dataset.appDisplay = "standalone";
+      else delete document.documentElement.dataset.appDisplay;
+    };
     check();
     media.addEventListener("change", check);
     const ready = (event: Event) => {
@@ -79,6 +83,7 @@ export function AppPwaProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("beforeinstallprompt", ready);
       window.removeEventListener("appinstalled", done);
       document.removeEventListener("visibilitychange", update);
+      delete document.documentElement.dataset.appDisplay;
     };
   }, []);
 
@@ -122,6 +127,7 @@ export function AppPwaProvider({ children }: { children: ReactNode }) {
       value={{ installed, accepted, prompting, canPrompt, platform, embedded, note, install }}
     >
       {children}
+      <AppPermissionPrompt />
     </PwaContext.Provider>
   );
 }

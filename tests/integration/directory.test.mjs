@@ -1379,6 +1379,125 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       );
 
       await t.test(
+        "nearby public queries use real distance, stable pages, geographic boundaries and unchanged eligibility",
+        async () => {
+          const prefix = `geo-${suffix}`;
+          const created = [];
+          const degrees = (km) => (km / 6371) * (180 / Math.PI);
+          async function insert(
+            label,
+            latitude,
+            longitude,
+            { ownerId = owner.user.id, status = "published", createdAt = "2020-01-01" } = {},
+          ) {
+            const id = randomUUID();
+            await pool.query(
+              `INSERT INTO directory_business(id,owner_user_id,title,category_id,latitude,longitude,status,created_at,published_at,archived_at)
+               VALUES($1,$2,$3,$4,$5,$6,$7,$8,CASE WHEN $7='published' THEN now() ELSE NULL END,CASE WHEN $7='archived' THEN now() ELSE NULL END)`,
+              [id, ownerId, `${prefix} ${label}`, root.id, latitude, longitude, status, createdAt],
+            );
+            created.push(id);
+            return id;
+          }
+          const publicDirectory = createPublicDirectoryService({ database: pool });
+          const read = (extra = {}) =>
+            publicDirectory.listPublic({
+              q: prefix,
+              latitude: 0,
+              longitude: 0,
+              radiusKm: 25,
+              ...extra,
+            });
+          try {
+            const equalA = await insert("origin-a", 0, 0, { createdAt: "2025-01-01" });
+            const equalB = await insert("origin-b", 0, 0, { createdAt: "2015-01-01" });
+            const inside = await insert("inside", degrees(24.99), 0);
+            const outside = await insert("outside", degrees(25.01), 0);
+            const draft = await insert("draft", 0, 0, { status: "draft" });
+            const pending = await insert("pending", 0, 0, { status: "pending" });
+            const archived = await insert("archived", 0, 0, { status: "archived" });
+            const missing = await insert("missing-coordinates", null, null);
+            const unapproved = await insert("unapproved", 0, 0, { ownerId: other.user.id });
+            await pool.query("UPDATE auth_user SET approval='pending' WHERE id=$1", [
+              other.user.id,
+            ]);
+            const initial = await read();
+            assert.deepEqual(
+              initial.items.map((row) => row.id),
+              [...[equalA, equalB].sort(), inside],
+            );
+            for (const hidden of [outside, draft, pending, archived, missing, unapproved])
+              assert.equal(
+                initial.items.some((row) => row.id === hidden),
+                false,
+              );
+            for (const row of initial.items)
+              for (const privateField of [
+                "ownerId",
+                "status",
+                "version",
+                "moderationReturn",
+                "approval",
+                "emailVerified",
+              ])
+                assert.equal(Object.hasOwn(row, privateField), false);
+            const pageRows = [];
+            for (let i = 1; i <= 21; i++)
+              pageRows.push(
+                await insert(`page-${String(i).padStart(2, "0")}`, 0, degrees(i / 10), {
+                  createdAt: new Date(Date.UTC(2025, 0, 30 - i)),
+                }),
+              );
+            const pageQuery = { q: `${prefix} page-`, latitude: 0, longitude: 0, radiusKm: 25 };
+            const first = await publicDirectory.listPublic(pageQuery),
+              second = await publicDirectory.listPublic({ ...pageQuery, page: 2 });
+            assert.deepEqual(
+              first.items.map((row) => row.id),
+              pageRows.slice(0, 20),
+            );
+            assert.equal(first.hasMore, true);
+            assert.deepEqual(
+              second.items.map((row) => row.id),
+              pageRows.slice(20),
+            );
+            assert.equal(second.hasMore, false);
+            const acrossDateLine = await insert("date-line", 0, -179.999);
+            assert.deepEqual(
+              (
+                await read({
+                  q: `${prefix} date-line`,
+                  latitude: 0,
+                  longitude: 179.999,
+                  radiusKm: 1,
+                })
+              ).items.map((row) => row.id),
+              [acrossDateLine],
+            );
+            const pole = await insert("pole", 89.999, -100);
+            assert.deepEqual(
+              (
+                await read({ q: `${prefix} pole`, latitude: 89.999, longitude: 100, radiusKm: 1 })
+              ).items.map((row) => row.id),
+              [pole],
+            );
+            await denied(
+              () => directory.listOwn(owner.headers, { latitude: 0, longitude: 0, radiusKm: 25 }),
+              400,
+              "UNEXPECTED_FIELD",
+            );
+          } finally {
+            await pool.query("UPDATE auth_user SET approval='approved' WHERE id=$1", [
+              other.user.id,
+            ]);
+            if (created.length)
+              await pool.query("DELETE FROM directory_business WHERE id=ANY($1::uuid[])", [
+                created,
+              ]);
+          }
+        },
+      );
+
+      await t.test(
         "private directory reads recheck exact session authority after their transaction lock wait",
         async () => {
           const routes = [

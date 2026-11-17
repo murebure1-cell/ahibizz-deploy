@@ -97,7 +97,7 @@ export async function listDirectory(
   parameters: unknown[],
   publicOnly = false,
 ) {
-  const { page, pageSize, categoryId, subcategoryId, status, q, city } = pageInput(
+  const { page, pageSize, categoryId, subcategoryId, status, q, city, nearby } = pageInput(
     input,
     publicOnly,
   );
@@ -120,10 +120,21 @@ export async function listDirectory(
     const index = values.push(`%${city.replace(/[\\%_]/g, "\\$&")}%`);
     filters.push(`b.city ILIKE $${index} ESCAPE E'\\\\'`);
   }
+  let order = "b.created_at DESC, b.id DESC";
+  if (nearby) {
+    const latitude = values.push(nearby.latitude),
+      longitude = values.push(nearby.longitude),
+      radius = values.push(nearby.radiusKm);
+    // Clamp floating-point drift at antipodes/poles; sine handles the date-line wrap.
+    const distance = `6371.0 * 2 * ASIN(SQRT(LEAST(1.0, GREATEST(0.0, POWER(SIN(RADIANS(b.latitude - $${latitude}::double precision) / 2), 2) + COS(RADIANS($${latitude}::double precision)) * COS(RADIANS(b.latitude)) * POWER(SIN(RADIANS(b.longitude - $${longitude}::double precision) / 2), 2)))))`;
+    filters.push("b.latitude IS NOT NULL AND b.longitude IS NOT NULL");
+    filters.push(`(${distance}) <= $${radius}::double precision`);
+    order = `(${distance}) ASC, b.id ASC`;
+  }
   const limitIndex = values.push(pageSize + 1),
     offsetIndex = values.push((page - 1) * pageSize);
   const result = await database.query(
-    `SELECT ${publicOnly ? publicColumns : columns} FROM directory_business b ${publicOnly ? "JOIN auth_user u ON u.id = b.owner_user_id" : ""} WHERE ${filters.join(" AND ")} ORDER BY b.created_at DESC, b.id DESC LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
+    `SELECT ${publicOnly ? publicColumns : columns} FROM directory_business b ${publicOnly ? "JOIN auth_user u ON u.id = b.owner_user_id" : ""} WHERE ${filters.join(" AND ")} ORDER BY ${order} LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
     values,
   );
   const items = (result.rows as Row[]).slice(0, pageSize).map(dto);
@@ -142,7 +153,17 @@ export function createPublicDirectoryService({ database }: { database: Directory
         ).rows as DirectoryCategory[],
       })),
     async listPublic(input: unknown = {}) {
-      object(input, ["page", "pageSize", "categoryId", "subcategoryId", "q", "city"]);
+      object(input, [
+        "page",
+        "pageSize",
+        "categoryId",
+        "subcategoryId",
+        "q",
+        "city",
+        "latitude",
+        "longitude",
+        "radiusKm",
+      ]);
       return safeRead(async () => {
         const result = await listDirectory(
           database,

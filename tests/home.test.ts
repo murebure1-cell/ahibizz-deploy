@@ -10,7 +10,7 @@ test("home location accepts one bounded place and discards duplicate or control-
     assert.equal(homePlace(value), "");
 });
 
-test("live home category shortcuts use actual parent IDs and the live search contract", () => {
+test("live home shortcuts retain every parent category and the live search contract", () => {
   const categories = [
     { id: "11111111-1111-4111-8111-111111111111", name: "Zdravlje", parentId: null },
     {
@@ -41,7 +41,7 @@ test("live home category shortcuts use actual parent IDs and the live search con
         parentId: null,
       })),
     ).length,
-    4,
+    20,
   );
 });
 

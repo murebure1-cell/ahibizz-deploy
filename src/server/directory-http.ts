@@ -22,6 +22,10 @@ function query(url: URL, allowed: string[]) {
     if (["page", "pageSize"].includes(key)) {
       if (!/^\d{1,3}$/.test(value)) throw new DirectoryAccessError(400, "INVALID_DIRECTORY_INPUT");
       result[key] = Number(value);
+    } else if (["latitude", "longitude", "radiusKm"].includes(key)) {
+      if (!/^-?(?:0|[1-9]\d{0,2})(?:\.\d{1,6})?$/.test(value))
+        throw new DirectoryAccessError(400, "INVALID_DIRECTORY_INPUT");
+      result[key] = Number(value);
     } else result[key] = value;
   }
   return result;
@@ -81,7 +85,17 @@ export function createPublicDirectoryHttpHandler(service: PublicDirectoryService
       if (path === "/businesses")
         return reply(
           await service.listPublic(
-            query(url, ["q", "city", "page", "pageSize", "categoryId", "subcategoryId"]),
+            query(url, [
+              "q",
+              "city",
+              "page",
+              "pageSize",
+              "categoryId",
+              "subcategoryId",
+              "latitude",
+              "longitude",
+              "radiusKm",
+            ]),
           ),
         );
       query(url, []);

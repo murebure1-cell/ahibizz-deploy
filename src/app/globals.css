@@ -662,6 +662,14 @@ a {
   color: #e3e9e6;
   background: var(--navy-deep);
 }
+:root[data-app-display="standalone"] .site-footer {
+  display: none;
+}
+@media (display-mode: standalone) {
+  .site-footer {
+    display: none;
+  }
+}
 .footer-main {
   display: flex;
   justify-content: space-between;
