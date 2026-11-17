@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type AdminSection,
   adminSectionPath,
+  businessImportPath,
   readAdminNavigation,
 } from "../../lib/admin-navigation";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
@@ -132,6 +133,7 @@ export function AdminDashboard({
       <section id="admin-content" className={styles.content}>
         <header className={styles.pageHeading}>
           <h1>{current.title}</h1>
+          {section === "businesses" && <Link href={businessImportPath}>Uvezi prijave</Link>}
         </header>
         <div hidden={section !== "accounts"}>
           {(visited.accounts || section === "accounts") && (

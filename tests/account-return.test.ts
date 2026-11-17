@@ -11,6 +11,7 @@ import {
 test("sign-in accepts only exact known administration continuations", () => {
   for (const path of [
     "/administracija",
+    "/administracija/uvoz-prijava",
     "/administracija?odjeljak=nalozi",
     "/administracija?odjeljak=kategorije",
     "/administracija?odjeljak=djelatnosti",
@@ -19,6 +20,8 @@ test("sign-in accepts only exact known administration continuations", () => {
     assert.equal(accountReturnPath(path), path);
   for (const path of [
     "/administracija/",
+    "/administracija/uvoz-prijava?next=/nalog",
+    "/administracija/uvoz-prijava/",
     "/administracija?odjeljak=naplata#other",
     "/administracija?odjeljak=naplata&odjeljak=nalozi",
     "/administracija?odjeljak=constructor",

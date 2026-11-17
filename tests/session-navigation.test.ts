@@ -35,6 +35,7 @@ test("navigation presents a role only for an eligible well-formed current accoun
 test("eligible sign-in shortcuts use only closed paths and preserve owner admin destinations", () => {
   for (const path of [
     "/administracija",
+    "/administracija/uvoz-prijava",
     "/administracija?odjeljak=nalozi",
     "/administracija?odjeljak=kategorije",
     "/administracija?odjeljak=djelatnosti",

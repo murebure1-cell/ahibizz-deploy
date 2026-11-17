@@ -27,6 +27,7 @@ test("known administrative panes round-trip through browser and server query par
     assert.equal(adminReturnPath(path), path);
   }
   assert.equal(adminReturnPath("/administracija"), "/administracija");
+  assert.equal(adminReturnPath("/administracija/uvoz-prijava"), "/administracija/uvoz-prijava");
 });
 
 test("unknown, duplicate and prototype query values cannot select another administrative pane", () => {
@@ -67,6 +68,11 @@ test("login destinations accept only the exact closed administrative paths", () 
     "https://fixture.invalid/administracija",
     "//evil.invalid/administracija",
     "/administracija/",
+    "/administracija/uvoz-prijava/",
+    "/administracija/uvoz-prijava?odjeljak=nalozi",
+    "/administracija/uvoz-prijava#other",
+    "/administracija/%75voz-prijava",
+    "/administracija/uvoz-prijava\n",
     "/administracija?odjeljak=unknown",
     "/administracija?odjeljak=constructor",
     "/administracija?odjeljak=__proto__",
