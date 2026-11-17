@@ -91,106 +91,6 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 17px;
 }
-.card {
-  position: relative;
-  display: flex;
-  gap: 19px;
-  align-items: flex-start;
-  padding: 25px;
-  border: 1px solid var(--ui-border);
-  border-radius: 16px;
-  background: var(--ui-surface);
-  box-shadow: 0 10px 30px #17304704;
-  min-width: 0;
-  transition:
-    border-color 0.18s,
-    transform 0.18s;
-}
-.card:focus-within,
-.card:hover {
-  border-color: var(--ui-accent-border);
-  transform: translateY(-2px);
-}
-.mark {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 60px;
-  height: 64px;
-  border: 1px solid var(--ui-border);
-  border-radius: 14px;
-  background: #173047;
-  color: #e9ca8a;
-  font-size: 29px;
-  font-weight: 600;
-}
-.cardBody {
-  min-width: 0;
-  flex: 1;
-}
-.category {
-  font-size: 11px;
-  line-height: 1.6;
-  color: var(--ui-accent-text);
-  margin-bottom: 8px;
-}
-.card h2 {
-  font-size: 20px;
-  line-height: 1.35;
-  letter-spacing: -0.025em;
-  overflow-wrap: anywhere;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.card h2 a::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 16px;
-}
-.description {
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--ui-muted);
-  margin-top: 11px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  white-space: pre-line;
-}
-.location {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin-top: 15px;
-  font-size: 12px;
-  color: var(--ui-text-secondary);
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-}
-.location svg {
-  width: 15px;
-  height: 17px;
-  flex-shrink: 0;
-  color: var(--ui-accent-text);
-}
-.verified {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  color: var(--ui-success);
-  background: var(--ui-success-soft);
-  border-radius: 50%;
-}
-.verified svg {
-  width: 13px;
-  height: 13px;
-}
 .unavailable {
   padding: 32px;
   border-radius: 15px;
@@ -245,18 +145,6 @@
     padding: 18px;
     gap: 17px;
   }
-  .card {
-    padding: 21px;
-    gap: 15px;
-  }
-  .mark {
-    width: 49px;
-    height: 54px;
-    font-size: 25px;
-  }
-  .card h2 {
-    font-size: 18px;
-  }
   .resultsHeading {
     flex-wrap: wrap;
   }
@@ -265,24 +153,4 @@
   .form {
     grid-template-columns: 1fr;
   }
-}
-@media (prefers-reduced-motion: reduce) {
-  .card {
-    transition: none;
-  }
-  .card:hover,
-  .card:focus-within {
-    transform: none;
-  }
-}
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
 }

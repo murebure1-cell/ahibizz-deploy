@@ -284,7 +284,7 @@ export function BusinessImport({
             <p className={styles.hint}>
               {selectedName} · {file.hash.slice(0, 12)}
             </p>
-            {preview.missingCategories.length > 0 && (
+            {!finished && preview.missingCategories.length > 0 && (
               <details open>
                 <summary>Kategorije za dodavanje ({preview.missingCategories.length})</summary>
                 <ul>
