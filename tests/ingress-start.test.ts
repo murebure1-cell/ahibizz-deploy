@@ -21,7 +21,10 @@ async function freePort() {
   return address.port;
 }
 
-function send(port: number, options: { path?: string; localAddress?: string; body?: string } = {}) {
+function send(
+  port: number,
+  options: { path?: string; localAddress?: string; body?: string; onFirstChunk?: () => void } = {},
+) {
   return new Promise<{ status: number; body: string; cookies?: string[]; location?: string }>(
     (resolve, reject) => {
       const req = request(
@@ -43,6 +46,7 @@ function send(port: number, options: { path?: string; localAddress?: string; bod
         },
         (response) => {
           let body = "";
+          response.once("data", () => options.onFirstChunk?.());
           response.on("data", (chunk) => {
             body += chunk;
           });
@@ -134,7 +138,7 @@ setTimeout(()=>process.exit(29),30000).unref();
   };
   t.after(() => {
     if (existsSync(eventFile)) {
-      for (const row of readFileSync(eventFile, "utf8").trim().split(/\r?\n/)) {
+      for (const row of readFileSync(eventFile, "utf8").trim().split(/\r?\n/).filter(Boolean)) {
         const event = JSON.parse(row) as { step: string; pid?: number };
         if (event.step === "child" && event.pid) {
           try {
@@ -156,6 +160,7 @@ setTimeout(()=>process.exit(29),30000).unref();
         ? readFileSync(eventFile, "utf8")
             .trim()
             .split(/\r?\n/)
+            .filter(Boolean)
             .map((line) => JSON.parse(line))
         : [],
   };
@@ -284,8 +289,17 @@ test("SIGTERM drains a real child response, closes both ports and allows a clean
     });
   const result = begin();
   await untilReady(app.publicPort);
-  const stream = send(app.publicPort, { path: "/slow" });
-  await delay(30);
+  let started!: () => void;
+  const firstChunk = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const stream = send(app.publicPort, { path: "/slow", onFirstChunk: started });
+  await Promise.race([
+    firstChunk,
+    stream.then(() => {
+      throw new Error("The drain fixture ended before its first chunk.");
+    }),
+  ]);
   process.emit("SIGTERM", "SIGTERM");
   assert.equal((await stream).body, "firstlast");
   assert.equal(await result, 143);
@@ -299,6 +313,10 @@ test("SIGTERM drains a real child response, closes both ports and allows a clean
 });
 
 test("a failed or silent child never leaves the public listener open", async (t) => {
+  // A terminated child can create the append-only file before writing its first event.
+  const empty = await fixture(t);
+  writeFileSync(empty.env.START_EVENTS, "");
+  assert.deepEqual(empty.events(), []);
   for (const mode of ["exit", "silent"]) {
     const app = await fixture(t, mode);
     const code = await lifecycle.runEnforcedServer({

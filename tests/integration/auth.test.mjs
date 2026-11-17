@@ -131,7 +131,14 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             real: request.headers["x-real-ip"],
             forwardedFor: request.headers["x-forwarded-for"],
             other: request.headers["x-ahibizz-ingress-other"],
+            host: request.headers.host,
+            origin: request.headers.origin,
+            referer: request.headers.referer,
           });
+          assert.equal(request.headers.host, new URL(origin).host);
+          assert.equal(request.headers["x-forwarded-host"], new URL(origin).host);
+          assert.equal(request.headers["x-forwarded-proto"], "https");
+          assert.equal(request.headers["x-forwarded-port"], "443");
           const headers = new Headers();
           for (let index = 0; index < request.rawHeaders.length; index += 2)
             headers.append(request.rawHeaders[index], request.rawHeaders[index + 1]);
@@ -214,6 +221,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           cookies,
           headers = [],
           requestOrigin = origin,
+          requestHost = `127.0.0.1:${publicPort}`,
+          requestReferer = `${requestOrigin}/source`,
           localAddress = "127.0.0.1",
         } = {},
       ) {
@@ -231,9 +240,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
               agent: false,
               headers: [
                 "Host",
-                new URL(origin).host,
+                requestHost,
                 "Origin",
                 requestOrigin,
+                "Referer",
+                requestReferer,
                 "User-Agent",
                 "AhiBizz isolated ingress authentication test",
                 "X-Real-IP",
@@ -415,10 +426,13 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
               await send(clients.account, "/api/auth/sign-up/email", {
                 body: signup,
                 requestOrigin: "https://untrusted.invalid",
+                requestHost: "container_name:43127",
               })
             ).status,
             403,
           );
+          assert.equal(forwarded.at(-1).origin, "https://untrusted.invalid");
+          assert.equal(forwarded.at(-1).referer, "https://untrusted.invalid/source");
           assert.equal(
             (
               await send(clients.account, "/api/auth/sign-up/email", {
@@ -464,10 +478,15 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             0,
           );
           await pool.query("UPDATE auth_user SET approval='approved' WHERE id=$1", [user.id]);
-          assert.equal(
-            (await send(clients.account, undefined, { body: credentials, cookies })).status,
-            200,
-          );
+          const signedIn = await send(clients.account, undefined, { body: credentials, cookies });
+          assert.equal(signedIn.status, 200);
+          assert.ok(signedIn.headers["set-cookie"]?.length > 0);
+          for (const cookie of signedIn.headers["set-cookie"]) {
+            assert.match(cookie, /;\s*HttpOnly(?:;|$)/i);
+            assert.match(cookie, /;\s*Secure(?:;|$)/i);
+            assert.match(cookie, /;\s*SameSite=Lax(?:;|$)/i);
+            assert.doesNotMatch(cookie, /127\.0\.0\.1|container_name/);
+          }
           const current = await send(clients.account, "/api/auth/get-session", {
             method: "GET",
             cookies,

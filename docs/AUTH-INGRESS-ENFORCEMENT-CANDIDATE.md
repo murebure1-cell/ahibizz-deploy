@@ -74,10 +74,17 @@ kada marker, loopback HOSTNAME, interni PORT, ponovo validirana politika i zaseb
 omogućeno app-specific povjerenje odgovaraju. Guard bez tog povjerenja ostavlja
 praznu listu auth IP headera.
 
-Normalni zahtjev mora imati tačan socket peer, canonical Host i jedan validan
-X-Real-IP. XFF nije izvor povjerenja. Host nije bio obuhvaćen početnim observerom:
-uspješan stvarni HTTPS zahtjev poslije uključivanja mora potvrditi kompatibilnost,
-a neuspjeh traži sigurno vraćanje bez slabljenja provjere Hosta.
+Normalni zahtjev mora imati tačan socket peer, tačno jedan sintaksno validan Host
+i jedan validan X-Real-IP. Incoming Host authority se odbacuje: nije izvor rute,
+canonical origina ili client-IP povjerenja. Tako podržani proxy Host prepisan na
+interno ime/IP i port ne zavisi od javne domene. Missing/dupli Host, kontrolni
+znakovi, whitespace, userinfo, putanja/query/fragment i nevažeći port se odbijaju.
+Origin i Referer se čuvaju kao originalni podaci zahtjeva radi postojećih CSRF
+provjera; nikada se ne prepisuju u pouzdan origin. XFF nije izvor povjerenja.
+Host nije bio obuhvaćen početnim observerom:
+uspješan stvarni HTTPS zahtjev poslije uključivanja mora potvrditi kompatibilnost.
+Validacija sintakse Hosta i fiksna rekonstrukcija origina su odvojene provjere;
+vrijednost incoming authority ne dodjeljuje nikakva prava ili povjerenje.
 
 Caller `x-ahibizz-ingress-*`, Forwarded, X-Forwarded-* i hop-by-hop headeri,
 uključujući caller Connection listu, uklanjaju se. Privatni client-IP postavlja

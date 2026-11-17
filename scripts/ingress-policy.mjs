@@ -15,6 +15,35 @@ function port(value) {
   return number;
 }
 
+function hostAuthority(value) {
+  if (
+    typeof value !== "string" ||
+    value.length < 1 ||
+    value.length > 260 ||
+    !/^[a-zA-Z0-9_.:[\]-]+$/.test(value)
+  )
+    return null;
+  try {
+    const parts = value.startsWith("[")
+      ? /^\[([a-fA-F0-9:.]+)\](?::([0-9]+))?$/.exec(value)
+      : /^([a-zA-Z0-9_.-]+)(?::([0-9]+))?$/.exec(value);
+    if (!parts || (parts[2] && (Number(parts[2]) < 1 || Number(parts[2]) > 65535))) return null;
+    const url = new URL(`http://${value}`);
+    if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) return null;
+    if (
+      !value.startsWith("[") &&
+      parts[1]
+        .replace(/\.$/, "")
+        .split(".")
+        .some((label) => !/^[a-zA-Z0-9_](?:[a-zA-Z0-9_-]{0,61}[a-zA-Z0-9_])?$/.test(label))
+    )
+      return null;
+    return url.host;
+  } catch {
+    return null;
+  }
+}
+
 /** Default-off, server-owned policy; invalid enabled configurations fail closed. */
 export function readIngressEnforcementPolicy(env = process.env) {
   if (env.AHIBIZZ_INGRESS_ENFORCE === undefined || env.AHIBIZZ_INGRESS_ENFORCE === "false") {
@@ -150,22 +179,10 @@ export function inspectIngressRequest(request, policy) {
     /[^\x21-\x7e]|#/.test(request.url)
   )
     return { allowed: false, status: 400 };
-  const host = singleRawHeader(request, "host");
-  try {
-    const target = new URL(`https://${host}`);
-    if (
-      !host ||
-      target.origin !== policy.origin ||
-      target.username ||
-      target.password ||
-      target.pathname !== "/" ||
-      target.search ||
-      target.hash
-    )
-      return { allowed: false, status: 400 };
-  } catch {
-    return { allowed: false, status: 400 };
-  }
+  const host = hostAuthority(singleRawHeader(request, "host"));
+  // Discard the incoming authority. The fixed origin is reconstructed by the
+  // forwarder; Host never selects an upstream, auth origin or client-IP trust.
+  if (!host) return { allowed: false, status: 400 };
   const supplied = singleRawHeader(request, "x-real-ip");
   const clientIp = normalizeIngressIp(supplied?.trim());
   if (!clientIp) return { allowed: false, status: 400 };

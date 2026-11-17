@@ -249,11 +249,17 @@ jobs:
           done
           [[ "$ready" == true ]]
           canonical=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 5 \
-            -H 'Host: fixture.example.invalid' -H 'X-Real-IP: 203.0.113.9' \
+            -H 'Host: 127.0.0.1:3099' -H 'X-Real-IP: 203.0.113.9' \
             http://127.0.0.1:3099/api/account)
           untrusted=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 5 \
-            --interface 127.0.0.2 -H 'Host: fixture.example.invalid' -H 'X-Real-IP: 127.0.0.1' \
+            --interface 127.0.0.2 -H 'Host: 127.0.0.1:3099' -H 'X-Real-IP: 127.0.0.1' \
             -H 'X-AhiBizz-Ingress-Client-IP: 203.0.113.9' http://127.0.0.1:3099/api/account)
-          [[ "$canonical" == 401 && "$untrusted" == 403 ]]
+          foreign_origin=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 5 \
+            -H 'Host: container_name:3099' -H 'X-Real-IP: 203.0.113.9' \
+            -H 'Origin: https://untrusted.invalid' -H 'Referer: https://untrusted.invalid/source' \
+            -H 'Content-Type: application/json' \
+            --data '{"email":"missing@fixture.invalid","password":"isolated-fixture-only-password"}' \
+            http://127.0.0.1:3099/api/auth/sign-in/email)
+          [[ "$canonical" == 401 && "$untrusted" == 403 && "$foreign_origin" == 403 ]]
           docker stop --time 15 "$container_id" >/dev/null
           echo "Guarded production entrypoint: loopback health, canonical auth boundary and denied peer passed; client-IP trust stayed disabled."

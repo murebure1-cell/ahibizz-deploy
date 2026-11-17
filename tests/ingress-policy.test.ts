@@ -126,6 +126,60 @@ test("client-IP trust requires a separate app-specific ACL review and never foll
   }
 });
 
+test("one valid proxy Host is discarded while malformed, missing or duplicate Host remains rejected", () => {
+  const policy = lib.readIngressEnforcementPolicy(enforcementEnv());
+  const request = (fields: string[], peer = "127.0.0.1") => ({
+    socket: { remoteAddress: peer },
+    rawHeaders: [...fields, "X-Real-IP", "203.0.113.9"],
+    url: "/",
+    method: "GET",
+  });
+  for (const host of [
+    "fixture.example.invalid",
+    "FIXTURE.EXAMPLE.INVALID",
+    "127.0.0.1:43127",
+    "container-name:43127",
+    "container_name:43127",
+    "[::1]:43127",
+    "[2001:DB8::1]:443",
+    "fixture.example.invalid:443",
+    "fixture.example.invalid:00080",
+  ])
+    assert.equal(lib.inspectIngressRequest(request(["Host", host]), policy).allowed, true, host);
+  for (const host of [
+    "",
+    "https://fixture.invalid",
+    "fixture.invalid/path",
+    "user@fixture.invalid",
+    "fixture.invalid?x=1",
+    "fixture.invalid#x",
+    "*.fixture.invalid",
+    "fixture.invalid,other.invalid",
+    " fixture.invalid",
+    "fixture.invalid ",
+    "fixture.invalid:0",
+    "fixture.invalid:65536",
+    "fixture.invalid:",
+    "fixture.invalid:abc",
+    "foo..invalid",
+    "a".repeat(261),
+    "::1",
+  ])
+    assert.equal(lib.inspectIngressRequest(request(["Host", host]), policy).status, 400, host);
+  assert.equal(lib.inspectIngressRequest(request([]), policy).status, 400);
+  assert.equal(
+    lib.inspectIngressRequest(request(["Host", "fixture.invalid", "Host", "other.invalid"]), policy)
+      .status,
+    400,
+  );
+  assert.equal(
+    lib.inspectIngressRequest(request(["Host", "127.0.0.1:43127"], "203.0.113.9"), policy).status,
+    403,
+  );
+  assert.equal(policy.origin, origin);
+  assert.equal(policy.trustClientIp, false);
+});
+
 test("nine observed requests, source, raw digest, status and bounded clock offset are mandatory", () => {
   const mutations: ((proof: ReturnType<typeof boundaryProof>) => void)[] = [
     (p) => {

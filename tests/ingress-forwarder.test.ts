@@ -62,6 +62,7 @@ function send(
     headers?: string[];
     body?: Buffer | string;
     chunks?: string[];
+    onFirstChunk?: () => void;
   } = {},
 ) {
   return new Promise<{
@@ -82,6 +83,7 @@ function send(
       },
       (res) => {
         const chunks: Buffer[] = [];
+        res.once("data", () => options.onFirstChunk?.());
         res.on("data", (chunk) => chunks.push(chunk));
         res.on("error", reject);
         res.on("end", () =>
@@ -173,7 +175,7 @@ test("guard-only mode strips every private or forwarded client-IP header and pre
   assert.equal(hits, 1);
 });
 
-test("duplicate or missing real-IP, wrong host and absolute URLs never reach the fixed loopback upstream", async (t) => {
+test("duplicate or missing real-IP, malformed Host and absolute URLs never reach the fixed loopback upstream", async (t) => {
   let hits = 0;
   const app = await fixture(t, (_req, res) => {
     hits++;
@@ -181,7 +183,7 @@ test("duplicate or missing real-IP, wrong host and absolute URLs never reach the
   });
   for (const headers of [
     ["Host", "fixture.example.invalid"],
-    ["Host", "other.example.invalid", "X-Real-IP", "203.0.113.9"],
+    ["Host", "other.example.invalid/path", "X-Real-IP", "203.0.113.9"],
     ["Host", "fixture.example.invalid", "X-Real-IP", "203.0.113.9", "x-real-ip", "198.51.100.5"],
   ])
     assert.equal((await send(app.publicPort, { headers })).status, 400);
@@ -190,6 +192,63 @@ test("duplicate or missing real-IP, wrong host and absolute URLs never reach the
     400,
   );
   assert.equal(hits, 0);
+});
+
+test("valid rewritten Host is discarded without altering canonical redirects, cookies or original origin headers", async (t) => {
+  let hits = 0;
+  const app = await fixture(t, (req, res) => {
+    hits++;
+    assert.equal(req.headers.host, "fixture.example.invalid");
+    assert.equal(req.headers["x-forwarded-host"], "fixture.example.invalid");
+    assert.equal(req.headers["x-forwarded-proto"], "https");
+    assert.equal(req.headers["x-forwarded-port"], "443");
+    assert.equal(req.headers.origin, "https://untrusted.invalid");
+    assert.equal(req.headers.referer, "https://untrusted.invalid/source");
+    assert.equal(req.headers["x-ahibizz-ingress-client-ip"], undefined);
+    assert.equal(req.headers.cookie, "fixture=session");
+    res.writeHead(307, {
+      Location: "https://fixture.example.invalid/nalog",
+      "Set-Cookie": [
+        "fixture-a=1; HttpOnly; Secure; SameSite=Lax",
+        "fixture-b=2; HttpOnly; Secure",
+      ],
+    });
+    res.end();
+  });
+  for (const host of [
+    "127.0.0.1:43127",
+    "container_name:43127",
+    "[::1]:43127",
+    "UNKNOWN.INVALID:443",
+  ]) {
+    const result = await send(app.publicPort, {
+      headers: [
+        "Host",
+        host,
+        "X-Real-IP",
+        "203.0.113.9",
+        "X-Forwarded-Host",
+        "attacker.invalid",
+        "X-Forwarded-Proto",
+        "http",
+        "Origin",
+        "https://untrusted.invalid",
+        "Referer",
+        "https://untrusted.invalid/source",
+        "Cookie",
+        "fixture=session",
+        "X-AhiBizz-Ingress-Client-IP",
+        "198.51.100.4",
+      ],
+    });
+    assert.equal(result.status, 307);
+    assert.equal(result.location, "https://fixture.example.invalid/nalog");
+    assert.deepEqual(result.cookies, [
+      "fixture-a=1; HttpOnly; Secure; SameSite=Lax",
+      "fixture-b=2; HttpOnly; Secure",
+    ]);
+  }
+  assert.equal(hits, 4);
 });
 
 test("binary bodies, streaming responses, duplicate Set-Cookie and redirects remain byte-preserving", async (t) => {
@@ -322,14 +381,31 @@ test("WebSocket upgrade and CONNECT are explicitly denied rather than becoming a
   assert.equal(hits, 0);
 });
 
-test("shutdown drains a live stream, closes idle sockets and permits a fresh listener", async (t) => {
+test("shutdown drains a live stream, closes idle sockets and permits a fresh listener", {
+  timeout: 5000,
+}, async (t) => {
+  let firstResponse = true;
+  let finishStream!: () => void;
   const app = await fixture(t, (_req, res) => {
     res.write("first-");
-    setTimeout(() => res.end("last"), 20);
+    if (firstResponse) {
+      firstResponse = false;
+      finishStream = () => res.end("last");
+    } else res.end("last");
   });
-  const pending = send(app.publicPort);
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  let started!: () => void;
+  const firstChunk = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const pending = send(app.publicPort, { onFirstChunk: started });
+  await Promise.race([
+    firstChunk,
+    pending.then(() => {
+      throw new Error("The drain fixture ended before its first chunk.");
+    }),
+  ]);
   const stopping = app.gateway.close(200);
+  finishStream();
   assert.equal((await pending).body.toString(), "first-last");
   await stopping;
   const fresh = forwarder.createIngressForwarder({ policy: app.policy });
