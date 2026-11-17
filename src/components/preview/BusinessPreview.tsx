@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useRef, useState } from "react";
 import { bookingWrite } from "../../lib/booking-client";
 import { publicBusinessImages } from "../../lib/public-business";
@@ -10,6 +9,7 @@ import {
   type BusinessFields,
   type CategoryOption,
 } from "../directory/BusinessEditor";
+import { BusinessLogo } from "../directory/BusinessLogo";
 import { BusinessMediaManager } from "../directory/BusinessMediaManager";
 import { PublicBusinessProfile } from "../directory/PublicBusinessProfile";
 import { Icon } from "../Icon";
@@ -228,7 +228,12 @@ export function BusinessPreview() {
                     <div className={styles.businessBody}>
                       <span className={styles.monogram} aria-hidden="true">
                         {logoUrl ? (
-                          <Image src={logoUrl} alt="" width={46} height={46} unoptimized />
+                          <BusinessLogo
+                            src={logoUrl}
+                            alt=""
+                            monogram={Array.from(draft.title)[0]?.toLocaleUpperCase("bs") || "D"}
+                            sizes="46px"
+                          />
                         ) : (
                           Array.from(draft.title)[0]?.toLocaleUpperCase("bs") || "D"
                         )}

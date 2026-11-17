@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { BookingSettings } from "../../lib/booking";
@@ -39,8 +38,8 @@ import type { DirectoryBusiness } from "../../server/directory/types";
 import { BusinessBookingManager } from "../booking/BusinessBookingManager";
 import { Icon } from "../Icon";
 import { BusinessEditor, type BusinessFields, type CategoryOption } from "./BusinessEditor";
+import { BusinessLogo } from "./BusinessLogo";
 import { BusinessMediaManager } from "./BusinessMediaManager";
-import mediaStyles from "./business-media.module.css";
 import styles from "./directory.module.css";
 
 const statuses = {
@@ -1134,13 +1133,11 @@ export function BusinessManager({
               <article key={item.id} className={styles.business}>
                 <span className={styles.monogram} aria-hidden="true">
                   {item.media?.logo && mediaImageUrl(item.id, item.media.logo, "mine") ? (
-                    <Image
+                    <BusinessLogo
                       src={mediaImageUrl(item.id, item.media.logo, "mine") as string}
                       alt=""
-                      width={50}
-                      height={50}
-                      className={mediaStyles.rowLogo}
-                      unoptimized
+                      monogram={item.title.slice(0, 1).toLocaleUpperCase("bs")}
+                      sizes="50px"
                     />
                   ) : (
                     item.title.slice(0, 1).toLocaleUpperCase("bs")

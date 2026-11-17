@@ -20,6 +20,7 @@ import {
   businessMediaRequest,
 } from "../../lib/business-media-client";
 import { Icon } from "../Icon";
+import { BusinessLogo } from "./BusinessLogo";
 import styles from "./business-media.module.css";
 
 type ImageUrl = (
@@ -504,12 +505,11 @@ export function BusinessMediaManager({
               <h3>Logotip</h3>
               <div className={styles.logo}>
                 {source(manifest.logo) ? (
-                  <Image
+                  <BusinessLogo
                     src={source(manifest.logo) as string}
                     alt={`Logotip: ${businessTitle}`}
-                    width={512}
-                    height={512}
-                    unoptimized
+                    monogram={initials}
+                    sizes="132px"
                   />
                 ) : (
                   <span aria-hidden="true">{initials}</span>
