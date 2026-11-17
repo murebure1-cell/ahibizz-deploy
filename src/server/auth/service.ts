@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { Pool } from "pg";
 import { authOrigin, authSecret, readAuthConfiguration } from "./config";
+import { type AuthIngressConfiguration, authIpAddressHeaders } from "./ingress";
 import { AuthEmailDeliveryError, type AuthEmailSender, createSmtpSender } from "./mail";
 
 export { AuthConfigurationError, readAuthConfiguration } from "./config";
@@ -41,10 +42,12 @@ export function createAuthService(options: {
   secret: string;
   sendEmail: AuthEmailSender;
   production?: boolean;
+  ingress?: AuthIngressConfiguration | null;
 }) {
   const production = options.production ?? process.env.NODE_ENV === "production";
   const baseURL = authOrigin(options.baseURL, production);
   const secret = authSecret(options.secret);
+  const ipAddressHeaders = authIpAddressHeaders(options.ingress);
   const sendEmail: AuthEmailSender = async (message) => {
     try {
       const target = new URL(message.url);
@@ -128,7 +131,7 @@ export function createAuthService(options: {
       useSecureCookies: production,
       defaultCookieAttributes: { httpOnly: true, secure: production, sameSite: "lax", path: "/" },
       trustedProxyHeaders: false,
-      ipAddress: { ipAddressHeaders: [], disableIpTracking: false },
+      ipAddress: { ipAddressHeaders, disableIpTracking: false },
     },
     hooks: {
       before: createAuthMiddleware(async (context) => {

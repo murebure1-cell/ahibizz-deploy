@@ -132,8 +132,9 @@ export function PublicBusinessProfile({
             <Link
               className={styles.secondary}
               href={messageHref ?? messageLink({ kind: "business", targetId: business.id })}
+              aria-label="Poruka — pošalji poruku"
             >
-              <Icon name="message" /> Pošalji poruku
+              <Icon name="message" /> Poruka
             </Link>
           )}
           {links.phone ? (
@@ -142,19 +143,20 @@ export function PublicBusinessProfile({
               Pozovi
             </a>
           ) : links.email ? (
-            <a className={styles.primary} href={links.email}>
+            <a className={styles.primary} href={links.email} aria-label="Pošalji email">
               <Icon name="mail" />
-              Pošalji email
+              Email
             </a>
           ) : (
             links.website && (
               <a
                 className={styles.primary}
                 href={links.website}
+                aria-label="Web stranica"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Web stranica
+                Web
                 <Icon name="external" />
               </a>
             )

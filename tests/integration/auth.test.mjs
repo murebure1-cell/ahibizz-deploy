@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
+import { createServer, request as localHttpRequest } from "node:http";
 import path from "node:path";
 import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
@@ -36,6 +37,540 @@ class Cookies {
     result.values = new Map(this.values);
     return result;
   }
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  test("real isolated ingress gates database auth buckets and preserves account guards", {
+    timeout: 90000,
+  }, async (t) => {
+    const configuration = integrationConfiguration(process.env);
+    const schema = `ci_auth_ingress_${randomBytes(10).toString("hex")}`;
+    assert.match(schema, /^ci_auth_ingress_[a-f0-9]{20}$/);
+    const { Pool } = await import("pg");
+    const administration = new Pool({ ...configuration, max: 1 });
+    administration.on("error", () => {});
+    let pool;
+    let created = false;
+    let outside;
+    let gateway;
+    let upstream;
+    const originalFetch = globalThis.fetch;
+    let outboundAttempts = 0;
+    const bridgeFailures = [];
+    const forwarded = [];
+    const fixtureEmail = "wrapped-member@auth-fixture.invalid";
+    const missingEmail = "missing@auth-fixture.invalid";
+    const clients = {
+      a: "203.0.113.11",
+      b: "203.0.113.12",
+      concurrent: "203.0.113.13",
+      account: "203.0.113.14",
+    };
+    let approvedActor;
+    let approvedCookies;
+    try {
+      assert.deepEqual(
+        (await administration.query("SELECT current_database() AS db, current_user AS role")).rows,
+        [{ db: "ahibizz_ci", role: "ahibizz_ci" }],
+      );
+      assert.equal(
+        (
+          await administration.query(
+            "SELECT count(*)::integer AS n FROM pg_namespace WHERE nspname=$1",
+            [schema],
+          )
+        ).rows[0].n,
+        0,
+      );
+      outside = await outsideTables(administration, schema);
+      await administration.query(`CREATE SCHEMA "${schema}"`);
+      created = true;
+      pool = new Pool({
+        ...configuration,
+        max: 5,
+        options: `-c search_path=${schema}`,
+        application_name: "ahibizz-auth-ingress-ci",
+      });
+      pool.on("error", () => {});
+      assert.equal((await pool.query("SELECT current_schema() AS name")).rows[0].name, schema);
+      const migrations = await loadMigrations();
+      assert.equal(migrations.length, 10);
+      assert.deepEqual(await runMigrations({ pool, migrations }), {
+        applied: migrations.map(({ version }) => version),
+      });
+      assert.equal((await pool.query("SELECT count(*)::integer AS n FROM auth_user")).rows[0].n, 0);
+      assert.equal(
+        (await pool.query("SELECT count(*)::integer AS n FROM auth_rate_limit")).rows[0].n,
+        0,
+      );
+      globalThis.fetch = async () => {
+        outboundAttempts++;
+        throw new Error("Outbound HTTP is prohibited in the isolated ingress fixture.");
+      };
+      const { origin, enforcementEnv, trustedEnforcementEnv } = await import(
+        "../ingress-enforcement-fixtures.ts"
+      );
+      const { readIngressEnforcementPolicy, internalClientIpHeader } = await import(
+        "../../scripts/ingress-policy.mjs"
+      );
+      const { createIngressForwarder } = await import("../../scripts/ingress-forwarder.mjs");
+      const { readAuthIngressConfiguration } = await import("../../src/server/auth/ingress.ts");
+      const { createAuthService, createAccountService, readCurrentAuthUser } = await import(
+        "../../src/server/auth/index.ts"
+      );
+      const { createAuthHttpHandler } = await import("../../src/server/auth-http.ts");
+      const { createAccountHttpHandler } = await import("../../src/server/account-http.ts");
+      let authHttp;
+      let accountHttp;
+      let activeMode;
+      upstream = createServer(async (request, response) => {
+        try {
+          forwarded.push({
+            mode: activeMode,
+            ip: request.headers[internalClientIpHeader],
+            real: request.headers["x-real-ip"],
+            forwardedFor: request.headers["x-forwarded-for"],
+            other: request.headers["x-ahibizz-ingress-other"],
+          });
+          const headers = new Headers();
+          for (let index = 0; index < request.rawHeaders.length; index += 2)
+            headers.append(request.rawHeaders[index], request.rawHeaders[index + 1]);
+          const chunks = [];
+          for await (const chunk of request) chunks.push(chunk);
+          const target = new URL(request.url, origin);
+          const result = await (target.pathname.startsWith("/api/auth/") ? authHttp : accountHttp)(
+            new Request(target, {
+              method: request.method,
+              headers,
+              body: ["GET", "HEAD"].includes(request.method) ? undefined : Buffer.concat(chunks),
+            }),
+          );
+          response.statusCode = result.status;
+          for (const [name, value] of result.headers)
+            if (name !== "set-cookie") response.setHeader(name, value);
+          const cookies = result.headers.getSetCookie();
+          if (cookies.length) response.setHeader("Set-Cookie", cookies);
+          response.end(Buffer.from(await result.arrayBuffer()));
+        } catch (error) {
+          bridgeFailures.push(error);
+          response.writeHead(500, { "Cache-Control": "no-store" });
+          response.end("Isolated authentication bridge failed.");
+        }
+      });
+      await new Promise((resolve) => upstream.listen(0, "127.0.0.1", resolve));
+      const internalPort = upstream.address().port;
+      const mail = [];
+      const secret = `ci-ingress-only-${randomBytes(32).toString("hex")}`;
+      let publicPort;
+      async function configure(parentEnv, mode) {
+        if (gateway?.server.listening) await gateway.close(100);
+        const ingress = readAuthIngressConfiguration(
+          {
+            ...parentEnv,
+            NODE_ENV: "production",
+            HOSTNAME: "127.0.0.1",
+            PORT: String(internalPort),
+            AHIBIZZ_INGRESS_PUBLIC_PORT: parentEnv.PORT,
+            AHIBIZZ_INGRESS_WRAPPED: "true",
+          },
+          origin,
+        );
+        if (mode === "guard-only") assert.equal(ingress, null);
+        else assert.deepEqual(ingress.ipAddressHeaders, [internalClientIpHeader]);
+        const auth = createAuthService({
+          pool,
+          baseURL: origin,
+          secret,
+          production: true,
+          ingress,
+          sendEmail: async (message) => {
+            assert.equal(message.to, fixtureEmail);
+            assert.equal(new URL(message.url).origin, origin);
+            mail.push(message);
+          },
+        });
+        authHttp = createAuthHttpHandler({
+          auth,
+          baseURL: origin,
+          readUser: (id) => readCurrentAuthUser(pool, id),
+        });
+        accountHttp = createAccountHttpHandler({
+          service: createAccountService({ auth, pool }),
+          baseURL: origin,
+        });
+        activeMode = mode;
+        gateway = createIngressForwarder({ policy: readIngressEnforcementPolicy(parentEnv) });
+        await new Promise((resolve) => gateway.server.listen(0, "127.0.0.1", resolve));
+        publicPort = gateway.server.address().port;
+      }
+      const rows = async () =>
+        (await pool.query("SELECT key,count FROM auth_rate_limit ORDER BY key")).rows;
+      async function send(
+        ip,
+        route = "/api/auth/sign-in/email",
+        {
+          method = "POST",
+          body = { email: missingEmail, password },
+          cookies,
+          headers = [],
+          requestOrigin = origin,
+          localAddress = "127.0.0.1",
+        } = {},
+      ) {
+        const target = new URL(route, origin);
+        assert.equal(target.origin, origin);
+        const data = method === "GET" ? undefined : Buffer.from(JSON.stringify(body));
+        const result = await new Promise((resolve, reject) => {
+          const request = localHttpRequest(
+            {
+              hostname: "127.0.0.1",
+              port: publicPort,
+              localAddress,
+              method,
+              path: target.pathname + target.search,
+              agent: false,
+              headers: [
+                "Host",
+                new URL(origin).host,
+                "Origin",
+                requestOrigin,
+                "User-Agent",
+                "AhiBizz isolated ingress authentication test",
+                "X-Real-IP",
+                ip,
+                ...(data
+                  ? ["Content-Type", "application/json", "Content-Length", String(data.length)]
+                  : []),
+                ...(cookies?.header() ? ["Cookie", cookies.header()] : []),
+                ...headers,
+              ],
+            },
+            (response) => {
+              const chunks = [];
+              response.on("data", (chunk) => chunks.push(chunk));
+              response.on("error", reject);
+              response.on("end", () =>
+                resolve({
+                  status: response.statusCode,
+                  headers: response.headers,
+                  body: Buffer.concat(chunks).toString("utf8"),
+                }),
+              );
+            },
+          );
+          request.setTimeout(10000, () =>
+            request.destroy(new Error("Isolated ingress request timed out.")),
+          );
+          request.on("error", reject);
+          request.end(data);
+        });
+        cookies?.read({ headers: { getSetCookie: () => result.headers["set-cookie"] ?? [] } });
+        assert.equal(result.headers["cache-control"], "no-store");
+        assert.doesNotMatch(result.body, /"(?:token|password|accessToken|refreshToken)"\s*:/);
+        assert.equal(result.body.includes(password), false);
+        return {
+          ...result,
+          data:
+            (result.status < 300 || result.status >= 400) &&
+            result.headers["content-type"]?.includes("application/json")
+              ? JSON.parse(result.body)
+              : null,
+        };
+      }
+      await configure(enforcementEnv(internalPort), "guard-only");
+      await t.test(
+        "guard-only mode strips forged headers and retains the unchanged shared database fallback",
+        async () => {
+          for (let index = 0; index < 10; index++) {
+            const client = index % 2 === 0 ? clients.a : clients.b;
+            const result = await send(client, undefined, {
+              headers: [
+                "X-AhiBizz-Ingress-Client-IP",
+                `198.51.100.${index + 1}`,
+                "X-Forwarded-For",
+                client,
+                "X-AhiBizz-Ingress-Other",
+                "forged",
+              ],
+            });
+            assert.equal(result.status, 401);
+            const counters = await rows();
+            assert.equal(counters.length, 1);
+            assert.equal(counters[0].count, index + 1);
+          }
+          const unchanged = await rows();
+          assert.equal((await send(clients.a)).status, 429);
+          assert.equal((await send(clients.b)).status, 429);
+          assert.deepEqual(await rows(), unchanged);
+          assert.equal(mail.length, 0);
+          assert.equal(forwarded.filter(({ mode }) => mode === "guard-only").length, 12);
+        },
+      );
+      // This positive mode uses only a deliberately synthetic app-specific ACL fixture.
+      // It proves the conditional code path, not any actual provider isolation.
+      await configure(trustedEnforcementEnv(internalPort), "synthetic-attested");
+      await t.test(
+        "one client reaches ten database-backed attempts despite changing forged headers; another stays independent",
+        async () => {
+          const before = await rows();
+          const prior = new Set(before.map(({ key }) => key));
+          const first = await send(clients.a, undefined, {
+            headers: ["X-AhiBizz-Ingress-Client-IP", clients.b, "X-Forwarded-For", clients.b],
+          });
+          assert.equal(first.status, 401);
+          const [initial] = (await rows()).filter(({ key }) => !prior.has(key));
+          assert.ok(initial);
+          assert.equal(initial.count, 1);
+          for (let index = 1; index < 10; index++) {
+            const result = await send(clients.a, undefined, {
+              headers: [
+                "X-AhiBizz-Ingress-Client-IP",
+                `198.51.100.${index}`,
+                "X-Forwarded-For",
+                `${clients.b}, 127.0.0.1`,
+                "X-AhiBizz-Ingress-Other",
+                "forged",
+              ],
+            });
+            assert.equal(result.status, 401);
+          }
+          assert.deepEqual(
+            (await rows()).filter(({ key }) => !prior.has(key)),
+            [{ key: initial.key, count: 10 }],
+          );
+          const limited = await send(clients.a, undefined, {
+            headers: ["X-AhiBizz-Ingress-Client-IP", clients.b, "X-Forwarded-For", clients.b],
+          });
+          assert.equal(limited.status, 429);
+          assert.ok(Number(limited.headers["retry-after"]) > 0);
+          assert.equal(
+            (
+              await send(clients.b, undefined, {
+                headers: ["X-AhiBizz-Ingress-Client-IP", clients.a, "X-Forwarded-For", clients.a],
+              })
+            ).status,
+            401,
+          );
+          const counters = (await rows()).filter(({ key }) => !prior.has(key));
+          assert.equal(counters.length, 2);
+          assert.equal(counters.find((row) => row.key === initial.key).count, 10);
+          assert.equal(counters.find((row) => row.key !== initial.key).count, 1);
+          assert.deepEqual(
+            (await rows()).filter(({ key }) => prior.has(key)),
+            before,
+          );
+        },
+      );
+      await t.test(
+        "untrusted socket and duplicate real-IP requests never consume a forged auth bucket",
+        async () => {
+          const before = await rows();
+          const count = forwarded.length;
+          assert.equal(
+            (
+              await send(clients.b, undefined, {
+                localAddress: "127.0.0.2",
+                headers: ["X-AhiBizz-Ingress-Client-IP", clients.a, "X-Forwarded-For", clients.a],
+              })
+            ).status,
+            403,
+          );
+          assert.equal(
+            (
+              await send(clients.b, undefined, {
+                headers: ["X-Real-IP", clients.a],
+              })
+            ).status,
+            400,
+          );
+          assert.deepEqual(await rows(), before);
+          assert.equal(forwarded.length, count);
+        },
+      );
+      await t.test(
+        "concurrent requests share one atomic database counter without allowing more than ten",
+        async () => {
+          const prior = new Set((await rows()).map(({ key }) => key));
+          const attempts = await Promise.all(
+            Array.from({ length: 16 }, (_, index) =>
+              send(clients.concurrent, undefined, {
+                headers: ["X-AhiBizz-Ingress-Client-IP", `198.51.100.${index + 20}`],
+              }),
+            ),
+          );
+          assert.equal(attempts.filter(({ status }) => status === 401).length, 10);
+          assert.equal(attempts.filter(({ status }) => status === 429).length, 6);
+          const next = (await rows()).filter(({ key }) => !prior.has(key));
+          assert.equal(next.length, 1);
+          assert.equal(next[0].count, 10);
+        },
+      );
+      await t.test(
+        "wrapped account traffic retains origin, role, verification, approval and expected-actor guards",
+        async () => {
+          const beforeCounters = await rows();
+          const signup = { name: "Wrapped Fixture Member", email: fixtureEmail, password };
+          assert.equal(
+            (
+              await send(clients.account, "/api/auth/sign-up/email", {
+                body: signup,
+                requestOrigin: "https://untrusted.invalid",
+              })
+            ).status,
+            403,
+          );
+          assert.equal(
+            (
+              await send(clients.account, "/api/auth/sign-up/email", {
+                body: { ...signup, role: "owner", approval: "approved", emailVerified: true },
+              })
+            ).status,
+            400,
+          );
+          assert.equal(
+            (await pool.query("SELECT count(*)::integer AS n FROM auth_user")).rows[0].n,
+            0,
+          );
+          assert.equal(mail.length, 0);
+          assert.deepEqual(await rows(), beforeCounters);
+          const cookies = new Cookies();
+          assert.equal(
+            (await send(clients.account, "/api/auth/sign-up/email", { body: signup, cookies }))
+              .status,
+            200,
+          );
+          const user = (await pool.query('SELECT id,role,approval,"emailVerified" FROM auth_user'))
+            .rows[0];
+          assert.deepEqual(user, {
+            id: user.id,
+            role: "member",
+            approval: "pending",
+            emailVerified: false,
+          });
+          assert.equal(mail.length, 1);
+          const credentials = { email: fixtureEmail, password };
+          assert.equal(
+            (await send(clients.account, undefined, { body: credentials, cookies })).status,
+            403,
+          );
+          const verified = await send(clients.account, mail[0].url, { method: "GET", cookies });
+          assert.ok([200, 302].includes(verified.status));
+          assert.equal(
+            (await send(clients.account, undefined, { body: credentials, cookies })).status,
+            403,
+          );
+          assert.equal(
+            (await pool.query("SELECT count(*)::integer AS n FROM auth_session")).rows[0].n,
+            0,
+          );
+          await pool.query("UPDATE auth_user SET approval='approved' WHERE id=$1", [user.id]);
+          assert.equal(
+            (await send(clients.account, undefined, { body: credentials, cookies })).status,
+            200,
+          );
+          const current = await send(clients.account, "/api/auth/get-session", {
+            method: "GET",
+            cookies,
+          });
+          assert.equal(current.data.user.id, user.id);
+          assert.equal(current.data.user.role, "member");
+          const own = await send(clients.account, "/api/account", {
+            method: "GET",
+            cookies,
+            headers: ["X-AhiBizz-Account-ID", user.id],
+          });
+          assert.equal(own.status, 200);
+          assert.equal(own.data.account.id, user.id);
+          const switched = await send(clients.account, "/api/account", {
+            method: "GET",
+            cookies,
+            headers: ["X-AhiBizz-Account-ID", "another-fixture-actor"],
+          });
+          assert.equal(switched.status, 401);
+          assert.equal(switched.data.code, "ACCOUNT_IDENTITY_CHANGED");
+          approvedActor = user.id;
+          approvedCookies = cookies;
+        },
+      );
+      await configure(enforcementEnv(internalPort), "guard-only");
+      await t.test(
+        "guard-only mode preserves the real session and expected-account authority after reconfiguration",
+        async () => {
+          assert.ok(approvedActor);
+          assert.ok(approvedCookies?.header());
+          const current = await send(clients.account, "/api/auth/get-session", {
+            method: "GET",
+            cookies: approvedCookies,
+            headers: ["X-AhiBizz-Ingress-Client-IP", clients.b, "X-Forwarded-For", clients.b],
+          });
+          assert.equal(current.data.user.id, approvedActor);
+          assert.equal(current.data.user.role, "member");
+          const own = await send(clients.account, "/api/account", {
+            method: "GET",
+            cookies: approvedCookies,
+            headers: ["X-AhiBizz-Account-ID", approvedActor],
+          });
+          assert.equal(own.status, 200);
+          assert.equal(own.data.account.id, approvedActor);
+          const switched = await send(clients.account, "/api/account", {
+            method: "GET",
+            cookies: approvedCookies,
+            headers: ["X-AhiBizz-Account-ID", "another-fixture-actor"],
+          });
+          assert.equal(switched.status, 401);
+          assert.equal(switched.data.code, "ACCOUNT_IDENTITY_CHANGED");
+          assert.equal(mail.length, 1);
+        },
+      );
+      assert.equal(bridgeFailures.length, 0);
+      assert.ok(forwarded.length > 30);
+      for (const entry of forwarded) {
+        if (entry.mode === "guard-only") assert.equal(entry.ip, undefined);
+        else {
+          assert.equal(entry.mode, "synthetic-attested");
+          assert.ok(Object.values(clients).includes(entry.ip));
+        }
+        assert.equal(entry.real, undefined);
+        assert.equal(entry.forwardedFor, undefined);
+        assert.equal(entry.other, undefined);
+      }
+      assert.equal(outboundAttempts, 0);
+      assert.deepEqual(await outsideTables(administration, schema), outside);
+    } finally {
+      if (gateway?.server.listening) await gateway.close(100);
+      if (upstream?.listening) {
+        upstream.closeAllConnections();
+        await new Promise((resolve, reject) =>
+          upstream.close((error) => (error ? reject(error) : resolve())),
+        );
+      }
+      globalThis.fetch = originalFetch;
+      try {
+        if (pool) await pool.end();
+        if (created) {
+          const owner = (
+            await administration.query(
+              "SELECT pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname=$1",
+              [schema],
+            )
+          ).rows[0]?.owner;
+          assert.equal(owner, "ahibizz_ci");
+          await administration.query(`DROP SCHEMA "${schema}" CASCADE`);
+          assert.equal(
+            (
+              await administration.query(
+                "SELECT count(*)::integer AS n FROM pg_namespace WHERE nspname=$1",
+                [schema],
+              )
+            ).rows[0].n,
+            0,
+          );
+        }
+      } finally {
+        await administration.end();
+      }
+    }
+  });
 }
 
 async function outsideTables(pool, schema) {

@@ -1,4 +1,5 @@
 import { type DatabaseConfiguration, type Environment, readDatabaseConfiguration } from "../env";
+import { type AuthIngressConfiguration, readAuthIngressConfiguration } from "./ingress";
 
 export class AuthConfigurationError extends Error {
   readonly code = "auth_configuration_invalid";
@@ -21,6 +22,7 @@ export type AuthConfiguration = Readonly<{
   production: boolean;
   database: DatabaseConfiguration;
   smtp: SmtpConfiguration;
+  ingress: AuthIngressConfiguration | null;
 }>;
 
 function hasControl(value: string): boolean {
@@ -102,6 +104,7 @@ export function readAuthConfiguration(env: Environment = process.env): AuthConfi
       production,
       database,
       smtp: Object.freeze({ host, port: Number(portText), secure, user, password, from }),
+      ingress: readAuthIngressConfiguration(env, baseURL),
     });
   } catch {
     throw new AuthConfigurationError();

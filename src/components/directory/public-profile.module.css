@@ -191,7 +191,7 @@
 
 .quickActions {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   flex-wrap: wrap;
   gap: 8px;
   margin-left: auto;
@@ -234,6 +234,7 @@
 
 .primary svg,
 .secondary svg {
+  flex-shrink: 0;
   width: 17px;
   height: 17px;
 }
@@ -627,6 +628,8 @@
   .quickActions > a,
   .quickActions > button {
     flex: 1;
+    gap: 6px;
+    padding-inline: 10px;
   }
 
   .sectionNavigation {

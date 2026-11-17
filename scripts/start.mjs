@@ -20,6 +20,22 @@ if (!server) {
   process.exit(1);
 }
 
+let ingressPolicy = null;
+try {
+  if (
+    (process.env.AHIBIZZ_INGRESS_ENFORCE !== undefined &&
+      process.env.AHIBIZZ_INGRESS_ENFORCE !== "false") ||
+    (process.env.AHIBIZZ_INGRESS_TRUST_CLIENT_IP !== undefined &&
+      process.env.AHIBIZZ_INGRESS_TRUST_CLIENT_IP !== "false")
+  ) {
+    const { readIngressEnforcementPolicy } = await import("./ingress-policy.mjs");
+    ingressPolicy = readIngressEnforcementPolicy(process.env);
+  }
+} catch {
+  console.error("Ingress enforcement configuration is invalid; startup was refused.");
+  process.exit(1);
+}
+
 const env = { ...process.env, NODE_ENV: "production", HOSTNAME: "0.0.0.0" };
 let stopping = false;
 
@@ -60,7 +76,20 @@ try {
   } else {
     console.warn("DATABASE_URL is not configured; starting without database readiness.");
   }
-  if (!stopping) process.exitCode = await run(server, true);
+  if (!stopping) {
+    if (ingressPolicy) {
+      // Observe the original public socket, including denied probes, after migration finishes.
+      // Neither the migration nor the private Next child preloads this module in enforced mode.
+      if (process.env.AHIBIZZ_INGRESS_OBSERVE === "true") await import("./ingress-observe.mjs");
+      const { runEnforcedServer } = await import("./ingress-start.mjs");
+      process.exitCode = await runEnforcedServer({
+        root,
+        server,
+        env,
+        policy: ingressPolicy,
+      });
+    } else process.exitCode = await run(server, true);
+  }
 } catch {
   console.error("Production startup failed before the server could finish.");
   process.exitCode = 1;
