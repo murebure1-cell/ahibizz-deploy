@@ -922,7 +922,6 @@ export function BusinessManager({
         {!embedded && (
           <div>
             <h1>{all && isOwner ? "Sve djelatnosti" : "Moje djelatnosti"}</h1>
-            <p>Predstavi, uredi i objavi svoj posao.</p>
           </div>
         )}
         {editing === undefined && (

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { authReturnLinks } from "../src/lib/auth-return";
 import type { AuthService } from "../src/server/auth";
 import { createAuthHttpHandler } from "../src/server/auth-http";
 
@@ -68,4 +69,43 @@ test("unknown routes, untrusted origins and injected roles never reach the auth 
   assert.equal((await post("sign-out", "https://other.invalid", {})).status, 403);
   assert.equal((await post("sign-up/email", baseURL, { role: "owner" })).status, 400);
   assert.equal(called, 0);
+});
+
+test("registration and resend retain the safe booking callback without altering auth fields", async () => {
+  const destination = "/djelatnosti/11111111-1111-4111-8111-111111111111#business-appointments";
+  const callbackURL = authReturnLinks(destination).verification;
+  const received: unknown[] = [];
+  const http = createAuthHttpHandler({
+    baseURL,
+    auth: {
+      handler: async (request: Request) => {
+        received.push(await request.json());
+        return Response.json({ user: { id: "fixture" } });
+      },
+    } as unknown as AuthService,
+    readUser: async () => null,
+  });
+  const signup = {
+    name: "Fixture Member",
+    email: "member@fixture.invalid",
+    password: "fixture-password",
+    callbackURL,
+  };
+  const resend = { email: signup.email, callbackURL };
+  for (const [path, body] of [
+    ["sign-up/email", signup],
+    ["send-verification-email", resend],
+  ] as const) {
+    const response = await http(
+      new Request(`${baseURL}/api/auth/${path}`, {
+        method: "POST",
+        headers: { Origin: baseURL, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { ok: true });
+  }
+  assert.deepEqual(received, [signup, resend]);
+  assert.equal(new URL(callbackURL, baseURL).searchParams.get("nastavi"), destination);
 });

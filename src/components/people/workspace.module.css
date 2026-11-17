@@ -39,10 +39,12 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 16px;
+  margin-top: 16px;
   border: 1px solid var(--ui-border);
   border-radius: 22px;
   padding: 24px;
-  background: var(--ui-surface-raised);
+  background: var(--ui-glass);
+  box-shadow: 0 10px 30px var(--ui-shadow);
 }
 .visibility div {
   flex: 1;
@@ -52,6 +54,7 @@
   font-size: 18px;
   margin: 0 0 6px;
   color: var(--ui-text);
+  font-weight: 650;
 }
 .visibility p {
   margin: 0;
@@ -59,14 +62,55 @@
   font-size: 14px;
 }
 .visibility button {
-  border: 1px solid var(--ui-accent-border);
-  padding: 12px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  border: 1px solid var(--ui-border);
+  padding: 10px 14px;
   border-radius: 13px;
-  background: var(--ui-accent-soft);
+  background: var(--ui-surface);
   color: var(--ui-text);
   font: inherit;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 650;
   cursor: pointer;
+}
+.visibility button[aria-pressed="true"] {
+  border-color: var(--ui-accent-border);
+  background: var(--ui-accent-soft);
+}
+.visibility button small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+}
+.visibilitySwitch {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--ui-switch-track);
+}
+.visibilitySwitch::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  top: 3px;
+  left: 3px;
+  border-radius: 50%;
+  background: var(--ui-surface);
+  box-shadow: 0 1px 3px var(--ui-shadow);
+  transition: transform 160ms ease;
+}
+.visibility button[aria-pressed="true"] .visibilitySwitch {
+  background: var(--ui-accent);
+}
+.visibility button[aria-pressed="true"] .visibilitySwitch::after {
+  transform: translateX(12px);
+  background: var(--ui-on-accent);
 }
 .visibility a {
   color: var(--ui-text);
@@ -80,4 +124,23 @@
 .visibility :focus-visible {
   outline: 3px solid var(--ui-focus);
   outline-offset: 3px;
+}
+@media (max-width: 440px) {
+  .visibility {
+    padding: 20px;
+    gap: 14px;
+    border-radius: 20px;
+  }
+  .visibility div {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+  .visibility p {
+    line-height: 1.6;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .visibilitySwitch::after {
+    transition: none;
+  }
 }

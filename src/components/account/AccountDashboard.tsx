@@ -56,18 +56,37 @@ export function AccountDashboard({
   useEffect(() => {
     const nav = navigation.current;
     if (!nav) return;
-    const reveal = () => {
-      const selected = nav.querySelector<HTMLElement>(`[data-account-section="${section}"]`);
-      if (!selected || nav.scrollWidth <= nav.clientWidth) return;
-      const left = selected.getBoundingClientRect().left - nav.getBoundingClientRect().left;
-      const right = left + selected.offsetWidth;
-      if (left < 0) nav.scrollLeft += left;
-      else if (right > nav.clientWidth) nav.scrollLeft += right - nav.clientWidth;
+    const updateEdges = () => {
+      const viewport = nav.parentElement;
+      if (!viewport) return;
+      viewport.dataset.overflowStart = String(nav.scrollLeft > 2);
+      viewport.dataset.overflowEnd = String(nav.scrollWidth - nav.clientWidth - nav.scrollLeft > 2);
+    };
+    const revealControl = (control: HTMLElement | null) => {
+      if (control && nav.scrollWidth > nav.clientWidth) {
+        const left = control.getBoundingClientRect().left - nav.getBoundingClientRect().left;
+        const right = left + control.offsetWidth;
+        const inset = Math.min(26, nav.clientWidth / 8);
+        if (left < inset) nav.scrollLeft += left - inset;
+        else if (right > nav.clientWidth - inset) nav.scrollLeft += right - nav.clientWidth + inset;
+      }
+      updateEdges();
+    };
+    const reveal = () =>
+      revealControl(nav.querySelector<HTMLElement>(`[data-account-section="${section}"]`));
+    const revealFocused = (event: FocusEvent) => {
+      if (event.target instanceof HTMLElement) revealControl(event.target);
     };
     reveal();
+    nav.addEventListener("scroll", updateEdges, { passive: true });
+    nav.addEventListener("focusin", revealFocused);
     const observer = new ResizeObserver(reveal);
     observer.observe(nav);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      nav.removeEventListener("scroll", updateEdges);
+      nav.removeEventListener("focusin", revealFocused);
+    };
   }, [section]);
   function changeSection(next: AccountSection) {
     const href = accountSectionPath(next);
@@ -127,39 +146,59 @@ export function AccountDashboard({
             <small>{profile.role === "owner" ? "Administrator" : "Moj AhiBizz"}</small>
           </div>
         </div>
-        <nav ref={navigation} aria-label="Moj nalog">
-          {(
-            [
-              { id: "profile", label: "Moj profil", icon: "user" },
-              { id: "businesses", label: "Djelatnosti", icon: "shop" },
-              { id: "messages", label: "Poruke", icon: "message" },
-              { id: "appointments", label: "Moji termini", icon: "calendar" },
-              { id: "connections", label: "Prijatelji", icon: "user" },
-              { id: "settings", label: "Postavke", icon: "sliders" },
-              { id: "membership", label: "Paketi", icon: "shop" },
-            ] as const
-          ).map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              data-account-section={item.id}
-              aria-current={section === item.id ? "page" : undefined}
-              aria-controls="account-panel"
-              onClick={() => changeSection(item.id)}
-            >
-              <Icon name={item.icon} />
-              {item.label}
-            </button>
-          ))}
-          {profile.role === "owner" && (
-            <Link href="/administracija" className={styles.adminLink}>
-              <Icon name="sliders" />
-              Administracija
-            </Link>
-          )}
-        </nav>
-        <button className={styles.logout} type="button" disabled={busy} onClick={logout}>
-          Odjava
+        <div className={styles.navigationViewport}>
+          <nav ref={navigation} aria-label="Moj nalog">
+            {(
+              [
+                { id: "profile", label: "Moj profil", icon: "user" },
+                { id: "businesses", label: "Djelatnosti", icon: "shop" },
+                { id: "messages", label: "Poruke", icon: "message" },
+                { id: "appointments", label: "Moji termini", icon: "calendar" },
+                { id: "connections", label: "Prijatelji", icon: "user" },
+                { id: "settings", label: "Postavke", icon: "sliders" },
+                { id: "membership", label: "Paketi", icon: "shop" },
+              ] as const
+            ).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                data-account-section={item.id}
+                aria-current={section === item.id ? "page" : undefined}
+                aria-controls="account-panel"
+                onClick={() => changeSection(item.id)}
+              >
+                <Icon name={item.icon} />
+                {item.label}
+              </button>
+            ))}
+            {profile.role === "owner" && (
+              <Link href="/administracija" className={styles.adminLink}>
+                <Icon name="sliders" />
+                Administracija
+              </Link>
+            )}
+          </nav>
+        </div>
+        <button
+          className={styles.logout}
+          type="button"
+          aria-label="Odjava"
+          title="Odjava"
+          disabled={busy}
+          onClick={logout}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M10 4H5v16h5M9 12h12m-4-4 4 4-4 4" />
+          </svg>
+          <span>Odjava</span>
         </button>
       </aside>
       <section id="account-panel" className={styles.content} data-section={section}>

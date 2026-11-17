@@ -416,15 +416,18 @@ function ProfileWorkspace({
           </div>
           <button
             type="button"
+            aria-label="Javni profil"
             aria-pressed={visibility.isPublic}
+            aria-description={
+              pendingVisibility.current && !busy ? "Ponovi potvrdu prethodne promjene." : undefined
+            }
             disabled={busy || (blocked && !pendingVisibility.current)}
             onClick={() => void changeVisibility()}
           >
-            {pendingVisibility.current && !busy
-              ? "Ponovi potvrdu"
-              : visibility.isPublic
-                ? "Učini privatnim"
-                : "Uključi javni profil"}
+            <span className={styles.visibilitySwitch} aria-hidden="true" />
+            <span>
+              Javni profil{pendingVisibility.current && !busy && <small>Ponovi potvrdu</small>}
+            </span>
           </button>
           {visibility.isPublic && (
             <Link href={publicHref?.(profile.id) ?? `/ljudi/${encodeURIComponent(profile.id)}`}>

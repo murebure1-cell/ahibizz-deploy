@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
 import { accountReturnPath } from "../../lib/account-return";
+import { authReturnLinks } from "../../lib/auth-return";
 import { Icon } from "../Icon";
 import styles from "./auth.module.css";
 
@@ -71,6 +72,7 @@ export function AuthForm({
   const [verificationSent, setVerificationSent] = useState(false);
   const hasPassword = mode === "sign-in" || mode === "sign-up" || mode === "reset-password";
   const copy = text[mode];
+  const links = authReturnLinks(returnTo);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || !available) return;
@@ -84,7 +86,7 @@ export function AuthForm({
         name: String(fields.get("name") || "").trim(),
         email,
         password,
-        callbackURL: "/prijava?potvrdeno=1",
+        callbackURL: links.verification,
       };
     if (mode === "reset-request") body = { email, redirectTo: "/nova-lozinka" };
     if (mode === "reset-password") body = { newPassword: password, token };
@@ -128,7 +130,7 @@ export function AuthForm({
       const response = await fetch("/api/auth/send-verification-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: verificationEmail, callbackURL: "/prijava?potvrdeno=1" }),
+        body: JSON.stringify({ email: verificationEmail, callbackURL: links.verification }),
       });
       const result = await response.json();
       if (!response.ok || result.ok !== true) {
@@ -180,7 +182,7 @@ export function AuthForm({
                   ? "Ako nalog postoji, stići će ti link za novu lozinku."
                   : "Sada se možeš prijaviti."}
             </p>
-            <Link href="/prijava" className={styles.submit}>
+            <Link href={links.login} className={styles.submit}>
               Na prijavu
             </Link>
           </div>
@@ -285,10 +287,10 @@ export function AuthForm({
           <p className={styles.switch}>
             {mode === "sign-in" ? (
               <>
-                Nemaš nalog? <Link href="/registracija">Registruj se</Link>
+                Nemaš nalog? <Link href={links.registration}>Registruj se</Link>
               </>
             ) : (
-              <Link href="/prijava">Već imaš nalog? Prijavi se</Link>
+              <Link href={links.login}>Već imaš nalog? Prijavi se</Link>
             )}
           </p>
         )}

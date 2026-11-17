@@ -99,7 +99,6 @@ export function BusinessEditor({
           </span>
           <div>
             <h2>{initial?.title ? "Uredi djelatnost" : "Predstavi svoj posao."}</h2>
-            <p>Počni s osnovnim podacima.</p>
           </div>
         </div>
         <label htmlFor={`${prefix}-title`}>
