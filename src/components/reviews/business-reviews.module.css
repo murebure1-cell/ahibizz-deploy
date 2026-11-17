@@ -1,0 +1,242 @@
+.section {
+  padding: clamp(20px, 4vw, 32px);
+  border: 1px solid var(--ui-border);
+  border-radius: 24px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+.heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+.heading h2 {
+  margin: 0;
+  font-size: 23px;
+  letter-spacing: -0.6px;
+}
+.heading p {
+  margin: 10px 0 0;
+}
+.heading strong {
+  font-size: 24px;
+}
+.heading p span {
+  color: var(--ui-text-secondary);
+}
+.refresh {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  color: inherit;
+  font-size: 23px;
+  cursor: pointer;
+}
+.list {
+  display: grid;
+  gap: 16px;
+}
+.review {
+  padding: 22px 0;
+  border-bottom: 1px solid var(--ui-border);
+}
+.author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.author img,
+.avatar {
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.avatar {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+  font-weight: 750;
+}
+.author a,
+.author strong {
+  font-size: 14px;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+.author time {
+  display: block;
+  color: var(--ui-text-secondary);
+  font-size: 12px;
+  margin-top: 3px;
+}
+.stars {
+  margin-left: auto;
+  color: #b7882f;
+  letter-spacing: 1px;
+  font-size: 17px;
+  white-space: nowrap;
+}
+span.stars span {
+  color: #c7ced3;
+}
+.review p {
+  font-size: 15px;
+  line-height: 1.65;
+  margin: 15px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.empty {
+  color: var(--ui-text-secondary);
+  margin: 24px 0;
+}
+.form {
+  margin-top: 24px;
+  border-top: 1px solid var(--ui-border);
+  padding-top: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.form h3 {
+  font-size: 17px;
+  margin: 0 0 4px;
+  width: 100%;
+}
+.form p {
+  width: 100%;
+}
+.form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+.form legend,
+.text {
+  font-size: 13px;
+  font-weight: 650;
+}
+.rating {
+  display: flex;
+  gap: 6px;
+  margin-top: 9px;
+}
+.rating label {
+  cursor: pointer;
+}
+.rating input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.rating label > span:first-of-type {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  color: #a3aeb6;
+}
+.rating label[data-selected="true"] > span:first-of-type {
+  background: var(--ui-accent-soft);
+  border-color: var(--ui-accent-border);
+  color: var(--ui-accent-text);
+}
+.rating input:focus-visible + span {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 3px;
+}
+.text {
+  width: 100%;
+  display: grid;
+  gap: 9px;
+}
+.text textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 100px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  padding: 13px;
+  background: var(--ui-surface);
+  color: inherit;
+  font: inherit;
+  line-height: 1.6;
+}
+.primary,
+.secondary,
+.signin {
+  padding: 12px 16px;
+  min-height: 44px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  text-decoration: none;
+}
+.primary {
+  background: var(--ui-primary);
+  color: var(--ui-on-primary);
+  border: 1px solid var(--ui-primary);
+}
+.secondary {
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+  color: inherit;
+}
+.signin {
+  display: inline-block;
+  color: inherit;
+  border: 1px solid var(--ui-border);
+  margin-top: 20px;
+}
+.error {
+  color: var(--ui-danger);
+  font-size: 14px;
+}
+.notice {
+  color: var(--ui-success);
+  font-size: 14px;
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.section button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.section a:focus-visible,
+.section button:focus-visible,
+.text textarea:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 3px;
+}
+@media (max-width: 420px) {
+  .stars {
+    width: 100%;
+    margin-left: 52px;
+  }
+  .primary,
+  .secondary {
+    flex: 1;
+  }
+  .author {
+    row-gap: 8px;
+  }
+}

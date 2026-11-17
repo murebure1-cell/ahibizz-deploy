@@ -113,6 +113,16 @@
   background: var(--ui-surface);
   box-shadow: 0 7px 25px #17304705;
 }
+.reviewLink {
+  display: inline-flex;
+  min-height: 44px;
+  margin-top: 10px;
+  color: var(--ui-text-secondary);
+}
+.reviewLink:focus-visible {
+  outline: 2px solid var(--ui-accent-border);
+  outline-offset: 4px;
+}
 
 .logo {
   position: relative;

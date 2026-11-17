@@ -1,6 +1,7 @@
 import { businessMediaProjection } from "../business-media/service";
 import type { Database } from "../db";
 import { getDatabase } from "../db";
+import { businessReviewsProjection } from "../reviews/projection";
 import {
   type BusinessFields,
   DirectoryAccessError,
@@ -40,6 +41,8 @@ const publicColumns = [
   'b.published_at AS "publishedAt"',
   'b.archived_at AS "archivedAt"',
   `${businessMediaProjection} AS media`,
+  businessReviewsProjection("b"),
+  `(SELECT jsonb_build_object('timezone', d.timezone, 'hours', d.hours, 'amenities', d.amenities) FROM directory_business_details d WHERE d.business_id = b.id) AS details`,
 ].join(", ");
 export const columns = [
   publicColumns,

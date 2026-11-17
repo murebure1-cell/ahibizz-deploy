@@ -7,12 +7,14 @@ import {
   type AdminSection,
   adminSectionPath,
   businessImportPath,
+  businessLocationBatchPath,
   readAdminNavigation,
 } from "../../lib/admin-navigation";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { BillingAdmin } from "../billing/BillingAdmin";
 import { BusinessManager } from "../directory/BusinessManager";
 import { Icon, type IconName } from "../Icon";
+import { ReviewsAdmin } from "../reviews/ReviewsAdmin";
 import { AccountApprovals } from "./AccountApprovals";
 import styles from "./admin.module.css";
 import { CategoryManager } from "./CategoryManager";
@@ -35,6 +37,12 @@ const sections = [
     label: "Djelatnosti",
     icon: "shop",
     title: "Djelatnosti",
+  },
+  {
+    id: "reviews",
+    label: "Recenzije",
+    icon: "star",
+    title: "Recenzije",
   },
   {
     id: "billing",
@@ -69,6 +77,7 @@ export function AdminDashboard({
     categories: section === "categories",
     businesses: section === "businesses",
     billing: section === "billing",
+    reviews: section === "reviews",
   });
   useEffect(() => {
     setVisited((previous) => (previous[section] ? previous : { ...previous, [section]: true }));
@@ -133,7 +142,12 @@ export function AdminDashboard({
       <section id="admin-content" className={styles.content}>
         <header className={styles.pageHeading}>
           <h1>{current.title}</h1>
-          {section === "businesses" && <Link href={businessImportPath}>Uvezi prijave</Link>}
+          {section === "businesses" && (
+            <div className={styles.headingActions}>
+              <Link href={businessImportPath}>Uvezi prijave</Link>
+              <Link href={businessLocationBatchPath}>Lokacije</Link>
+            </div>
+          )}
         </header>
         <div hidden={section !== "accounts"}>
           {(visited.accounts || section === "accounts") && (
@@ -154,6 +168,15 @@ export function AdminDashboard({
               isOwner
               initialAll
               embedded
+            />
+          )}
+        </div>
+        <div hidden={section !== "reviews"}>
+          {(visited.reviews || section === "reviews") && (
+            <ReviewsAdmin
+              key={initial.id}
+              expectedAccountId={initial.id}
+              active={section === "reviews"}
             />
           )}
         </div>

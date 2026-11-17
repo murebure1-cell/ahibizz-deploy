@@ -131,6 +131,28 @@
   color: var(--ui-text);
   font-size: clamp(27px, 3vw, 34px);
 }
+.headingActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+.headingActions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.headingActions a:focus-visible {
+  outline: 2px solid var(--ui-accent-border);
+  outline-offset: 3px;
+}
 
 .card {
   min-width: 0;

@@ -63,8 +63,8 @@ test("real isolated confirmed-receipt ledger, accounting corrections and current
     pool.on("error", () => {});
     assert.equal((await pool.query("SELECT current_schema() AS name")).rows[0].name, schema);
     const migrations = await loadMigrations();
-    assert.equal(migrations.at(-1).version, "0010_billing.sql");
-    assert.equal((await runMigrations({ pool, migrations })).applied.length, 10);
+    assert.equal(migrations.at(-1).version, "0012_business_reviews.sql");
+    assert.equal((await runMigrations({ pool, migrations })).applied.length, 12);
     assert.deepEqual(await runMigrations({ pool, migrations }), { applied: [] });
     globalThis.fetch = async () => {
       outbound++;

@@ -11,6 +11,10 @@ import {
 } from "../../lib/booking-client";
 import { isTimeZone } from "../../lib/booking-time";
 import {
+  type BusinessDetailsRequest,
+  businessDetailsRequest,
+} from "../../lib/business-details-client";
+import {
   type BusinessMediaAsset,
   type BusinessMediaManifest,
   businessMediaUrl,
@@ -37,6 +41,7 @@ import {
 import type { DirectoryBusiness } from "../../server/directory/types";
 import { BusinessBookingManager } from "../booking/BusinessBookingManager";
 import { Icon } from "../Icon";
+import { BusinessDetailsManager } from "./BusinessDetailsManager";
 import { BusinessEditor, type BusinessFields, type CategoryOption } from "./BusinessEditor";
 import { BusinessLogo } from "./BusinessLogo";
 import { BusinessMediaManager } from "./BusinessMediaManager";
@@ -142,6 +147,7 @@ export function BusinessManager({
   request: directoryApi = directoryRequest,
   bookingApi = bookingRequest,
   mediaApi = businessMediaRequest,
+  detailsApi = businessDetailsRequest,
   mediaImageUrl = businessMediaUrl,
 }: {
   active: boolean;
@@ -152,11 +158,16 @@ export function BusinessManager({
   request?: DirectoryRequest;
   bookingApi?: typeof bookingRequest;
   mediaApi?: typeof businessMediaRequest;
+  detailsApi?: BusinessDetailsRequest;
   mediaImageUrl?: (id: string, asset: BusinessMediaAsset, area: "mine" | "public") => string | null;
 }) {
   const [items, setItems] = useState<DirectoryBusiness[] | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [editing, setEditing] = useState<DirectoryBusiness | null | undefined>(undefined);
+  const [detailsBusiness, setDetailsBusiness] = useState<DirectoryBusiness | null>(null);
+  const [editorDirty, setEditorDirty] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a fresh business version rekeys the base form and discards its dirty marker.
+  useEffect(() => setEditorDirty(false), [editing?.id, editing?.version]);
   const [error, setError] = useState("");
   const [readError, setReadError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -234,6 +245,7 @@ export function BusinessManager({
     setCategories([]);
     setHasMore(false);
     setEditing(undefined);
+    setDetailsBusiness(null);
     setReturning(null);
     setReturnReason("");
     // An unknown child command must keep its mounted recovery state, without a private title.
@@ -333,7 +345,7 @@ export function BusinessManager({
   }, [active, editingId, booking, denied, current]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: refresh explicitly invalidates the fetched list after writes and on request.
   useEffect(() => {
-    if (!active || bookingBusiness || mediaBusiness) return;
+    if (!active || bookingBusiness || mediaBusiness || detailsBusiness) return;
     const controller = new AbortController(),
       revision = ++reads.current;
     const access = epoch.current;
@@ -386,6 +398,7 @@ export function BusinessManager({
     page,
     bookingBusiness,
     mediaBusiness,
+    detailsBusiness,
     request,
     denied,
     current,
@@ -870,6 +883,27 @@ export function BusinessManager({
       current?.id === manifest.businessId ? { ...current, ...patch } : current,
     );
   }
+  if (detailsBusiness)
+    return (
+      <BusinessDetailsManager
+        key={`${detailsBusiness.id}:${expectedAccountId ?? ""}`}
+        businessId={detailsBusiness.id}
+        businessTitle={detailsBusiness.title}
+        active={active}
+        expectedAccountId={expectedAccountId}
+        request={detailsApi}
+        onAccessDenied={denied}
+        onChanged={(row) => {
+          cacheBusiness(row);
+          setEditing(row);
+          setDetailsBusiness(row);
+        }}
+        onBack={() => {
+          setDetailsBusiness(null);
+          setRefresh((value) => value + 1);
+        }}
+      />
+    );
   if (mediaBusiness)
     return (
       <BusinessMediaManager
@@ -1000,6 +1034,20 @@ export function BusinessManager({
       {editing !== undefined ? (
         <>
           <ReturnedBusinessNote business={editing} />
+          {editing && (
+            <div className={styles.businessActions}>
+              <button
+                type="button"
+                className={styles.secondary}
+                disabled={locked || editorDirty}
+                title={editorDirty ? "Prvo sačuvaj izmjene djelatnosti" : undefined}
+                onClick={() => setDetailsBusiness(editing)}
+              >
+                <Icon name="clock" />
+                Radno vrijeme i sadržaji
+              </button>
+            </div>
+          )}
           <BusinessEditor
             key={editing ? `${editing.id}:${editing.version}` : "new"}
             initial={editing ?? undefined}
@@ -1015,6 +1063,7 @@ export function BusinessManager({
                 : false
             }
             onSave={save}
+            onDirty={() => setEditorDirty(true)}
             onCancel={() => {
               if (creation.current.intent || mutation.current) return;
               setEditing(undefined);

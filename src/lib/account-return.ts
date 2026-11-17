@@ -68,6 +68,12 @@ export function accountReturnPath(value: unknown): string {
   if (administration) return administration;
   const previous = bookingReturnPath(value);
   if (previous !== "/nalog") return previous;
+  if (
+    /^\/djelatnosti\/[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}#recenzije$/i.test(
+      value,
+    )
+  )
+    return value;
   const section = /^\/nalog\?odjeljak=([a-z]+)$/.exec(value)?.[1];
   if (section && Object.hasOwn(accountSections, section)) return value;
   const person = /^\/nalog\?odjeljak=poruke&osoba=[A-Za-z0-9_-]{1,128}$/.exec(value);

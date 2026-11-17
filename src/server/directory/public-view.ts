@@ -20,6 +20,8 @@ export function publicBusinessView(
     latitude: business.latitude,
     longitude: business.longitude,
     verified: business.verified,
+    details: business.details ?? null,
+    reviews: business.reviews ?? { count: 0, sum: 0 },
     ...publicBusinessImages(business.id, business.media),
   };
 }

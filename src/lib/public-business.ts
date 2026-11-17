@@ -1,3 +1,4 @@
+import type { BusinessDetails } from "./business-details";
 import { initialLocationPoint } from "./business-location";
 import {
   type BusinessMediaAsset,
@@ -5,8 +6,11 @@ import {
   businessMediaUrl,
   readBusinessMediaSummary,
 } from "./business-media";
+import type { ReviewSummary } from "./reviews";
 
 export type PublicBusinessView = {
+  details?: BusinessDetails | null;
+  reviews?: ReviewSummary;
   id: string;
   title: string;
   categoryName: string | null;

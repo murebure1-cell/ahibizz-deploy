@@ -13,7 +13,10 @@ import {
   safeBusinessImage,
 } from "../../lib/public-business";
 import { Icon } from "../Icon";
+import { BusinessReviews } from "../reviews/BusinessReviews";
+import { BusinessAmenities, BusinessHours } from "./BusinessDetails";
 import { BusinessLogo } from "./BusinessLogo";
+import { BusinessRating } from "./BusinessRating";
 import { LocationMap } from "./LocationMap";
 import styles from "./public-profile.module.css";
 
@@ -120,6 +123,16 @@ export function PublicBusinessProfile({
             <Icon name="pin" />
             {location}
           </p>
+          {Boolean(business.reviews?.count) &&
+            (preview ? (
+              <span className={styles.reviewLink}>
+                <BusinessRating summary={business.reviews} />
+              </span>
+            ) : (
+              <a className={styles.reviewLink} href="#recenzije">
+                <BusinessRating summary={business.reviews} />
+              </a>
+            ))}
           {business.verified && (
             <span className={styles.verified}>
               <Icon name="check" />
@@ -173,6 +186,7 @@ export function PublicBusinessProfile({
 
       <nav className={styles.sectionNavigation} aria-label="Na ovoj stranici">
         <a href="#business-about">O djelatnosti</a>
+        {business.details?.hours && <a href="#business-hours">Radno vrijeme</a>}
         {hasAppointments && (
           <a className={styles.appointmentsLink} href="#business-appointments">
             Termini
@@ -181,6 +195,7 @@ export function PublicBusinessProfile({
         {gallery.length > 0 && <a href="#business-gallery">Galerija</a>}
         <a href="#business-location">Lokacija</a>
         <a href="#business-contact">Kontakt</a>
+        {!preview && <a href="#recenzije">Recenzije</a>}
       </nav>
 
       <div className={styles.layout}>
@@ -201,7 +216,24 @@ export function PublicBusinessProfile({
             ) : (
               <p className={styles.missing}>Opis djelatnosti još nije unesen.</p>
             )}
+            <BusinessAmenities details={business.details} />
           </section>
+
+          {business.details?.hours && (
+            <section
+              className={styles.section}
+              id="business-hours"
+              aria-labelledby="business-hours-heading"
+            >
+              <div className={styles.sectionHeading}>
+                <span>
+                  <Icon name="clock" />
+                </span>
+                <h2 id="business-hours-heading">Radno vrijeme</h2>
+              </div>
+              <BusinessHours details={business.details} />
+            </section>
+          )}
 
           {hasAppointments && (
             <section
@@ -212,6 +244,8 @@ export function PublicBusinessProfile({
               {children}
             </section>
           )}
+
+          {!preview && <BusinessReviews key={business.id} businessId={business.id} />}
 
           {gallery.length > 0 && (
             <section

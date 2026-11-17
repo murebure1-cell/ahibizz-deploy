@@ -1,0 +1,50 @@
+.rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.rating > strong {
+  display: grid;
+  place-items: center;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 6px;
+  border: 1px solid #ffffff30;
+  border-radius: 10px;
+  background: #183349b8;
+  color: #fff;
+  backdrop-filter: blur(10px);
+  font-size: 16px;
+  font-weight: 700;
+}
+.rating small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+}
+.stars {
+  display: flex;
+  gap: 3px;
+}
+.stars > span {
+  position: relative;
+  display: inline-flex;
+  color: #d4bd8a;
+}
+.stars svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.5;
+}
+.stars > span > span {
+  position: absolute;
+  inset: 0;
+  color: #e8b94f;
+}
+.stars > span > span svg {
+  fill: currentColor;
+}

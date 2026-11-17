@@ -3,6 +3,7 @@ const adminSections = {
   kategorije: "categories",
   djelatnosti: "businesses",
   naplata: "billing",
+  recenzije: "reviews",
 } as const;
 
 export type AdminSection = (typeof adminSections)[keyof typeof adminSections];
@@ -12,6 +13,7 @@ const sectionQueries: Record<AdminSection, keyof typeof adminSections> = {
   categories: "kategorije",
   businesses: "djelatnosti",
   billing: "naplata",
+  reviews: "recenzije",
 };
 
 /** Unknown or duplicated server query values select the default administrative pane. */
@@ -34,8 +36,14 @@ export function readAdminNavigation(params: URLSearchParams): AdminSection {
 
 /** This closed return destination never grants access; the server still requires an owner. */
 export const businessImportPath = "/administracija/uvoz-prijava";
+export const businessLocationBatchPath = "/administracija/lokacije";
 export function adminReturnPath(value: unknown): string | null {
-  if (value === "/administracija" || value === businessImportPath) return value;
+  if (
+    value === "/administracija" ||
+    value === businessImportPath ||
+    value === businessLocationBatchPath
+  )
+    return value;
   if (typeof value !== "string") return null;
   const match = /^\/administracija\?odjeljak=([a-z]+)$/.exec(value);
   return match?.[0] === value && match[1] && Object.hasOwn(adminSections, match[1]) ? value : null;

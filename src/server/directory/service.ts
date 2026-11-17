@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import { type BusinessDetails, readBusinessDetails } from "../../lib/business-details";
 import { type AuthService, getAuthService } from "../auth";
 import { AccountAccessError, type AccountService, getAccountService } from "../auth/accounts";
 import { type CurrentAuthUser, getAuthDatabasePool } from "../auth/service";
@@ -371,6 +372,49 @@ export function createDirectoryService({
         if (currentActor.role === "owner" && before.status === "published")
           await audit(client, currentActor.id, before, after, "owner-update");
         return after;
+      });
+    },
+    async readDetails(headers: Headers, id: string) {
+      const identity = await actor(headers),
+        key = uuid(id);
+      return transaction(
+        pool,
+        async (client) => (await lockedBusiness(client, identity, key)).before,
+      );
+    },
+    async updateDetails(headers: Headers, id: string, input: unknown) {
+      const raw = object(input, ["expectedVersion", "details"]),
+        expected = expectedVersion(raw.expectedVersion);
+      let details: BusinessDetails;
+      try {
+        details = readBusinessDetails(raw.details);
+      } catch {
+        fail(400, "INVALID_BUSINESS_DETAILS");
+      }
+      const identity = await actor(headers),
+        key = uuid(id);
+      return transaction(pool, async (client) => {
+        const { actor: currentActor, before } = await lockedBusiness(client, identity, key);
+        current(before, expected);
+        editable(before);
+        const status =
+          currentActor.role === "member" && before.status === "published"
+            ? "pending"
+            : before.status;
+        const after = await save(client, before, fields(before), status);
+        await client.query(
+          "INSERT INTO directory_business_details (business_id,timezone,hours,amenities,business_version) VALUES ($1,$2,$3::jsonb,$4::text[],$5) ON CONFLICT (business_id) DO UPDATE SET timezone=EXCLUDED.timezone,hours=EXCLUDED.hours,amenities=EXCLUDED.amenities,business_version=EXCLUDED.business_version,updated_at=now()",
+          [
+            key,
+            details.timezone,
+            details.hours === null ? null : JSON.stringify(details.hours),
+            details.amenities,
+            after.version,
+          ],
+        );
+        if (currentActor.role === "owner" && before.status === "published")
+          await audit(client, currentActor.id, before, after, "owner-update");
+        return business(client, key);
       });
     },
     async publish(headers: Headers, id: string, input: unknown) {

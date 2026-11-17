@@ -13,6 +13,7 @@ const sections = [
   ["kategorije", "categories"],
   ["djelatnosti", "businesses"],
   ["naplata", "billing"],
+  ["recenzije", "reviews"],
 ] as const;
 
 test("known administrative panes round-trip through browser and server query parsing", () => {
@@ -28,6 +29,7 @@ test("known administrative panes round-trip through browser and server query par
   }
   assert.equal(adminReturnPath("/administracija"), "/administracija");
   assert.equal(adminReturnPath("/administracija/uvoz-prijava"), "/administracija/uvoz-prijava");
+  assert.equal(adminReturnPath("/administracija/lokacije"), "/administracija/lokacije");
 });
 
 test("unknown, duplicate and prototype query values cannot select another administrative pane", () => {
@@ -73,6 +75,9 @@ test("login destinations accept only the exact closed administrative paths", () 
     "/administracija/uvoz-prijava#other",
     "/administracija/%75voz-prijava",
     "/administracija/uvoz-prijava\n",
+    "/administracija/lokacije/",
+    "/administracija/lokacije#other",
+    "/administracija/lokacije?next=/nalog",
     "/administracija?odjeljak=unknown",
     "/administracija?odjeljak=constructor",
     "/administracija?odjeljak=__proto__",

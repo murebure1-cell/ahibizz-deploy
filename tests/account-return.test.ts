@@ -12,16 +12,21 @@ test("sign-in accepts only exact known administration continuations", () => {
   for (const path of [
     "/administracija",
     "/administracija/uvoz-prijava",
+    "/administracija/lokacije",
     "/administracija?odjeljak=nalozi",
     "/administracija?odjeljak=kategorije",
     "/administracija?odjeljak=djelatnosti",
     "/administracija?odjeljak=naplata",
+    "/administracija?odjeljak=recenzije",
   ])
     assert.equal(accountReturnPath(path), path);
   for (const path of [
     "/administracija/",
     "/administracija/uvoz-prijava?next=/nalog",
     "/administracija/uvoz-prijava/",
+    "/administracija/lokacije?next=//evil.invalid",
+    "/administracija/lokacije/",
+    "/administracija?odjeljak=recenzije&next=//evil.invalid",
     "/administracija?odjeljak=naplata#other",
     "/administracija?odjeljak=naplata&odjeljak=nalozi",
     "/administracija?odjeljak=constructor",
@@ -46,6 +51,7 @@ test("login retains only exact known messaging destinations and previous safe pr
     "/nalog?odjeljak=poruke&osoba=person_1-A",
     `/nalog?odjeljak=poruke&djelatnost=${business}`,
     `/djelatnosti/${business}#business-appointments`,
+    `/djelatnosti/${business}#recenzije`,
     "/ljudi/person_A-1",
   ])
     assert.equal(accountReturnPath(value), value);
@@ -77,6 +83,9 @@ test("login retains only exact known messaging destinations and previous safe pr
     "/nalog?odjeljak=poruke%26osoba%3Dsomeone",
     "/nalog?odjeljak=poruke&djelatnost=forma",
     `/nalog?odjeljak=poruke&osoba=${"a".repeat(129)}`,
+    `/djelatnosti/${business}#recenzije?next=//evil.invalid`,
+    `/djelatnosti/${business}#%72ecenzije`,
+    `/djelatnosti/${business}?next=//evil.invalid#recenzije`,
   ])
     assert.equal(accountReturnPath(value), "/nalog", JSON.stringify(value));
 });

@@ -105,6 +105,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0008_business_media.sql",
           "0009_messaging.sql",
           "0010_billing.sql",
+          "0011_business_details.sql",
+          "0012_business_reviews.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {

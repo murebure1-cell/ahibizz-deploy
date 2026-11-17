@@ -33,6 +33,7 @@ export function BusinessEditor({
   preview = false,
   currentStatus,
   bookingEnabled,
+  onDirty,
 }: {
   initial?: Partial<BusinessFields>;
   categories: CategoryOption[];
@@ -43,6 +44,7 @@ export function BusinessEditor({
   preview?: boolean;
   currentStatus?: "draft" | "pending" | "published" | "archived";
   bookingEnabled?: boolean;
+  onDirty?: () => void;
 }) {
   const prefix = useId();
   const [category, setCategory] = useState(initial?.categoryId ?? "");
@@ -91,7 +93,12 @@ export function BusinessEditor({
     );
   }
   return (
-    <form onSubmit={submit} className={styles.editor} aria-label="Podaci djelatnosti">
+    <form
+      onSubmit={submit}
+      onChange={onDirty}
+      className={styles.editor}
+      aria-label="Podaci djelatnosti"
+    >
       <fieldset disabled={busy}>
         <div className={styles.formHeading}>
           <span>
@@ -213,6 +220,7 @@ export function BusinessEditor({
           disabled={busy}
           onPending={setLocationPending}
           onChange={(selection) => {
+            onDirty?.();
             setPoint(selection.point);
             if (selection.address) {
               setAddress(selection.address.addressLine ?? "");

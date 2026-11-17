@@ -8,7 +8,9 @@ import {
   safeBusinessImage,
 } from "../../lib/public-business";
 import { Icon } from "../Icon";
+import { BusinessAmenities, BusinessOpenStatus } from "./BusinessDetails";
 import { BusinessLogo } from "./BusinessLogo";
+import { BusinessRating } from "./BusinessRating";
 import styles from "./directory-card.module.css";
 
 export function DirectoryResultCard({ business }: { business: PublicBusinessView }) {
@@ -29,33 +31,47 @@ export function DirectoryResultCard({ business }: { business: PublicBusinessView
   const category = business.subcategoryName || business.categoryName;
   return (
     <article className={styles.card}>
-      <Link
-        href={profile}
-        className={styles.cover}
-        data-photo={Boolean(image)}
-        aria-label={`Otvori ${business.title}`}
-      >
-        {image ? (
-          <Image
-            src={image.src}
-            alt={image.alt}
-            fill
-            sizes="(max-width: 650px) calc(100vw - 36px), (max-width: 1200px) 46vw, 560px"
-            unoptimized
-          />
-        ) : logo ? (
-          <span className={styles.coverLogo} aria-hidden="true">
-            <BusinessLogo src={logo.src} alt="" monogram={monogram} sizes="180px" />
+      <div className={styles.media}>
+        <Link
+          href={profile}
+          className={styles.cover}
+          data-photo={Boolean(image)}
+          aria-label={`Otvori ${business.title}`}
+        >
+          {image ? (
+            <Image
+              src={image.src}
+              alt={image.alt}
+              fill
+              sizes="(max-width: 650px) calc(100vw - 36px), (max-width: 1200px) 46vw, 560px"
+              unoptimized
+            />
+          ) : logo ? (
+            <span className={styles.coverLogo} aria-hidden="true">
+              <BusinessLogo src={logo.src} alt="" monogram={monogram} sizes="180px" />
+            </span>
+          ) : (
+            <span className={styles.coverMonogram} aria-hidden="true">
+              {monogram || "A"}
+            </span>
+          )}
+          <span
+            className={styles.brand}
+            data-rating={Boolean(business.reviews?.count)}
+            aria-hidden="true"
+          >
+            <Image src="/brand/ahi-logo-white.svg" alt="" width={88} height={24} unoptimized />
           </span>
-        ) : (
-          <span className={styles.coverMonogram} aria-hidden="true">
-            {monogram || "A"}
+        </Link>
+        <span className={styles.openStatus}>
+          <BusinessOpenStatus details={business.details} />
+        </span>
+        {Boolean(business.reviews?.count) && (
+          <span className={styles.rating}>
+            <BusinessRating summary={business.reviews} />
           </span>
         )}
-        <span className={styles.brand} aria-hidden="true">
-          <Image src="/brand/ahi-logo-white.svg" alt="" width={88} height={24} unoptimized />
-        </span>
-      </Link>
+      </div>
 
       <div className={styles.body}>
         <div className={styles.logo} aria-hidden="true">
@@ -87,6 +103,7 @@ export function DirectoryResultCard({ business }: { business: PublicBusinessView
         {business.description?.trim() && (
           <p className={styles.description}>{business.description}</p>
         )}
+        <BusinessAmenities details={business.details} compact />
       </div>
 
       <footer className={styles.footer}>

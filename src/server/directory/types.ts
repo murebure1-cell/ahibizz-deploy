@@ -1,4 +1,6 @@
+import type { BusinessDetails } from "../../lib/business-details";
 import type { BusinessMediaSummary } from "../../lib/business-media";
+import type { ReviewSummary } from "../../lib/reviews";
 export type BusinessStatus = "draft" | "pending" | "published" | "archived";
 export type DirectoryCategory = { id: string; name: string; slug: string; parentId: string | null };
 export type BusinessFields = {
@@ -16,6 +18,8 @@ export type BusinessFields = {
   longitude: number | null;
 };
 export type DirectoryBusiness = BusinessFields & {
+  details?: BusinessDetails | null;
+  reviews?: ReviewSummary;
   media?: BusinessMediaSummary;
   moderationReturn?: { reason: string; createdAt: string; version: number } | null;
   id: string;

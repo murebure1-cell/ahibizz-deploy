@@ -99,6 +99,18 @@ jobs:
           CI: "true"
           AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
         run: node --import tsx --test tests/integration/billing.test.mjs
+      - name: Test business details against isolated PostgreSQL
+        timeout-minutes: 3
+        env:
+          CI: "true"
+          AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
+        run: node --import tsx --test tests/integration/business-details.test.mjs
+      - name: Test business reviews against isolated PostgreSQL
+        timeout-minutes: 3
+        env:
+          CI: "true"
+          AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
+        run: node --import tsx --test tests/integration/business-reviews.test.mjs
       - name: Build the production image
         run: docker build --pull --tag ahibizz:ci .
       - name: Scan the exact production image for high and critical vulnerabilities
