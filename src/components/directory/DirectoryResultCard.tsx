@@ -6,14 +6,19 @@ import {
   safeBusinessImage,
 } from "../../lib/public-business";
 import { Icon } from "../Icon";
+import { BusinessLogo } from "./BusinessLogo";
 import styles from "./public-search.module.css";
 
 export function DirectoryResultCard({ business }: { business: PublicBusinessView }) {
-  const image = safeBusinessImage(business.logo) ?? safeBusinessImage(business.image);
+  const logo = safeBusinessImage(business.logo);
+  const image = safeBusinessImage(business.image);
+  const monogram = Array.from(business.title)[0]?.toLocaleUpperCase("bs") || "A";
   return (
     <article className={styles.card}>
       <div className={styles.mark} aria-hidden="true">
-        {image ? (
+        {logo ? (
+          <BusinessLogo src={logo.src} alt="" monogram={monogram} />
+        ) : image ? (
           <Image
             src={image.src}
             alt=""
@@ -23,7 +28,7 @@ export function DirectoryResultCard({ business }: { business: PublicBusinessView
             style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }}
           />
         ) : (
-          Array.from(business.title)[0]?.toLocaleUpperCase("bs") || "A"
+          monogram
         )}
       </div>
       <div className={styles.cardBody}>

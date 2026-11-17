@@ -1,0 +1,27 @@
+.surface {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  background: #6b7280;
+}
+
+.surface[data-logo-surface="light"] {
+  background: #fff;
+}
+
+.surface[data-logo-surface="dark"] {
+  background: #173047;
+}
+
+.surface > img {
+  object-fit: contain;
+}
+
+.monogram {
+  color: #e9ca8a;
+  font: inherit;
+}

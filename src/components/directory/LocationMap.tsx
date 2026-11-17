@@ -3,6 +3,7 @@
 import type * as Leaflet from "leaflet";
 import { useEffect, useRef, useState } from "react";
 import type { LocationPoint } from "../../lib/business-location";
+import { isCurrentBusinessLogoImage, readBusinessLogoSurface } from "../../lib/business-logo";
 import { safeBusinessImage } from "../../lib/public-business";
 import "leaflet/dist/leaflet.css";
 import styles from "./location.module.css";
@@ -93,14 +94,36 @@ export function LocationMap({
     const safeLogo = safeBusinessImage(logoUrl ? { src: logoUrl, alt: "" } : undefined, true);
     const content = document.createElement("span");
     content.setAttribute("aria-hidden", "true");
-    if (safeLogo) {
-      const image = document.createElement("img");
-      image.src = safeLogo.src;
-      image.alt = "";
-      content.appendChild(image);
-    } else
+    const showDefaultIcon = () => {
       content.innerHTML =
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 8h1m4 0h1m-6 4h1m4 0h1"/></svg>';
+    };
+    let clearLogoListeners: (() => void) | undefined;
+    if (safeLogo) {
+      const image = document.createElement("img");
+      image.alt = "";
+      image.dataset.logoSurface = "neutral";
+      let active = true;
+      const inspect = () => {
+        if (!active) return;
+        const surface = readBusinessLogoSurface(image, safeLogo.src);
+        if (surface === "empty") showDefaultIcon();
+        else image.dataset.logoSurface = surface ?? "neutral";
+      };
+      const unavailable = () => {
+        if (active && isCurrentBusinessLogoImage(image, safeLogo.src)) showDefaultIcon();
+      };
+      image.addEventListener("load", inspect);
+      image.addEventListener("error", unavailable);
+      image.src = safeLogo.src;
+      content.appendChild(image);
+      if (image.complete) inspect();
+      clearLogoListeners = () => {
+        active = false;
+        image.removeEventListener("load", inspect);
+        image.removeEventListener("error", unavailable);
+      };
+    } else showDefaultIcon();
     const icon = L.divIcon({
       className: styles.marker,
       html: content,
@@ -126,6 +149,7 @@ export function LocationMap({
     if (disabled) marker.current.dragging?.disable();
     else marker.current.dragging?.enable();
     instance.setView(latlng, Math.max(instance.getZoom(), 15), { animate: false });
+    return clearLogoListeners;
   }, [point, ready, disabled, readOnly, logoUrl]);
   return (
     <div className={styles.mapWrap}>

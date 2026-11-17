@@ -13,6 +13,7 @@ import {
   safeBusinessImage,
 } from "../../lib/public-business";
 import { Icon } from "../Icon";
+import { BusinessLogo } from "./BusinessLogo";
 import { LocationMap } from "./LocationMap";
 import styles from "./public-profile.module.css";
 
@@ -107,7 +108,7 @@ export function PublicBusinessProfile({
       <header className={styles.identity}>
         <div className={styles.logo}>
           {logo ? (
-            <Image src={logo.src} alt={logo.alt} fill sizes="72px" unoptimized />
+            <BusinessLogo src={logo.src} alt={logo.alt} monogram={monogram} sizes="72px" />
           ) : (
             <span aria-hidden="true">{monogram}</span>
           )}
