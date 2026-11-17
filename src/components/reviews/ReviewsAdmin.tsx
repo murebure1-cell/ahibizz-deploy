@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import {
   createReviewsAdminApi,
   type ReviewModerationItem,
@@ -12,6 +13,7 @@ import {
 import styles from "./business-reviews.module.css";
 
 type Command = { id: string; input: ReviewVersionInput & { hidden: boolean; reason: string } };
+type PrivateReason = { accountId: string; reviewId: string; version: number; reason: string };
 export function ReviewsAdmin({
   api: provided,
   expectedAccountId,
@@ -30,8 +32,15 @@ export function ReviewsAdmin({
     [pending, setPending] = useState<Command | null>(null);
   const epoch = useRef(0),
     current = useRef({ expectedAccountId, active }),
-    inFlight = useRef<symbol | null>(null);
+    inFlight = useRef<symbol | null>(null),
+    writing = useRef<symbol | null>(null),
+    readController = useRef<AbortController | null>(null),
+    pageNumber = useRef(1),
+    stashedReason = useRef<PrivateReason | null>(null),
+    privateState = useRef({ data, selected, reason, pending }),
+    scope = useRef({ api, expectedAccountId });
   current.current = { expectedAccountId, active };
+  privateState.current = { data, selected, reason, pending };
   function valid(run: number) {
     return (
       epoch.current === run &&
@@ -43,6 +52,8 @@ export function ReviewsAdmin({
     if (value.accountId !== expectedAccountId)
       throw new ReviewsClientError("ACCOUNT_IDENTITY_CHANGED", 401);
     setData(value);
+    pageNumber.current = value.page;
+    stashedReason.current = null;
     setSelected(null);
     setPending(null);
     setReason("");
@@ -50,6 +61,7 @@ export function ReviewsAdmin({
   function failure(error: unknown) {
     if (error instanceof ReviewsClientError && (error.status === 401 || error.status === 403)) {
       setData(null);
+      stashedReason.current = null;
       setSelected(null);
       setPending(null);
       setReason("");
@@ -61,62 +73,143 @@ export function ReviewsAdmin({
           : "Izmjena nije potvrđena. Pokušaj ponovo.",
       );
   }
-  useEffect(() => {
-    const run = ++epoch.current,
-      controller = new AbortController();
-    if (!active) return;
-    const token = Symbol();
-    inFlight.current = token;
-    setBusy(true);
-    setError("");
-    void api
-      .list(1, expectedAccountId, controller.signal)
-      .then((v) => {
-        if (run === epoch.current) {
-          if (v.accountId !== expectedAccountId)
+  useLayoutEffect(() => {
+    let mounted = true;
+    if (scope.current.api !== api || scope.current.expectedAccountId !== expectedAccountId) {
+      stashedReason.current = null;
+      pageNumber.current = 1;
+    }
+    scope.current = { api, expectedAccountId };
+    function conceal(synchronous = true) {
+      const state = privateState.current;
+      if (writing.current || state.pending) stashedReason.current = null;
+      else if (state.data && state.data.accountId === expectedAccountId && state.selected) {
+        stashedReason.current = {
+          accountId: state.data.accountId,
+          reviewId: state.selected.id,
+          version: state.selected.version,
+          reason: state.reason,
+        };
+      }
+      const run = ++epoch.current;
+      readController.current?.abort();
+      readController.current = null;
+      inFlight.current = null;
+      writing.current = null;
+      const clear = () => {
+        setData(null);
+        setSelected(null);
+        setReason("");
+        setPending(null);
+        setBusy(false);
+        setError("");
+      };
+      // Conceal before native lifecycle events return; layout activation clears before paint.
+      if (synchronous) flushSync(clear);
+      else clear();
+      return run;
+    }
+    function revalidate(synchronous = true) {
+      const run = conceal(synchronous);
+      if (!active || document.visibilityState === "hidden") return;
+      const controller = new AbortController(),
+        token = Symbol();
+      readController.current = controller;
+      inFlight.current = token;
+      setBusy(true);
+      void api
+        .list(pageNumber.current, expectedAccountId, controller.signal)
+        .then((value) => {
+          if (
+            !mounted ||
+            controller.signal.aborted ||
+            !current.current.active ||
+            current.current.expectedAccountId !== expectedAccountId ||
+            run !== epoch.current
+          )
+            return;
+          if (value.accountId !== expectedAccountId)
             throw new ReviewsClientError("ACCOUNT_IDENTITY_CHANGED", 401);
-          setData(v);
-          setSelected(null);
-          setPending(null);
-          setReason("");
-        }
-      })
-      .catch((error) => {
-        if (run === epoch.current && !controller.signal.aborted) {
-          setData(null);
-          setSelected(null);
-          setPending(null);
-          setReason("");
+          const draft = stashedReason.current;
+          stashedReason.current = null;
+          setData(value);
+          pageNumber.current = value.page;
+          const restored =
+            draft?.accountId === value.accountId
+              ? value.items.find(
+                  (item) => item.id === draft.reviewId && item.version === draft.version,
+                )
+              : undefined;
+          setSelected(restored ?? null);
+          setReason(restored ? (draft?.reason ?? "") : "");
+        })
+        .catch((error) => {
+          if (
+            !mounted ||
+            controller.signal.aborted ||
+            !current.current.active ||
+            current.current.expectedAccountId !== expectedAccountId ||
+            run !== epoch.current
+          )
+            return;
+          if (error instanceof ReviewsClientError && (error.status === 401 || error.status === 403))
+            stashedReason.current = null;
           setError(
             error instanceof ReviewsClientError && (error.status === 401 || error.status === 403)
               ? "Pristup administraciji nije dostupan. Prijavi se ponovo."
               : "Recenzije trenutno nisu dostupne.",
           );
-        }
-      })
-      .finally(() => {
-        if (inFlight.current === token) inFlight.current = null;
-        if (run === epoch.current) setBusy(false);
-      });
+        })
+        .finally(() => {
+          if (readController.current === controller) readController.current = null;
+          if (inFlight.current === token) inFlight.current = null;
+          if (mounted && run === epoch.current) setBusy(false);
+        });
+    }
+    const hide = () => conceal(),
+      show = () => revalidate(),
+      visibility = () => {
+        if (document.visibilityState === "hidden") conceal();
+        else revalidate();
+      };
+    revalidate(false);
+    if (active) {
+      window.addEventListener("blur", hide);
+      window.addEventListener("pagehide", hide);
+      window.addEventListener("focus", show);
+      window.addEventListener("pageshow", show);
+      document.addEventListener("visibilitychange", visibility);
+    }
     return () => {
+      mounted = false;
       epoch.current++;
-      controller.abort();
-      if (inFlight.current === token) inFlight.current = null;
+      readController.current?.abort();
+      readController.current = null;
+      inFlight.current = null;
+      writing.current = null;
+      window.removeEventListener("blur", hide);
+      window.removeEventListener("pagehide", hide);
+      window.removeEventListener("focus", show);
+      window.removeEventListener("pageshow", show);
+      document.removeEventListener("visibilitychange", visibility);
     };
   }, [api, expectedAccountId, active]);
   async function load(page = 1) {
     if (inFlight.current || busy || !active) return;
     const token = Symbol();
     inFlight.current = token;
+    const controller = new AbortController();
+    readController.current = controller;
     const run = epoch.current;
     setBusy(true);
     setError("");
     try {
-      const value = await api.list(page, expectedAccountId);
+      const value = await api.list(page, expectedAccountId, controller.signal);
       if (valid(run)) accept(value);
     } catch (error) {
       if (valid(run)) failure(error);
     } finally {
+      if (readController.current === controller) readController.current = null;
       if (inFlight.current === token) inFlight.current = null;
       if (valid(run)) setBusy(false);
     }
@@ -134,6 +227,7 @@ export function ReviewsAdmin({
       return;
     const token = Symbol();
     inFlight.current = token;
+    writing.current = token;
     const run = epoch.current,
       command = pending ?? {
         id: selected.id,
@@ -147,10 +241,13 @@ export function ReviewsAdmin({
     setPending(command);
     setBusy(true);
     setError("");
+    let controller: AbortController | undefined;
     try {
       await api.moderate(command.id, command.input, expectedAccountId);
       if (!valid(run)) return;
-      const next = await api.list(data.page, expectedAccountId);
+      controller = new AbortController();
+      readController.current = controller;
+      const next = await api.list(data.page, expectedAccountId, controller.signal);
       if (valid(run)) accept(next);
     } catch (error) {
       if (valid(run)) {
@@ -158,6 +255,8 @@ export function ReviewsAdmin({
         if (error instanceof ReviewsClientError && error.status < 500) setPending(null);
       }
     } finally {
+      if (readController.current === controller) readController.current = null;
+      if (writing.current === token) writing.current = null;
       if (inFlight.current === token) inFlight.current = null;
       if (valid(run)) setBusy(false);
     }
