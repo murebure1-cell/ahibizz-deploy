@@ -9,13 +9,52 @@ export type DirectoryReply = {
 };
 export type DirectoryRequest = (path: string, options?: RequestInit) => Promise<DirectoryReply>;
 
+function validDirectoryPath(path: string): boolean {
+  if (path.length > 8192 || /[#\\\s]/.test(path)) return false;
+  const separator = path.indexOf("?");
+  const route = separator === -1 ? path : path.slice(0, separator);
+  if (route !== "mine" && route !== "admin" && route !== "review")
+    return (
+      separator === -1 &&
+      /^(?:categories|mine\/[A-Za-z0-9_-]{1,128}(?:\/(?:publish|archive|recover))?|review\/[A-Za-z0-9_-]{1,128})$/.test(
+        route,
+      )
+    );
+  if (separator === -1) return true;
+  const raw = path.slice(separator + 1);
+  if (!raw || /%(?![0-9a-f]{2})/i.test(raw)) return false;
+  const params = new URLSearchParams(raw);
+  const seen = new Set<string>();
+  for (const [key, value] of params) {
+    if (seen.has(key)) return false;
+    seen.add(key);
+    switch (key) {
+      case "page":
+        if (!/^[1-9]\d{0,2}$/.test(value) || Number(value) > 500) return false;
+        break;
+      case "pageSize":
+        if (value !== "20" && value !== "50") return false;
+        break;
+      case "status":
+        if (route === "review" || !["draft", "pending", "published", "archived"].includes(value))
+          return false;
+        break;
+      case "q":
+        if (
+          value.length > 120 ||
+          Array.from(value).some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)
+        )
+          return false;
+        break;
+      default:
+        return false;
+    }
+  }
+  return seen.size > 0;
+}
+
 export const directoryRequest: DirectoryRequest = async (path, options = {}) => {
-  if (
-    !/^(?:categories|(?:mine|admin)(?:\?page=[1-9]\d{0,2}(?:&status=archived)?)?|mine\/[A-Za-z0-9_-]{1,128}(?:\/(?:publish|archive|recover))?|review\/[A-Za-z0-9_-]{1,128})$/.test(
-      path,
-    )
-  )
-    throw new DirectoryRequestError("INVALID_DIRECTORY_INPUT", 400);
+  if (!validDirectoryPath(path)) throw new DirectoryRequestError("INVALID_DIRECTORY_INPUT", 400);
   const response = await fetch(`/api/directory/${path}`, {
     ...options,
     cache: "no-store",

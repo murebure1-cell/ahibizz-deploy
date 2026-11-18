@@ -56,7 +56,15 @@ test("directory endpoint input cannot escape the private directory path", async 
       "mine?page=1#x",
       "//foreign.invalid",
       "mine\\admin",
-      "review",
+      "review?status=archived",
+      "review?page=1&page=2",
+      "admin?page=0",
+      "mine?page=501",
+      "review?pageSize=1",
+      "mine?status=all",
+      "admin?q=%0A",
+      "admin?q=%ZZ",
+      "admin?q=" + "a".repeat(121),
       "review/id/archive",
       "review/../admin",
       "review/id?next=mine",
@@ -68,6 +76,39 @@ test("directory endpoint input cannot escape the private directory path", async 
     assert.equal(calls, 0);
   } finally {
     globalThis.fetch = old;
+  }
+});
+
+test("the real account-bound transport accepts private collection filters and encodes user text as a query value", async () => {
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push(String(url));
+    assert.equal(new Headers(options?.headers).get("X-AhiBizz-Account-ID"), "admin-test");
+    assert.equal(options?.credentials, "same-origin");
+    return Response.json({ items: [], hasMore: false });
+  };
+  try {
+    const send = directoryActorRequest("admin-test");
+    const q = "Čapljina & salon + A/B #1?";
+    const paths = [
+      "review",
+      "review?page=1",
+      "review?q=",
+      "mine?page=2",
+      "admin?page=1&status=archived",
+    ];
+    for (const area of ["mine", "admin", "review"]) {
+      paths.push(`${area}?${new URLSearchParams({ page: "2", pageSize: "20", q })}`);
+      if (area !== "review")
+        paths.push(`${area}?${new URLSearchParams({ q, status: "archived", page: "1" })}`);
+    }
+    for (const route of paths) {
+      assert.deepEqual(await send(route), { items: [], hasMore: false });
+      assert.equal(calls.at(-1), `/api/directory/${route}`);
+    }
+  } finally {
+    globalThis.fetch = original;
   }
 });
 
