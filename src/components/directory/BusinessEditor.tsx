@@ -7,7 +7,15 @@ import { Icon } from "../Icon";
 import styles from "./directory.module.css";
 import { LocationPicker } from "./LocationPicker";
 
-export type CategoryOption = { id: string; name: string; parentId: string | null };
+export type CategoryOption = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  vehicleRental?: boolean;
+};
+export function hasRentalCategory(categories: CategoryOption[], root: string, sub?: string | null) {
+  return categories.some((c) => c.vehicleRental === true && (c.id === root || c.id === sub));
+}
 export type BusinessFields = {
   bookingEnabled?: boolean;
   title: string;
@@ -57,6 +65,7 @@ export function BusinessEditor({
   const [city, setCity] = useState(initial?.city ?? "");
   const [country, setCountry] = useState(initial?.countryCode ?? "");
   const knownBooking = bookingEnabled ?? (preview ? (initial?.bookingEnabled ?? false) : undefined);
+  const rentsCars = hasRentalCategory(categories, category, subcategory);
   const [bookingChoice, setBookingChoice] = useState(knownBooking);
   const bookingDirty = useRef(false);
   useEffect(() => {
@@ -85,7 +94,7 @@ export function BusinessEditor({
         countryCode: country || null,
         latitude: point?.latitude ?? null,
         longitude: point?.longitude ?? null,
-        ...(knownBooking !== undefined && bookingChoice !== undefined
+        ...(!rentsCars && knownBooking !== undefined && bookingChoice !== undefined
           ? { bookingEnabled: bookingChoice }
           : {}),
       },
@@ -274,7 +283,13 @@ export function BusinessEditor({
             </label>
           </div>
         </fieldset>
-        {knownBooking !== undefined && (
+        {rentsCars && !initial && (
+          <p>
+            Nakon spremanja djelatnosti u odjeljku Automobili možeš dodati dva auta i uključiti
+            online najam.
+          </p>
+        )}
+        {!rentsCars && knownBooking !== undefined && (
           <div>
             <div className={styles.formDivider}>
               <Icon name="calendar" />

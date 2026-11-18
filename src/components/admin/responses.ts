@@ -92,6 +92,7 @@ export function category(value: unknown): value is DirectoryCategory {
     value.name.trim().length > 0 &&
     value.name.length <= 80 &&
     typeof value.slug === "string" &&
+    (value.vehicleRental === undefined || typeof value.vehicleRental === "boolean") &&
     value.slug.length <= 80 &&
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value.slug) &&
     (value.parentId === null || (typeof value.parentId === "string" && uuid.test(value.parentId)))

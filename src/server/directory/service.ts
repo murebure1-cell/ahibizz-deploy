@@ -259,7 +259,9 @@ export function createDirectoryService({
   return {
     ...createPublicDirectoryService({ database: pool }),
     async createCategory(headers: Headers, input: unknown): Promise<DirectoryCategory> {
-      const value = object(input, ["name", "slug", "parentId"]);
+      const value = object(input, ["name", "slug", "parentId", "vehicleRental"]);
+      if (value.vehicleRental !== undefined && typeof value.vehicleRental !== "boolean")
+        fail(400, "INVALID_DIRECTORY_INPUT");
       const name = text(value.name, 80),
         slug = text(value.slug, 80),
         parentId =
@@ -269,19 +271,22 @@ export function createDirectoryService({
       return transaction(pool, async (client) => {
         const { actor: currentActor } = await lockUsers(client, identity);
         owner(currentActor);
+        let inheritedRental = false;
         if (parentId) {
           const parent = (
-            await client.query<{ parent_id: string | null }>(
-              "SELECT parent_id FROM directory_category WHERE id = $1 FOR SHARE",
+            await client.query<{ parent_id: string | null; vehicle_rental: boolean }>(
+              "SELECT parent_id, vehicle_rental FROM directory_category WHERE id = $1 FOR SHARE",
               [parentId],
             )
           ).rows[0];
           if (!parent || parent.parent_id !== null) fail(409, "CATEGORY_CONFLICT");
+          inheritedRental = parent.vehicle_rental;
         }
         return (
           await client.query<DirectoryCategory>(
-            'INSERT INTO directory_category (id,name,slug,parent_id) VALUES ($1,$2,$3,$4) RETURNING id,name,slug,parent_id AS "parentId"',
-            [randomUUID(), name, slug, parentId],
+            `INSERT INTO directory_category (id,name,slug,parent_id,vehicle_rental) VALUES ($1,$2,$3,$4,$5)
+             RETURNING id,name,slug,parent_id AS "parentId",(vehicle_rental OR $6::boolean) AS "vehicleRental"`,
+            [randomUUID(), name, slug, parentId, value.vehicleRental ?? false, inheritedRental],
           )
         ).rows[0] as DirectoryCategory;
       });
@@ -403,7 +408,13 @@ export function createDirectoryService({
             : before.status;
         const after = await save(client, before, fields(before), status);
         await client.query(
-          "INSERT INTO directory_business_details (business_id,timezone,hours,amenities,business_version) VALUES ($1,$2,$3::jsonb,$4::text[],$5) ON CONFLICT (business_id) DO UPDATE SET timezone=EXCLUDED.timezone,hours=EXCLUDED.hours,amenities=EXCLUDED.amenities,business_version=EXCLUDED.business_version,updated_at=now()",
+          `WITH updated AS (
+             UPDATE directory_business_details
+             SET timezone=$2,hours=$3::jsonb,amenities=$4::text[],business_version=$5,updated_at=now()
+             WHERE business_id=$1 RETURNING business_id
+           )
+           INSERT INTO directory_business_details (business_id,timezone,hours,amenities,business_version)
+           SELECT $1,$2,$3::jsonb,$4::text[],$5 WHERE NOT EXISTS (SELECT 1 FROM updated)`,
           [
             key,
             details.timezone,

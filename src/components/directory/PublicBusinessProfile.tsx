@@ -29,6 +29,7 @@ export function PublicBusinessProfile({
   children,
   actions,
   messageHref,
+  rental,
 }: {
   business: PublicBusinessView;
   backHref?: string | null;
@@ -36,6 +37,7 @@ export function PublicBusinessProfile({
   children?: ReactNode;
   actions?: ReactNode;
   messageHref?: string;
+  rental?: ReactNode;
 }) {
   const links = businessContactLinks(business);
   const point = publicBusinessPoint(business);
@@ -187,6 +189,7 @@ export function PublicBusinessProfile({
       <nav className={styles.sectionNavigation} aria-label="Na ovoj stranici">
         <a href="#business-about">O djelatnosti</a>
         {business.details?.hours && <a href="#business-hours">Radno vrijeme</a>}
+        {rental && <a href="#business-rentals">Automobili</a>}
         {hasAppointments && (
           <a className={styles.appointmentsLink} href="#business-appointments">
             Termini
@@ -235,6 +238,11 @@ export function PublicBusinessProfile({
             </section>
           )}
 
+          {rental && (
+            <section id="business-rentals" className={styles.appointments}>
+              {rental}
+            </section>
+          )}
           {hasAppointments && (
             <section
               className={styles.appointments}

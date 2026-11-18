@@ -2,7 +2,13 @@ import type { BusinessDetails } from "../../lib/business-details";
 import type { BusinessMediaSummary } from "../../lib/business-media";
 import type { ReviewSummary } from "../../lib/reviews";
 export type BusinessStatus = "draft" | "pending" | "published" | "archived";
-export type DirectoryCategory = { id: string; name: string; slug: string; parentId: string | null };
+export type DirectoryCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  parentId: string | null;
+  vehicleRental?: boolean;
+};
 export type BusinessFields = {
   title: string;
   categoryId: string;
@@ -18,6 +24,7 @@ export type BusinessFields = {
   longitude: number | null;
 };
 export type DirectoryBusiness = BusinessFields & {
+  hasRentalVehicles?: boolean;
   details?: BusinessDetails | null;
   reviews?: ReviewSummary;
   media?: BusinessMediaSummary;
@@ -35,7 +42,13 @@ export type DirectoryBusiness = BusinessFields & {
 };
 export type PublicDirectoryBusiness = Omit<
   DirectoryBusiness,
-  "ownerId" | "status" | "version" | "archivedAt" | "updatedAt" | "moderationReturn"
+  | "ownerId"
+  | "status"
+  | "version"
+  | "archivedAt"
+  | "updatedAt"
+  | "moderationReturn"
+  | "hasRentalVehicles"
 >;
 export class DirectoryAccessError extends Error {
   constructor(

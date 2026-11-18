@@ -46,6 +46,7 @@ const publicColumns = [
 ].join(", ");
 export const columns = [
   publicColumns,
+  `EXISTS (SELECT 1 FROM rental_vehicle rv WHERE rv.business_id=b.id AND rv.archived_at IS NULL) AS "hasRentalVehicles"`,
   `(SELECT jsonb_build_object('reason', a.reason, 'createdAt', a.created_at, 'version', b.version) FROM directory_moderation_audit a WHERE b.status = 'draft' AND a.business_id = b.id AND a.action = 'moderate' AND a.next_status = 'draft' AND a.next_version <= b.version AND (a.next_version = b.version OR (SELECT count(*) FROM directory_ownership_transfer ot WHERE ot.business_id=b.id AND ot.previous_version>=a.next_version AND ot.result_version<=b.version)=b.version-a.next_version) AND a.reason IS NOT NULL ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS "moderationReturn"`,
 ].join(", ");
 export type Row = Omit<
@@ -80,6 +81,7 @@ export function publicDto(value: DirectoryBusiness): PublicDirectoryBusiness {
     archivedAt: _archived,
     updatedAt: _updated,
     moderationReturn: _moderationReturn,
+    hasRentalVehicles: _hasRentalVehicles,
     ...publicValue
   } = value;
   return publicValue;
@@ -151,7 +153,10 @@ export function createPublicDirectoryService({ database }: { database: Directory
       safeRead(async () => ({
         categories: (
           await database.query(
-            'SELECT id, name, slug, parent_id AS "parentId" FROM directory_category ORDER BY parent_id NULLS FIRST, name, id',
+            `SELECT c.id, c.name, c.slug, c.parent_id AS "parentId",
+                    (c.vehicle_rental OR COALESCE(p.vehicle_rental, false)) AS "vehicleRental"
+               FROM directory_category c LEFT JOIN directory_category p ON p.id = c.parent_id
+              ORDER BY c.parent_id NULLS FIRST, c.name, c.id`,
           )
         ).rows as DirectoryCategory[],
       })),

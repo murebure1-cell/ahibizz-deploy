@@ -1,0 +1,375 @@
+.panel,
+.form,
+.range,
+.calendar,
+.dayAgenda,
+.entry,
+.card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  color: var(--ui-text);
+}
+.panel {
+  padding: clamp(16px, 3vw, 32px);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+}
+.panel h2,
+.panel h3,
+.panel h4,
+.panel p,
+.entry p {
+  margin: 0;
+}
+.panel h2 {
+  font-size: clamp(1.15rem, 2vw, 1.55rem);
+  letter-spacing: -0.03em;
+}
+.panel h3 {
+  font-size: 1.08rem;
+}
+.panel h4 {
+  font-size: 1rem;
+}
+.topline,
+.actions,
+.carHeader,
+.month,
+.total {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.topline,
+.month,
+.total {
+  justify-content: space-between;
+}
+.muted,
+.card p,
+.entry p,
+.range p,
+.form p,
+.dates small,
+.range label,
+.fields label {
+  color: var(--ui-text-secondary);
+}
+.primary,
+.secondary,
+.smallAction,
+.month button,
+.days button {
+  font: inherit;
+  cursor: pointer;
+  color: var(--ui-text);
+  border-radius: 10px;
+}
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 9px 15px;
+  font-weight: 700;
+  border: 1px solid var(--ui-border-strong);
+  background: var(--ui-surface);
+}
+.primary {
+  background: var(--ui-primary);
+  border-color: var(--ui-primary);
+  color: var(--ui-on-primary);
+}
+.primary:hover {
+  background: var(--ui-primary-hover);
+}
+.secondary:hover,
+.days button:hover:not(:disabled) {
+  background: var(--ui-surface-hover);
+}
+.smallAction {
+  border: 0;
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 650;
+  padding: 8px 3px;
+  min-height: 40px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.panel button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.panel svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.card {
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  padding: clamp(12px, 2.5vw, 22px);
+}
+.carHeader {
+  align-items: center;
+}
+.carTitle {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.carTitle h3 {
+  font-size: 1.16rem;
+}
+.carTitle p,
+.specs,
+.entry p,
+.range p,
+.fields small,
+.muted {
+  font-size: 0.88rem;
+}
+.carPhoto,
+.carIcon {
+  width: 88px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+.carIcon {
+  display: grid;
+  place-items: center;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+}
+.carIcon svg {
+  width: 35px;
+  height: 35px;
+}
+.badge {
+  border-radius: 18px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: var(--ui-surface-soft);
+  padding: 5px 10px;
+}
+.badge[data-state="requested"] {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+.badge[data-state="confirmed"] {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+.rate {
+  color: var(--ui-muted);
+  font-size: 0.87rem;
+}
+.rate strong,
+.total strong {
+  color: var(--ui-text);
+  font-size: 1.1rem;
+}
+.agenda {
+  display: grid;
+  gap: 10px;
+}
+.calendar,
+.form {
+  border-top: 1px solid var(--ui-border);
+  padding-top: 18px;
+}
+.columns,
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.fields {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.fields label,
+.range label {
+  display: grid;
+  gap: 5px;
+  font-size: 0.875rem;
+  font-weight: 650;
+  min-width: 0;
+}
+.fields input,
+.fields select,
+.fields textarea,
+.range input {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 9px;
+  padding: 9px 10px;
+  min-height: 44px;
+  background: var(--ui-input);
+  color: var(--ui-text);
+  font: inherit;
+  box-sizing: border-box;
+}
+.fields .checkbox,
+.photoChoice label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.fields input[type="checkbox"],
+.fields input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  accent-color: var(--ui-accent-text);
+}
+.full,
+.fields .actions,
+.fields .checkbox,
+.photoChoice {
+  grid-column: 1 / -1;
+}
+.photoChoice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.photoChoice legend {
+  font-weight: 650;
+  font-size: 0.88rem;
+}
+.photoChoice img {
+  object-fit: cover;
+  border-radius: 6px;
+}
+.dates,
+.range {
+  min-width: 0;
+}
+.range {
+  border-radius: 14px;
+  background: var(--ui-surface-soft);
+  padding: 14px;
+}
+.month button,
+.days button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  min-width: 0;
+  padding: 0;
+}
+.month button {
+  width: 38px;
+  height: 38px;
+}
+.month strong {
+  text-transform: capitalize;
+}
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+.days small {
+  text-align: center;
+  padding: 7px 0;
+}
+.days button {
+  min-height: 38px;
+  position: relative;
+  font-size: 0.87rem;
+}
+.days button[aria-pressed="true"] {
+  background: var(--ui-primary);
+  color: var(--ui-on-primary);
+}
+.days button[data-busy]::after {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+}
+.dayAgenda {
+  border-top: 1px solid var(--ui-border);
+  padding-top: 10px;
+  margin-top: 12px;
+  gap: 6px;
+}
+.dayAgenda p {
+  font-size: 0.85rem;
+}
+.entry {
+  background: var(--ui-surface-soft);
+  border-radius: 10px;
+  padding: 12px;
+  gap: 7px;
+}
+.entry a,
+.range a {
+  color: var(--ui-text);
+  text-underline-offset: 3px;
+}
+.total {
+  border-block: 1px solid var(--ui-border);
+  padding: 10px 0;
+}
+.panel .error {
+  color: var(--ui-danger);
+}
+.panel .success {
+  color: var(--ui-success);
+}
+@container (max-width: 580px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
+.card {
+  container-type: inline-size;
+}
+@media (max-width: 660px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+  .panel {
+    padding: 14px;
+  }
+  .fields {
+    gap: 12px;
+  }
+  .topline {
+    row-gap: 8px;
+  }
+  .carPhoto,
+  .carIcon {
+    width: 62px;
+    height: 52px;
+  }
+}
+@media (max-width: 380px) {
+  .fields {
+    grid-template-columns: 1fr;
+  }
+}

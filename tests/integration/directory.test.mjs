@@ -98,6 +98,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0013_business_favorites.sql",
           "0014_business_ownership.sql",
           "0015_profile_verification.sql",
+          "0016_vehicle_rentals.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -286,6 +287,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         root = await directory.createCategory(owner.headers, {
           name: "Services",
           slug: "services",
+          vehicleRental: true,
         });
         child = await directory.createCategory(owner.headers, {
           name: "Repair",
@@ -305,6 +307,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         );
         const categories = (await directory.categories()).categories;
         assert.equal(categories.length, 3);
+        assert.equal(root.vehicleRental, true);
+        assert.equal(child.vehicleRental, true);
+        assert.equal(categories.find((row) => row.id === child.id).vehicleRental, true);
+        assert.equal(otherRoot.vehicleRental, false);
         assert.equal(categories.find((row) => row.id === child.id).parentId, root.id);
         assert.equal(categories.find((row) => row.id === root.id).parentId, null);
       });

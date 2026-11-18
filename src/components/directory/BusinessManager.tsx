@@ -46,8 +46,14 @@ import type { DirectoryBusiness } from "../../server/directory/types";
 import { ProfileVerification } from "../admin/ProfileVerification";
 import { BusinessBookingManager } from "../booking/BusinessBookingManager";
 import { Icon } from "../Icon";
+import { RentalFleet } from "../rentals/RentalFleet";
 import { BusinessDetailsManager } from "./BusinessDetailsManager";
-import { BusinessEditor, type BusinessFields, type CategoryOption } from "./BusinessEditor";
+import {
+  BusinessEditor,
+  type BusinessFields,
+  type CategoryOption,
+  hasRentalCategory,
+} from "./BusinessEditor";
 import { BusinessLogo } from "./BusinessLogo";
 import { BusinessMediaManager } from "./BusinessMediaManager";
 import { BusinessOwnershipManager } from "./BusinessOwnershipManager";
@@ -175,6 +181,7 @@ export function BusinessManager({
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [editing, setEditing] = useState<DirectoryBusiness | null | undefined>(undefined);
   const [detailsBusiness, setDetailsBusiness] = useState<DirectoryBusiness | null>(null);
+  const [rentalBusiness, setRentalBusiness] = useState<DirectoryBusiness | null>(null);
   const [ownershipBusiness, setOwnershipBusiness] = useState<DirectoryBusiness | null>(null);
   const [editorDirty, setEditorDirty] = useState(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a fresh business version rekeys the base form and discards its dirty marker.
@@ -257,6 +264,7 @@ export function BusinessManager({
     setHasMore(false);
     setEditing(undefined);
     setDetailsBusiness(null);
+    setRentalBusiness(null);
     setOwnershipBusiness(null);
     setReturning(null);
     setReturnReason("");
@@ -357,7 +365,7 @@ export function BusinessManager({
   }, [active, editingId, booking, denied, current]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: refresh explicitly invalidates the fetched list after writes and on request.
   useEffect(() => {
-    if (!active || bookingBusiness || mediaBusiness || detailsBusiness) return;
+    if (!active || bookingBusiness || mediaBusiness || detailsBusiness || rentalBusiness) return;
     const controller = new AbortController(),
       revision = ++reads.current;
     const access = epoch.current;
@@ -411,6 +419,7 @@ export function BusinessManager({
     bookingBusiness,
     mediaBusiness,
     detailsBusiness,
+    rentalBusiness,
     request,
     denied,
     current,
@@ -895,6 +904,27 @@ export function BusinessManager({
       current?.id === manifest.businessId ? { ...current, ...patch } : current,
     );
   }
+  if (rentalBusiness && expectedAccountId)
+    return (
+      <div className={styles.workspace}>
+        <button type="button" className={styles.secondary} onClick={() => setRentalBusiness(null)}>
+          Nazad na djelatnosti
+        </button>
+        <h2>{rentalBusiness.title}</h2>
+        {active && (
+          <RentalFleet
+            key={`${expectedAccountId}:${rentalBusiness.id}`}
+            businessId={rentalBusiness.id}
+            actor={expectedAccountId}
+            photos={rentalBusiness.media?.gallery}
+            onPhotos={() => {
+              setMediaBusiness(rentalBusiness);
+              setRentalBusiness(null);
+            }}
+          />
+        )}
+      </div>
+    );
   if (ownershipBusiness && isOwner)
     return (
       <BusinessOwnershipManager
@@ -1067,6 +1097,17 @@ export function BusinessManager({
           <ReturnedBusinessNote business={editing} />
           {editing && (
             <div className={styles.businessActions}>
+              {(editing.hasRentalVehicles ||
+                hasRentalCategory(categories, editing.categoryId, editing.subcategoryId)) && (
+                <button
+                  type="button"
+                  className={styles.secondary}
+                  disabled={locked || editorDirty}
+                  onClick={() => setRentalBusiness(editing)}
+                >
+                  <Icon name="car" /> Automobili
+                </button>
+              )}
               <button
                 type="button"
                 className={styles.secondary}
@@ -1253,6 +1294,16 @@ export function BusinessManager({
                   <ReturnedBusinessNote business={item} />
                 </div>
                 <div className={styles.businessActions}>
+                  {item.status === "archived" && item.hasRentalVehicles && (
+                    <button
+                      type="button"
+                      className={styles.secondary}
+                      disabled={locked || loading}
+                      onClick={() => setRentalBusiness(item)}
+                    >
+                      <Icon name="calendar" /> Kalendar automobila
+                    </button>
+                  )}
                   {item.status === "published" && (
                     <Link className={styles.secondary} href={`/djelatnosti/${item.id}`}>
                       Javni profil
@@ -1291,14 +1342,29 @@ export function BusinessManager({
                         className={styles.secondary}
                         disabled={locked || loading}
                         onClick={() => {
-                          setBookingBusiness(item);
+                          if (
+                            item.hasRentalVehicles ||
+                            hasRentalCategory(categories, item.categoryId, item.subcategoryId)
+                          )
+                            setRentalBusiness(item);
+                          else setBookingBusiness(item);
                           setError("");
                           setNotice("");
                           setBookingNote("");
                         }}
                       >
-                        <Icon name="calendar" />
-                        Booking
+                        <Icon
+                          name={
+                            item.hasRentalVehicles ||
+                            hasRentalCategory(categories, item.categoryId, item.subcategoryId)
+                              ? "car"
+                              : "calendar"
+                          }
+                        />
+                        {item.hasRentalVehicles ||
+                        hasRentalCategory(categories, item.categoryId, item.subcategoryId)
+                          ? "Automobili"
+                          : "Booking"}
                       </button>
                       {["draft", "pending"].includes(item.status) && (
                         <button

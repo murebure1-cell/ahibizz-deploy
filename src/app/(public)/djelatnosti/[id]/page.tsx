@@ -4,10 +4,11 @@ import { notFound } from "next/navigation";
 import { PublicBooking } from "../../../../components/booking/PublicBooking";
 import { PublicBusinessProfile } from "../../../../components/directory/PublicBusinessProfile";
 import styles from "../../../../components/directory/public-search.module.css";
-import type { PublicBookingConfiguration } from "../../../../lib/booking";
+import { RentalFleet } from "../../../../components/rentals/RentalFleet";
 import { getBookingService } from "../../../../server/booking";
 import { DirectoryAccessError, getPublicDirectoryService } from "../../../../server/directory";
 import { publicBusinessView } from "../../../../server/directory/public-view";
+import { getRentalService } from "../../../../server/rentals/service";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Poslovni profil" };
@@ -22,17 +23,34 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
         service.readPublic(id),
         service.categories(),
       ]);
-      // An unavailable optional booking service must not hide a public business profile.
-      let booking: PublicBookingConfiguration | null | undefined;
-      try {
-        booking = await getBookingService()?.publicConfig(id);
-      } catch {
-        booking = null;
-      }
+      const rentsCars = categories.some(
+        (c) => c.vehicleRental && (c.id === business.categoryId || c.id === business.subcategoryId),
+      );
+      // Optional offers must not prevent the business profile from opening.
+      const [booking, catalog] = await Promise.allSettled([
+        Promise.resolve().then(() => getBookingService()?.publicConfig(id)),
+        rentsCars ? Promise.resolve().then(() => getRentalService()?.publicCatalog(id)) : null,
+      ]);
+      const initialCatalog =
+        catalog.status === "fulfilled" ? (catalog.value ?? undefined) : undefined;
       return (
         <main id="glavni-sadrzaj">
-          <PublicBusinessProfile business={publicBusinessView(business, categories)}>
-            <PublicBooking businessId={id} configuration={booking ?? null} />
+          <PublicBusinessProfile
+            business={publicBusinessView(business, categories)}
+            rental={
+              rentsCars && (!initialCatalog || initialCatalog.vehicles.length > 0) ? (
+                <RentalFleet
+                  businessId={id}
+                  photos={business.media?.gallery}
+                  initialCatalog={initialCatalog}
+                />
+              ) : undefined
+            }
+          >
+            <PublicBooking
+              businessId={id}
+              configuration={booking.status === "fulfilled" ? (booking.value ?? null) : null}
+            />
           </PublicBusinessProfile>
         </main>
       );

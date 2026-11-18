@@ -6,6 +6,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { loadMigrations, runMigrations } from "../../scripts/migrate.mjs";
 import { integrationConfiguration } from "./postgres.test.mjs";
+import { testVehicleRentals } from "./rental-cases.mjs";
 
 const baseURL = "https://booking-ci.ahibizz.invalid";
 const password = "Booking-fixture-only-password-294!";
@@ -110,6 +111,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0013_business_favorites.sql",
           "0014_business_ownership.sql",
           "0015_profile_verification.sql",
+          "0016_vehicle_rentals.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -1584,6 +1586,18 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
 
+      await testVehicleRentals(t, {
+        pool,
+        auth,
+        directory,
+        baseURL,
+        operator,
+        owner: paginationCustomer,
+        customer,
+        other,
+        unrelatedBusiness: business.id,
+        waitForTwoWriters: () => waitForLockWaiters(pool, applicationName),
+      });
       await t.test(
         "revoked sessions cannot read or create bookings and the isolated fixture preserves other schemas",
         async () => {

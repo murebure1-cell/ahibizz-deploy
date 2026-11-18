@@ -32,6 +32,7 @@ function CategoryWorkspace({ expectedAccountId, request: transport = browserAdmi
   const [items, setItems] = useState<DirectoryCategory[] | null>(null);
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState("");
+  const [vehicleRental, setVehicleRental] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [uncertain, setUncertain] = useState(false);
@@ -57,6 +58,7 @@ function CategoryWorkspace({ expectedAccountId, request: transport = browserAdmi
     setItems(null);
     setName("");
     setParentId("");
+    setVehicleRental(false);
     setNotice("");
     setBusy(false);
     setLoading(false);
@@ -162,6 +164,7 @@ function CategoryWorkspace({ expectedAccountId, request: transport = browserAdmi
       name: value,
       slug: categorySlug(value, parent?.slug),
       ...(parent ? { parentId: parent.id } : {}),
+      ...(vehicleRental && !parent?.vehicleRental ? { vehicleRental: true } : {}),
     };
     writing.current = true;
     request.current?.abort();
@@ -203,6 +206,7 @@ function CategoryWorkspace({ expectedAccountId, request: transport = browserAdmi
         throw new AdminRequestError(502);
       setItems((previous) => [...(previous ?? []), saved]);
       setName("");
+      setVehicleRental(false);
       setNotice(parent ? "Podkategorija je dodana." : "Glavna kategorija je dodana.");
     } catch (failure) {
       if (!live.current || generation !== authority.current || currentApi.current !== scoped)
@@ -266,6 +270,22 @@ function CategoryWorkspace({ expectedAccountId, request: transport = browserAdmi
                     {item.name}
                   </option>
                 ))}
+              </select>
+            </label>
+            <label htmlFor="admin-category-rental">
+              Najam vozila
+              <select
+                id="admin-category-rental"
+                disabled={roots.some((item) => item.id === parentId && item.vehicleRental)}
+                value={
+                  vehicleRental || roots.some((item) => item.id === parentId && item.vehicleRental)
+                    ? "on"
+                    : "off"
+                }
+                onChange={(event) => setVehicleRental(event.target.value === "on")}
+              >
+                <option value="off">Isključeno</option>
+                <option value="on">Omogućeno u ovoj kategoriji</option>
               </select>
             </label>
             <button className={styles.primary} type="submit" disabled={!name.trim()}>
