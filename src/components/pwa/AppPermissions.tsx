@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "../Icon";
 import { useDeviceLocation } from "../location/DeviceLocation";
 import { useAppPwa } from "./AppPwa";
+import { DevicePush } from "./DevicePush";
 import styles from "./permissions.module.css";
 
 const dismissedKey = "ahibizz.device-permissions.v1";
@@ -57,67 +58,31 @@ export function DevicePermissions({
   onDismiss?: () => void;
   onConfigured?: () => void;
 }) {
-  const pwa = useAppPwa();
   const location = useDeviceLocation();
   const heading = useId();
   const [availableLocation, setAvailableLocation] = useState<boolean | null>(null);
-  const [notification, setNotification] = useState<NotificationPermission | null>(null);
-  const [notificationAvailable, setNotificationAvailable] = useState<boolean | null>(null);
-  const [requesting, setRequesting] = useState(false);
-  const [note, setNote] = useState("");
-  const busy = useRef(false);
-  const live = useRef(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
 
   useEffect(() => {
-    live.current = true;
     const read = () => {
       if (document.visibilityState === "hidden") return;
       setAvailableLocation(
         window.isSecureContext && typeof navigator.geolocation?.getCurrentPosition === "function",
       );
-      const supported =
-        window.isSecureContext &&
-        typeof window.Notification?.requestPermission === "function" &&
-        !pwa.embedded &&
-        (pwa.platform !== "ios" || pwa.installed);
-      setNotificationAvailable(supported);
-      setNotification(supported ? Notification.permission : null);
     };
     read();
     window.addEventListener("focus", read);
     document.addEventListener("visibilitychange", read);
     return () => {
-      live.current = false;
       window.removeEventListener("focus", read);
       document.removeEventListener("visibilitychange", read);
     };
-  }, [pwa.embedded, pwa.platform, pwa.installed]);
-
-  async function requestNotifications() {
-    if (busy.current || !notificationAvailable) return;
-    if (Notification.permission !== "default") {
-      setNotification(Notification.permission);
-      return;
-    }
-    busy.current = true;
-    setRequesting(true);
-    setNote("");
-    try {
-      // Call before any await: browsers require this request in the actual tap's activation.
-      await Notification.requestPermission();
-      if (live.current) setNotification(Notification.permission);
-    } catch {
-      if (live.current) setNote("Dozvolu možeš promijeniti u postavkama uređaja.");
-    } finally {
-      busy.current = false;
-      if (live.current) setRequesting(false);
-    }
-  }
+  }, []);
 
   const locationGranted = availableLocation === true && location.permission === "granted";
   useEffect(() => {
-    if (locationGranted && notification === "granted") onConfigured?.();
-  }, [locationGranted, notification, onConfigured]);
+    if (locationGranted && pushEnabled) onConfigured?.();
+  }, [locationGranted, pushEnabled, onConfigured]);
   return (
     <section className={styles.permissions} aria-labelledby={heading}>
       <h2 id={heading}>Dozvole uređaja</h2>
@@ -148,37 +113,10 @@ export function DevicePermissions({
         )}
         {locationGranted && <Icon name="check" />}
       </div>
-      <div className={styles.row}>
-        <span className={styles.icon} aria-hidden="true">
-          <Icon name="message" />
-        </span>
-        <div className={styles.description}>
-          <h3>Obavijesti</h3>
-          <p role="status">
-            {notificationAvailable === false
-              ? "Nisu dostupne u ovom pregledniku."
-              : notification === "denied"
-                ? "Uključi ih u postavkama uređaja."
-                : notification === "granted"
-                  ? "Dozvoljene"
-                  : "Izaberi dozvolu za ovaj uređaj."}
-          </p>
-        </div>
-        {notificationAvailable && notification === "default" && (
-          <button type="button" disabled={requesting} onClick={() => void requestNotifications()}>
-            {requesting ? "Potvrdi…" : "Dozvoli obavijesti"}
-          </button>
-        )}
-        {notification === "granted" && <Icon name="check" />}
-      </div>
-      {note && (
-        <p className={styles.note} role="status">
-          {note}
-        </p>
-      )}
+      <DevicePush onEnabled={setPushEnabled} />
       {onDismiss && (
         <button className={styles.dismiss} type="button" onClick={onDismiss}>
-          {locationGranted && notification === "granted" ? "Gotovo" : "Kasnije"}
+          {locationGranted && pushEnabled ? "Gotovo" : "Kasnije"}
         </button>
       )}
     </section>

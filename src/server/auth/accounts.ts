@@ -294,15 +294,27 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
         if (target.role === "owner" || actor.id === target.id) fail(403, "OWNER_TARGET_FORBIDDEN");
         if (target.approval !== value.expected) fail(409, "APPROVAL_CONFLICT");
         if (target.approval === value.approval) return profile(client, target.id);
+        if (value.approval === "approved" && !target.emailVerified) fail(409, "EMAIL_NOT_VERIFIED");
         await client.query(
           'UPDATE auth_user SET approval = $1, "updatedAt" = now() WHERE id = $2 AND approval = $3',
           [value.approval, target.id, value.expected],
         );
         await client.query('DELETE FROM auth_session WHERE "userId" = $1', [target.id]);
+        const decisionId = randomUUID();
         await client.query(
           "INSERT INTO auth_account_audit (id, actor_user_id, target_user_id, action, previous_approval, next_approval, previous_role, next_role) VALUES ($1, $2, $3, 'approval', $4, $5, $6, $6)",
-          [randomUUID(), actor.id, target.id, target.approval, value.approval, target.role],
+          [decisionId, actor.id, target.id, target.approval, value.approval, target.role],
         );
+        if (value.approval === "approved") {
+          await client.query(
+            `INSERT INTO account_approval_email(user_id, decision_id) VALUES ($1, $2)
+             ON CONFLICT(user_id) DO UPDATE SET decision_id = EXCLUDED.decision_id,
+                 failures = 0, next_attempt_at = now(), claim_id = NULL, accepted_at = NULL`,
+            [target.id, decisionId],
+          );
+        } else {
+          await client.query("DELETE FROM account_approval_email WHERE user_id = $1", [target.id]);
+        }
         return profile(client, target.id);
       });
     },

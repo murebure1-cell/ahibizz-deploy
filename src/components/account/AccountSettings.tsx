@@ -14,6 +14,8 @@ import type { Appearance } from "../../lib/appearance";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { useAppAppearance } from "../appearance/AppAppearance";
 import { Icon } from "../Icon";
+import { DevicePush } from "../pwa/DevicePush";
+import permissionStyles from "../pwa/permissions.module.css";
 import styles from "./account.module.css";
 
 const choices = [
@@ -258,6 +260,13 @@ function SettingsWorkspace({
           </Link>
         )}
       </section>
+      {active && !accessLost && request === accountSettingsRequest && (
+        <section aria-label="Obavijesti na uređaju" className={styles.settingsCard}>
+          <div className={permissionStyles.permissions}>
+            <DevicePush actor={initial.id} />
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -53,3 +53,40 @@ self.addEventListener("fetch", (event) => {
     return response;
   }).catch(async () => (await caches.match(request)) || Response.error()));
 });
+
+const settings = "/nalog?odjeljak=postavke";
+const messages = "/nalog?odjeljak=poruke";
+const pushId = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+async function reportPush(id, event) {
+  if (!pushId.test(id)) return;
+  try {
+    await fetch("/api/push/receipt", { method:"POST", headers:{"Content-Type":"application/json"},
+      credentials:"omit", cache:"no-store", redirect:"error", body:JSON.stringify({id,event}) });
+  } catch {}
+}
+self.addEventListener("push", event => {
+  let data;
+  try { data = event.data?.json(); } catch {}
+  const test = data?.kind === "test" && pushId.test(data?.id);
+  const id = pushId.test(data?.id) ? data.id : "";
+  event.waitUntil((async () => {
+    await self.registration.showNotification("AhiBizz", {
+      body:test ? "Probna obavijest je stigla. Dodirni za povratak u postavke." : "Imaš novu poruku.",
+      icon:"/preview-app/icons/icon-192.png", tag:id ? "ahibizz-"+id : "ahibizz-message",
+      data:{kind:test?"test":"message",id}
+    });
+    if(test) await reportPush(id,"shown");
+  })());
+});
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const data=event.notification.data, test=data?.kind==="test" && pushId.test(data?.id);
+  const url=new URL(test ? settings : messages,self.location.origin).href;
+  const open=(async () => {
+    const windows=await self.clients.matchAll({type:"window"});
+    const current=windows.find(client=>client.url===url);
+    if(current) return current.focus();
+    return self.clients.openWindow(url);
+  })();
+  event.waitUntil(Promise.all([open,test ? reportPush(data.id,"opened") : Promise.resolve()]));
+});

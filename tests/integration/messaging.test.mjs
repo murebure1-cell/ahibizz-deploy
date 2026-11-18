@@ -101,6 +101,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0016_vehicle_rentals.sql",
           "0017_accommodation.sql",
           "0018_directory_revisions.sql",
+          "0019_account_approval_email.sql",
+          "0020_push_devices.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -208,6 +210,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         3,
       );
       const [owner, member, other] = actors;
+      const { pushAcceptance } = await import("./push-cases.mjs");
+      const push = pushAcceptance(auth, pool, actors);
       const { createDirectoryService } = await import("../../src/server/directory/index.ts");
       const accounts = createAccountService({ auth, pool });
       const directory = createDirectoryService({ accounts, auth, pool });
@@ -435,6 +439,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       );
 
       await t.test(
+        "authorized device-only delayed push survives polling and signs an encrypted notification",
+        push.enroll,
+      );
+      await t.test(
         "actual blocked concurrent opens produce one pair and duplicate sends produce one immutable message receipt",
         async () => {
           await pool.query(
@@ -506,6 +514,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
 
+      await t.test(
+        "duplicate chat submission queues one push only for the subscribed recipient",
+        push.recipientOnly,
+      );
       await t.test(
         "sender-relative messages, unread counts and monotonic read pointers survive new replies and reject future reads",
         async () => {

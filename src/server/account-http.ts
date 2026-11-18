@@ -13,7 +13,7 @@ function reply(body: unknown, status = 200) {
   });
 }
 
-async function input(request: Request): Promise<unknown> {
+export async function readAccountJson(request: Request): Promise<unknown> {
   const reader = request.body?.getReader();
   if (!reader) throw new AccountAccessError(400, "INVALID_REQUEST");
   const parts: Uint8Array[] = [];
@@ -89,7 +89,7 @@ export function createAccountHttpHandler({
         "application/json"
       )
         return reply({ code: "INVALID_CONTENT_TYPE" }, 415);
-      const value = await input(request);
+      const value = await readAccountJson(request);
       return reply({
         account: target
           ? await service.decide(request.headers, target, value)

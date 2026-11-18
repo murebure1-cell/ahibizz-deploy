@@ -7,6 +7,13 @@ export type AuthEmail = Readonly<{
   url: string;
 }>;
 export type AuthEmailSender = (message: AuthEmail) => Promise<void>;
+export type ApprovalEmail = Readonly<{
+  kind: "account-approved";
+  to: string;
+  url: string;
+  decisionId: string;
+}>;
+export type ApprovalEmailSender = (message: ApprovalEmail) => Promise<void>;
 
 export class AuthEmailDeliveryError extends Error {
   constructor() {
@@ -15,9 +22,10 @@ export class AuthEmailDeliveryError extends Error {
 }
 
 /** The SMTP transport is not constructed until an email is actually requested. */
-export function createSmtpSender(config: SmtpConfiguration): AuthEmailSender {
+export function createSmtpSender(config: SmtpConfiguration) {
   let transport: ReturnType<typeof nodemailer.createTransport> | undefined;
-  return async ({ kind, to, url }) => {
+  return async (message: AuthEmail | ApprovalEmail): Promise<void> => {
+    const { to } = message;
     try {
       if (!transport)
         transport = nodemailer.createTransport({
@@ -33,18 +41,37 @@ export function createSmtpSender(config: SmtpConfiguration): AuthEmailSender {
           logger: false,
           debug: false,
         });
+      const content = emailContent(message);
       await transport.sendMail({
         from: config.from,
-        to,
-        subject:
-          kind === "verification" ? "Potvrdite email — AhiBizz" : "Promjena lozinke — AhiBizz",
-        text:
-          kind === "verification"
-            ? `Za potvrdu email adrese otvorite link:\n\n${url}\n\nAko niste tražili nalog, zanemarite ovu poruku.`
-            : `Za promjenu lozinke otvorite link:\n\n${url}\n\nAko niste tražili promjenu, zanemarite ovu poruku.`,
+        to: { name: "", address: to },
+        ...(message.kind === "account-approved"
+          ? { messageId: `<approval-${message.decisionId}@${config.from.split("@")[1]}>` }
+          : {}),
+        ...content,
       });
     } catch {
       throw new AuthEmailDeliveryError();
     }
   };
+}
+
+export function emailContent(message: AuthEmail | ApprovalEmail) {
+  switch (message.kind) {
+    case "account-approved":
+      return {
+        subject: "Nalog je odobren — AhiBizz",
+        text: `Tvoj AhiBizz nalog je odobren. Možeš se prijaviti ovdje:\n\n${message.url}`,
+      };
+    case "verification":
+      return {
+        subject: "Potvrdite email — AhiBizz",
+        text: `Za potvrdu email adrese otvorite link:\n\n${message.url}\n\nAko niste tražili nalog, zanemarite ovu poruku.`,
+      };
+    case "password-reset":
+      return {
+        subject: "Promjena lozinke — AhiBizz",
+        text: `Za promjenu lozinke otvorite link:\n\n${message.url}\n\nAko niste tražili promjenu, zanemarite ovu poruku.`,
+      };
+  }
 }

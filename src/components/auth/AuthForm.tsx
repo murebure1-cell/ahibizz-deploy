@@ -115,6 +115,7 @@ export function AuthForm({
         window.location.assign(accountReturnPath(returnTo));
         return;
       }
+      if (mode === "sign-up") setVerificationEmail(email);
       setComplete(true);
     } catch {
       setError("Nema veze sa serverom. Provjeri internet i pokušaj ponovo.");
@@ -145,6 +146,30 @@ export function AuthForm({
       setBusy(false);
     }
   }
+  const verificationFeedback = (
+    <>
+      {verificationSent && (
+        <p role="status" className={styles.notice}>
+          Provjeri email za novi link potvrde.
+        </p>
+      )}
+      {verificationEmail && (
+        <button
+          type="button"
+          className={styles.resend}
+          disabled={busy}
+          onClick={resendVerification}
+        >
+          Pošalji novu potvrdu emaila
+        </button>
+      )}
+      {error && (
+        <p role="alert" className={styles.error}>
+          {error}
+        </p>
+      )}
+    </>
+  );
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <section className={styles.card} aria-labelledby="auth-heading">
@@ -182,6 +207,7 @@ export function AuthForm({
                   ? "Ako nalog postoji, stići će ti link za novu lozinku."
                   : "Sada se možeš prijaviti."}
             </p>
+            {mode === "sign-up" && verificationFeedback}
             <Link href={links.login} className={styles.submit}>
               Na prijavu
             </Link>
@@ -254,26 +280,7 @@ export function AuthForm({
                 <Link href="/zaboravljena-lozinka">Zaboravljena lozinka</Link>
               </div>
             )}
-            {verificationSent && (
-              <p role="status" className={styles.notice}>
-                Provjeri email za novi link potvrde.
-              </p>
-            )}
-            {verificationEmail && (
-              <button
-                type="button"
-                className={styles.resend}
-                disabled={busy}
-                onClick={resendVerification}
-              >
-                Pošalji novu potvrdu emaila
-              </button>
-            )}
-            {error && (
-              <p role="alert" className={styles.error}>
-                {error}
-              </p>
-            )}
+            {verificationFeedback}
             <button
               className={styles.submit}
               disabled={!available || busy || (mode === "reset-password" && !token)}

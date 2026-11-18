@@ -94,7 +94,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       pool.on("error", () => {});
       assert.equal((await pool.query("SELECT current_schema() AS name")).rows[0].name, schema);
       const migrations = await loadMigrations();
-      assert.equal(migrations.length, 18);
+      assert.equal(migrations.length, 20);
       assert.deepEqual(await runMigrations({ pool, migrations }), {
         applied: migrations.map(({ version }) => version),
       });
@@ -678,6 +678,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0016_vehicle_rentals.sql",
           "0017_accommodation.sql",
           "0018_directory_revisions.sql",
+          "0019_account_approval_email.sql",
+          "0020_push_devices.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -1174,7 +1176,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           assert.equal(signup.response.status, 200);
           assert.equal(mail.length, 3);
           assert.equal(mail[2].kind, "verification");
-          assert.ok([200, 302].includes((await request("GET", mail[2].url)).response.status));
           const pendingId = (
             await pool.query("SELECT id FROM auth_user WHERE email = $1", [pendingEmail])
           ).rows[0].id;
@@ -1223,6 +1224,21 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             403,
             "OWNER_TARGET_FORBIDDEN",
           );
+          await denied(
+            () =>
+              accounts.decide(ownerHeaders, pendingId, {
+                approval: "approved",
+                expected: "pending",
+              }),
+            409,
+            "EMAIL_NOT_VERIFIED",
+          );
+          assert.equal(
+            (await pool.query("SELECT 1 FROM account_approval_email WHERE user_id=$1", [pendingId]))
+              .rowCount,
+            0,
+          );
+          assert.ok([200, 302].includes((await request("GET", mail[2].url)).response.status));
           assert.equal(
             (
               await accounts.decide(ownerHeaders, pendingId, {
@@ -1232,6 +1248,45 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             ).approval,
             "approved",
           );
+          const { deliverNextApprovalEmail } = await import(
+            "../../src/server/auth/approval-email.ts"
+          );
+          const notices = [];
+          const submitNotice = async (message) => {
+            assert.equal(message.kind, "account-approved");
+            assert.equal(message.to, pendingEmail);
+            assert.equal(message.url, `${baseURL}/prijava`);
+            assert.match(message.decisionId, /^[0-9a-f-]{36}$/);
+            notices.push(message);
+          };
+          let firstDecision;
+          assert.equal(
+            await deliverNextApprovalEmail(pool, baseURL, async (message) => {
+              firstDecision = message.decisionId;
+              throw new Error("Isolated transient SMTP failure");
+            }),
+            "failed",
+          );
+          const pendingNotice = (
+            await pool.query(
+              "SELECT failures, accepted_at, next_attempt_at > now() AS deferred FROM account_approval_email WHERE user_id=$1",
+              [pendingId],
+            )
+          ).rows[0];
+          assert.deepEqual(pendingNotice, { failures: 1, accepted_at: null, deferred: true });
+          assert.equal(await deliverNextApprovalEmail(pool, baseURL, submitNotice), "idle");
+          await pool.query(
+            "UPDATE account_approval_email SET next_attempt_at=now() WHERE user_id=$1",
+            [pendingId],
+          );
+          const deliveries = await Promise.all([
+            deliverNextApprovalEmail(pool, baseURL, submitNotice),
+            deliverNextApprovalEmail(pool, baseURL, submitNotice),
+          ]);
+          assert.deepEqual(deliveries.sort(), ["accepted", "idle"]);
+          assert.equal(notices.length, 1);
+          assert.equal(notices[0].decisionId, firstDecision);
+          assert.equal(await deliverNextApprovalEmail(pool, baseURL, submitNotice), "idle");
           await denied(
             () =>
               accounts.decide(ownerHeaders, pendingId, {
@@ -1270,6 +1325,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
               })
             ).approval,
             "suspended",
+          );
+          assert.equal(
+            (await pool.query("SELECT 1 FROM account_approval_email WHERE user_id=$1", [pendingId]))
+              .rowCount,
+            0,
           );
           await denied(() => accounts.read(accountHeaders(member)), 401);
           assert.equal(await session(member), null);
