@@ -255,10 +255,7 @@ export function Checkout({
             : "SIGURNO PLAĆANJE"}
         </span>
         <h1>{kind === "promotion" ? "Istakni svoju djelatnost" : "Podrži razvoj AhiBizza"}</h1>
-        <p>
-          AhiBizz vodi pregled na bosanskom. PayPalov ekran trenutno nema bosanski jezik i može se
-          otvoriti na engleskom.
-        </p>
+        <p>Pregled je na bosanskom; PayPalov obrazac može biti na engleskom.</p>
       </header>
       {!catalog?.available && (
         <p role="status" className={styles.notice}>

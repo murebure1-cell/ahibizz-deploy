@@ -120,13 +120,13 @@ export function PayPalCardButton(props: Props) {
     };
   }, [clientId, userId, attempt]);
   return (
-    <section className={styles.card} aria-label="Kartica putem PayPala">
+    <section className={`${styles.card} ${styles.paymentFrame}`} aria-label="Kartica putem PayPala">
       <h2>Plati karticom putem PayPala</h2>
       <p>
         Jednokratno 5,11 EUR za 7 dana isticanja. Podatke kartice unosiš samo u PayPalov obrazac, ne
         na AhiBizz.
       </p>
-      <div ref={host} />
+      <div ref={host} className={styles.sdkHost} />
       <p role="status">{status}</p>
       {retry && (
         <button type="button" onClick={() => setAttempt((value) => value + 1)}>

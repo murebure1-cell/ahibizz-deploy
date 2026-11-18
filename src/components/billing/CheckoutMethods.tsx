@@ -64,16 +64,12 @@ export function CheckoutMethods({
       <p id="paypal-availability" role="status">
         <strong>PayPal:</strong> {paypalStatus}
       </p>
-      <p>
-        Kartično dugme putem PayPala prikazuje se nakon pregleda narudžbe, ako je dostupno za kupca.
-        PayPal nalog nije uvijek moguće izbjeći.
-      </p>
+      <p>Kartice putem PayPala dostupne su nakon pregleda narudžbe, zavisno od kupca.</p>
       <p id="dodo-availability">
-        <strong>Kartica (Dodo):</strong> račun je u provjeri. Ova opcija nije dostupna za stvarne
-        uplate. Dosadašnje kartične probe rađene su samo u testnom okruženju.
+        <strong>Kartica (Dodo):</strong> račun je u provjeri. Plaćanje nije dostupno.
       </p>
       <p className={styles.footer}>
-        Dobrovoljna podrška razvoju ostaje na postojećoj stranici{" "}
+        Dobrovoljna podrška:
         <a href="/podrzi">Podrži AhiBizz</a>.
       </p>
     </section>
