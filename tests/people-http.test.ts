@@ -9,6 +9,9 @@ const baseURL = "https://people-http-fixture.invalid";
 const profile: PersonalProfile = {
   id: "fixture-only",
   name: "Fixture name",
+  verified: false,
+  platformFounder: false,
+  platformAdministrator: false,
   birthDate: null,
   city: null,
   countryCode: null,

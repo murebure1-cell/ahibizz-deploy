@@ -49,13 +49,36 @@ export type PersonalProfileFields = {
   skills: string[];
   workStatus: WorkStatus;
 };
-export type PersonalProfile = PersonalProfileFields & {
-  id: string;
-  version: number;
-  photoVersion: number | null;
-  coverVersion: number | null;
-  canCustomizeCover: boolean;
+export type ProfileBadges = {
+  verified: boolean;
+  platformFounder: boolean;
+  platformAdministrator: boolean;
 };
+
+export function readProfileBadges(
+  row: { verified?: unknown; platformFounder?: unknown; platformAdministrator?: unknown },
+  errorCode: string,
+): ProfileBadges {
+  for (const flag of [row.verified, row.platformFounder, row.platformAdministrator]) {
+    if (flag !== undefined && typeof flag !== "boolean") throw new Error(errorCode);
+  }
+  if ((row.platformFounder && !row.verified) || (row.platformAdministrator && !row.platformFounder))
+    throw new Error(errorCode);
+  return {
+    verified: row.verified === true,
+    platformFounder: row.platformFounder === true,
+    platformAdministrator: row.platformAdministrator === true,
+  };
+}
+
+export type PersonalProfile = PersonalProfileFields &
+  ProfileBadges & {
+    id: string;
+    version: number;
+    photoVersion: number | null;
+    coverVersion: number | null;
+    canCustomizeCover: boolean;
+  };
 export type ProfileImageKind = "photo" | "cover";
 export function profileImageUrl(profile: PersonalProfile, kind: ProfileImageKind): string | null {
   const version =

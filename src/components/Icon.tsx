@@ -18,6 +18,8 @@ export type IconName =
   | "user"
   | "sliders"
   | "star"
+  | "crown"
+  | "shield"
   | "external"
   | "mail"
   | "pause"
@@ -63,6 +65,10 @@ const paths: Record<IconName, ReactNode> = {
     </>
   ),
   star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z" />,
+  crown: <path d="m3 7 4.5 3.5L12 4l4.5 6.5L21 7l-2 10H5ZM6 20h12" />,
+  shield: (
+    <path d="M12 3 4.5 6v5.5c0 4.2 2.8 7.5 7.5 9.5 4.7-2 7.5-5.3 7.5-9.5V6Zm-3.2 8.8 2.3 2.4 4.2-4.6" />
+  ),
   external: (
     <>
       <path d="M13 4h7v7m0-7L10 14M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" />

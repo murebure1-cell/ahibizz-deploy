@@ -9,6 +9,8 @@ import {
   workStatusLabels,
 } from "../../lib/people";
 import { Icon } from "../Icon";
+import { VerificationBadge } from "../VerificationBadge";
+import { PlatformBadges } from "./PlatformBadges";
 import styles from "./profile.module.css";
 
 export function profileInitials(name: string): string {
@@ -128,7 +130,14 @@ export function PersonalProfileCard({
           )}
         </div>
         <div className={styles.heading}>
-          <h2>{profile.name}</h2>
+          <h2>
+            {profile.name}
+            {profile.verified && <VerificationBadge kind="person" />}
+          </h2>
+          <PlatformBadges
+            platformFounder={profile.platformFounder}
+            platformAdministrator={profile.platformAdministrator}
+          />
           {profile.bio && <p className={styles.intro}>{profile.bio}</p>}
           {location && (
             <p className={styles.location}>

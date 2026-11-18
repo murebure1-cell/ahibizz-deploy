@@ -12,6 +12,8 @@ const person: PublicPerson = {
   id: "fixture-person",
   name: "Fixture person",
   verified: false,
+  platformFounder: false,
+  platformAdministrator: false,
   city: "Tuzla",
   countryCode: "BA",
   bio: null,

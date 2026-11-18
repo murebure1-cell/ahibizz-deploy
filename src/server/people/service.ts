@@ -10,6 +10,7 @@ import {
 } from "../auth";
 import { getAuthDatabasePool } from "../auth/service";
 import { normalizeProfileImage } from "./media";
+import { platformBadgeColumns, platformFounderJoin } from "./platform-badges";
 import { fail, mediaKind, object, PeopleAccessError, profileInput, version } from "./validation";
 
 type SignedSession = { id: string; userId: string; token: string; expectedAccountId?: string };
@@ -90,7 +91,7 @@ async function entitled(client: PoolClient, user: CurrentAuthUser): Promise<bool
 async function profile(client: PoolClient, user: CurrentAuthUser): Promise<PersonalProfile> {
   const value = (
     await client.query<ProfileRow>(
-      `SELECT u.id,u.name,p.birth_date::text AS "birthDate",p.city,p.country_code AS "countryCode",p.bio,COALESCE(p.skills,'{}'::text[]) AS skills,COALESCE(p.work_status,'not_specified') AS "workStatus",COALESCE(p.version,0) AS version,photo.version AS "photoVersion",cover.version AS "coverVersion" FROM auth_user u LEFT JOIN personal_profile p ON p.user_id=u.id LEFT JOIN personal_profile_image photo ON photo.user_id=u.id AND photo.kind='photo' LEFT JOIN personal_profile_image cover ON cover.user_id=u.id AND cover.kind='cover' WHERE u.id=$1`,
+      `SELECT u.id,u.name,${platformBadgeColumns},p.birth_date::text AS "birthDate",p.city,p.country_code AS "countryCode",p.bio,COALESCE(p.skills,'{}'::text[]) AS skills,COALESCE(p.work_status,'not_specified') AS "workStatus",COALESCE(p.version,0) AS version,photo.version AS "photoVersion",cover.version AS "coverVersion" FROM auth_user u ${platformFounderJoin} LEFT JOIN personal_profile p ON p.user_id=u.id LEFT JOIN personal_profile_image photo ON photo.user_id=u.id AND photo.kind='photo' LEFT JOIN personal_profile_image cover ON cover.user_id=u.id AND cover.kind='cover' WHERE u.id=$1`,
       [user.id],
     )
   ).rows[0];

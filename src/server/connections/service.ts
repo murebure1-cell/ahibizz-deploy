@@ -19,6 +19,7 @@ import {
   getAuthService,
 } from "../auth";
 import { getAuthDatabasePool } from "../auth/service";
+import { platformBadgeColumns, platformFounderJoin } from "../people/platform-badges";
 import {
   ConnectionsAccessError,
   fail,
@@ -44,8 +45,8 @@ type Pair = {
   version: number;
 };
 const pageSize = 20;
-const publicColumns = `u.id,u.name,u.profile_verified AS verified,p.city,p.country_code AS "countryCode",p.bio,p.skills,p.work_status AS "workStatus",photo.version AS "photoVersion",CASE WHEN u.role='owner' OR grant_cover.can_customize_cover=true THEN cover.version ELSE NULL END AS "coverVersion"`;
-const publicJoins = `JOIN personal_profile p ON p.user_id=u.id AND p.is_public=true LEFT JOIN personal_profile_image photo ON photo.user_id=u.id AND photo.kind='photo' LEFT JOIN personal_profile_image cover ON cover.user_id=u.id AND cover.kind='cover' LEFT JOIN personal_profile_entitlement grant_cover ON grant_cover.user_id=u.id`;
+const publicColumns = `u.id,u.name,${platformBadgeColumns},p.city,p.country_code AS "countryCode",p.bio,p.skills,p.work_status AS "workStatus",photo.version AS "photoVersion",CASE WHEN u.role='owner' OR grant_cover.can_customize_cover=true THEN cover.version ELSE NULL END AS "coverVersion"`;
+const publicJoins = `JOIN personal_profile p ON p.user_id=u.id AND p.is_public=true ${platformFounderJoin} LEFT JOIN personal_profile_image photo ON photo.user_id=u.id AND photo.kind='photo' LEFT JOIN personal_profile_image cover ON cover.user_id=u.id AND cover.kind='cover' LEFT JOIN personal_profile_entitlement grant_cover ON grant_cover.user_id=u.id`;
 const publicEligibility = `u.approval='approved' AND u."emailVerified"=true AND u.role IN ('member','owner')`;
 
 function eligible(user: CurrentAuthUser | undefined): asserts user is CurrentAuthUser {
@@ -119,6 +120,8 @@ function publicPerson(row: PublicPerson): PublicPerson {
     id: row.id,
     name: row.name,
     verified: row.verified,
+    platformFounder: row.platformFounder,
+    platformAdministrator: row.platformAdministrator,
     city: row.city,
     countryCode: row.countryCode,
     bio: row.bio,

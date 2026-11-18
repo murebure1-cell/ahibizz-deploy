@@ -18,6 +18,9 @@ const target = { kind: "person", targetId: "fixture-friend" } as const;
 const person: PersonalProfile = {
   id: A,
   name: "ACCOUNT_A_PRIVATE_PROFILE",
+  verified: false,
+  platformFounder: false,
+  platformAdministrator: false,
   birthDate: "1990-02-03",
   city: "Tuzla",
   countryCode: "BA",

@@ -359,6 +359,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
               "photoVersion",
               "coverVersion",
               "verified",
+              "platformFounder",
+              "platformAdministrator",
             ].sort(),
           );
           assert.equal(profile.name, "Alice javni profil");
@@ -1062,6 +1064,59 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             (await publicBusinesses.list(sameNamePerson)).items[0].title,
             "Wrong owner same name",
           );
+        },
+      );
+      await t.test(
+        "founder insignia belong only to the verified initial owner, on their public and private profile",
+        async () => {
+          const founderId = owner.user.id;
+          const badges = ({ verified, platformFounder, platformAdministrator }) => ({
+            verified,
+            platformFounder,
+            platformAdministrator,
+          });
+          const none = { verified: false, platformFounder: false, platformAdministrator: false };
+          const founder = { verified: true, platformFounder: true, platformAdministrator: true };
+          const verifiedOnly = { ...none, verified: true };
+          await show(owner, true);
+          assert.deepEqual(badges(await people.read(owner.headers)), none);
+          await pool.query("UPDATE auth_user SET name=$2 WHERE id=$1", [
+            businessPerson,
+            owner.user.name,
+          ]);
+          await pool.query("UPDATE auth_user SET profile_verified=true WHERE id=ANY($1::text[])", [
+            [founderId, businessPerson],
+          ]);
+          await pool.query(
+            `INSERT INTO auth_account_audit
+             (id,actor_user_id,target_user_id,action,previous_approval,next_approval,previous_role,next_role)
+             VALUES ($1,$2,$2,'bootstrap-owner','approved','approved','member','owner')`,
+            [randomUUID(), businessPerson],
+          );
+          assert.deepEqual(badges(await people.read(owner.headers)), founder);
+          assert.deepEqual(badges(await connections.readPublic(founderId)), founder);
+          assert.deepEqual(badges(await connections.readPublic(businessPerson)), verifiedOnly);
+          const matching = (await connections.searchPublic({ q: owner.user.name })).items;
+          assert.deepEqual(
+            matching.filter((p) => p.platformFounder).map((p) => p.id),
+            [founderId],
+          );
+          assert.deepEqual(
+            matching.filter((p) => p.platformAdministrator).map((p) => p.id),
+            [founderId],
+          );
+
+          await pool.query("UPDATE auth_user SET role='member' WHERE id=$1", [founderId]);
+          assert.deepEqual(badges(await connections.readPublic(founderId)), {
+            ...founder,
+            platformAdministrator: false,
+          });
+          assert.deepEqual(badges(await connections.readPublic(businessPerson)), verifiedOnly);
+          await pool.query("UPDATE auth_user SET profile_verified=false WHERE id=$1", [founderId]);
+          assert.deepEqual(badges(await people.read(owner.headers)), none);
+          assert.deepEqual(badges(await connections.readPublic(founderId)), none);
+          await show(owner, false);
+          await denied(() => connections.readPublic(founderId), 404);
         },
       );
       assert.equal(outboundAttempts, 0);

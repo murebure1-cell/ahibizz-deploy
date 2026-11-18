@@ -29,6 +29,7 @@ import { workStatusLabels } from "../../lib/people";
 import type { PersonBusinessesRequest } from "../../lib/person-businesses";
 import { Icon } from "../Icon";
 import { personalProfileImage } from "../people/PersonalProfileCard";
+import { PlatformBadges } from "../people/PlatformBadges";
 import { VerificationBadge } from "../VerificationBadge";
 import styles from "./connections.module.css";
 import { PersonAvatar, type PersonMediaUrl, personLocation } from "./PeopleSearch";
@@ -346,6 +347,10 @@ function PersonProfile({
               {person.name}
               {person.verified && <VerificationBadge kind="person" />}
             </h1>
+            <PlatformBadges
+              platformFounder={person.platformFounder}
+              platformAdministrator={person.platformAdministrator}
+            />
             {person.bio && <p className={styles.intro}>{person.bio}</p>}
             {personLocation(person) && (
               <p className={styles.location}>

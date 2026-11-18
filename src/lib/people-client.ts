@@ -1,4 +1,4 @@
-import { type PersonalProfile, workStatusLabels } from "./people";
+import { type PersonalProfile, readProfileBadges, workStatusLabels } from "./people";
 
 export class ProfileRequestError extends Error {
   constructor(
@@ -96,5 +96,5 @@ export function readPersonalProfile(value: unknown): PersonalProfile {
       throw new Error("invalid_profile_response");
   if (!row.canCustomizeCover && row.coverVersion !== null)
     throw new Error("invalid_profile_response");
-  return row;
+  return { ...row, ...readProfileBadges(row, "invalid_profile_response") };
 }

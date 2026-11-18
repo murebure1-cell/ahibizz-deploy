@@ -12,6 +12,9 @@ function profile(patch: Partial<PersonalProfile> = {}): PersonalProfile {
   return {
     id: "fixture-user",
     name: "Fixture name",
+    verified: false,
+    platformFounder: false,
+    platformAdministrator: false,
     birthDate: null,
     city: null,
     countryCode: null,
@@ -43,6 +46,27 @@ test("private profile response supports unknown optional fields and real version
     canCustomizeCover: true,
   });
   assert.deepEqual(readPersonalProfile(full), full);
+});
+
+test("profile badges default to false for older responses and require a consistent verified identity", () => {
+  const legacy = {
+    ...profile(),
+    verified: undefined,
+    platformFounder: undefined,
+    platformAdministrator: undefined,
+  };
+  assert.deepEqual(readPersonalProfile(legacy), profile());
+  const founder = profile({ verified: true, platformFounder: true, platformAdministrator: true });
+  assert.deepEqual(readPersonalProfile(founder), founder);
+  for (const patch of [
+    { verified: "true" },
+    { platformFounder: true },
+    { platformAdministrator: true },
+    { platformFounder: "true" },
+    { platformAdministrator: 1 },
+  ]) {
+    rejects({ ...profile(), ...patch });
+  }
 });
 
 test("profile identity, numeric version and entitlement must have their real primitive shapes", () => {

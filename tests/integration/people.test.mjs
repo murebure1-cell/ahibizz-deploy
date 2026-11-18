@@ -228,6 +228,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           assert.deepEqual(profile, {
             id: member.user.id,
             name: member.user.name,
+            verified: false,
+            platformFounder: false,
+            platformAdministrator: false,
             birthDate: null,
             city: null,
             countryCode: null,

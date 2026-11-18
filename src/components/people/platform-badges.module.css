@@ -1,0 +1,40 @@
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.badges li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.badges svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  stroke-width: 1.8;
+}
+
+.badges .founder {
+  color: var(--ui-accent-text);
+  background: var(--ui-accent-soft);
+  border-color: var(--ui-accent-border);
+}
+
+.badges .administrator {
+  color: var(--ui-text);
+  background: var(--ui-surface-soft);
+  border-color: var(--ui-border-strong);
+}

@@ -57,6 +57,9 @@ export function createPeoplePreviewApi() {
   let profile: PersonalProfile = {
     id: "preview-person",
     name: "Ogledni profil",
+    verified: false,
+    platformFounder: false,
+    platformAdministrator: false,
     birthDate: null,
     city: null,
     countryCode: null,
