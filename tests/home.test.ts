@@ -50,13 +50,19 @@ test("home shortcuts distinguish hospitality and services without changing categ
     { id: "food", name: "Ugostiteljski objekti", parentId: null },
     { id: "service", name: "Servisi", parentId: null },
     { id: "unknown", name: "Ostalo", parentId: null },
+    { id: "stays", name: "Smještaj", parentId: null, accommodation: true },
   ]);
   assert.deepEqual(
     links.map(({ icon }) => icon),
-    ["coffee", "shop", "shop"],
+    ["coffee", "shop", "shop", "bed"],
   );
   assert.deepEqual(
     links.map(({ href }) => href),
-    ["/pretraga?categoryId=food", "/pretraga?categoryId=service", "/pretraga?categoryId=unknown"],
+    [
+      "/pretraga?categoryId=food",
+      "/pretraga?categoryId=service",
+      "/pretraga?categoryId=unknown",
+      "/pretraga?categoryId=stays",
+    ],
   );
 });

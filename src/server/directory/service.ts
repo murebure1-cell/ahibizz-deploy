@@ -259,8 +259,11 @@ export function createDirectoryService({
   return {
     ...createPublicDirectoryService({ database: pool }),
     async createCategory(headers: Headers, input: unknown): Promise<DirectoryCategory> {
-      const value = object(input, ["name", "slug", "parentId", "vehicleRental"]);
-      if (value.vehicleRental !== undefined && typeof value.vehicleRental !== "boolean")
+      const value = object(input, ["name", "slug", "parentId", "vehicleRental", "accommodation"]);
+      if (
+        (value.vehicleRental !== undefined && typeof value.vehicleRental !== "boolean") ||
+        (value.accommodation !== undefined && typeof value.accommodation !== "boolean")
+      )
         fail(400, "INVALID_DIRECTORY_INPUT");
       const name = text(value.name, 80),
         slug = text(value.slug, 80),
@@ -272,21 +275,36 @@ export function createDirectoryService({
         const { actor: currentActor } = await lockUsers(client, identity);
         owner(currentActor);
         let inheritedRental = false;
+        let inheritedAccommodation = false;
         if (parentId) {
           const parent = (
-            await client.query<{ parent_id: string | null; vehicle_rental: boolean }>(
-              "SELECT parent_id, vehicle_rental FROM directory_category WHERE id = $1 FOR SHARE",
+            await client.query<{
+              parent_id: string | null;
+              vehicle_rental: boolean;
+              accommodation: boolean;
+            }>(
+              "SELECT parent_id, vehicle_rental, accommodation FROM directory_category WHERE id = $1 FOR SHARE",
               [parentId],
             )
           ).rows[0];
           if (!parent || parent.parent_id !== null) fail(409, "CATEGORY_CONFLICT");
           inheritedRental = parent.vehicle_rental;
+          inheritedAccommodation = parent.accommodation;
         }
         return (
           await client.query<DirectoryCategory>(
-            `INSERT INTO directory_category (id,name,slug,parent_id,vehicle_rental) VALUES ($1,$2,$3,$4,$5)
-             RETURNING id,name,slug,parent_id AS "parentId",(vehicle_rental OR $6::boolean) AS "vehicleRental"`,
-            [randomUUID(), name, slug, parentId, value.vehicleRental ?? false, inheritedRental],
+            `INSERT INTO directory_category (id,name,slug,parent_id,vehicle_rental,accommodation) VALUES ($1,$2,$3,$4,$5,$6)
+             RETURNING id,name,slug,parent_id AS "parentId",(vehicle_rental OR $7::boolean) AS "vehicleRental", (accommodation OR $8::boolean) AS accommodation`,
+            [
+              randomUUID(),
+              name,
+              slug,
+              parentId,
+              value.vehicleRental ?? false,
+              value.accommodation ?? false,
+              inheritedRental,
+              inheritedAccommodation,
+            ],
           )
         ).rows[0] as DirectoryCategory;
       });

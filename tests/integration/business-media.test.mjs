@@ -99,6 +99,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0014_business_ownership.sql",
           "0015_profile_verification.sql",
           "0016_vehicle_rentals.sql",
+          "0017_accommodation.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -107,7 +108,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       assert.deepEqual(await runMigrations({ pool, migrations }), { applied: [] });
       for (const table of [
         "auth_user",
-        "directory_category",
         "directory_business",
         "directory_moderation_audit",
         "directory_create_commands",

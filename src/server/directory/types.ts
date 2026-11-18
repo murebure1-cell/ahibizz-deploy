@@ -8,6 +8,7 @@ export type DirectoryCategory = {
   slug: string;
   parentId: string | null;
   vehicleRental?: boolean;
+  accommodation?: boolean;
 };
 export type BusinessFields = {
   title: string;
@@ -25,6 +26,7 @@ export type BusinessFields = {
 };
 export type DirectoryBusiness = BusinessFields & {
   hasRentalVehicles?: boolean;
+  hasStayUnits?: boolean;
   details?: BusinessDetails | null;
   reviews?: ReviewSummary;
   media?: BusinessMediaSummary;
@@ -49,6 +51,7 @@ export type PublicDirectoryBusiness = Omit<
   | "updatedAt"
   | "moderationReturn"
   | "hasRentalVehicles"
+  | "hasStayUnits"
 >;
 export class DirectoryAccessError extends Error {
   constructor(

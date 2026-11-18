@@ -2,7 +2,7 @@ export type HomeCategory = {
   id: string;
   label: string;
   href: string;
-  icon?: "heart" | "home" | "coffee" | "shop";
+  icon?: "heart" | "home" | "coffee" | "shop" | "bed";
 };
 
 /** A missing, duplicated or control-character location never becomes an active place. */
@@ -16,7 +16,12 @@ export function homePlace(value: unknown): string {
 }
 
 export function homeCategories(
-  categories: readonly { id: string; name: string; parentId: string | null }[],
+  categories: readonly {
+    id: string;
+    name: string;
+    parentId: string | null;
+    accommodation?: boolean;
+  }[],
 ): HomeCategory[] {
   return categories
     .filter((category) => category.parentId === null)
@@ -24,7 +29,7 @@ export function homeCategories(
       id: category.id,
       label: category.name,
       href: `/pretraga?${new URLSearchParams({ categoryId: category.id })}`,
-      icon: categoryIcon(category.name),
+      icon: category.accommodation ? "bed" : categoryIcon(category.name),
     }));
 }
 

@@ -1,0 +1,43 @@
+.gallery {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.cover {
+  width: 100%;
+  max-height: 270px;
+  height: auto;
+  aspect-ratio: 2.2;
+  object-fit: cover;
+  border-radius: 12px;
+  background: var(--ui-surface-soft);
+}
+.thumbnails {
+  display: flex;
+  overflow-x: auto;
+  gap: 6px;
+  padding: 2px;
+}
+.thumbnails button {
+  background: transparent;
+  padding: 2px;
+  flex: none;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.thumbnails button[aria-pressed="true"] {
+  border-color: var(--ui-accent-text);
+}
+.thumbnails img {
+  display: block;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.day[data-between] {
+  background: var(--ui-accent-soft);
+}
+.day[data-night-taken] {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}

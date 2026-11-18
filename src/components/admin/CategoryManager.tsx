@@ -33,6 +33,7 @@ function CategoryWorkspace({ expectedAccountId, request: transport = browserAdmi
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState("");
   const [vehicleRental, setVehicleRental] = useState(false);
+  const [accommodation, setAccommodation] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [uncertain, setUncertain] = useState(false);
@@ -47,6 +48,7 @@ function CategoryWorkspace({ expectedAccountId, request: transport = browserAdmi
   const roots = (items ?? [])
     .filter((item) => item.parentId === null)
     .sort((a, b) => a.name.localeCompare(b.name, "bs"));
+  const parent = roots.find((item) => item.id === parentId);
 
   const clearPrivate = useCallback((failure?: unknown) => {
     const dispatched = writing.current;
@@ -59,6 +61,7 @@ function CategoryWorkspace({ expectedAccountId, request: transport = browserAdmi
     setName("");
     setParentId("");
     setVehicleRental(false);
+    setAccommodation(false);
     setNotice("");
     setBusy(false);
     setLoading(false);
@@ -155,7 +158,6 @@ function CategoryWorkspace({ expectedAccountId, request: transport = browserAdmi
     event.preventDefault();
     if (writing.current || reading.current || uncertain || !items) return;
     const value = name.trim();
-    const parent = parentId ? roots.find((item) => item.id === parentId) : null;
     if (!value || value.length > 80 || (parentId && !parent)) {
       setError("Provjeri naziv i glavnu kategoriju.");
       return;
@@ -165,6 +167,7 @@ function CategoryWorkspace({ expectedAccountId, request: transport = browserAdmi
       slug: categorySlug(value, parent?.slug),
       ...(parent ? { parentId: parent.id } : {}),
       ...(vehicleRental && !parent?.vehicleRental ? { vehicleRental: true } : {}),
+      ...(accommodation && !parent?.accommodation ? { accommodation: true } : {}),
     };
     writing.current = true;
     request.current?.abort();
@@ -201,12 +204,14 @@ function CategoryWorkspace({ expectedAccountId, request: transport = browserAdmi
         saved.name !== body.name ||
         saved.slug !== body.slug ||
         saved.parentId !== (parent?.id ?? null) ||
+        Boolean(saved.accommodation) !== Boolean(accommodation || parent?.accommodation) ||
         items.some((item) => item.id === saved.id || item.slug === saved.slug)
       )
         throw new AdminRequestError(502);
       setItems((previous) => [...(previous ?? []), saved]);
       setName("");
       setVehicleRental(false);
+      setAccommodation(false);
       setNotice(parent ? "Podkategorija je dodana." : "Glavna kategorija je dodana.");
     } catch (failure) {
       if (!live.current || generation !== authority.current || currentApi.current !== scoped)
@@ -276,13 +281,21 @@ function CategoryWorkspace({ expectedAccountId, request: transport = browserAdmi
               Najam vozila
               <select
                 id="admin-category-rental"
-                disabled={roots.some((item) => item.id === parentId && item.vehicleRental)}
-                value={
-                  vehicleRental || roots.some((item) => item.id === parentId && item.vehicleRental)
-                    ? "on"
-                    : "off"
-                }
+                disabled={parent?.vehicleRental}
+                value={vehicleRental || parent?.vehicleRental ? "on" : "off"}
                 onChange={(event) => setVehicleRental(event.target.value === "on")}
+              >
+                <option value="off">Isključeno</option>
+                <option value="on">Omogućeno u ovoj kategoriji</option>
+              </select>
+            </label>
+            <label htmlFor="admin-category-accommodation">
+              Sobe i apartmani
+              <select
+                id="admin-category-accommodation"
+                disabled={parent?.accommodation}
+                value={accommodation || parent?.accommodation ? "on" : "off"}
+                onChange={(event) => setAccommodation(event.target.value === "on")}
               >
                 <option value="off">Isključeno</option>
                 <option value="on">Omogućeno u ovoj kategoriji</option>

@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { loadMigrations, runMigrations } from "../../scripts/migrate.mjs";
 import { integrationConfiguration } from "./postgres.test.mjs";
 import { testVehicleRentals } from "./rental-cases.mjs";
+import { testAccommodation } from "./stay-cases.mjs";
 
 const baseURL = "https://booking-ci.ahibizz.invalid";
 const password = "Booking-fixture-only-password-294!";
@@ -112,6 +113,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0014_business_ownership.sql",
           "0015_profile_verification.sql",
           "0016_vehicle_rentals.sql",
+          "0017_accommodation.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -1586,6 +1588,18 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
 
+      await testAccommodation(t, {
+        pool,
+        auth,
+        directory,
+        baseURL,
+        operator,
+        owner: paginationCustomer,
+        customer,
+        other,
+        unrelatedBusiness: business.id,
+        waitForTwoWriters: () => waitForLockWaiters(pool, applicationName),
+      });
       await testVehicleRentals(t, {
         pool,
         auth,

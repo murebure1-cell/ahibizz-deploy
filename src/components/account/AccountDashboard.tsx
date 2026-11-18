@@ -22,6 +22,7 @@ import { Icon } from "../Icon";
 import { MessagingInbox } from "../messaging/MessagingInbox";
 import { PersonalProfileWorkspace } from "../people/PersonalProfileWorkspace";
 import { MyRentals } from "../rentals/RentalEntries";
+import { MyStays } from "../stays/StayEntries";
 import { AccountAuthorityBoundary } from "./AccountAuthorityBoundary";
 import { AccountSettings } from "./AccountSettings";
 import styles from "./account.module.css";
@@ -247,7 +248,12 @@ function AccountWorkspace({
                 active={section === "appointments"}
                 expectedAccountId={initial.id}
               />
-              {section === "appointments" && <MyRentals key={initial.id} actor={initial.id} />}
+              {section === "appointments" && (
+                <>
+                  <MyRentals key={`rentals:${initial.id}`} actor={initial.id} />
+                  <MyStays key={`stays:${initial.id}`} actor={initial.id} />
+                </>
+              )}
             </div>
             <div hidden={section !== "saved"}>
               <SavedBusinesses active={section === "saved"} expectedAccountId={initial.id} />

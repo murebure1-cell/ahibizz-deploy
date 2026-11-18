@@ -46,6 +46,7 @@ const publicColumns = [
 ].join(", ");
 export const columns = [
   publicColumns,
+  `EXISTS (SELECT 1 FROM stay_unit su WHERE su.business_id=b.id AND su.archived_at IS NULL) AS "hasStayUnits"`,
   `EXISTS (SELECT 1 FROM rental_vehicle rv WHERE rv.business_id=b.id AND rv.archived_at IS NULL) AS "hasRentalVehicles"`,
   `(SELECT jsonb_build_object('reason', a.reason, 'createdAt', a.created_at, 'version', b.version) FROM directory_moderation_audit a WHERE b.status = 'draft' AND a.business_id = b.id AND a.action = 'moderate' AND a.next_status = 'draft' AND a.next_version <= b.version AND (a.next_version = b.version OR (SELECT count(*) FROM directory_ownership_transfer ot WHERE ot.business_id=b.id AND ot.previous_version>=a.next_version AND ot.result_version<=b.version)=b.version-a.next_version) AND a.reason IS NOT NULL ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS "moderationReturn"`,
 ].join(", ");
@@ -82,6 +83,7 @@ export function publicDto(value: DirectoryBusiness): PublicDirectoryBusiness {
     updatedAt: _updated,
     moderationReturn: _moderationReturn,
     hasRentalVehicles: _hasRentalVehicles,
+    hasStayUnits: _hasStayUnits,
     ...publicValue
   } = value;
   return publicValue;
@@ -154,7 +156,8 @@ export function createPublicDirectoryService({ database }: { database: Directory
         categories: (
           await database.query(
             `SELECT c.id, c.name, c.slug, c.parent_id AS "parentId",
-                    (c.vehicle_rental OR COALESCE(p.vehicle_rental, false)) AS "vehicleRental"
+                    (c.vehicle_rental OR COALESCE(p.vehicle_rental, false)) AS "vehicleRental",
+                    (c.accommodation OR COALESCE(p.accommodation,false)) AS accommodation
                FROM directory_category c LEFT JOIN directory_category p ON p.id = c.parent_id
               ORDER BY c.parent_id NULLS FIRST, c.name, c.id`,
           )

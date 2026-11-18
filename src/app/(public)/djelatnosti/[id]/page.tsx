@@ -5,10 +5,12 @@ import { PublicBooking } from "../../../../components/booking/PublicBooking";
 import { PublicBusinessProfile } from "../../../../components/directory/PublicBusinessProfile";
 import styles from "../../../../components/directory/public-search.module.css";
 import { RentalFleet } from "../../../../components/rentals/RentalFleet";
+import { StayUnits } from "../../../../components/stays/StayUnits";
 import { getBookingService } from "../../../../server/booking";
 import { DirectoryAccessError, getPublicDirectoryService } from "../../../../server/directory";
 import { publicBusinessView } from "../../../../server/directory/public-view";
 import { getRentalService } from "../../../../server/rentals/service";
+import { getStayService } from "../../../../server/stays/service";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Poslovni profil" };
@@ -26,17 +28,32 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
       const rentsCars = categories.some(
         (c) => c.vehicleRental && (c.id === business.categoryId || c.id === business.subcategoryId),
       );
+      const hostsGuests = categories.some(
+        (c) => c.accommodation && (c.id === business.categoryId || c.id === business.subcategoryId),
+      );
       // Optional offers must not prevent the business profile from opening.
-      const [booking, catalog] = await Promise.allSettled([
+      const [booking, catalog, stays] = await Promise.allSettled([
         Promise.resolve().then(() => getBookingService()?.publicConfig(id)),
         rentsCars ? Promise.resolve().then(() => getRentalService()?.publicCatalog(id)) : null,
+        hostsGuests ? Promise.resolve().then(() => getStayService()?.publicCatalog(id)) : null,
       ]);
+      const stayCatalog = stays.status === "fulfilled" ? (stays.value ?? undefined) : undefined;
       const initialCatalog =
         catalog.status === "fulfilled" ? (catalog.value ?? undefined) : undefined;
       return (
         <main id="glavni-sadrzaj">
           <PublicBusinessProfile
             business={publicBusinessView(business, categories)}
+            accommodation={
+              hostsGuests && (!stayCatalog || stayCatalog.units.length > 0) ? (
+                <StayUnits
+                  key={id}
+                  businessId={id}
+                  photos={business.media?.gallery}
+                  initialCatalog={stayCatalog}
+                />
+              ) : undefined
+            }
             rental={
               rentsCars && (!initialCatalog || initialCatalog.vehicles.length > 0) ? (
                 <RentalFleet
@@ -47,10 +64,15 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
               ) : undefined
             }
           >
-            <PublicBooking
-              businessId={id}
-              configuration={booking.status === "fulfilled" ? (booking.value ?? null) : null}
-            />
+            {(!hostsGuests ||
+              (booking.status === "fulfilled" &&
+                booking.value?.enabled &&
+                booking.value.services.length > 0)) && (
+              <PublicBooking
+                businessId={id}
+                configuration={booking.status === "fulfilled" ? (booking.value ?? null) : null}
+              />
+            )}
           </PublicBusinessProfile>
         </main>
       );

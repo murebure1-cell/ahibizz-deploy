@@ -99,6 +99,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0014_business_ownership.sql",
           "0015_profile_verification.sql",
           "0016_vehicle_rentals.sql",
+          "0017_accommodation.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -107,7 +108,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       assert.deepEqual(await runMigrations({ pool, migrations }), { applied: [] });
       for (const table of [
         "auth_user",
-        "directory_category",
         "directory_business",
         "directory_moderation_audit",
         "directory_create_commands",
@@ -306,7 +306,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "CATEGORY_CONFLICT",
         );
         const categories = (await directory.categories()).categories;
-        assert.equal(categories.length, 3);
+        assert.equal(categories.length, 4);
+        assert.ok(categories.some((row) => row.slug === "smjestaj" && row.accommodation));
         assert.equal(root.vehicleRental, true);
         assert.equal(child.vehicleRental, true);
         assert.equal(categories.find((row) => row.id === child.id).vehicleRental, true);
