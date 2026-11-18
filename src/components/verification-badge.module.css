@@ -7,8 +7,8 @@
   margin-inline-start: 0.28em;
   vertical-align: 0.04em;
   border-radius: 50%;
-  background: var(--ui-primary);
-  color: var(--ui-on-primary);
+  background: #12824c;
+  color: #fff;
 }
 
 .badge svg {
