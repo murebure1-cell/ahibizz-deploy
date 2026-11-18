@@ -18,6 +18,7 @@ export type PayPalCardButtonOptions = {
     shape?: "rect" | "pill";
     label?: "paypal" | "checkout" | "buynow" | "pay";
     height?: number;
+    borderRadius?: number;
     tagline?: boolean;
   };
 };

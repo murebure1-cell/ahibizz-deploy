@@ -70,6 +70,14 @@ export function PayPalCardButton(props: Props) {
         if (!current() || !host.current) return;
         const buttons = sdk.Buttons({
           fundingSource: sdk.FUNDING.CARD,
+          // Standard CARD supports black/white, not custom brand colors.
+          style: {
+            layout: "vertical",
+            color: "black",
+            shape: "rect",
+            borderRadius: 10,
+            height: 48,
+          },
           onClick: (_data, actions) => (flow.click() ? actions.resolve() : actions.reject()),
           createOrder: () =>
             flow.create().catch((error) => {

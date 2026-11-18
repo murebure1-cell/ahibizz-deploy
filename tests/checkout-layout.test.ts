@@ -37,3 +37,12 @@ test("PayPal external navy-gold frame contains SDK width without editing iframe 
   assert.match(source, /5,11 EUR za 7 dana/);
   assert.match(source, /bez PayPal naloga zavisi/);
 });
+
+test("standard CARD uses supported sizing without a white surround or overlay", () => {
+  const source = readFileSync("src/components/billing/PayPalCardButton.tsx", "utf8");
+  assert.match(source, /color: "black"/);
+  assert.match(source, /borderRadius: 10/);
+  assert.match(source, /height: 48/);
+  assert.match(css, /\.paymentFrame \.sdkHost\s*\{[^}]*padding: 0;[^}]*background: transparent;/);
+  assert.doesNotMatch(css, /\.sdkHost[^}]*?(?:position: absolute|opacity: 0|pointer-events: none)/);
+});

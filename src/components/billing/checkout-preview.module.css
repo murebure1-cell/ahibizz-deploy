@@ -191,7 +191,7 @@
   color: #f8fafc;
 }
 .paymentFrame .sdkHost {
-  padding: 12px;
-  border-radius: 12px;
-  background: #fff;
+  padding: 0;
+  border-radius: 10px;
+  background: transparent;
 }
