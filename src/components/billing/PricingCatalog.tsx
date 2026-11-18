@@ -48,6 +48,24 @@ export function PricingCatalog({
         </ul>
         <p>Pogodnosti paketa i ugovori bit će objavljeni prije početka naplate.</p>
       </div>
+      <section className={styles.production} aria-label="Isticanje djelatnosti i plaćanje">
+        <div>
+          <h2>Istakni svoju djelatnost</h2>
+          <p>
+            Isticanje u kategoriji na 7 dana: 10 KM (približno 5,11 EUR). Ovo je zasebna usluga, ne
+            promjena cijene paketa.
+          </p>
+          <p>
+            Na sljedećem koraku pregledaj načine plaćanja i njihovu dostupnost. Otvaranje pregleda
+            ništa ne naplaćuje.
+          </p>
+        </div>
+        <div>
+          <a className={styles.secondary} href="/naplata">
+            Pregledaj plaćanje i isticanje
+          </a>
+        </div>
+      </section>
       <section className={styles.production} aria-label="Foto i video produkcija">
         <div>
           <h2>Foto i video</h2>

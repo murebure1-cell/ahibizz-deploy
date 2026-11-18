@@ -1,6 +1,7 @@
 import { businessMediaProjection } from "../business-media/service";
 import type { Database } from "../db";
 import { getDatabase } from "../db";
+import { promotionSql } from "../paypal/store";
 import { businessReviewsProjection } from "../reviews/projection";
 import {
   type BusinessFields,
@@ -163,10 +164,20 @@ export async function listDirectory(
     filters.push(`(${distance}) <= $${radius}::double precision`);
     order = `(${distance}) ASC, b.id ASC`;
   }
+  const paidCategory =
+    publicOnly && Boolean(categoryId) && process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY === "true";
+  const paid = paidCategory ? promotionSql("b") : null;
+  if (paid) order = `(${paid}) DESC, ${order}`;
+  const selectedColumns =
+    publicOnly && paid
+      ? publicColumns.replace("b.is_featured AS featured", `(${paid}) AS featured`)
+      : publicOnly
+        ? publicColumns
+        : columns;
   const limitIndex = values.push(pageSize + 1),
     offsetIndex = values.push((page - 1) * pageSize);
   const result = await database.query(
-    `SELECT ${publicOnly ? publicColumns : columns} FROM directory_business b ${publicOnly ? "JOIN auth_user u ON u.id = b.owner_user_id" : ""} WHERE ${filters.join(" AND ")} ORDER BY ${order} LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
+    `SELECT ${selectedColumns} FROM directory_business b ${publicOnly ? "JOIN auth_user u ON u.id = b.owner_user_id" : ""} WHERE ${filters.join(" AND ")} ORDER BY ${order} LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
     values,
   );
   const items = (result.rows as Row[]).slice(0, pageSize).map(dto);

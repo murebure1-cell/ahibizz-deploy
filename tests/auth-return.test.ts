@@ -71,3 +71,19 @@ test("foreign, duplicate, control and encoded destinations fall back without nes
     });
   }
 });
+
+test("checkout continuation survives login with only an internal order UUID", () => {
+  for (const path of [
+    "/naplata",
+    "/naplata/povratak?narudzba=00000000-0000-4000-8000-000000000001",
+    "/naplata/odustajanje?narudzba=00000000-0000-4000-8000-000000000001",
+  ])
+    assert.equal(continuation(authReturnLinks(path).login), path);
+  for (const path of [
+    "/naplata?narudzba=invalid",
+    "/naplata?next=https://evil.invalid",
+    "/naplata//evil.invalid",
+    "/naplata/povratak?narudzba=00000000-0000-4000-8000-000000000001&token=not-needed",
+  ])
+    assert.equal(accountReturnPath(path), "/nalog");
+});

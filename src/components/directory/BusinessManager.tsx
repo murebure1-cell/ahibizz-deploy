@@ -1112,6 +1112,13 @@ export function BusinessManager({
           </button>
         )}
       </div>
+      {!all && !locked && editing === undefined && (
+        <p className={styles.notice}>
+          Želiš veću vidljivost svoje djelatnosti?{" "}
+          <Link href="/naplata">Pregledaj isticanje i načine plaćanja</Link>. Otvaranje pregleda ne
+          naplaćuje ništa.
+        </p>
+      )}
       {(error || readError) && (
         <p role="alert" className={styles.error}>
           {error || readError}

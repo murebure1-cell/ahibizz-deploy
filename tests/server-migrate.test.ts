@@ -148,6 +148,8 @@ test("bad input is rejected before any connection; real initial SQL has a fixed 
       "0018_directory_revisions.sql",
       "0019_account_approval_email.sql",
       "0020_push_devices.sql",
+      "0021_paypal_checkout.sql",
+      "0022_dodo_test_checkout.sql",
     ],
   );
   assert.equal(files[0].version, "0001_platform.sql");
