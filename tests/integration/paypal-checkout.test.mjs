@@ -137,8 +137,90 @@ test("durable checkout isolated PostgreSQL authority, replay, rights and refunds
         store.create(user, { ...base, requestId: randomUUID() }),
         store.create(user, { ...base, requestId: randomUUID() }),
       ]);
-      assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
-      assert.equal(results.filter((r) => r.status === "rejected").length, 1);
+      assert.equal(results.filter((r) => r.status === "fulfilled").length, 2);
+      assert.equal(results[0].value.id, results[1].value.id);
+      assert.equal(
+        (
+          await pool.query(
+            "SELECT count(*)::int AS n FROM paypal_checkout_order WHERE business_id=$1",
+            [businessId],
+          )
+        ).rows[0].n,
+        1,
+      );
+    });
+    await t.test("new request resumes only the unchanged owned unpaid promotion", async () => {
+      const input = {
+        requestId: randomUUID(),
+        kind: "promotion",
+        businessId: await makeBusiness(),
+        amountMinor: 511,
+        merchantId: "FIXTURE_MERCHANT",
+        environment: "live",
+        offerVersion: "resume-v1",
+      };
+      const created = await store.create(user, input);
+      const again = await store.create(user, { ...input, requestId: randomUUID() });
+      assert.equal(again.id, created.id);
+      assert.equal(again.requestId, created.requestId);
+      assert.equal(again.createRequestId, created.createRequestId);
+      const ready = await attach(created);
+      const resumed = await store.create(user, { ...input, requestId: randomUUID() });
+      assert.equal(resumed.id, ready.id);
+      assert.equal(resumed.providerOrderId, ready.providerOrderId);
+      assert.equal(resumed.approvalUrl, ready.approvalUrl);
+      assert.equal(resumed.captureRequestId, ready.captureRequestId);
+      const sandbox = await store.create(user, {
+        ...input,
+        environment: "sandbox",
+        requestId: randomUUID(),
+      });
+      assert.notEqual(sandbox.id, ready.id);
+      assert.equal(sandbox.environment, "sandbox");
+      for (const change of [
+        { amountMinor: 512 },
+        { merchantId: "OTHER" },
+        { offerVersion: "resume-v2" },
+      ]) {
+        await assert.rejects(
+          store.create(user, { ...input, ...change, requestId: randomUUID() }),
+          /PROMOTION_ALREADY_RESERVED/,
+        );
+      }
+      await assert.rejects(
+        store.create({ ...user, token: "invalid" }, { ...input, requestId: randomUUID() }),
+        /AUTHENTICATION_REQUIRED/,
+      );
+      await capture(ready);
+      await assert.rejects(
+        store.create(user, { ...input, requestId: randomUUID() }),
+        /PROMOTION_ALREADY_RESERVED/,
+      );
+      const reviewInput = { ...input, businessId: await makeBusiness(), requestId: randomUUID() };
+      const review = await store.create(user, reviewInput);
+      await store.markReview(review.id);
+      await assert.rejects(
+        store.create(user, { ...reviewInput, requestId: randomUUID() }),
+        /PROMOTION_ALREADY_RESERVED/,
+      );
+      const changedInput = { ...input, businessId: await makeBusiness(), requestId: randomUUID() };
+      await store.create(user, changedInput);
+      await pool.query("UPDATE directory_business SET category_id=$2 WHERE id=$1", [
+        changedInput.businessId,
+        category2,
+      ]);
+      await assert.rejects(
+        store.create(user, { ...changedInput, requestId: randomUUID() }),
+        /PROMOTION_ALREADY_RESERVED/,
+      );
+      await pool.query("UPDATE directory_business SET owner_user_id=$2 WHERE id=$1", [
+        changedInput.businessId,
+        other.userId,
+      ]);
+      await assert.rejects(
+        store.create(other, { ...changedInput, requestId: randomUUID() }),
+        /PROMOTION_ALREADY_RESERVED/,
+      );
     });
     await t.test("capture lease, verified amount and exactly one grant", async () => {
       first = await attach(first);

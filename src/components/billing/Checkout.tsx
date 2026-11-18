@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { readCheckoutOrder } from "../../lib/checkout-order-read";
 import styles from "./checkout-preview.module.css";
 
 type Order = {
@@ -61,7 +62,17 @@ export function Checkout({
   const [kind, setKind] = useState<"promotion" | "support">("promotion");
   const [businessId, setBusinessId] = useState("");
   const [support, setSupport] = useState("");
-  const [order, setOrder] = useState<Order | null>(null);
+  const [loadedOrder, setLoadedOrder] = useState<{ userId: string | null; order: Order } | null>(
+    null,
+  );
+  const order =
+    loadedOrder?.userId === userId && (!initialOrderId || loadedOrder.order.id === initialOrderId)
+      ? loadedOrder.order
+      : null;
+  const setOrder = (value: Order) => setLoadedOrder({ userId, order: value });
+  const [reloadOrder, setReloadOrder] = useState(0);
+  const [orderLoading, setOrderLoading] = useState(false);
+  const [orderError, setOrderError] = useState("");
   const [review, setReview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(
@@ -114,31 +125,38 @@ export function Checkout({
         .catch(() => {
           if (active) setError("Nije moguće učitati tvoje djelatnosti.");
         });
-      if (initialOrderId)
-        fetch(`/api/checkout/orders/${initialOrderId}`, {
-          headers: { "X-AhiBizz-Account-ID": userId },
-          cache: "no-store",
-        })
-          .then((r) => {
-            if (!r.ok) throw new Error();
-            return r.json();
-          })
-          .then((value) => {
-            if (active) {
-              setOrder(value.order);
-              setKind(value.order.kind);
-            }
-          })
-          .catch(() => {
-            if (active) setError("Narudžba nije dostupna na ovom nalogu.");
-          });
     }
     return () => {
       active = false;
     };
-  }, [userId, initialOrderId]);
+  }, [userId]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Manual reload generation deliberately restarts this read-only effect.
+  useEffect(() => {
+    if (!userId || !initialOrderId) return;
+    const controller = new AbortController();
+    setOrderLoading(true);
+    setOrderError("");
+    readCheckoutOrder<Order>(initialOrderId, userId, controller.signal)
+      .then((value) => {
+        if (!controller.signal.aborted) {
+          setLoadedOrder({ userId, order: value });
+          setKind(value.kind);
+        }
+      })
+      .catch((cause) => {
+        if (!controller.signal.aborted)
+          setOrderError(
+            cause instanceof Error ? cause.message : "Narudžbu trenutno nije moguće učitati.",
+          );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setOrderLoading(false);
+      });
+    return () => controller.abort();
+  }, [userId, initialOrderId, reloadOrder]);
   async function act(action: "create" | "capture" | "reconcile") {
-    if (locked.current || !userId) return;
+    if (locked.current || !userId || (initialOrderId && !order) || orderLoading) return;
+    if (order?.status === "cancelled" && action !== "reconcile") return;
     if (
       action !== "reconcile" &&
       (order?.kind ?? kind) === "support" &&
@@ -174,6 +192,12 @@ export function Checkout({
       if (value.order) {
         setOrder(value.order);
         window.history.replaceState(null, "", `/naplata?narudzba=${value.order.id}`);
+      }
+      if (value.order && action === "create" && !order && value.order.requestId !== key.current) {
+        setError(
+          "Pronađena je tvoja otvorena narudžba. Pregledaj je i odaberi Nastavi istu narudžbu. Nova uplata nije pokrenuta.",
+        );
+        return;
       }
       if (value.approvalUrl) {
         const link = new URL(value.approvalUrl);
@@ -234,7 +258,24 @@ export function Checkout({
           </a>
         </p>
       )}
-      {!order && (
+      {initialOrderId && userId && (
+        <section aria-label="Sačuvana narudžba" className={styles.notice}>
+          <p role="status">
+            {orderLoading
+              ? "Učitavam sačuvanu narudžbu…"
+              : "Nastavljaš sačuvanu narudžbu. Učitavanje ne pokreće plaćanje."}
+          </p>
+          {orderError && <p role="alert">{orderError}</p>}
+          <button
+            type="button"
+            disabled={orderLoading || busy}
+            onClick={() => setReloadOrder((value) => value + 1)}
+          >
+            Ponovo učitaj sačuvanu narudžbu
+          </button>
+        </section>
+      )}
+      {!order && !initialOrderId && (
         <>
           <section className={styles.choices} aria-label="Namjena uplate">
             <button
@@ -362,7 +403,13 @@ export function Checkout({
           {order.environment === "sandbox" && (
             <p>Testna narudžba: nema stvarnog novca niti javnog isticanja.</p>
           )}
-          {order.status === "captured" ? (
+          {order.status === "cancelled" ? (
+            <div role="status">
+              <h3>Narudžba je stornirana</h3>
+              <p>Nije izvršena naplata.</p>
+              <a href="/naplata">Novi pokušaj</a>
+            </div>
+          ) : order.status === "captured" ? (
             <div role="status">
               <h3>Uplata je potvrđena</h3>
               {order.kind === "promotion" && order.endsAt ? (

@@ -208,11 +208,45 @@ export function createCheckoutStore(pool: Pool) {
           b = await business(c, input.businessId);
           if (!b || b.owner_user_id !== actor.userId || b.status !== "published")
             fail(403, "BUSINESS_NOT_ELIGIBLE");
-          const active = await c.query(
-            "SELECT id FROM paypal_checkout_order WHERE business_id=$1 AND environment=$2 AND ((status IN ('created','provider_created') AND expires_at>now()) OR (status='captured' AND ends_at>now()) OR status='review') LIMIT 1",
+          const active = await c.query<CheckoutOrder & { fingerprint: string }>(
+            `SELECT ${columns},fingerprint FROM paypal_checkout_order WHERE business_id=$1 AND environment=$2 AND ((status IN ('created','provider_created') AND expires_at>clock_timestamp()) OR (status='captured' AND ends_at>clock_timestamp()) OR status='review') ORDER BY id LIMIT 2`,
             [b.id, input.environment],
           );
-          if (active.rowCount) fail(409, "PROMOTION_ALREADY_RESERVED");
+          if (active.rowCount) {
+            const candidate = active.rows[0];
+            // Only resume the same owner's unchanged unpaid offer. Never reveal a
+            // previous owner's order or treat a paid/review order as a new checkout.
+            if (
+              !candidate ||
+              active.rows.length !== 1 ||
+              candidate.userId !== actor.userId ||
+              candidate.fingerprint !== fingerprint
+            )
+              fail(409, "PROMOTION_ALREADY_RESERVED");
+            const pending = await row(c, candidate.id);
+            const unexpired = await c.query(
+              "SELECT id FROM paypal_checkout_order WHERE id=$1 AND expires_at>clock_timestamp()",
+              [pending.id],
+            );
+            if (
+              !["created", "provider_created"].includes(pending.status) ||
+              pending.userId !== actor.userId ||
+              pending.businessId !== b.id ||
+              pending.categoryId !== b.category_id ||
+              pending.kind !== input.kind ||
+              pending.environment !== input.environment ||
+              pending.offerVersion !== input.offerVersion ||
+              pending.amountMinor !== input.amountMinor ||
+              pending.merchantId !== input.merchantId ||
+              pending.currency !== "EUR" ||
+              pending.captureId !== null ||
+              pending.refundedMinor !== 0 ||
+              pending.refundTotalUnknown ||
+              unexpired.rowCount !== 1
+            )
+              fail(409, "PROMOTION_ALREADY_RESERVED");
+            return pending;
+          }
         }
         const id = randomUUID();
         await c.query(
