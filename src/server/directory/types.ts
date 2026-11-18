@@ -25,6 +25,10 @@ export type BusinessFields = {
   longitude: number | null;
 };
 export type DirectoryBusiness = BusinessFields & {
+  editorialRevision?: { fields?: Partial<BusinessFields>; details?: BusinessDetails } | null;
+  pendingMedia?: boolean;
+  revisionDecision?: "approve-changes" | "reject-changes" | null;
+  revisionRejection?: string | null;
   hasRentalVehicles?: boolean;
   hasStayUnits?: boolean;
   details?: BusinessDetails | null;
@@ -44,6 +48,10 @@ export type DirectoryBusiness = BusinessFields & {
 };
 export type PublicDirectoryBusiness = Omit<
   DirectoryBusiness,
+  | "editorialRevision"
+  | "pendingMedia"
+  | "revisionDecision"
+  | "revisionRejection"
   | "ownerId"
   | "status"
   | "version"

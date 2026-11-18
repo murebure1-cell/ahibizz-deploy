@@ -14,6 +14,7 @@ import {
   getAuthDatabasePool,
   getAuthService,
 } from "../auth/service";
+import { type InventorySelection, inventoryAppointments } from "../inventory-appointments";
 import {
   decisionInput,
   fail,
@@ -193,7 +194,8 @@ export function createRentalService({
       const vehicle = await car(client, b.id, vehicleId);
       if (vehicle.archived || (kind === "customer" && !vehicle.enabled))
         fail(409, "RENTAL_NOT_AVAILABLE");
-      if (vehicle.version !== data.expectedVehicleVersion) fail(409, "VERSION_CONFLICT");
+      if (vehicle.version !== data.expectedVehicleVersion)
+        fail(409, "RENTAL_OFFER_VERSION_CHANGED");
       if (Date.parse(data.startsAt) <= now().getTime()) fail(400, "INVALID_RENTAL_INTERVAL");
       const total =
         kind === "block"
@@ -429,15 +431,18 @@ export function createRentalService({
       create(headers, businessId, vehicleId, input, "customer"),
     block: (headers: Headers, businessId: string, vehicleId: string, input: unknown) =>
       create(headers, businessId, vehicleId, input, "block"),
-    myBookings(headers: Headers) {
-      return signed(headers, async (client, user) => {
-        const rows = await client.query<BookingRow>(
-          `SELECT ${bookingColumns} FROM rental_booking WHERE customer_id=$1
-          ORDER BY starts_at DESC,id`,
-          [user.id],
-        );
-        return rows.rows.map(bookingDto);
-      });
+    myBookings(headers: Headers, selection: InventorySelection) {
+      return signed(headers, (client, user) =>
+        inventoryAppointments(
+          client,
+          user.id,
+          "rental",
+          selection,
+          now(),
+          bookingColumns,
+          bookingDto,
+        ),
+      );
     },
     decide(headers: Headers, businessId: string, bookingId: string, input: unknown) {
       const data = decisionInput(input);

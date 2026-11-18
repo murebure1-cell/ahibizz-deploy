@@ -67,6 +67,7 @@ function detailsFromDraft(value: Draft): BusinessDetails {
 export function BusinessDetailsManager({
   businessId,
   businessTitle,
+  administrator = false,
   active,
   expectedAccountId,
   request = businessDetailsRequest,
@@ -76,6 +77,7 @@ export function BusinessDetailsManager({
 }: {
   businessId: string;
   businessTitle: string;
+  administrator?: boolean;
   active: boolean;
   expectedAccountId?: string;
   request?: BusinessDetailsRequest;
@@ -118,7 +120,7 @@ export function BusinessDetailsManager({
         if (controller.signal.aborted || epoch.current !== generation) return;
         setBusiness(row);
         changed.current(row);
-        setValue(draft(row.details));
+        setValue(draft((!administrator && row.editorialRevision?.details) || row.details));
         setUncertain(false);
       })
       .catch((failure) => {
@@ -140,7 +142,7 @@ export function BusinessDetailsManager({
       epoch.current++;
       operation.current?.abort();
     };
-  }, [active, businessId, expectedAccountId, request, refresh]);
+  }, [active, administrator, businessId, expectedAccountId, request, refresh]);
   async function save() {
     if (
       !business ||
@@ -174,10 +176,12 @@ export function BusinessDetailsManager({
       });
       if (controller.signal.aborted || epoch.current !== generation) return;
       setBusiness(after);
-      setValue(draft(after.details));
+      setValue(draft((!administrator && after.editorialRevision?.details) || after.details));
       changed.current(after);
       setNotice(
-        after.status === "pending" ? "Sačuvano i poslano na pregled." : "Promjene su sačuvane.",
+        after.status === "pending" || after.editorialRevision?.details
+          ? "Sačuvano i poslano na pregled."
+          : "Promjene su sačuvane.",
       );
     } catch (failure) {
       if (controller.signal.aborted || epoch.current !== generation) return;
@@ -185,7 +189,9 @@ export function BusinessDetailsManager({
         denied.current(failure);
         return;
       }
-      if (failure instanceof DirectoryRequestError && failure.status === 400) {
+      if (failure instanceof DirectoryRequestError && failure.code === "REVIEW_REQUIRED") {
+        setError("Prvo odobri ili odbij predložene izmjene u spisku djelatnosti.");
+      } else if (failure instanceof DirectoryRequestError && failure.status === 400) {
         setError("Provjeri unesene podatke.");
       } else {
         setUncertain(true);

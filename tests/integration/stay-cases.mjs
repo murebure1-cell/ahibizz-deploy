@@ -203,6 +203,23 @@ export async function testAccommodation(
         winner.user.name,
       );
       assert.equal((await http("mine", winner)).data.entries[0].id, winning.id);
+      assert.equal(
+        (await http("mine?view=upcoming&page=1", winner)).data.entries[0].id,
+        winning.id,
+      );
+      assert.deepEqual((await http("mine?view=history&page=1", winner)).data.entries, []);
+      const beforeBoundary = clock;
+      try {
+        // The checkout follows Sarajevo's spring transition. Midnight locally is 22:00 UTC.
+        const midnight = Date.parse(`${departure}T00:00:00+02:00`);
+        clock = new Date(midnight - 1);
+        assert.equal((await http("mine?view=upcoming", winner)).data.entries[0].id, winning.id);
+        clock = new Date(midnight);
+        assert.deepEqual((await http("mine?view=upcoming", winner)).data.entries, []);
+        assert.equal((await http("mine?view=history", winner)).data.entries[0].id, winning.id);
+      } finally {
+        clock = beforeBoundary;
+      }
       assert.equal((await decision(winning, winner, "approve")).status, 403);
       assert.equal((await decision(winning, competitor, "cancel")).status, 404);
     },
@@ -238,6 +255,8 @@ export async function testAccommodation(
         "confirmed",
       );
       assert.equal((await decision(confirmed, winner, "cancel")).data.entry.status, "cancelled");
+      assert.deepEqual((await http("mine?view=upcoming", winner)).data.entries, []);
+      assert.equal((await http("mine?view=history", winner)).data.entries[0].status, "cancelled");
       const released = await request(room, competitor, ask(room, arrival, departure));
       assert.equal(released.status, 201);
       assert.equal(

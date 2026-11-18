@@ -233,6 +233,32 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       });
 
       await t.test(
+        "first-time timezone checks use the exact PostgreSQL catalogue within the interactive deadline",
+        async () => {
+          const differences = await pool.query(
+            `WITH valid AS MATERIALIZED (SELECT DISTINCT name FROM pg_catalog.pg_timezone_names)
+           SELECT name FROM ((SELECT name FROM valid EXCEPT SELECT name FROM directory_timezone_names)
+               UNION ALL (SELECT name FROM directory_timezone_names EXCEPT SELECT name FROM valid)) missing`,
+          );
+          assert.deepEqual(differences.rows, []);
+          const client = await pool.connect();
+          try {
+            await client.query("BEGIN");
+            await client.query("SET LOCAL statement_timeout='200ms'");
+            await client.query("UPDATE directory_business SET version=version+1 WHERE id=$1", [
+              business.id,
+            ]);
+            await client.query(
+              "INSERT INTO directory_business_details (business_id,timezone,hours,business_version) VALUES($1,'Pacific/Chatham',$2::jsonb,$3)",
+              [business.id, JSON.stringify(value().hours), business.version + 1],
+            );
+          } finally {
+            await client.query("ROLLBACK");
+            client.release();
+          }
+        },
+      );
+      await t.test(
         "new business has unknown hours, no amenities or seeded operational rows",
         async () => {
           assert.equal(business.details, null);
@@ -253,7 +279,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
       await t.test(
-        "member details use business CAS and return published edits to pending moderation",
+        "member detail edits retain the approved public hours and amenities until review",
         async () => {
           const before = business;
           business = await directory.updateDetails(member.headers, business.id, {
@@ -261,17 +287,35 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             details: value(),
           });
           assert.equal(business.version, before.version + 1);
-          assert.equal(business.status, "pending");
-          assert.deepEqual(business.details, value());
-          await denied(() => publicDirectory.readPublic(business.id), 404);
-          assert.equal((await publicDirectory.listPublic()).items.length, 0);
+          assert.equal(business.status, "published");
+          assert.deepEqual(business.editorialRevision.details, value());
+          assert.equal((await publicDirectory.readPublic(business.id)).details, null);
+          assert.equal((await publicDirectory.listPublic()).items.length, 1);
+          assert.equal(
+            (
+              await directory.updateDetails(member.headers, business.id, {
+                expectedVersion: business.version,
+                details: value(),
+              })
+            ).version,
+            business.version,
+          );
           business = await directory.moderate(owner.headers, business.id, {
             expectedVersion: business.version,
-            status: "published",
+            status: "approve-changes",
           });
           const publicRow = await publicDirectory.readPublic(business.id);
           assert.deepEqual(publicRow.details, value());
-          for (const field of ["ownerId", "status", "version", "moderationReturn"])
+          for (const field of [
+            "ownerId",
+            "status",
+            "version",
+            "moderationReturn",
+            "editorialRevision",
+            "pendingMedia",
+            "revisionDecision",
+            "revisionRejection",
+          ])
             assert.equal(field in publicRow, false);
           assert.deepEqual((await publicDirectory.listPublic()).items[0].details, value());
         },
@@ -397,9 +441,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         try {
           await denied(
             () =>
-              directory.updateDetails(member.headers, business.id, {
+              directory.updateDetails(owner.headers, business.id, {
                 expectedVersion: business.version,
-                details: value(),
+                details: { ...value(), amenities: ["wifi", "family"] },
               }),
             503,
           );

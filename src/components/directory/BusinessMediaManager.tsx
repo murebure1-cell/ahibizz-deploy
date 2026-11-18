@@ -345,7 +345,7 @@ export function BusinessMediaManager({
         pendingRef.current = null;
         setLoginRequired(false);
         setNotice(
-          fresh.status === "pending"
+          fresh.status === "pending" || fresh.pendingMedia
             ? "Izmjene su poslane na pregled."
             : "Fotografije su ažurirane.",
         );
@@ -455,6 +455,7 @@ export function BusinessMediaManager({
       {manifest && (
         <p className={styles.status}>
           Status profila: <strong>{statuses[manifest.status]}</strong>
+          {manifest.pendingMedia && " · Fotografije na pregledu"}
         </p>
       )}
       {manifest?.status === "archived" && (

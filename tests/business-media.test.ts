@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   type BusinessMediaAsset,
   businessMediaUrl,
+  inventoryMedia,
   readBusinessMediaAsset,
   readBusinessMediaManifest,
   readBusinessMediaReceipt,
@@ -107,6 +108,39 @@ test("private manifest requires current business CAS/status and rejects assets f
     { ...manifest(), status: null },
   ])
     assert.throws(() => readBusinessMediaManifest(invalid));
+});
+
+test("room and car pickers retain the approved version of existing slots and exclude unapproved additions", () => {
+  const approvedMedia = { logo, cover, gallery: [gallery(1)] };
+  const editable = {
+    ...manifest(),
+    businessVersion: 5,
+    pendingMedia: true,
+    gallery: [{ ...gallery(1), version: 5 }, gallery(2)],
+    approvedMedia,
+  };
+  assert.deepEqual(inventoryMedia(readBusinessMediaManifest(editable)), approvedMedia);
+  assert.equal(
+    inventoryMedia(readBusinessMediaManifest({ ...editable, approvedMedia: undefined })),
+    null,
+  );
+  assert.deepEqual(
+    inventoryMedia(readBusinessMediaManifest({ ...manifest(), status: "draft" })),
+    approvedMedia,
+  );
+  assert.deepEqual(
+    inventoryMedia(
+      readBusinessMediaManifest({ ...editable, approvedMedia: { ...approvedMedia, gallery: [] } }),
+    )?.gallery,
+    [],
+  );
+  assert.throws(() =>
+    readBusinessMediaManifest({
+      ...editable,
+      approvedMedia: { ...approvedMedia, gallery: [{ ...gallery(1), version: 6 }] },
+    }),
+  );
+  assert.equal(Object.hasOwn(readPublicBusinessMediaManifest(editable), "approvedMedia"), false);
 });
 
 test("public manifest projection never returns owner, business state, byte data or arbitrary image URLs", () => {

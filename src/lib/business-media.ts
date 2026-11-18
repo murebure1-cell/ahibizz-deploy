@@ -16,6 +16,8 @@ export type PublicBusinessMediaManifest = BusinessMediaSummary & { businessId: s
 export type BusinessMediaManifest = PublicBusinessMediaManifest & {
   businessVersion: number;
   status: BusinessMediaStatus;
+  pendingMedia?: true;
+  approvedMedia?: BusinessMediaSummary;
 };
 export type BusinessMediaWriteResult = {
   businessId: string;
@@ -86,15 +88,33 @@ export function readPublicBusinessMediaManifest(value: unknown): PublicBusinessM
 export function readBusinessMediaManifest(value: unknown): BusinessMediaManifest {
   const row = record(value),
     data = readPublicBusinessMediaManifest(row);
+  const approved =
+    row.approvedMedia === undefined ? undefined : readBusinessMediaSummary(row.approvedMedia);
   if (
     !integer(row.businessVersion, 1) ||
     !status(row.status) ||
-    [data.logo, data.cover, ...data.gallery].some(
-      (a) => a !== null && a.version > (row.businessVersion as number),
-    )
+    (approved && (row.status !== "published" || row.pendingMedia !== true)) ||
+    [
+      data.logo,
+      data.cover,
+      ...data.gallery,
+      ...(approved ? [approved.logo, approved.cover, ...approved.gallery] : []),
+    ].some((a) => a !== null && a.version > (row.businessVersion as number))
   )
     throw new Error("invalid_business_media");
-  return { ...data, businessVersion: row.businessVersion, status: row.status };
+  return {
+    ...data,
+    businessVersion: row.businessVersion,
+    status: row.status,
+    ...(row.pendingMedia === true ? { pendingMedia: true as const } : {}),
+    ...(approved ? { approvedMedia: approved } : {}),
+  };
+}
+/** Rooms and cars can attach only gallery slots that already exist in the canonical image table. */
+export function inventoryMedia(manifest: BusinessMediaManifest): BusinessMediaSummary | null {
+  if (manifest.status === "published" && manifest.pendingMedia)
+    return manifest.approvedMedia ?? null;
+  return { logo: manifest.logo, cover: manifest.cover, gallery: manifest.gallery };
 }
 export function readBusinessMediaWriteResult(value: unknown): BusinessMediaWriteResult {
   const row = record(value);

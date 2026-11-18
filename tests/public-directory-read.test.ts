@@ -168,8 +168,11 @@ test("public search retains prepared literal filters and page bounds", async () 
   const query = new URLSearchParams({ q: "50%_\\", city: "Town_%", categoryId, page: "2" });
   const response = await f.handle(request(`/api/directory/businesses?${query}`));
   assert.equal(response.status, 200);
-  assert.deepEqual(f.queries[0]?.values, [categoryId, "%50\\%\\_\\\\%", "%Town\\_\\%%", 21, 20]);
-  assert.match(f.queries[0]?.sql ?? "", /ORDER BY b.created_at DESC, b.id DESC/);
+  assert.deepEqual(f.queries[0]?.values, [categoryId, ["%50\\%\\_\\\\%"], "%Town\\_\\%%", 21, 20]);
+  assert.match(
+    f.queries[0]?.sql ?? "",
+    /ORDER BY .*ILIKE ALL .* DESC, b.created_at DESC, b.id DESC/s,
+  );
 });
 
 test("private routes and every write remain gated without consuming bodies or querying public data", async () => {

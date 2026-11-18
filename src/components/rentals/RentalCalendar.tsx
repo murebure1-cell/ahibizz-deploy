@@ -1,10 +1,15 @@
 "use client";
 import Link from "next/link";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { accountSectionPath } from "../../lib/account-return";
 import { bookingDate, bookingMoney, bookingMonth } from "../../lib/booking";
 import { BookingRequestError, bookingAccountId } from "../../lib/booking-client";
 import { addDays, dateKey, localInstant } from "../../lib/booking-time";
+import {
+  type RentalIntent,
+  RentalRecoveryRequired,
+  rentalSubmissions,
+} from "../../lib/rental-submission";
 import {
   type RentalBooking,
   type RentalInterval,
@@ -32,12 +37,14 @@ export function RentalCalendar({
   actor,
   allowNew = true,
   onChangedOffer,
+  onUncertain,
 }: {
   car: RentalVehicle;
   zone: string;
   actor?: string;
   allowNew?: boolean;
   onChangedOffer: () => void;
+  onUncertain: (intent: RentalIntent) => void;
 }) {
   const today = dateKey(new Date(), zone);
   const [selected, setSelected] = useState(today);
@@ -49,7 +56,7 @@ export function RentalCalendar({
   const [error, setError] = useState("");
   const [login, setLogin] = useState(false);
   const [revision, setRevision] = useState(0);
-  const [retry, setRetry] = useState<{ signature: string; id: string } | null>(null);
+  const writing = useRef(false);
   const start = localInstant(`${month}-01`, 0, zone);
   const following = nextMonth(month, 1);
   const end = localInstant(`${following}-01`, 0, zone);
@@ -107,23 +114,31 @@ export function RentalCalendar({
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!valid || !from || !to || !rangeReady || occupied || busy) return;
+    if (!valid || !from || !to || !rangeReady || occupied || writing.current) return;
+    writing.current = true;
     setBusy(true);
     setError("");
     setSuccess("");
     setLogin(false);
     try {
       const account = actor ?? (await bookingAccountId());
-      const signature = JSON.stringify([account, car.id, car.version, from, to, Boolean(actor)]);
-      const id = retry?.signature === signature ? retry.id : crypto.randomUUID();
-      setRetry({ signature, id });
-      await writeRental(`${actor ? "block" : "request"}/${car.businessId}/${car.id}`, account, {
-        requestId: id,
-        startsAt: from,
-        endsAt: to,
-        expectedVehicleVersion: car.version,
-      });
-      setRetry(null);
+      await rentalSubmissions.submit(
+        {
+          account,
+          businessId: car.businessId,
+          vehicleId: car.id,
+          vehicleName: car.name,
+          timezone: zone,
+          kind: actor ? "block" : "customer",
+          body: {
+            requestId: crypto.randomUUID(),
+            startsAt: from,
+            endsAt: to,
+            expectedVehicleVersion: car.version,
+          },
+        },
+        writeRental,
+      );
       setPickup("");
       setDropoff("");
       setSelected(dateKey(new Date(from), zone));
@@ -131,6 +146,10 @@ export function RentalCalendar({
       setRevision((v) => v + 1);
       setSuccess(actor ? "Period je označen kao zauzet." : "Zahtjev je poslan vlasniku.");
     } catch (failure) {
+      if (failure instanceof RentalRecoveryRequired) {
+        onUncertain(failure.intent);
+        return;
+      }
       setError(rentalError(failure));
       if (failure instanceof BookingRequestError) {
         if (failure.status === 401) setLogin(true);
@@ -140,6 +159,7 @@ export function RentalCalendar({
         }
       }
     } finally {
+      writing.current = false;
       setBusy(false);
     }
   }

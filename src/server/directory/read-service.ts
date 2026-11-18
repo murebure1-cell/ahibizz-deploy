@@ -46,6 +46,10 @@ const publicColumns = [
 ].join(", ");
 export const columns = [
   publicColumns,
+  'b.editorial_revision AS "editorialRevision"',
+  `EXISTS (SELECT 1 FROM directory_business_image_proposal ip WHERE ip.business_id=b.id) AS "pendingMedia"`,
+  `(SELECT a.action FROM directory_moderation_audit a WHERE a.business_id=b.id AND a.action IN ('approve-changes','reject-changes') AND a.next_version=b.version LIMIT 1) AS "revisionDecision"`,
+  `(SELECT a.reason FROM directory_moderation_audit a WHERE a.business_id=b.id AND a.action='reject-changes' AND a.next_version=b.version) AS "revisionRejection"`,
   `EXISTS (SELECT 1 FROM stay_unit su WHERE su.business_id=b.id AND su.archived_at IS NULL) AS "hasStayUnits"`,
   `EXISTS (SELECT 1 FROM rental_vehicle rv WHERE rv.business_id=b.id AND rv.archived_at IS NULL) AS "hasRentalVehicles"`,
   `(SELECT jsonb_build_object('reason', a.reason, 'createdAt', a.created_at, 'version', b.version) FROM directory_moderation_audit a WHERE b.status = 'draft' AND a.business_id = b.id AND a.action = 'moderate' AND a.next_status = 'draft' AND a.next_version <= b.version AND (a.next_version = b.version OR (SELECT count(*) FROM directory_ownership_transfer ot WHERE ot.business_id=b.id AND ot.previous_version>=a.next_version AND ot.result_version<=b.version)=b.version-a.next_version) AND a.reason IS NOT NULL ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS "moderationReturn"`,
@@ -76,6 +80,10 @@ export function dto(row: Row): DirectoryBusiness {
 }
 export function publicDto(value: DirectoryBusiness): PublicDirectoryBusiness {
   const {
+    editorialRevision: _revision,
+    pendingMedia: _pendingMedia,
+    revisionDecision: _decision,
+    revisionRejection: _rejection,
     ownerId: _owner,
     status: _status,
     version: _version,
@@ -95,6 +103,20 @@ async function safeRead<T>(action: () => Promise<T>): Promise<T> {
     if (error instanceof DirectoryAccessError) throw error;
     throw new DirectoryAccessError(503, "DIRECTORY_UNAVAILABLE");
   }
+}
+
+// PostgreSQL and the query use the same Bosnian transliteration, including Đ → Dj.
+function foldedSearch(column: string) {
+  return `translate(replace(replace(normalize(${column}, NFC),'Đ','Dj'),'đ','dj'),'ČĆŠŽčćšž','CCSZccsz')`;
+}
+function searchPattern(text: string) {
+  const folded = text
+    .normalize("NFC")
+    .replace(/[đĐ]/g, "dj")
+    .replace(/[čćČĆ]/g, "c")
+    .replace(/[šŠ]/g, "s")
+    .replace(/[žŽ]/g, "z");
+  return `%${folded.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
 }
 
 export async function listDirectory(
@@ -117,17 +139,20 @@ export async function listDirectory(
     ["b.status", status],
   ] as const)
     if (value) filters.push(`${column} = $${values.push(value)}`);
+  let order = "b.created_at DESC, b.id DESC";
   if (q) {
-    const index = values.push(`%${q.replace(/[\\%_]/g, "\\$&")}%`);
-    filters.push(
-      `(b.title ILIKE $${index} ESCAPE E'\\\\' OR b.description ILIKE $${index} ESCAPE E'\\\\' OR b.city ILIKE $${index} ESCAPE E'\\\\')`,
-    );
+    const words = [...new Set(q.split(/\s+/).map(searchPattern))];
+    const index = values.push(words);
+    const searchable = publicOnly
+      ? "concat_ws(' ',b.title,b.city,b.description)"
+      : "concat_ws(' ',b.title,b.city,b.description,b.editorial_revision#>>'{fields,title}',b.editorial_revision#>>'{fields,city}',b.editorial_revision#>>'{fields,description}')";
+    filters.push(`${foldedSearch(searchable)} ILIKE ALL ($${index}::text[])`);
+    order = `(${foldedSearch("b.title")} ILIKE ALL ($${index}::text[])) DESC, ${order}`;
   }
   if (city) {
-    const index = values.push(`%${city.replace(/[\\%_]/g, "\\$&")}%`);
-    filters.push(`b.city ILIKE $${index} ESCAPE E'\\\\'`);
+    const index = values.push(searchPattern(city));
+    filters.push(`${foldedSearch("b.city")} ILIKE $${index}`);
   }
-  let order = "b.created_at DESC, b.id DESC";
   if (nearby) {
     const latitude = values.push(nearby.latitude),
       longitude = values.push(nearby.longitude),

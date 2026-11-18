@@ -100,6 +100,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0015_profile_verification.sql",
           "0016_vehicle_rentals.sql",
           "0017_accommodation.sql",
+          "0018_directory_revisions.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -530,7 +531,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
       await t.test(
-        "member edits withdraw published images until review; administrator edits remain live and drafts stay drafts",
+        "member photos stay private until reviewed while approved photos remain visible",
         async () => {
           const saved = await media.save(
             member.headers,
@@ -540,17 +541,78 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             { expectedVersion: memberBusiness.version, bytes: image },
             randomUUID(),
           );
-          assert.equal(saved.status, "pending");
-          await deny(() => media.readPublic(memberBusiness.id), 404, "BUSINESS_NOT_FOUND");
-          assert.equal(await media.readPublicImage(memberBusiness.id, "logo", 0, 2), null);
+          assert.equal(saved.status, "published");
+          assert.ok(await media.readPublicImage(memberBusiness.id, "logo", 0, 2));
+          assert.equal((await media.readPublic(memberBusiness.id)).gallery.length, 0);
+          for (const reviewer of [member, owner]) {
+            const privateImages = await media.readOwn(reviewer.headers, memberBusiness.id);
+            assert.equal(privateImages.pendingMedia, true);
+            assert.equal(privateImages.gallery[0].version, saved.mediaVersion);
+            assert.deepEqual(privateImages.approvedMedia.gallery, []);
+            assert.equal(privateImages.approvedMedia.logo.version, 2);
+            assert.ok(
+              await media.readOwnImage(
+                reviewer.headers,
+                memberBusiness.id,
+                "gallery",
+                1,
+                saved.mediaVersion,
+              ),
+            );
+          }
           assert.equal(
             await media.readPublicImage(memberBusiness.id, "gallery", 1, saved.mediaVersion),
             null,
           );
           memberBusiness = await directory.moderate(owner.headers, memberBusiness.id, {
             expectedVersion: saved.businessVersion,
-            status: "published",
+            status: "approve-changes",
           });
+          const approved = await media.readPublic(memberBusiness.id);
+          assert.equal(approved.gallery[0].version, memberBusiness.version);
+          assert.ok(
+            await media.readPublicImage(memberBusiness.id, "gallery", 1, memberBusiness.version),
+          );
+          const removed = await media.remove(
+            member.headers,
+            memberBusiness.id,
+            "gallery",
+            1,
+            { expectedVersion: memberBusiness.version },
+            randomUUID(),
+          );
+          assert.equal((await media.readOwn(member.headers, memberBusiness.id)).gallery.length, 0);
+          assert.deepEqual(
+            (await media.readOwn(member.headers, memberBusiness.id)).approvedMedia.gallery,
+            approved.gallery,
+          );
+          assert.equal((await media.readPublic(memberBusiness.id)).gallery.length, 1);
+          assert.ok(
+            await media.readOwnImage(
+              member.headers,
+              memberBusiness.id,
+              "gallery",
+              1,
+              approved.gallery[0].version,
+            ),
+          );
+          await deny(
+            () =>
+              media.readOwnImage(
+                other.headers,
+                memberBusiness.id,
+                "gallery",
+                1,
+                approved.gallery[0].version,
+              ),
+            404,
+          );
+          memberBusiness = await directory.moderate(owner.headers, memberBusiness.id, {
+            expectedVersion: removed.businessVersion,
+            status: "reject-changes",
+            reason: "Zadržati fotografiju",
+          });
+          assert.equal((await media.readOwn(member.headers, memberBusiness.id)).gallery.length, 1);
           const admin = await media.save(
             owner.headers,
             memberBusiness.id,

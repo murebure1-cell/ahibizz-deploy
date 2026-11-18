@@ -123,6 +123,40 @@ test("member edit moderation and server-normalized fields must match before clai
   assert.equal(directoryMutationState(intent, { ...fresh, status: "published" }), "changed");
 });
 
+test("staged edits reconcile against private proposals, while a no-op survives a lost reply", () => {
+  const staged = { ...before, version: 2, editorialRevision: { fields: { title: "New title" } } };
+  const proposedEdit = { ...edit, useProposedFields: true };
+  assert.equal(directoryMutationState(edit, staged), "changed");
+  assert.equal(directoryMutationState(proposedEdit, staged), "matched");
+  assert.equal(directoryMutationState({ ...proposedEdit, before: staged }, staged), "matched");
+  const approved = {
+    ...staged,
+    version: 3,
+    title: "New title",
+    editorialRevision: null,
+    revisionDecision: "approve-changes" as const,
+  };
+  assert.equal(
+    directoryMutationState(
+      { before: staged, action: "approve-changes", desiredStatus: "published" },
+      approved,
+    ),
+    "matched",
+  );
+  assert.equal(
+    directoryMutationState(
+      {
+        before: staged,
+        action: "reject-changes",
+        desiredStatus: "published",
+        reason: "Provjeri naziv",
+      },
+      approved,
+    ),
+    "changed",
+  );
+});
+
 test("confirmed cached edits replace fields and CAS immediately and archive/recover remove the old selection", () => {
   const changed = { ...before, version: 2, title: "New title" };
   assert.deepEqual(patchDirectoryBusinessCache([before], changed, false), [changed]);

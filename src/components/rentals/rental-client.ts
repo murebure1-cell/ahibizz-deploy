@@ -17,8 +17,9 @@ async function rentalRequest<T>(
     cache: "no-store",
   });
   const data = await response.json().catch(() => null);
-  if (!response.ok || !data)
-    throw new BookingRequestError(data?.code ?? "RENTAL_UNAVAILABLE", response.status);
+  if (!data || typeof data !== "object" || (!response.ok && typeof data.code !== "string"))
+    throw new Error("invalid_rental_response");
+  if (!response.ok) throw new BookingRequestError(data.code, response.status);
   return data;
 }
 
@@ -38,10 +39,12 @@ export function rentalError(error: unknown) {
       error.code === "SLOT_UNAVAILABLE"
     )
       return "Automobil je zauzet u tom periodu. Odaberi drugo vrijeme.";
+    if (error.code === "RENTAL_NOT_AVAILABLE") return "Automobil trenutno ne prima nove zahtjeve.";
     if (error.code.includes("DISABLED") || error.code.includes("INELIGIBLE"))
       return "Ovaj automobil trenutno ne prima nove zahtjeve.";
     if (error.code.includes("VERSION") || error.code.includes("STALE"))
       return "Ponuda je izmijenjena. Provjeri cijenu i vrijeme.";
+    if (error.code === "INVALID_RENTAL_INTERVAL") return "Provjeri vrijeme preuzimanja i vraćanja.";
     if (error.code.includes("INVALID") || error.code.includes("INPUT"))
       return "Provjeri unesene podatke.";
     if (error.code.includes("SELF"))

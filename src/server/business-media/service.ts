@@ -4,6 +4,7 @@ import type {
   BusinessMediaAsset,
   BusinessMediaManifest,
   BusinessMediaReceipt,
+  BusinessMediaSummary,
   PublicBusinessMediaManifest,
 } from "../../lib/business-media";
 import {
@@ -16,6 +17,7 @@ import {
 } from "../auth";
 import { getAuthDatabasePool } from "../auth/service";
 import { normalizeBusinessImage } from "./normalize";
+import { editableImages } from "./proposals";
 import { BusinessMediaAccessError, fail, kindSlot, object, uuid, version } from "./validation";
 
 type Query = Pick<PoolClient, "query">;
@@ -25,6 +27,7 @@ type Business = {
   owner_user_id: string;
   status: "draft" | "pending" | "published" | "archived";
   version: number;
+  pending_media: boolean;
 };
 type Image = { bytes: Buffer; mime: "image/webp"; width: number; height: number; version: number };
 type ReceiptRow = BusinessMediaReceipt & { fingerprint: string };
@@ -103,7 +106,9 @@ async function context(client: PoolClient, session: SignedSession, businessId: s
   if (signed.rowCount !== 1) fail(401, "AUTHENTICATION_REQUIRED");
   const business = (
     await client.query<Business>(
-      "SELECT id,owner_user_id,status,version FROM directory_business WHERE id=$1 FOR UPDATE",
+      `SELECT b.id,b.owner_user_id,b.status,b.version,
+              EXISTS(SELECT 1 FROM directory_business_image_proposal p WHERE p.business_id=b.id) AS pending_media
+         FROM directory_business b WHERE b.id=$1 FOR UPDATE OF b`,
       [businessId],
     )
   ).rows[0];
@@ -115,18 +120,35 @@ async function context(client: PoolClient, session: SignedSession, businessId: s
 async function manifest(query: Query, business: Business): Promise<BusinessMediaManifest> {
   const images = (
     await query.query<BusinessMediaAsset>(
-      `SELECT ${columns} FROM directory_business_image image WHERE image.business_id=$1 ORDER BY CASE image.kind WHEN 'logo' THEN 0 WHEN 'cover' THEN 1 ELSE 2 END,image.slot`,
+      `SELECT ${columns} FROM ${editableImages} ORDER BY CASE image.kind WHEN 'logo' THEN 0 WHEN 'cover' THEN 1 ELSE 2 END,image.slot`,
       [business.id],
     )
   ).rows;
+  const approved =
+    business.pending_media && business.status === "published"
+      ? (
+          await query.query<{ media: BusinessMediaSummary }>(
+            `SELECT ${businessMediaProjection} AS media FROM directory_business b WHERE b.id=$1`,
+            [business.id],
+          )
+        ).rows[0]?.media
+      : undefined;
   return {
     businessId: business.id,
     businessVersion: business.version,
     status: business.status,
+    ...(business.pending_media ? { pendingMedia: true } : {}),
+    ...(approved ? { approvedMedia: approved } : {}),
     logo: images.find((row) => row.kind === "logo") ?? null,
     cover: images.find((row) => row.kind === "cover") ?? null,
     gallery: images.filter((row) => row.kind === "gallery"),
   };
+}
+async function clearSlot(client: PoolClient, id: string, kind: string, slot: number) {
+  await client.query(
+    "DELETE FROM directory_business_image_proposal WHERE business_id=$1 AND kind=$2 AND slot=$3",
+    [id, kind, slot],
+  );
 }
 async function receipt(
   query: Query,
@@ -162,8 +184,7 @@ async function record(
   fingerprint: string,
   inputHash: string | null,
 ): Promise<BusinessMediaReceipt> {
-  const status =
-    actor.role === "member" && before.status === "published" ? "pending" : before.status;
+  const status = before.status;
   if (status === "archived") fail(409, "BUSINESS_ARCHIVED");
   const saved = (
     await client.query<{ version: number }>(
@@ -291,7 +312,11 @@ export function createBusinessMediaService({
         return (
           (
             await client.query<Image>(
-              "SELECT bytes,mime,width,height,version FROM directory_business_image WHERE business_id=$1 AND kind=$2 AND slot=$3 AND version=$4",
+              `SELECT bytes,mime,width,height,version FROM directory_business_image_proposal
+                WHERE business_id=$1 AND kind=$2 AND slot=$3 AND version=$4 AND bytes IS NOT NULL
+               UNION ALL
+               SELECT bytes,mime,width,height,version FROM directory_business_image
+                WHERE business_id=$1 AND kind=$2 AND slot=$3 AND version=$4`,
               [id, kind, slot, wanted],
             )
           ).rows[0] ?? null
@@ -356,7 +381,7 @@ export function createBusinessMediaService({
         const previous =
           (
             await client.query<{ version: number }>(
-              "SELECT version FROM directory_business_image WHERE business_id=$1 AND kind=$2 AND slot=$3",
+              `SELECT version FROM ${editableImages} WHERE kind=$2 AND slot=$3`,
               [id, kind, slot],
             )
           ).rows[0]?.version ?? null;
@@ -372,8 +397,11 @@ export function createBusinessMediaService({
           fingerprint,
           inputHash,
         );
+        const stage = actor.role === "member" && business.status === "published";
+        const table = stage ? "directory_business_image_proposal" : "directory_business_image";
+        if (!stage && business.pending_media) await clearSlot(client, id, kind, slot);
         await client.query(
-          "INSERT INTO directory_business_image(business_id,kind,slot,bytes,mime,width,height,version) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(business_id,kind,slot) DO UPDATE SET bytes=EXCLUDED.bytes,mime=EXCLUDED.mime,width=EXCLUDED.width,height=EXCLUDED.height,version=EXCLUDED.version,updated_at=now()",
+          `INSERT INTO ${table}(business_id,kind,slot,bytes,mime,width,height,version) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(business_id,kind,slot) DO UPDATE SET bytes=EXCLUDED.bytes,mime=EXCLUDED.mime,width=EXCLUDED.width,height=EXCLUDED.height,version=EXCLUDED.version,updated_at=now()`,
           [
             id,
             kind,
@@ -412,7 +440,7 @@ export function createBusinessMediaService({
         editable(business, wanted);
         const previous = (
           await client.query<{ version: number }>(
-            "SELECT version FROM directory_business_image WHERE business_id=$1 AND kind=$2 AND slot=$3",
+            `SELECT version FROM ${editableImages} WHERE kind=$2 AND slot=$3`,
             [id, kind, slot],
           )
         ).rows[0]?.version;
@@ -429,10 +457,21 @@ export function createBusinessMediaService({
           fingerprint,
           null,
         );
-        await client.query(
-          "DELETE FROM directory_business_image WHERE business_id=$1 AND kind=$2 AND slot=$3",
-          [id, kind, slot],
-        );
+        await clearSlot(client, id, kind, slot);
+        if (actor.role === "member" && business.status === "published") {
+          // Removing an unapproved addition cancels it; an approved photo stays live until review.
+          await client.query(
+            `INSERT INTO directory_business_image_proposal(business_id,kind,slot,version)
+             SELECT business_id,kind,slot,$4 FROM directory_business_image
+              WHERE business_id=$1 AND kind=$2 AND slot=$3`,
+            [id, kind, slot, saved.businessVersion],
+          );
+        } else {
+          await client.query(
+            "DELETE FROM directory_business_image WHERE business_id=$1 AND kind=$2 AND slot=$3",
+            [id, kind, slot],
+          );
+        }
         return saved;
       });
     },

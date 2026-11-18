@@ -1,5 +1,6 @@
 import { AccountAccessError } from "./auth";
 import { readFlatJson } from "./flat-json";
+import { inventorySelection } from "./inventory-appointments";
 import type { RentalService } from "./rentals/service";
 import type { StayService } from "./stays/service";
 
@@ -65,10 +66,12 @@ export function createInventoryHttpHandler(
             : await service.ownerCalendar(headers, businessId, resourceId, from, to);
         return reply({ entries });
       }
+      if (request.method === "GET" && area === "mine" && parts.length === 1)
+        return reply(
+          await service.myBookings(headers, inventorySelection(url.searchParams, invalid)),
+        );
       if (url.searchParams.size) invalid();
       if (request.method === "GET") {
-        if (area === "mine" && parts.length === 1)
-          return reply({ entries: await service.myBookings(headers) });
         if (businessId && parts.length === 2) {
           if (area === "owner") return reply(await service.ownerCatalog(headers, businessId));
           if (area === "public") return reply(await service.publicCatalog(businessId));

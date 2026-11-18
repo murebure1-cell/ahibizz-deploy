@@ -6,6 +6,22 @@
   gap: 10px;
   min-width: 0;
 }
+
+.more {
+  grid-column: 1 / -1;
+  justify-self: center;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 18px;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
 .locate,
 .current,
 .city summary,

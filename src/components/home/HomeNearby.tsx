@@ -1,6 +1,7 @@
 "use client";
 
 import Form from "next/form";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import { nearbyDirectoryPath, readNearbyBusinesses } from "../../lib/home-nearby";
@@ -23,6 +24,9 @@ type NearbyContext = {
   state: "waiting" | "loading" | "ready" | "unavailable";
   place: string;
   useGps: boolean;
+  categoryOptions: NearbyProps["categories"];
+  searchPath: string | null;
+  hasMore: boolean;
   location: ReturnType<typeof useDeviceLocation>;
   chooseGps: () => void;
   chooseCity: () => void;
@@ -43,6 +47,7 @@ export function HomeNearbyProvider({
   const [response, setResponse] = useState<{
     path: string;
     items: PublicBusinessView[];
+    hasMore: boolean;
     state: "loading" | "ready" | "unavailable";
   } | null>(null);
   useEffect(() => {
@@ -53,7 +58,7 @@ export function HomeNearbyProvider({
     let current = true;
     const abort = new AbortController();
     const timeout = window.setTimeout(() => abort.abort(), 12_000);
-    setResponse({ path, items: [], state: "loading" });
+    setResponse({ path, items: [], hasMore: false, state: "loading" });
     void (async () => {
       try {
         const result = await fetch(path, {
@@ -64,10 +69,12 @@ export function HomeNearbyProvider({
           redirect: "error",
         });
         if (!result.ok) throw new Error("DIRECTORY_UNAVAILABLE");
-        const items = readNearbyBusinesses(await result.json(), categories);
-        if (current && !abort.signal.aborted) setResponse({ path, items, state: "ready" });
+        const data = await result.json();
+        const items = readNearbyBusinesses(data, categories);
+        if (current && !abort.signal.aborted)
+          setResponse({ path, items, hasMore: data.hasMore, state: "ready" });
       } catch {
-        if (current) setResponse({ path, items: [], state: "unavailable" });
+        if (current) setResponse({ path, items: [], hasMore: false, state: "unavailable" });
       } finally {
         window.clearTimeout(timeout);
       }
@@ -93,6 +100,9 @@ export function HomeNearbyProvider({
       place,
       useGps,
       location,
+      categoryOptions: categories,
+      searchPath: path,
+      hasMore: response?.path === path && response.hasMore,
       chooseGps() {
         setUseGps(true);
         if (place) router.replace("/", { scroll: false });
@@ -102,7 +112,7 @@ export function HomeNearbyProvider({
         setUseGps(false);
       },
     }),
-    [useGps, response, path, initialBusinesses, available, place, location, router],
+    [useGps, response, path, initialBusinesses, available, place, location, router, categories],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
@@ -159,7 +169,7 @@ export function HomeNearbyControl() {
 }
 
 export function HomeNearbyResults() {
-  const { businesses, state, place, useGps, location } = useNearby();
+  const { businesses, state, place, useGps, location, searchPath } = useNearby();
   if (state === "unavailable")
     return <HomeEmptyState>Imenik trenutno nije dostupan.</HomeEmptyState>;
   if (state === "loading")
@@ -186,11 +196,81 @@ export function HomeNearbyResults() {
           : `Još nema objavljenih djelatnosti za ${place}.`}
       </HomeEmptyState>
     );
+  return <NearbyCards key={searchPath ?? place} />;
+}
+
+function NearbyCards() {
+  const { businesses, hasMore, searchPath, useGps, categoryOptions, place } = useNearby();
+  const [expanded, setExpanded] = useState(false);
+  const [request, setRequest] = useState({ page: 1 });
+  const [more, setMore] = useState({ items: [] as PublicBusinessView[], page: 1, hasMore });
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const { page } = request;
+    if (!searchPath || page === 1) return;
+    const abort = new AbortController();
+    let active = true;
+    const timer = window.setTimeout(() => abort.abort(), 12_000);
+    setFailed(false);
+    async function fetchPage() {
+      try {
+        const result = await fetch(`${searchPath}&page=${page}`, {
+          signal: abort.signal,
+          cache: "no-store",
+          credentials: "omit",
+          mode: "same-origin",
+          redirect: "error",
+        });
+        if (!result.ok) throw new Error("DIRECTORY_UNAVAILABLE");
+        const data = await result.json();
+        const items = readNearbyBusinesses(data, categoryOptions, page);
+        if (active)
+          setMore((previous) => ({
+            items: [...previous.items, ...items],
+            page,
+            hasMore: data.hasMore,
+          }));
+      } catch {
+        if (active) setFailed(true);
+      } finally {
+        window.clearTimeout(timer);
+      }
+    }
+    void fetchPage();
+    return () => {
+      active = false;
+      abort.abort();
+      window.clearTimeout(timer);
+    };
+  }, [request, searchPath, categoryOptions]);
+  const combined = expanded
+    ? [...new Map([...businesses, ...more.items].map((item) => [item.id, item])).values()]
+    : businesses.slice(0, 4);
   return (
     <>
-      {businesses.map((business) => (
+      {combined.map((business) => (
         <DirectoryResultCard key={business.id} business={business} />
       ))}
+      {!useGps && businesses.length > 4 && (
+        <Link className={styles.more} href={`/pretraga?mjesto=${encodeURIComponent(place)}`}>
+          Sve djelatnosti u ovom mjestu
+        </Link>
+      )}
+      {useGps && !expanded && businesses.length > 4 && (
+        <button className={styles.more} onClick={() => setExpanded(true)} type="button">
+          Sve u blizini
+        </button>
+      )}
+      {useGps && expanded && more.hasMore && (
+        <button
+          className={styles.more}
+          type="button"
+          disabled={request.page > more.page && !failed}
+          onClick={() => setRequest({ page: more.page + 1 })}
+        >
+          {failed ? "Pokušaj ponovo" : request.page > more.page ? "Učitavanje…" : "Prikaži još"}
+        </button>
+      )}
     </>
   );
 }

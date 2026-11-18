@@ -292,6 +292,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             ]),
           ),
         );
+      main = await directory.update(previous.headers, main.id, {
+        expectedVersion: main.version,
+        title: "Unreviewed former owner title",
+      });
+      assert.equal(main.editorialRevision.fields.title, "Unreviewed former owner title");
       const priorHistory = await historyRows();
       const original = { ...main },
         firstCommand = command(main);
@@ -394,7 +399,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             const { ownerId: _owner, version: _version, updatedAt: _updated, ...rest } = value;
             return rest;
           };
-          assert.deepEqual(omit(main), omit(original));
+          assert.equal(main.editorialRevision, null);
+          assert.equal((await directory.readPublic(main.id)).title, original.title);
+          assert.deepEqual(omit(main), omit({ ...original, editorialRevision: null }));
           assert.deepEqual(await historyRows(), priorHistory);
           assert.equal(firstResult.receipt.previousOwnerId, previous.user.id);
           assert.equal(firstResult.receipt.targetAccountId, target.user.id);

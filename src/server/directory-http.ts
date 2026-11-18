@@ -135,7 +135,9 @@ export function createDirectoryHttpHandler({
             await service.listOwn(request.headers, query(url, ["q", "page", "pageSize", "status"])),
           );
         if (path === "/review")
-          return reply(await service.pending(request.headers, query(url, ["page", "pageSize"])));
+          return reply(
+            await service.pending(request.headers, query(url, ["q", "page", "pageSize"])),
+          );
         if (path === "/admin")
           return reply(
             await service.listAdmin(

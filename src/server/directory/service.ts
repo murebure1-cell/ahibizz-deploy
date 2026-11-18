@@ -1,9 +1,17 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
-import { type BusinessDetails, readBusinessDetails } from "../../lib/business-details";
+import {
+  type BusinessDetails,
+  emptyBusinessDetails,
+  readBusinessDetails,
+} from "../../lib/business-details";
 import { type AuthService, getAuthService } from "../auth";
 import { AccountAccessError, type AccountService, getAccountService } from "../auth/accounts";
 import { type CurrentAuthUser, getAuthDatabasePool } from "../auth/service";
+import {
+  applyBusinessImageProposals,
+  clearBusinessImageProposals,
+} from "../business-media/proposals";
 import {
   columnMap,
   columns,
@@ -196,12 +204,50 @@ async function save(
   if (!result.rows[0]) fail(409, "VERSION_CONFLICT");
   return dto(result.rows[0]);
 }
+type EditorialRevision = NonNullable<DirectoryBusiness["editorialRevision"]>;
+
+async function stageRevision(
+  client: PoolClient,
+  before: DirectoryBusiness,
+  revision: EditorialRevision,
+) {
+  const payload = Object.keys(revision).length ? JSON.stringify(revision) : null;
+  await client.query(
+    "UPDATE directory_business SET editorial_revision=$2::jsonb,version=version+1,updated_at=now() WHERE id=$1",
+    [before.id, payload],
+  );
+  return business(client, before.id);
+}
+
+async function saveDetails(
+  client: PoolClient,
+  id: string,
+  details: BusinessDetails,
+  version: number,
+) {
+  await client.query(
+    `WITH updated AS (
+       UPDATE directory_business_details SET timezone=$2,hours=$3::jsonb,amenities=$4::text[],
+         business_version=$5,updated_at=now() WHERE business_id=$1 RETURNING business_id
+     )
+     INSERT INTO directory_business_details (business_id,timezone,hours,amenities,business_version)
+     SELECT $1,$2,$3::jsonb,$4::text[],$5 WHERE NOT EXISTS (SELECT 1 FROM updated)`,
+    [
+      id,
+      details.timezone,
+      details.hours === null ? null : JSON.stringify(details.hours),
+      details.amenities,
+      version,
+    ],
+  );
+}
+
 async function audit(
   client: PoolClient,
   actorId: string,
   before: DirectoryBusiness,
   after: DirectoryBusiness,
-  action: "publish" | "moderate" | "owner-update",
+  action: "publish" | "moderate" | "owner-update" | "approve-changes" | "reject-changes",
   reason: string | null = null,
 ) {
   await client.query(
@@ -326,11 +372,16 @@ export function createDirectoryService({
     },
     async pending(headers: Headers, input: unknown = {}) {
       const identity = await actor(headers);
-      object(input, ["page", "pageSize"]);
+      object(input, ["q", "page", "pageSize"]);
       return transaction(pool, async (client) => {
         const { actor: currentActor } = await lockUsers(client, identity);
         owner(currentActor);
-        return listDirectory(client, input, "b.status = 'pending'", []);
+        return listDirectory(
+          client,
+          input,
+          "(b.status='pending' OR b.editorial_revision IS NOT NULL OR EXISTS (SELECT 1 FROM directory_business_image_proposal ip WHERE ip.business_id=b.id))",
+          [],
+        );
       });
     },
     async readOwn(headers: Headers, id: string) {
@@ -385,13 +436,24 @@ export function createDirectoryService({
         current(before, value.expectedVersion as number);
         editable(before);
         const { expectedVersion: _version, ...patch } = value;
-        const next = completeFields({ ...fields(before), ...patch });
+        const reviewing = before.status === "published" && currentActor.role === "member";
+        const previous = reviewing
+          ? { ...fields(before), ...before.editorialRevision?.fields }
+          : fields(before);
+        const next = completeFields({ ...previous, ...patch });
+        if (businessKeys.every((key) => previous[key] === next[key])) return before;
         await classify(client, next);
-        const status =
-          currentActor.role === "member" && before.status === "published"
-            ? "pending"
-            : before.status;
-        const after = await save(client, before, next, status);
+        if (reviewing) {
+          const revision = { ...before.editorialRevision };
+          const differences = Object.fromEntries(
+            businessKeys.filter((key) => before[key] !== next[key]).map((key) => [key, next[key]]),
+          );
+          if (Object.keys(differences).length) revision.fields = differences;
+          else delete revision.fields;
+          return stageRevision(client, before, revision);
+        }
+        if (before.editorialRevision?.fields) fail(409, "REVIEW_REQUIRED");
+        const after = await save(client, before, next, before.status);
         if (currentActor.role === "owner" && before.status === "published")
           await audit(client, currentActor.id, before, after, "owner-update");
         return after;
@@ -420,27 +482,22 @@ export function createDirectoryService({
         const { actor: currentActor, before } = await lockedBusiness(client, identity, key);
         current(before, expected);
         editable(before);
-        const status =
-          currentActor.role === "member" && before.status === "published"
-            ? "pending"
-            : before.status;
-        const after = await save(client, before, fields(before), status);
-        await client.query(
-          `WITH updated AS (
-             UPDATE directory_business_details
-             SET timezone=$2,hours=$3::jsonb,amenities=$4::text[],business_version=$5,updated_at=now()
-             WHERE business_id=$1 RETURNING business_id
-           )
-           INSERT INTO directory_business_details (business_id,timezone,hours,amenities,business_version)
-           SELECT $1,$2,$3::jsonb,$4::text[],$5 WHERE NOT EXISTS (SELECT 1 FROM updated)`,
-          [
-            key,
-            details.timezone,
-            details.hours === null ? null : JSON.stringify(details.hours),
-            details.amenities,
-            after.version,
-          ],
-        );
+        const reviewing = before.status === "published" && currentActor.role === "member";
+        const approved = readBusinessDetails(before.details ?? emptyBusinessDetails());
+        const previous =
+          reviewing && before.editorialRevision?.details
+            ? readBusinessDetails(before.editorialRevision.details)
+            : approved;
+        if (JSON.stringify(previous) === JSON.stringify(details)) return before;
+        if (reviewing) {
+          const revision = { ...before.editorialRevision };
+          if (JSON.stringify(approved) === JSON.stringify(details)) delete revision.details;
+          else revision.details = details;
+          return stageRevision(client, before, revision);
+        }
+        if (before.editorialRevision?.details) fail(409, "REVIEW_REQUIRED");
+        const after = await save(client, before, fields(before), before.status);
+        await saveDetails(client, key, details, after.version);
         if (currentActor.role === "owner" && before.status === "published")
           await audit(client, currentActor.id, before, after, "owner-update");
         return business(client, key);
@@ -460,6 +517,7 @@ export function createDirectoryService({
         editable(before);
         eligible(businessOwner);
         await classify(client, fields(before));
+        if (before.status === "published") return before;
         const status = currentActor.role === "owner" ? "published" : "pending";
         if (before.status === status) return before;
         const after = await save(client, before, fields(before), status);
@@ -495,10 +553,17 @@ export function createDirectoryService({
     async moderate(headers: Headers, id: string, input: unknown) {
       const value = object(input, ["status", "expectedVersion", "reason"]),
         expected = expectedVersion(value.expectedVersion);
-      if (!["published", "draft"].includes(value.status as string))
+      if (
+        !["published", "draft", "approve-changes", "reject-changes"].includes(
+          value.status as string,
+        )
+      )
         fail(400, "INVALID_DIRECTORY_INPUT");
       const reason = value.reason === undefined ? null : text(value.reason, 500, true);
-      if (value.status === "draft" && (!reason || reason.length < 2))
+      if (
+        (value.status === "draft" || value.status === "reject-changes") &&
+        (!reason || reason.length < 2)
+      )
         fail(400, "INVALID_DIRECTORY_INPUT");
       const identity = await actor(headers),
         key = uuid(id);
@@ -511,6 +576,29 @@ export function createDirectoryService({
         owner(currentActor);
         current(before, expected);
         editable(before);
+        if (value.status === "approve-changes" || value.status === "reject-changes") {
+          if (before.status !== "published" || (!before.editorialRevision && !before.pendingMedia))
+            fail(409, "NO_PENDING_CHANGES");
+          const approving = value.status === "approve-changes";
+          const next = approving
+            ? completeFields({ ...fields(before), ...before.editorialRevision?.fields })
+            : fields(before);
+          if (approving) {
+            eligible(businessOwner);
+            await classify(client, next);
+          }
+          await client.query("UPDATE directory_business SET editorial_revision=NULL WHERE id=$1", [
+            key,
+          ]);
+          const after = await save(client, before, next, "published");
+          if (approving) {
+            if (before.editorialRevision?.details)
+              await saveDetails(client, key, before.editorialRevision.details, after.version);
+            if (before.pendingMedia) await applyBusinessImageProposals(client, key);
+          } else if (before.pendingMedia) await clearBusinessImageProposals(client, key);
+          await audit(client, currentActor.id, before, after, value.status, reason);
+          return business(client, key);
+        }
         if (value.status === "published") {
           eligible(businessOwner);
           await classify(client, fields(before));

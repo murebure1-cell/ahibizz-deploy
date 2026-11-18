@@ -243,6 +243,29 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+.proposal {
+  margin-block-start: 0.625rem;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+.proposal summary {
+  color: var(--ui-text);
+  cursor: pointer;
+  font-weight: 650;
+}
+.proposal dl {
+  margin: 0.5rem 0 0;
+}
+.proposal dl > div {
+  padding-block: 0.4rem;
+}
+.proposal dt {
+  font-weight: 650;
+}
+.proposal dd {
+  margin: 0.15rem 0 0;
+}
+
 .returnNote {
   padding: 12px 14px;
   border-inline-start: 2px solid var(--ui-accent-border);
@@ -339,6 +362,23 @@
   gap: 8px;
   flex-wrap: wrap;
   padding-left: 65px;
+}
+.manageSearch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.manageSearch input {
+  flex: 1 1 200px;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font: inherit;
+  color: var(--ui-text);
+  background: var(--ui-surface);
 }
 .toolbar {
   display: flex;

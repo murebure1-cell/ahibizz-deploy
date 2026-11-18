@@ -18,10 +18,18 @@ const fieldKeys = [
 
 export type DirectoryMutation = {
   before: DirectoryBusiness;
-  action: "edit" | "publish" | "archive" | "recover" | "return-to-draft";
+  action:
+    | "edit"
+    | "publish"
+    | "archive"
+    | "recover"
+    | "return-to-draft"
+    | "approve-changes"
+    | "reject-changes";
   desiredStatus: DirectoryBusiness["status"];
   fields?: BusinessFields;
   publish?: boolean;
+  useProposedFields?: boolean;
   bookingEnabled?: boolean;
   wasNew?: boolean;
   reason?: string;
@@ -47,6 +55,17 @@ export function directoryMutationState(
     !["draft", "pending", "published", "archived"].includes(fresh.status)
   )
     throw new Error("invalid_directory_reconciliation");
+  const checkFields = (row: DirectoryBusiness) =>
+    intent.useProposedFields ? effectiveBusiness(row) : row;
+  if (
+    intent.action === "edit" &&
+    fresh.status === intent.desiredStatus &&
+    fresh.version === intent.before.version &&
+    intent.fields &&
+    directoryMutationFieldsMatch(intent.fields, checkFields(fresh)) &&
+    directoryMutationFieldsMatch(intent.fields, checkFields(intent.before))
+  )
+    return "matched";
   // A read can overtake a request whose transaction is still waiting to commit.
   if (fresh.version === intent.before.version) return "pending";
   if (fresh.status !== intent.desiredStatus) return "changed";
@@ -56,11 +75,20 @@ export function directoryMutationState(
       fresh.moderationReturn?.version !== fresh.version)
   )
     return "changed";
-  return intent.fields && !directoryMutationFieldsMatch(intent.fields, fresh)
+  if (intent.action === "approve-changes" || intent.action === "reject-changes")
+    return fresh.version === intent.before.version + 1 &&
+      fresh.revisionDecision === intent.action &&
+      (intent.action !== "reject-changes" || fresh.revisionRejection === intent.reason)
+      ? "matched"
+      : "changed";
+  return intent.fields && !directoryMutationFieldsMatch(intent.fields, checkFields(fresh))
     ? "changed"
     : "matched";
 }
 
+export function effectiveBusiness(business: DirectoryBusiness): DirectoryBusiness {
+  return { ...business, ...business.editorialRevision?.fields };
+}
 export function directoryMutationFieldsMatch(
   fields: BusinessFields,
   fresh: DirectoryBusiness,

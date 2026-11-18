@@ -8,11 +8,13 @@ export function EmptyDirectory({ filtered = false }: { filtered?: boolean }) {
         <Icon name="shop" />
       </span>
       <h2>
-        {filtered
-          ? "Ovdje još nema objavljenih djelatnosti."
-          : "Pripremamo prostor za prve djelatnosti."}
+        {filtered ? "Nema rezultata za ovu pretragu." : "Pripremamo prostor za prve djelatnosti."}
       </h2>
-      <p>Novi imenik tek nastaje. Profili će biti dostupni nakon objave.</p>
+      <p>
+        {filtered
+          ? "Pokušaj s drugim nazivom ili proširi područje pretrage."
+          : "Ovdje ćeš pronaći prve objavljene profile."}
+      </p>
       <Link className="text-link" href={filtered ? "/pretraga" : "/o-nama"}>
         {filtered ? "Ukloni uslove pretrage" : "Upoznaj AhiBizz"}
         <Icon name="arrow" />

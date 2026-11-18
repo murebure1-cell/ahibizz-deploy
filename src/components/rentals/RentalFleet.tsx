@@ -3,6 +3,7 @@ import Image from "next/image";
 import { type FormEvent, useRef, useState } from "react";
 import { bookingMoney } from "../../lib/booking";
 import { type BusinessMediaAsset, businessMediaUrl } from "../../lib/business-media";
+import type { RentalIntent } from "../../lib/rental-submission";
 import {
   RENTAL_BRANDS,
   type RentalCatalog,
@@ -12,6 +13,7 @@ import {
 import { Icon } from "../Icon";
 import { RentalCalendar } from "./RentalCalendar";
 import { RentalEntry } from "./RentalEntries";
+import { RentalRecovery } from "./RentalRecovery";
 import { rentalError, useRentalRead, writeRental } from "./rental-client";
 import styles from "./rentals.module.css";
 
@@ -26,6 +28,7 @@ function VehicleForm({
   businessId,
   actor,
   photos,
+  mediaOnReview,
   done,
   cancel,
 }: {
@@ -33,6 +36,7 @@ function VehicleForm({
   businessId: string;
   actor: string;
   photos: Photo[];
+  mediaOnReview?: boolean;
   done: () => void;
   cancel: () => void;
 }) {
@@ -188,6 +192,7 @@ function VehicleForm({
             defaultValue={car?.description ?? ""}
           />
         </label>
+        {mediaOnReview && <p>Novu fotografiju možeš odabrati nakon odobrenja.</p>}
         {photos.length > 0 ? (
           <fieldset className={styles.photoChoice}>
             <legend>Fotografija automobila</legend>
@@ -221,7 +226,9 @@ function VehicleForm({
           </fieldset>
         ) : (
           <p className={styles.full}>
-            Fotografiju možeš dodati u galeriju djelatnosti i zatim odabrati ovdje.
+            {mediaOnReview
+              ? "Automobil možeš sačuvati i bez fotografije."
+              : "Fotografiju možeš dodati u galeriju djelatnosti i zatim odabrati ovdje."}
           </p>
         )}
         <label className={styles.checkbox}>
@@ -246,18 +253,35 @@ function VehicleForm({
   );
 }
 
-export function RentalFleet({
-  businessId,
-  actor,
-  photos = [],
-  initialCatalog,
-  onPhotos,
-}: {
+type FleetProps = {
   businessId: string;
   actor?: string;
   photos?: Photo[];
+  mediaOnReview?: boolean;
   initialCatalog?: RentalCatalog;
   onPhotos?: () => void;
+};
+export function RentalFleet(props: FleetProps) {
+  return (
+    <RentalRecovery
+      key={`${props.actor ?? "public"}:${props.businessId}`}
+      actor={props.actor}
+      businessId={props.businessId}
+    >
+      {(onUncertain) => <FleetContent {...props} onUncertain={onUncertain} />}
+    </RentalRecovery>
+  );
+}
+function FleetContent({
+  businessId,
+  actor,
+  photos = [],
+  mediaOnReview,
+  initialCatalog,
+  onPhotos,
+  onUncertain,
+}: FleetProps & {
+  onUncertain: (intent: RentalIntent) => void;
 }) {
   const [revision, setRevision] = useState(0);
   const [editor, setEditor] = useState<RentalVehicle | null | undefined>();
@@ -343,6 +367,7 @@ export function RentalFleet({
           businessId={businessId}
           actor={actor}
           photos={photos}
+          mediaOnReview={mediaOnReview}
           done={() => {
             setEditor(undefined);
             refresh();
@@ -455,6 +480,7 @@ export function RentalFleet({
                   actor={actor}
                   allowNew={data.eligible}
                   onChangedOffer={refresh}
+                  onUncertain={onUncertain}
                 />
               )}
             </article>

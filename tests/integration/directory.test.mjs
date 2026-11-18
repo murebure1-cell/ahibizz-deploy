@@ -100,6 +100,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0015_profile_verification.sql",
           "0016_vehicle_rentals.sql",
           "0017_accommodation.sql",
+          "0018_directory_revisions.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -556,7 +557,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       );
 
       await t.test(
-        "member publication waits for moderation and edits remove public visibility",
+        "member first publication needs approval; subsequent edits stay private until reviewed",
         async () => {
           await denied(() => directory.readPublic(memberBusiness.id), 404, "BUSINESS_NOT_FOUND");
           memberBusiness = await directory.publish(member.headers, memberBusiness.id, {
@@ -578,11 +579,71 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           for (const field of ["ownerId", "status", "version", "archivedAt", "updatedAt"])
             assert.equal(Object.hasOwn(publicProfile, field), false);
           const version = memberBusiness.version;
+          assert.equal(
+            (
+              await directory.update(member.headers, memberBusiness.id, {
+                title: memberBusiness.title,
+                expectedVersion: version,
+              })
+            ).version,
+            version,
+          );
           memberBusiness = await directory.update(member.headers, memberBusiness.id, {
             title: "Revised member profile",
             expectedVersion: version,
           });
-          assert.equal(memberBusiness.status, "pending");
+          assert.equal(memberBusiness.status, "published");
+          assert.equal(memberBusiness.editorialRevision.fields.title, "Revised member profile");
+          const reviewQuery = "/api/directory/review?q=Revised%20member&pageSize=20";
+          const reviewFound = await directoryRequest("GET", reviewQuery, { actor: owner });
+          assert.equal(reviewFound.status, 200);
+          assert.deepEqual(
+            reviewFound.data.items.map((row) => row.id),
+            [memberBusiness.id],
+          );
+          assert.equal(
+            (await directoryRequest("GET", `${reviewQuery}&page=2`, { actor: owner })).data.items
+              .length,
+            0,
+          );
+          assert.equal(
+            (
+              await directoryRequest("GET", "/api/directory/review?q=does-not-exist", {
+                actor: owner,
+              })
+            ).data.items.length,
+            0,
+          );
+          assert.equal((await directoryRequest("GET", reviewQuery, { actor: member })).status, 403);
+          assert.equal((await directoryRequest("GET", reviewQuery)).status, 401);
+          assert.equal(
+            (await directory.listOwn(other.headers, { q: "Revised member" })).items.length,
+            0,
+          );
+          assert.equal(
+            (await directory.listAdmin(owner.headers, { q: "Revised member" })).items[0].id,
+            memberBusiness.id,
+          );
+          assert.equal((await directory.readPublic(memberBusiness.id)).title, publicProfile.title);
+          assert.equal(
+            (await directory.listPublic({ q: "Revised member profile" })).items.length,
+            0,
+          );
+          assert.equal(
+            (await directory.pending(owner.headers)).items.some(
+              (row) => row.id === memberBusiness.id,
+            ),
+            true,
+          );
+          assert.equal(
+            (
+              await directory.update(member.headers, memberBusiness.id, {
+                title: "Revised member profile",
+                expectedVersion: memberBusiness.version,
+              })
+            ).version,
+            memberBusiness.version,
+          );
           await denied(
             () =>
               directory.update(member.headers, memberBusiness.id, {
@@ -592,9 +653,17 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             409,
             "VERSION_CONFLICT",
           );
-          await denied(() => directory.readPublic(memberBusiness.id), 404, "BUSINESS_NOT_FOUND");
+          await denied(
+            () =>
+              directory.moderate(member.headers, memberBusiness.id, {
+                status: "approve-changes",
+                expectedVersion: memberBusiness.version,
+              }),
+            403,
+            "OWNER_REQUIRED",
+          );
           memberBusiness = await directory.moderate(owner.headers, memberBusiness.id, {
-            status: "published",
+            status: "approve-changes",
             expectedVersion: memberBusiness.version,
           });
           assert.ok(
@@ -602,15 +671,23 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
               await directory.listPublic({ categoryId: root.id, subcategoryId: child.id })
             ).items.some((row) => row.id === memberBusiness.id),
           );
+          assert.equal(
+            (await directory.readPublic(memberBusiness.id)).title,
+            "Revised member profile",
+          );
+          assert.equal(memberBusiness.editorialRevision, null);
           const audit = (
             await pool.query(
-              "SELECT previous_status, next_status, previous_version, next_version FROM directory_moderation_audit WHERE actor_user_id = $1 AND business_id = $2 AND action = 'moderate' ORDER BY created_at, id",
+              "SELECT previous_status, next_status, previous_version, next_version FROM directory_moderation_audit WHERE actor_user_id = $1 AND business_id = $2 AND action IN ('moderate','approve-changes') ORDER BY next_version",
               [owner.user.id, memberBusiness.id],
             )
           ).rows;
           assert.equal(audit.length, 2);
+          assert.deepEqual(
+            audit.map((row) => row.previous_status),
+            ["pending", "published"],
+          );
           for (const row of audit) {
-            assert.equal(row.previous_status, "pending");
             assert.equal(row.next_status, "published");
             assert.equal(Number(row.next_version), Number(row.previous_version) + 1);
           }
@@ -670,7 +747,24 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             title: "Member profile awaiting review",
             expectedVersion: memberBusiness.version,
           });
-          assert.equal(memberBusiness.status, "pending");
+          assert.equal(memberBusiness.status, "published");
+          const publicTitle = memberBusiness.title;
+          memberBusiness = await directory.moderate(owner.headers, memberBusiness.id, {
+            status: "reject-changes",
+            reason: "Dopuni naziv.",
+            expectedVersion: memberBusiness.version,
+          });
+          assert.equal(memberBusiness.revisionRejection, "Dopuni naziv.");
+          assert.equal(memberBusiness.editorialRevision, null);
+          assert.equal((await directory.readPublic(memberBusiness.id)).title, publicTitle);
+          assert.equal(
+            "revisionRejection" in (await directory.readPublic(memberBusiness.id)),
+            false,
+          );
+          memberBusiness = await directory.update(member.headers, memberBusiness.id, {
+            title: "Member profile awaiting review",
+            expectedVersion: memberBusiness.version,
+          });
           const auditCount = async () =>
             (await pool.query("SELECT count(*)::integer AS n FROM directory_moderation_audit"))
               .rows[0].n;
@@ -712,6 +806,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           });
           assert.equal(returned.status, 200);
           memberBusiness = returned.data.business;
+          assert.equal(memberBusiness.editorialRevision, null);
           const note = memberBusiness.moderationReturn;
           assert.equal(memberBusiness.status, "draft");
           assert.equal(memberBusiness.version, before.version + 1);
@@ -936,10 +1031,18 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           assert.equal(business.status, "published");
           assert.equal((await directory.readPublic(business.id)).title, "Owner revised fixture");
           business = await directory.update(owner.headers, business.id, {
-            title: "Owner 50%_\\ fixture",
+            title: "Restoran Đorđe Nedžad 50%_\\ fixture",
             expectedVersion: business.version,
           });
-          for (const q of ["%", "_", "\\", "50%_\\"]) {
+          for (const q of [
+            "nedzad restoran",
+            "DJORDJE",
+            "NEDŽAD RESTORAN",
+            "%",
+            "_",
+            "\\",
+            "50%_\\",
+          ]) {
             assert.deepEqual(
               (await directory.listPublic({ q })).items.map((row) => row.id),
               [business.id],
@@ -1616,6 +1719,30 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
 
+      await t.test(
+        "admin search pages 21 pending profiles by city without exposing them publicly",
+        async () => {
+          const ids = Array.from({ length: 21 }, () => randomUUID());
+          await pool.query(
+            "INSERT INTO directory_business(id,owner_user_id,title,category_id,city,status) SELECT id,$2,'Poslovnica',$3,'Čapljina QA','pending' FROM unnest($1::uuid[]) AS fixture(id)",
+            [ids, member.user.id, root.id],
+          );
+          const path = "/api/directory/review?q=capljina%20qa&page=";
+          const first = await directoryRequest("GET", `${path}1`, { actor: owner });
+          const second = await directoryRequest("GET", `${path}2`, { actor: owner });
+          assert.equal(first.status, 200);
+          assert.equal(second.status, 200);
+          assert.equal(first.data.items.length, 20);
+          assert.equal(first.data.hasMore, true);
+          assert.equal(second.data.items.length, 1);
+          assert.equal(second.data.hasMore, false);
+          assert.deepEqual(
+            [...first.data.items, ...second.data.items].map((row) => row.id).sort(),
+            ids.sort(),
+          );
+          assert.equal((await directory.listPublic({ q: "capljina QA" })).items.length, 0);
+        },
+      );
       assert.equal(outboundAttempts, 0);
       assert.deepEqual(await outsideTables(administration, schema), outside);
     } finally {

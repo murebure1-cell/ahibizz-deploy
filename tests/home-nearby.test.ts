@@ -34,6 +34,17 @@ test("nearby transport uses the bounded public endpoint with an approximate orig
     ],
   );
 });
+
+test("nearby pages preserve the fifth result and validate the requested page", () => {
+  const rows = Array.from({ length: 5 }, (_, n) => ({
+    ...row,
+    id: `11111111-1111-4111-8111-11111111111${n}`,
+  }));
+  assert.equal(readNearbyBusinesses(result(rows), []).length, 5);
+  const second = { ...result(rows), page: 2 };
+  assert.equal(readNearbyBusinesses(second, [], 2)[4]?.id, rows[4]?.id);
+  assert.throws(() => readNearbyBusinesses(result(rows), [], 2));
+});
 test("nearby response projects actual public card fields and never accepts hidden authority or malformed geometry", () => {
   const items = readNearbyBusinesses(result(), [
     { id: "category", name: "Services", parentId: null },

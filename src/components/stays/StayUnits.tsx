@@ -6,6 +6,7 @@ import {
   type BusinessMediaAsset,
   type BusinessMediaManifest,
   businessMediaUrl,
+  inventoryMedia,
 } from "../../lib/business-media";
 import type { StayCatalog, StayUnit, StayUnitInput } from "../../lib/stays";
 import { BusinessMediaManager } from "../directory/BusinessMediaManager";
@@ -22,6 +23,7 @@ function UnitForm({
   actor,
   photos,
   photosConfirmed,
+  mediaOnReview,
   cancel,
   saved,
   onPhotos,
@@ -31,6 +33,7 @@ function UnitForm({
   actor: string;
   photos: BusinessMediaAsset[];
   photosConfirmed: boolean;
+  mediaOnReview?: boolean;
   cancel: () => void;
   saved: () => void;
   onPhotos: () => void;
@@ -135,6 +138,7 @@ function UnitForm({
         </label>
         <fieldset className={common.photoChoice}>
           <legend>Fotografije jedinice</legend>
+          {mediaOnReview && <p>Novu fotografiju možeš odabrati nakon odobrenja.</p>}
           {photos.map((p) => (
             <label key={p.slot}>
               <input
@@ -233,6 +237,7 @@ export function StayUnits({
   actor,
   businessTitle,
   photos = [],
+  mediaOnReview = false,
   initialCatalog,
   onMediaChanged,
 }: {
@@ -240,6 +245,7 @@ export function StayUnits({
   actor?: string;
   businessTitle?: string;
   photos?: BusinessMediaAsset[];
+  mediaOnReview?: boolean;
   initialCatalog?: StayCatalog;
   onMediaChanged?: (manifest: BusinessMediaManifest) => void;
 }) {
@@ -335,6 +341,7 @@ export function StayUnits({
           actor={actor}
           photos={assets}
           photosConfirmed={currentPhotos !== null}
+          mediaOnReview={mediaOnReview}
           businessId={businessId}
           saved={() => {
             setEditor(undefined);
@@ -454,7 +461,8 @@ export function StayUnits({
           expectedAccountId={actor}
           onBack={() => setGallery(false)}
           onChanged={(manifest) => {
-            setCurrentPhotos(manifest.gallery);
+            const approved = inventoryMedia(manifest);
+            if (approved) setCurrentPhotos(approved.gallery);
             onMediaChanged?.(manifest);
           }}
         />

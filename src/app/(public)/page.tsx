@@ -30,7 +30,7 @@ export default async function HomePage({
         service.categories(),
         place ? service.listPublic({ city: place }) : Promise.resolve(null),
       ]);
-      businesses = result?.items.slice(0, 4) ?? [];
+      businesses = result?.items.slice(0, 5) ?? [];
       categories = classification.categories;
       available = true;
     }

@@ -18,6 +18,7 @@ import {
   type BusinessMediaAsset,
   type BusinessMediaManifest,
   businessMediaUrl,
+  inventoryMedia,
 } from "../../lib/business-media";
 import { businessMediaRequest } from "../../lib/business-media-client";
 import {
@@ -39,6 +40,7 @@ import {
   type DirectoryMutation,
   directoryMutationFieldsMatch,
   directoryMutationState,
+  effectiveBusiness,
   patchDirectoryBusinessCache,
   uncertainDirectoryMutation,
 } from "../../lib/directory-mutation-recovery";
@@ -48,6 +50,7 @@ import { BusinessBookingManager } from "../booking/BusinessBookingManager";
 import { Icon } from "../Icon";
 import { RentalFleet } from "../rentals/RentalFleet";
 import { StayUnits } from "../stays/StayUnits";
+import { BusinessChanges } from "./BusinessChanges";
 import { BusinessDetailsManager } from "./BusinessDetailsManager";
 import {
   BusinessEditor,
@@ -80,6 +83,7 @@ function ReturnedBusinessNote({ business }: { business?: DirectoryBusiness | nul
 function errorMessage(error: unknown) {
   const code = error instanceof RequestError ? error.code : "";
   if (code === "BUSINESS_LIMIT_REACHED") return "Tvoj nalog je dosegao broj djelatnosti u paketu.";
+  if (code === "REVIEW_REQUIRED") return "Prvo pregledaj i odobri ili odbij predložene izmjene.";
   if (code === "VERSION_CONFLICT")
     return "Djelatnost je u međuvremenu izmijenjena. Otvori je ponovo.";
   if (code === "IDEMPOTENCY_CONFLICT")
@@ -195,6 +199,9 @@ export function BusinessManager({
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const [searchText, setSearchText] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [reviewOnly, setReviewOnly] = useState(false);
   const [all, setAll] = useState(initialAll && isOwner);
   const [archived, setArchived] = useState(false);
   const [page, setPage] = useState(1);
@@ -210,6 +217,7 @@ export function BusinessManager({
   const [pendingCreate, setPendingCreate] = useState<DirectoryCreateIntent | null>(null);
   const [pendingMutation, setPendingMutation] = useState<DirectoryMutation | null>(null);
   const [returning, setReturning] = useState<DirectoryBusiness | null>(null);
+  const [rejectRevision, setRejectRevision] = useState(false);
   const [returnReason, setReturnReason] = useState("");
   const returnReasonId = useId();
   const returnInput = useRef<HTMLInputElement>(null);
@@ -262,6 +270,8 @@ export function BusinessManager({
     writing.current?.abort();
     writing.current = null;
     loadedSelection.current = "";
+    setSearchText("");
+    setSearchQuery("");
     setItems(null);
     setCategories([]);
     setHasMore(false);
@@ -322,6 +332,7 @@ export function BusinessManager({
     ) {
       boundary.current = { expectedAccountId, directoryApi, bookingApi, mediaApi, isOwner };
       clearPrivate();
+      setReviewOnly(false);
       setAll(initialAll && isOwner);
       setPage(1);
       setError("");
@@ -331,11 +342,17 @@ export function BusinessManager({
   const editingId = editing?.id;
   const commandLocked = busy || pendingCreate !== null || pendingMutation !== null;
   const locked = commandLocked || returning !== null;
-  const canContinue =
-    items !== null &&
-    loadedSelection.current ===
-      `${all && isOwner ? "admin" : "mine"}?page=${page}${archived ? "&status=archived" : ""}` &&
-    hasMore;
+  const area = reviewOnly && isOwner ? "review" : all && isOwner ? "admin" : "mine";
+  const params = new URLSearchParams({ page: String(page) });
+  if (archived) params.set("status", "archived");
+  if (searchQuery) params.set("q", searchQuery);
+  const selection = `${area}?${params}`;
+  const canContinue = items !== null && loadedSelection.current === selection && hasMore;
+  function applySearch(value: string) {
+    setSearchText(value);
+    setSearchQuery(value.trim());
+    setPage(1);
+  }
   // A dispatched command keeps its result and lock while another account section is visible.
   // Only a changed actor/transport/role or unmount invalidates that private workspace.
   useEffect(() => {
@@ -382,13 +399,11 @@ export function BusinessManager({
       revision = ++reads.current;
     const access = epoch.current;
     setReadError("");
-    const suffix = `?page=${page}${archived ? "&status=archived" : ""}`;
-    const selection = `${all && isOwner ? "admin" : "mine"}${suffix}`;
     const cached = loadedSelection.current === selection && items !== null;
     setLoading(!cached);
     if (!cached) setItems(null);
     Promise.all([
-      request(`${all && isOwner ? "admin" : "mine"}${suffix}`, { signal: controller.signal }),
+      request(selection, { signal: controller.signal }),
       request("categories", { signal: controller.signal }),
     ])
       .then(([list, taxonomy]) => {
@@ -424,10 +439,7 @@ export function BusinessManager({
   }, [
     active,
     refresh,
-    all,
-    archived,
-    isOwner,
-    page,
+    selection,
     bookingBusiness,
     mediaBusiness,
     detailsBusiness,
@@ -441,12 +453,19 @@ export function BusinessManager({
   function cacheBusiness(business: DirectoryBusiness) {
     reads.current++;
     setItems((rows) =>
-      patchDirectoryBusinessCache(
-        rows,
-        business,
-        archived,
-        page === 1 && ((all && isOwner) || business.ownerId === expectedAccountId),
-      ),
+      reviewOnly &&
+      business.status !== "pending" &&
+      !business.editorialRevision &&
+      !business.pendingMedia
+        ? (rows?.filter((row) => row.id !== business.id) ?? null)
+        : patchDirectoryBusinessCache(
+            rows,
+            business,
+            archived,
+            !searchQuery &&
+              page === 1 &&
+              ((all && isOwner) || business.ownerId === expectedAccountId),
+          ),
     );
   }
   function forgetMutation() {
@@ -454,6 +473,10 @@ export function BusinessManager({
     setPendingMutation(null);
   }
   function mutationNotice(intent: DirectoryMutation) {
+    if (intent.action === "approve-changes") return "Izmjene su objavljene.";
+    if (intent.action === "reject-changes") return "Izmjene su odbijene.";
+    if (intent.action === "edit" && !isOwner && intent.before.status === "published")
+      return "Podaci su sačuvani.";
     return intent.action === "return-to-draft"
       ? "Djelatnost je vraćena u nacrt."
       : intent.action === "archive"
@@ -667,9 +690,9 @@ export function BusinessManager({
         mutation.current = {
           before: editingBusiness,
           action: "edit",
+          useProposedFields: !isOwner && editingBusiness.status === "published",
           fields: directoryFields,
-          desiredStatus:
-            !isOwner && editingBusiness.status === "published" ? "pending" : editingBusiness.status,
+          desiredStatus: editingBusiness.status,
           publish,
           ...(updateBooking ? { bookingEnabled } : {}),
         };
@@ -689,7 +712,12 @@ export function BusinessManager({
         data.business.version < 1 ||
         (editingBusiness &&
           (data.business.id !== editingBusiness.id ||
-            data.business.version <= editingBusiness.version))
+            data.business.version < editingBusiness.version ||
+            (data.business.version === editingBusiness.version &&
+              !directoryMutationFieldsMatch(
+                directoryFields,
+                isOwner ? data.business : effectiveBusiness(data.business),
+              ))))
       )
         throw new RequestError("UNAVAILABLE");
       let business = data.business as DirectoryBusiness;
@@ -724,11 +752,15 @@ export function BusinessManager({
         cacheBusiness(business);
       }
       setNotice(
-        business.status === "published"
-          ? "Djelatnost je objavljena."
-          : business.status === "pending"
-            ? "Izmjene su poslane na pregled."
-            : "Nacrt je sačuvan.",
+        business.editorialRevision
+          ? "Izmjene su poslane na pregled."
+          : editingBusiness && business.version === editingBusiness.version
+            ? "Podaci su sačuvani."
+            : business.status === "published"
+              ? "Djelatnost je objavljena."
+              : business.status === "pending"
+                ? "Izmjene su poslane na pregled."
+                : "Nacrt je sačuvan.",
       );
       setEditing(undefined);
     } catch (error) {
@@ -795,14 +827,16 @@ export function BusinessManager({
   }
   async function move(
     item: DirectoryBusiness,
-    action: "publish" | "archive" | "recover" | "return-to-draft",
+    action: Exclude<DirectoryMutation["action"], "edit">,
     reason?: string,
   ) {
     if (writing.current || !active || creation.current.intent || mutation.current) return;
     const returningToDraft = action === "return-to-draft";
+    const rejecting = action === "reject-changes";
+    const reviewing = returningToDraft || rejecting || action === "approve-changes";
     const trimmedReason = reason?.trim() ?? "";
     if (
-      returningToDraft &&
+      (returningToDraft || rejecting) &&
       (!isOwner ||
         !["pending", "published"].includes(item.status) ||
         trimmedReason.length < 2 ||
@@ -821,7 +855,7 @@ export function BusinessManager({
     const intent: DirectoryMutation = {
       before: item,
       action,
-      ...(returningToDraft ? { reason: trimmedReason } : {}),
+      ...(returningToDraft || rejecting ? { reason: trimmedReason } : {}),
       desiredStatus:
         action === "archive"
           ? "archived"
@@ -833,25 +867,26 @@ export function BusinessManager({
     };
     mutation.current = intent;
     try {
-      const data = await request(
-        returningToDraft ? `review/${item.id}` : `mine/${item.id}/${action}`,
-        {
-          ...write(
-            returningToDraft ? "PATCH" : "POST",
-            returningToDraft
-              ? { status: "draft", expectedVersion: item.version, reason: trimmedReason }
-              : { expectedVersion: item.version },
-          ),
-          signal: controller.signal,
-        },
-      );
+      const data = await request(reviewing ? `review/${item.id}` : `mine/${item.id}/${action}`, {
+        ...write(
+          reviewing ? "PATCH" : "POST",
+          reviewing
+            ? {
+                status: returningToDraft ? "draft" : action,
+                expectedVersion: item.version,
+                ...(trimmedReason ? { reason: trimmedReason } : {}),
+              }
+            : { expectedVersion: item.version },
+        ),
+        signal: controller.signal,
+      });
       if (!current(access) || controller.signal.aborted) return;
       if (
         data.business?.id !== item.id ||
         !Number.isInteger(data.business.version) ||
         data.business.version < item.version ||
         data.business.status !== intent.desiredStatus ||
-        (returningToDraft && directoryMutationState(intent, data.business) !== "matched")
+        (reviewing && directoryMutationState(intent, data.business) !== "matched")
       )
         throw new RequestError("UNAVAILABLE");
       cacheBusiness(data.business);
@@ -869,7 +904,7 @@ export function BusinessManager({
         setPendingMutation(intent);
         await inspectMutation(intent, controller, access);
       } else {
-        if (returningToDraft && error instanceof RequestError && error.status === 409) {
+        if (reviewing && error instanceof RequestError && error.status === 409) {
           setReturning(null);
           try {
             const latest = await request(`mine/${item.id}`, { signal: controller.signal });
@@ -900,10 +935,12 @@ export function BusinessManager({
     }
   }
   function mediaChanged(manifest: BusinessMediaManifest) {
+    const approved = inventoryMedia(manifest);
     const patch = {
       version: manifest.businessVersion,
       status: manifest.status,
-      media: { logo: manifest.logo, cover: manifest.cover, gallery: manifest.gallery },
+      pendingMedia: !!manifest.pendingMedia,
+      ...(approved ? { media: approved } : {}),
     };
     setItems(
       (current) =>
@@ -934,6 +971,7 @@ export function BusinessManager({
             actor={expectedAccountId}
             businessTitle={stayBusiness.title}
             photos={stayBusiness.media?.gallery}
+            mediaOnReview={stayBusiness.pendingMedia}
             onMediaChanged={mediaChanged}
           />
         )}
@@ -952,6 +990,7 @@ export function BusinessManager({
             businessId={rentalBusiness.id}
             actor={expectedAccountId}
             photos={rentalBusiness.media?.gallery}
+            mediaOnReview={rentalBusiness.pendingMedia}
             onPhotos={() => {
               setMediaBusiness(rentalBusiness);
               setRentalBusiness(null);
@@ -985,6 +1024,7 @@ export function BusinessManager({
         key={`${detailsBusiness.id}:${expectedAccountId ?? ""}`}
         businessId={detailsBusiness.id}
         businessTitle={detailsBusiness.title}
+        administrator={isOwner}
         active={active}
         expectedAccountId={expectedAccountId}
         request={detailsApi}
@@ -1202,7 +1242,7 @@ export function BusinessManager({
           )}
           <BusinessEditor
             key={editing ? `${editing.id}:${editing.version}` : "new"}
-            initial={editing ?? undefined}
+            initial={editing ? (isOwner ? editing : effectiveBusiness(editing)) : undefined}
             categories={categories}
             busy={locked}
             canPublish={isOwner}
@@ -1229,17 +1269,21 @@ export function BusinessManager({
           {returning && (
             <form
               className={styles.returnForm}
-              aria-label="Vraćanje djelatnosti u nacrt"
+              aria-label={rejectRevision ? "Odbijanje izmjena" : "Vraćanje djelatnosti u nacrt"}
               onSubmit={(event) => {
                 event.preventDefault();
-                void move(returning, "return-to-draft", returnReason);
+                void move(
+                  returning,
+                  rejectRevision ? "reject-changes" : "return-to-draft",
+                  returnReason,
+                );
               }}
             >
               <fieldset disabled={commandLocked}>
-                <h2>Vrati u nacrt</h2>
+                <h2>{rejectRevision ? "Odbij izmjene" : "Vrati u nacrt"}</h2>
                 <p>{returning.title}</p>
                 <label htmlFor={returnReasonId}>
-                  Razlog vraćanja
+                  {rejectRevision ? "Razlog odbijanja" : "Razlog vraćanja"}
                   <input
                     id={returnReasonId}
                     ref={returnInput}
@@ -1253,7 +1297,7 @@ export function BusinessManager({
                 </label>
                 <div className={styles.returnActions}>
                   <button type="submit" className={styles.primary}>
-                    {busy ? "Spremanje…" : "Vrati u nacrt"}
+                    {busy ? "Spremanje…" : rejectRevision ? "Odbij izmjene" : "Vrati u nacrt"}
                   </button>
                   <button
                     type="button"
@@ -1264,11 +1308,50 @@ export function BusinessManager({
                       setError("");
                     }}
                   >
-                    Odustani od vraćanja
+                    {rejectRevision ? "Odustani" : "Odustani od vraćanja"}
                   </button>
                 </div>
               </fieldset>
             </form>
+          )}
+          {isOwner && (
+            <search aria-label="Pretraga djelatnosti">
+              <form
+                className={styles.manageSearch}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  applySearch(searchText);
+                }}
+              >
+                <input
+                  type="search"
+                  name="q"
+                  aria-label="Naziv ili grad"
+                  placeholder="Naziv ili grad"
+                  maxLength={120}
+                  disabled={locked}
+                  value={searchText}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setSearchText(next);
+                    if (!next && searchQuery) applySearch("");
+                  }}
+                />
+                <button type="submit" className={styles.secondary} disabled={locked}>
+                  Pretraži
+                </button>
+                {(searchQuery || searchText) && (
+                  <button
+                    type="button"
+                    className={styles.cancel}
+                    disabled={locked}
+                    onClick={() => applySearch("")}
+                  >
+                    Očisti pretragu
+                  </button>
+                )}
+              </form>
+            </search>
           )}
           <div className={styles.toolbar}>
             <div className={styles.filters}>
@@ -1279,11 +1362,30 @@ export function BusinessManager({
                     checked={all}
                     disabled={locked || loading}
                     onChange={(event) => {
+                      setReviewOnly(false);
                       setAll(event.target.checked);
                       setPage(1);
                     }}
                   />
                   Sve djelatnosti
+                </label>
+              )}
+              {isOwner && (
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={reviewOnly}
+                    disabled={locked || loading}
+                    onChange={(event) => {
+                      setReviewOnly(event.target.checked);
+                      if (event.target.checked) {
+                        setAll(true);
+                        setArchived(false);
+                      }
+                      setPage(1);
+                    }}
+                  />
+                  Na pregledu
                 </label>
               )}
               <label>
@@ -1292,6 +1394,7 @@ export function BusinessManager({
                   checked={archived}
                   disabled={locked || loading}
                   onChange={(event) => {
+                    setReviewOnly(false);
                     setArchived(event.target.checked);
                     setPage(1);
                   }}
@@ -1319,13 +1422,21 @@ export function BusinessManager({
             <div className={styles.empty}>
               <Icon name="shop" />
               <h2>
-                {archived ? "Nema arhiviranih djelatnosti." : "Tvoj sljedeći korak počinje ovdje."}
+                {searchQuery
+                  ? "Nema rezultata za ovu pretragu."
+                  : reviewOnly
+                    ? "Nema djelatnosti na pregledu."
+                    : archived
+                      ? "Nema arhiviranih djelatnosti."
+                      : "Tvoj sljedeći korak počinje ovdje."}
               </h2>
-              <p>
-                {archived
-                  ? "Ovdje ćeš pronaći arhivirane profile."
-                  : "Dodaj osnovne podatke o svom poslu."}
-              </p>
+              {!searchQuery && !reviewOnly && (
+                <p>
+                  {archived
+                    ? "Ovdje ćeš pronaći arhivirane profile."
+                    : "Dodaj osnovne podatke o svom poslu."}
+                </p>
+              )}
             </div>
           )}
           <div className={styles.list}>
@@ -1357,6 +1468,12 @@ export function BusinessManager({
                       {statuses[item.status]}
                     </span>
                     <ReturnedBusinessNote business={item} />
+                    {item.revisionRejection && (
+                      <p>Razlog odbijanja izmjena: {item.revisionRejection}</p>
+                    )}
+                    {(item.editorialRevision || item.pendingMedia) && (
+                      <BusinessChanges business={item} categories={categories} />
+                    )}
                   </div>
                   <div className={styles.businessActions}>
                     {(item.status === "archived" ? item.hasStayUnits : stays) && (
@@ -1440,12 +1557,39 @@ export function BusinessManager({
                             {isOwner ? "Objavi" : "Pošalji na pregled"}
                           </button>
                         )}
+                        {isOwner && (item.editorialRevision || item.pendingMedia) && (
+                          <>
+                            <button
+                              type="button"
+                              className={styles.primary}
+                              disabled={locked || loading}
+                              onClick={() => void move(item, "approve-changes")}
+                            >
+                              Odobri izmjene
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.secondary}
+                              disabled={locked || loading}
+                              onClick={() => {
+                                setRejectRevision(true);
+                                setReturning(item);
+                                setReturnReason("");
+                                setError("");
+                                setNotice("");
+                              }}
+                            >
+                              Odbij izmjene
+                            </button>
+                          </>
+                        )}
                         {isOwner && ["pending", "published"].includes(item.status) && (
                           <button
                             type="button"
                             className={styles.secondary}
                             disabled={locked || loading}
                             onClick={() => {
+                              setRejectRevision(false);
                               setReturning(item);
                               setReturnReason("");
                               setError("");

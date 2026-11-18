@@ -5,7 +5,7 @@ import { bookingDate, bookingMoney } from "../../lib/booking";
 import { dateKey } from "../../lib/booking-time";
 import type { StayBooking } from "../../lib/stays";
 import styles from "../rentals/rentals.module.css";
-import { stayError, useStayRead, writeStay } from "./stay-client";
+import { stayError, writeStay } from "./stay-client";
 
 const statuses = {
   requested: "Čeka potvrdu",
@@ -114,36 +114,5 @@ export function StayEntry({
         </p>
       )}
     </article>
-  );
-}
-
-export function MyStays({ actor }: { actor: string }) {
-  const [revision, setRevision] = useState(0);
-  const state = useStayRead<{ entries: StayBooking[] }>("mine", actor, revision);
-  if (!state || (state.data && state.data.entries.length === 0)) return null;
-  return (
-    <section className={styles.panel} aria-label="Moji boravci">
-      <h2>Smještaj</h2>
-      {state.error && (
-        <p role="alert">
-          {state.error}{" "}
-          <button
-            type="button"
-            className={styles.secondary}
-            onClick={() => setRevision((value) => value + 1)}
-          >
-            Pokušaj ponovo
-          </button>
-        </p>
-      )}
-      {state.data?.entries.map((entry) => (
-        <StayEntry
-          key={entry.id}
-          entry={entry}
-          actor={actor}
-          changed={() => setRevision((value) => value + 1)}
-        />
-      ))}
-    </section>
   );
 }

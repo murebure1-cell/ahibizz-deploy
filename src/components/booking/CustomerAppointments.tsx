@@ -22,7 +22,7 @@ import {
   readCustomerCancellation,
   reconcileCustomerCancellations,
 } from "../../lib/customer-appointments-state";
-import { Icon } from "../Icon";
+import { AppointmentsEmpty, InventoryAppointments } from "./InventoryAppointments";
 import styles from "./public-booking.module.css";
 
 type Props = {
@@ -277,15 +277,10 @@ function AppointmentsWorkspace({
           Provjeravam tvoje termine…
         </p>
       )}
-      {ready && entries.length === 0 && !loading && !error && (
-        <div className={styles.empty}>
-          <Icon name="calendar" />
-          <h3>{view === "history" ? "Još nema ranijih termina." : "Nema aktuelnih termina."}</h3>
-          {view === "upcoming" && (
-            <Link href={preview ? "/pregled/pretraga" : "/pretraga"}>Pronađi djelatnost</Link>
-          )}
-        </div>
+      {preview && ready && entries.length === 0 && !loading && !error && (
+        <AppointmentsEmpty view={view} preview />
       )}
+      {!preview && entries.length > 0 && <h3>Usluge</h3>}
       <div className={styles.entryList} aria-busy={loading}>
         {entries.map((entry) => (
           <article key={entry.id} className={styles.entry}>
@@ -332,6 +327,15 @@ function AppointmentsWorkspace({
             Sljedeća
           </button>
         </nav>
+      )}
+      {!preview && active && expectedAccountId && !requiresLogin && (
+        <InventoryAppointments
+          key={view}
+          actor={expectedAccountId}
+          view={view}
+          refresh={refresh}
+          servicesEmpty={page === 1 && ready && entries.length === 0 && !loading && !error}
+        />
       )}
     </section>
   );

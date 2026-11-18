@@ -209,6 +209,23 @@ export async function testVehicleRentals(
         winnerActor.user.name,
       );
       assert.equal((await http("mine", winnerActor)).data.entries[0].id, winner.id);
+      assert.equal(
+        (await http("mine?view=upcoming&page=1", winnerActor)).data.entries[0].id,
+        winner.id,
+      );
+      assert.deepEqual((await http("mine?view=history&page=1", winnerActor)).data.entries, []);
+      assert.equal((await http("mine?view=history&page=0", winnerActor)).status, 400);
+      assert.equal((await http("mine?view=history&view=upcoming", winnerActor)).status, 400);
+      const beforeBoundary = clock;
+      try {
+        clock = Date.parse(winner.endsAt) - 1;
+        assert.equal((await http("mine?view=upcoming", winnerActor)).data.entries[0].id, winner.id);
+        clock += 1;
+        assert.deepEqual((await http("mine?view=upcoming", winnerActor)).data.entries, []);
+        assert.equal((await http("mine?view=history", winnerActor)).data.entries[0].id, winner.id);
+      } finally {
+        clock = beforeBoundary;
+      }
       assert.deepEqual((await http("mine", loserActor)).data.entries, []);
       assert.equal((await decide(winner, winnerActor, "approve")).status, 403);
       assert.equal((await decide(winner, loserActor, "cancel")).status, 404);
@@ -258,6 +275,37 @@ export async function testVehicleRentals(
       );
       const cancelled = (await decide(approved, winnerActor, "cancel")).data.entry;
       assert.equal(cancelled.status, "cancelled");
+      assert.deepEqual((await http("mine?view=upcoming", winnerActor)).data.entries, []);
+      assert.equal(
+        (await http("mine?view=history", winnerActor)).data.entries[0].status,
+        "cancelled",
+      );
+      const copies = await pool.query(
+        `INSERT INTO rental_booking
+         (id,business_id,vehicle_id,vehicle_key,actor_user_id,request_id,fingerprint,vehicle_version,
+          vehicle_name,business_title,timezone,customer_id,customer_name,kind,status,starts_at,
+          ends_at,price_minor,price_unit,total_minor)
+         SELECT gen_random_uuid(),business_id,vehicle_id,vehicle_key,actor_user_id,gen_random_uuid(),fingerprint,vehicle_version,
+          vehicle_name,business_title,timezone,customer_id,customer_name,kind,status,starts_at,
+          ends_at,price_minor,price_unit,total_minor FROM rental_booking,generate_series(1,20) WHERE id=$1 RETURNING id`,
+        [winner.id],
+      );
+      try {
+        const firstPage = (await http("mine?view=history&page=1", winnerActor)).data;
+        const nextPage = (await http("mine?view=history&page=2", winnerActor)).data;
+        assert.deepEqual(
+          [firstPage.entries.length, firstPage.hasMore, nextPage.entries.length, nextPage.hasMore],
+          [20, true, 1, false],
+        );
+        assert.deepEqual(
+          [...firstPage.entries, ...nextPage.entries].map((entry) => entry.id),
+          [winner.id, ...copies.rows.map((row) => row.id)].sort().reverse(),
+        );
+      } finally {
+        await pool.query("DELETE FROM rental_booking WHERE id=ANY($1::uuid[])", [
+          copies.rows.map((row) => row.id),
+        ]);
+      }
       const freed = await request(first, loserActor, ask(first));
       assert.equal(freed.status, 201);
       assert.equal(
