@@ -214,6 +214,12 @@ export function createCheckoutStore(pool: Pool) {
           );
           if (active.rowCount) {
             const candidate = active.rows[0];
+            if (
+              candidate?.userId === actor.userId &&
+              ["created", "provider_created"].includes(candidate.status) &&
+              candidate.offerVersion.endsWith(":sdk") !== input.offerVersion.endsWith(":sdk")
+            )
+              fail(409, "CHECKOUT_FLOW_MISMATCH");
             // Only resume the same owner's unchanged unpaid offer. Never reveal a
             // previous owner's order or treat a paid/review order as a new checkout.
             if (
@@ -316,17 +322,23 @@ export function createCheckoutStore(pool: Pool) {
         return o;
       });
     },
-    async attachProvider(id: string, value: { providerOrderId: string; approvalUrl: string }) {
+    async attachProvider(
+      id: string,
+      value: { providerOrderId: string; approvalUrl: string | null },
+    ) {
       return transaction(pool, async (c) => {
         if (!/^[A-Z0-9]{10,32}$/.test(value.providerOrderId)) fail(400, "INVALID_PROVIDER_ID");
         const o = await row(c, id);
-        const url = new URL(value.approvalUrl);
+        const url = value.approvalUrl === null ? null : new URL(value.approvalUrl);
+        if (!url && !o.offerVersion.endsWith(":sdk")) fail(400, "INVALID_APPROVAL_URL");
         if (
-          url.protocol !== "https:" ||
-          url.username ||
-          url.password ||
-          url.port ||
-          url.hostname !== (o.environment === "live" ? "www.paypal.com" : "www.sandbox.paypal.com")
+          url &&
+          (url.protocol !== "https:" ||
+            url.username ||
+            url.password ||
+            url.port ||
+            url.hostname !==
+              (o.environment === "live" ? "www.paypal.com" : "www.sandbox.paypal.com"))
         )
           fail(400, "INVALID_APPROVAL_URL");
         if (o.providerOrderId) {
@@ -336,7 +348,7 @@ export function createCheckoutStore(pool: Pool) {
         if (o.status !== "created") fail(409, "ORDER_NOT_PAYABLE");
         await c.query(
           "UPDATE paypal_checkout_order SET provider_order_id=$2,approval_url=$3,status='provider_created',updated_at=now(),version=version+1 WHERE id=$1",
-          [id, value.providerOrderId, url.href],
+          [id, value.providerOrderId, url?.href ?? null],
         );
         await audit(c, id, "provider_created", { providerOrderId: value.providerOrderId });
         return row(c, id);

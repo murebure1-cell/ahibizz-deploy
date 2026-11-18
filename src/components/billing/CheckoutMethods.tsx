@@ -55,7 +55,7 @@ export function CheckoutMethods({
           aria-describedby="paypal-availability"
           onClick={() => setSelected("paypal")}
         >
-          {selected === "paypal" ? "PayPal · odabrano" : "Pregledaj PayPal"}
+          {selected === "paypal" ? "PayPal i kartice · odabrano" : "Pregledaj PayPal i kartice"}
         </button>
         <button type="button" disabled aria-describedby="dodo-availability">
           Kartica (Dodo) · u provjeri
@@ -63,6 +63,10 @@ export function CheckoutMethods({
       </div>
       <p id="paypal-availability" role="status">
         <strong>PayPal:</strong> {paypalStatus}
+      </p>
+      <p>
+        Kartično dugme putem PayPala prikazuje se nakon pregleda narudžbe, ako je dostupno za kupca.
+        PayPal nalog nije uvijek moguće izbjeći.
       </p>
       <p id="dodo-availability">
         <strong>Kartica (Dodo):</strong> račun je u provjeri. Ova opcija nije dostupna za stvarne

@@ -259,3 +259,76 @@ test("webhook verification preserves raw whitespace, escaping and numeric repres
   assert.equal(await client.verifyWebhook(headers, event), false);
   assert.equal(sent, "");
 });
+
+test("SDK creates neutral order without wallet source and accepts no approval link", async () => {
+  let body: Record<string, unknown> | null = null;
+  let key: string | null = null;
+  const transport = (async (url: string | URL | Request, init?: RequestInit) => {
+    if (String(url).endsWith("/token")) return Response.json({ access_token: "fixture" });
+    body = JSON.parse(String(init?.body));
+    key = new Headers(init?.headers).get("PayPal-Request-Id");
+    return Response.json({
+      ...provider(),
+      status: "CREATED",
+      links: [
+        { rel: "self", href: "https://api-m.sandbox.paypal.com/v2/checkout/orders/ORDER12345678" },
+      ],
+    });
+  }) as typeof fetch;
+  const client = createLivePayPal(
+    { ...config, chargingApproved: true, environment: "sandbox" },
+    transport,
+  );
+  const result = await client.create(order, "sdk");
+  assert.equal(result.providerOrderId, order.providerOrderId);
+  assert.equal(result.approvalUrl, null);
+  assert.ok(body);
+  assert.equal(Object.hasOwn(body, "payment_source"), false);
+  assert.equal(key, order.createRequestId);
+  assert.deepEqual((body as Record<string, unknown>).application_context, {
+    shipping_preference: "NO_SHIPPING",
+    user_action: "PAY_NOW",
+  });
+});
+test("SDK rejects completed, wrong recipient, amount and unsafe approval links", async () => {
+  const base = { ...provider(), status: "CREATED", links: [] as unknown[] };
+  const wrong = structuredClone(base);
+  const wrongUnit = wrong.purchase_units[0];
+  assert.ok(wrongUnit);
+  wrongUnit.amount.value = "0.01";
+  for (const data of [
+    { ...base, status: "COMPLETED" },
+    wrong,
+    { ...base, links: [{ rel: "approve", href: "https://evil.invalid" }] },
+  ]) {
+    const transport = (async (url: string | URL | Request) =>
+      Response.json(
+        String(url).endsWith("/token") ? { access_token: "fixture" } : data,
+      )) as typeof fetch;
+    await assert.rejects(
+      createLivePayPal(
+        { ...config, chargingApproved: true, environment: "sandbox" },
+        transport,
+      ).create(order, "sdk"),
+    );
+  }
+});
+test("redirect create retains wallet experience context and requires approval link", async () => {
+  let body: Record<string, unknown> | null = null;
+  const transport = (async (url: string | URL | Request, init?: RequestInit) => {
+    if (String(url).endsWith("/token")) return Response.json({ access_token: "fixture" });
+    body = JSON.parse(String(init?.body));
+    return Response.json({
+      id: "ORDER12345678",
+      links: [
+        { rel: "payer-action", href: "https://www.sandbox.paypal.com/checkoutnow?token=fixture" },
+      ],
+    });
+  }) as typeof fetch;
+  const result = await createLivePayPal(
+    { ...config, chargingApproved: true, environment: "sandbox" },
+    transport,
+  ).create(order);
+  assert.ok(body && Object.hasOwn(body, "payment_source"));
+  assert.equal(result.approvalUrl, "https://www.sandbox.paypal.com/checkoutnow?token=fixture");
+});

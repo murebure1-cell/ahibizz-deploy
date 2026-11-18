@@ -246,7 +246,8 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
     return data;
   }
   return {
-    async create(order: LiveOrder) {
+    async create(order: LiveOrder, flow: "redirect" | "sdk" = "redirect") {
+      if (!["redirect", "sdk"].includes(flow)) throw new PayPalLiveError("INVALID_CHECKOUT_FLOW");
       canCharge(order);
       const data = await request(
         "/v2/checkout/orders",
@@ -265,28 +266,43 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
               amount: { currency_code: "EUR", value: liveAmount(order.amountMinor) },
             },
           ],
-          payment_source: {
-            paypal: {
-              experience_context: {
-                brand_name: "AhiBizz",
-                locale: "en-BA",
-                shipping_preference: "NO_SHIPPING",
-                user_action: "PAY_NOW",
-                return_url: `${origin.origin}/naplata/povratak?narudzba=${order.id}`,
-                cancel_url: `${origin.origin}/naplata/odustajanje?narudzba=${order.id}`,
-              },
-            },
-          },
+          ...(flow === "sdk"
+            ? {
+                application_context: { shipping_preference: "NO_SHIPPING", user_action: "PAY_NOW" },
+              }
+            : {
+                payment_source: {
+                  paypal: {
+                    experience_context: {
+                      brand_name: "AhiBizz",
+                      locale: "en-BA",
+                      shipping_preference: "NO_SHIPPING",
+                      user_action: "PAY_NOW",
+                      return_url: `${origin.origin}/naplata/povratak?narudzba=${order.id}`,
+                      cancel_url: `${origin.origin}/naplata/odustajanje?narudzba=${order.id}`,
+                    },
+                  },
+                },
+              }),
         },
         order.createRequestId,
       );
-      if (!Array.isArray(data.links)) throw new PayPalLiveError("INVALID_ORDER_RESPONSE");
-      const approval = data.links
+      if (flow === "sdk") {
+        if (
+          !["CREATED", "SAVED", "APPROVED", "PAYER_ACTION_REQUIRED"].includes(String(data.status))
+        )
+          throw new PayPalLiveError("INVALID_ORDER_RESPONSE");
+        orderUnit(data, { ...order, providerOrderId: providerId(data.id) });
+      }
+      if (data.links !== undefined && !Array.isArray(data.links))
+        throw new PayPalLiveError("INVALID_ORDER_RESPONSE");
+      const approval = (Array.isArray(data.links) ? data.links : [])
         .map(record)
         .find((link) => link.rel === "payer-action" || link.rel === "approve");
       return {
         providerOrderId: providerId(data.id),
-        approvalUrl: liveApprovalUrl(approval?.href, environment),
+        approvalUrl:
+          flow === "sdk" && !approval ? null : liveApprovalUrl(approval?.href, environment),
       };
     },
     async capture(order: LiveOrder) {

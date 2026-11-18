@@ -90,11 +90,13 @@ export function checkoutCatalog(config: CheckoutConfiguration | null) {
       maxMinor: 100000,
     },
     paypalBosnianSupported: false,
+    paypalClientId: config?.chargingApproved ? config.clientId : null,
   };
 }
 function dto(order: CheckoutOrder) {
   return {
     id: order.id,
+    flow: order.offerVersion.endsWith(":sdk") ? "sdk" : "redirect",
     requestId: order.requestId,
     kind: order.kind,
     businessId: order.businessId,
@@ -239,15 +241,26 @@ export function createCheckoutService({
         amountMinor: input.kind === "promotion" ? 511 : (input.amountMinor ?? 0),
         environment: config.environment,
         merchantId: config.merchantId,
-        offerVersion: "category-seven-days-20261118",
+        offerVersion: `category-seven-days-20261118${input.flow === "sdk" ? ":sdk" : ""}`,
       });
       matching(order);
       chargePurpose(order.kind);
       if (terminal.has(order.status)) return { order: dto(order) };
       try {
         if (!order.providerOrderId)
-          order = await store.attachProvider(order.id, await provider.create(providerOrder(order)));
-        return { order: dto(order), approvalUrl: order.approvalUrl };
+          order = await store.attachProvider(
+            order.id,
+            await provider.create(
+              providerOrder(order),
+              order.offerVersion.endsWith(":sdk") ? "sdk" : "redirect",
+            ),
+          );
+        return {
+          order: dto(order),
+          approvalUrl: order.approvalUrl,
+          providerOrderId: order.providerOrderId,
+          resumed: order.requestId !== input.requestId,
+        };
       } catch {
         return { order: dto(order), pending: true, code: "PAYPAL_PENDING" };
       }

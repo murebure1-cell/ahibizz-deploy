@@ -222,6 +222,61 @@ test("durable checkout isolated PostgreSQL authority, replay, rights and refunds
         /PROMOTION_ALREADY_RESERVED/,
       );
     });
+    await t.test(
+      "SDK mode preserves neutral provider ID and cannot resume a wallet order",
+      async () => {
+        const input = {
+          requestId: randomUUID(),
+          kind: "promotion",
+          businessId: await makeBusiness(),
+          amountMinor: 511,
+          merchantId: "FIXTURE_MERCHANT",
+          environment: "sandbox",
+          offerVersion: "category-seven-days-20261118:sdk",
+        };
+        const o = await store.create(user, input);
+        const attached = await store.attachProvider(o.id, {
+          providerOrderId: "SDKORDER12345678",
+          approvalUrl: null,
+        });
+        assert.equal(attached.approvalUrl, null);
+        const resumed = await store.create(user, { ...input, requestId: randomUUID() });
+        assert.equal(resumed.providerOrderId, attached.providerOrderId);
+        assert.equal(resumed.createRequestId, attached.createRequestId);
+        await assert.rejects(
+          store.create(user, {
+            ...input,
+            offerVersion: "category-seven-days-20261118",
+            requestId: randomUUID(),
+          }),
+          /CHECKOUT_FLOW_MISMATCH/,
+        );
+        await assert.rejects(
+          store.create(user, { ...input, offerVersion: "category-seven-days-20261118" }),
+          /COMMAND_CONFLICT/,
+        );
+        const redirect = await make();
+        await assert.rejects(
+          store.attachProvider(redirect.id, {
+            providerOrderId: "OTHERORDER123456",
+            approvalUrl: null,
+          }),
+          /INVALID_APPROVAL_URL/,
+        );
+        await assert.rejects(
+          store.create(user, {
+            requestId: randomUUID(),
+            kind: "promotion",
+            businessId: redirect.businessId,
+            amountMinor: redirect.amountMinor,
+            merchantId: redirect.merchantId,
+            environment: redirect.environment,
+            offerVersion: "category-seven-days-20261118:sdk",
+          }),
+          /CHECKOUT_FLOW_MISMATCH/,
+        );
+      },
+    );
     await t.test("capture lease, verified amount and exactly one grant", async () => {
       first = await attach(first);
       await store.prepareCapture(user, first.id);

@@ -63,6 +63,7 @@ export interface CheckoutHttpService {
       kind: "promotion" | "support";
       businessId?: string;
       amountMinor?: number;
+      flow?: "sdk";
     },
   ): Promise<unknown>;
   capture(headers: Headers, id: string): Promise<unknown>;
@@ -103,7 +104,8 @@ function amount(value: unknown, minimum = 100): number {
   return value;
 }
 export function checkoutInput(value: unknown) {
-  const input = object(value, ["requestId", "kind", "businessId", "amountMinor"]);
+  const input = object(value, ["requestId", "kind", "businessId", "amountMinor", "flow"]);
+  if (input.flow !== undefined && input.flow !== "sdk") fail(400, "INVALID_CHECKOUT_FLOW");
   if (input.kind === "promotion") {
     if (
       input.amountMinor !== undefined ||
@@ -112,6 +114,7 @@ export function checkoutInput(value: unknown) {
     )
       fail(400, "INVALID_PROMOTION");
     return {
+      ...(input.flow === "sdk" ? { flow: "sdk" as const } : {}),
       requestId: requestId(input.requestId),
       kind: "promotion" as const,
       businessId: input.businessId,
@@ -119,6 +122,7 @@ export function checkoutInput(value: unknown) {
   }
   if (input.kind === "support" && input.businessId === undefined)
     return {
+      ...(input.flow === "sdk" ? { flow: "sdk" as const } : {}),
       requestId: requestId(input.requestId),
       kind: "support" as const,
       amountMinor: amount(input.amountMinor),

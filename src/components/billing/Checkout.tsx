@@ -2,11 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { readCheckoutOrder } from "../../lib/checkout-order-read";
+import { canOfferPayPalCard } from "../../lib/paypal-card-flow";
 import styles from "./checkout-preview.module.css";
+import { PayPalCardButton } from "./PayPalCardButton";
 
 type Order = {
   id: string;
   requestId: string;
+  flow?: "sdk" | "redirect";
   kind: "promotion" | "support";
   businessId: string | null;
   businessTitle: string | null;
@@ -18,12 +21,15 @@ type Order = {
   endsAt: string | null;
 };
 type Catalog = {
+  paypalClientId?: string | null;
   available: boolean;
   environment: "sandbox" | "live" | null;
   promotion: { amountMinor: number; days: number };
   support: { available?: boolean; minMinor: number; maxMinor: number };
 };
 const messages: Record<string, string> = {
+  CHECKOUT_FLOW_MISMATCH:
+    "Već postoji narudžba za drugi način plaćanja. Nastavi isti kartični pokušaj ili učitaj prethodno sačuvanu narudžbu; ne otvaraj novu.",
   LIVE_SUPPORT_NOT_RELEASED:
     "Podrška putem ove naplate nije uključena. Koristi postojeću stranicu Podrži AhiBizz.",
   CHECKOUT_NOT_RELEASED: "Plaćanje još nije uključeno.",
@@ -102,6 +108,12 @@ export function Checkout({
   }
   useEffect(() => {
     let active = true;
+    locked.current = false;
+    key.current = null;
+    setBusy(false);
+    setReview(false);
+    setBusinessId("");
+    setBusinesses([]);
     fetch("/api/checkout/catalog", { cache: "no-store" })
       .then((r) => r.json())
       .then((value) => {
@@ -178,6 +190,7 @@ export function Checkout({
                 ? {
                     requestId: order.requestId,
                     kind: order.kind,
+                    ...(order.flow === "sdk" ? { flow: "sdk" } : {}),
                     ...(order.kind === "promotion"
                       ? { businessId: order.businessId }
                       : { amountMinor: order.amountMinor }),
@@ -213,6 +226,10 @@ export function Checkout({
           throw new Error("PayPal adresa nije ispravna.");
         window.location.assign(link.href);
       } else if (value.pending) setError(messages.PAYPAL_PENDING ?? "Odgovor se čeka.");
+      else if (action === "create" && value.order?.flow === "sdk")
+        setError(
+          "Za ovu narudžbu PayPal nije ponudio preusmjeravanje. Nastavi kartičnim dugmetom ili osvježi status.",
+        );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Zahtjev nije završen.");
     } finally {
@@ -383,7 +400,10 @@ export function Checkout({
                 type="button"
                 className={styles.primary}
                 disabled={!userId || !canReview || !catalog?.available}
-                onClick={() => setReview(true)}
+                onClick={() => {
+                  key.current ??= crypto.randomUUID();
+                  setReview(true);
+                }}
               >
                 Pregledaj prije plaćanja
               </button>
@@ -444,7 +464,11 @@ export function Checkout({
                 }
                 onClick={() => act(returned ? "capture" : "create")}
               >
-                {returned ? "Potvrdi i provjeri uplatu" : "Nastavi istu narudžbu"}
+                {returned
+                  ? "Potvrdi i provjeri uplatu"
+                  : order.flow === "sdk"
+                    ? "Otvori istu narudžbu na PayPalu"
+                    : "Nastavi istu narudžbu"}
               </button>
             </>
           )}
@@ -453,6 +477,42 @@ export function Checkout({
           </button>
         </section>
       )}
+      {userId &&
+        catalog?.available &&
+        catalog.paypalClientId &&
+        canOfferPayPalCard(order, review, kind) && (
+          <PayPalCardButton
+            key={userId}
+            clientId={catalog.paypalClientId}
+            userId={userId}
+            input={() => {
+              key.current ??= crypto.randomUUID();
+              return {
+                requestId: order?.requestId ?? key.current,
+                businessId: order?.businessId ?? businessId,
+              };
+            }}
+            acquire={() => {
+              if (locked.current || orderLoading) return false;
+              locked.current = true;
+              setBusy(true);
+              setError("");
+              return true;
+            }}
+            release={() => {
+              locked.current = false;
+              setBusy(false);
+            }}
+            onOrder={(value) => {
+              setOrder(value);
+              window.history.replaceState(
+                window.history.state,
+                "",
+                `/naplata?narudzba=${value.id}`,
+              );
+            }}
+          />
+        )}
       {error && (
         <p role="alert" className={styles.notice}>
           {error}
