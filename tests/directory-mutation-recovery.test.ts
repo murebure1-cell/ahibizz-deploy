@@ -159,15 +159,37 @@ test("staged edits reconcile against private proposals, while a no-op survives a
 
 test("confirmed cached edits replace fields and CAS immediately and archive/recover remove the old selection", () => {
   const changed = { ...before, version: 2, title: "New title" };
-  assert.deepEqual(patchDirectoryBusinessCache([before], changed, false), [changed]);
+  assert.deepEqual(patchDirectoryBusinessCache([before], changed, "active"), [changed]);
   const archived = { ...changed, version: 3, status: "archived" as const };
-  assert.deepEqual(patchDirectoryBusinessCache([changed], archived, false), []);
+  assert.deepEqual(patchDirectoryBusinessCache([changed], archived, "active"), []);
   assert.deepEqual(
-    patchDirectoryBusinessCache([archived], { ...archived, version: 4, status: "draft" }, true),
+    patchDirectoryBusinessCache(
+      [archived],
+      { ...archived, version: 4, status: "draft" },
+      "archived",
+    ),
     [],
   );
-  assert.deepEqual(patchDirectoryBusinessCache([changed], before, false), [changed]);
-  assert.equal(patchDirectoryBusinessCache(null, changed, false, true), null);
-  assert.deepEqual(patchDirectoryBusinessCache([], changed, false, true), [changed]);
-  assert.deepEqual(patchDirectoryBusinessCache([], changed, false), []);
+  assert.deepEqual(patchDirectoryBusinessCache([changed], before, "active"), [changed]);
+  assert.equal(patchDirectoryBusinessCache(null, changed, "active", true), null);
+  assert.deepEqual(patchDirectoryBusinessCache([], changed, "active", true), [changed]);
+  assert.deepEqual(patchDirectoryBusinessCache([], changed, "active"), []);
+});
+
+test("missing-map list uses published coordinates and removes the row when a pin is approved", () => {
+  const proposed = {
+    ...before,
+    version: 3,
+    editorialRevision: { fields: { latitude: 0, longitude: 0 } },
+  };
+  const approved = { ...before, version: 4, latitude: 0, longitude: 0 };
+  assert.deepEqual(patchDirectoryBusinessCache([before], proposed, "missingMap"), [proposed]);
+  assert.deepEqual(patchDirectoryBusinessCache([proposed], approved, "missingMap"), []);
+  assert.deepEqual(patchDirectoryBusinessCache([proposed], approved, "review"), []);
+  for (const status of ["pending", "draft", "archived"] as const) {
+    assert.deepEqual(
+      patchDirectoryBusinessCache([], { ...before, status }, "missingMap", true),
+      [],
+    );
+  }
 });

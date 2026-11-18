@@ -46,6 +46,10 @@ function validDirectoryPath(path: string): boolean {
         )
           return false;
         break;
+      case "map":
+        if (route !== "admin" || value !== "missing") return false;
+        if (params.has("status") && params.get("status") !== "published") return false;
+        break;
       default:
         return false;
     }

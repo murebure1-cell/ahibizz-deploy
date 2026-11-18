@@ -367,7 +367,24 @@ export function createDirectoryService({
       return transaction(pool, async (client) => {
         const { actor: currentActor } = await lockUsers(client, identity);
         owner(currentActor);
-        return listDirectory(client, input, "true", []);
+        const { map, ...filters } = object(input, [
+          "q",
+          "page",
+          "pageSize",
+          "categoryId",
+          "subcategoryId",
+          "status",
+          "map",
+        ]);
+        if (map === undefined) return listDirectory(client, filters, "true", []);
+        if (map !== "missing" || (filters.status !== undefined && filters.status !== "published"))
+          fail(400, "INVALID_DIRECTORY_INPUT");
+        return listDirectory(
+          client,
+          { ...filters, status: "published" },
+          "(b.latitude IS NULL OR b.longitude IS NULL)",
+          [],
+        );
       });
     },
     async pending(headers: Headers, input: unknown = {}) {

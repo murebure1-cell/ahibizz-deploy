@@ -37,6 +37,7 @@ import {
   DirectoryRequestError as RequestError,
 } from "../../lib/directory-create-submission";
 import {
+  type DirectoryListFilter,
   type DirectoryMutation,
   directoryMutationFieldsMatch,
   directoryMutationState,
@@ -201,9 +202,11 @@ export function BusinessManager({
   const [refresh, setRefresh] = useState(0);
   const [searchText, setSearchText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [reviewOnly, setReviewOnly] = useState(false);
+  const [filter, setFilter] = useState<DirectoryListFilter>("active");
+  const reviewOnly = filter === "review";
+  const archived = filter === "archived";
+  const missingMap = filter === "missingMap";
   const [all, setAll] = useState(initialAll && isOwner);
-  const [archived, setArchived] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [bookingBusiness, setBookingBusiness] = useState<Pick<
@@ -332,7 +335,7 @@ export function BusinessManager({
     ) {
       boundary.current = { expectedAccountId, directoryApi, bookingApi, mediaApi, isOwner };
       clearPrivate();
-      setReviewOnly(false);
+      setFilter("active");
       setAll(initialAll && isOwner);
       setPage(1);
       setError("");
@@ -345,6 +348,7 @@ export function BusinessManager({
   const area = reviewOnly && isOwner ? "review" : all && isOwner ? "admin" : "mine";
   const params = new URLSearchParams({ page: String(page) });
   if (archived) params.set("status", "archived");
+  if (missingMap && area === "admin") params.set("map", "missing");
   if (searchQuery) params.set("q", searchQuery);
   const selection = `${area}?${params}`;
   const canContinue = items !== null && loadedSelection.current === selection && hasMore;
@@ -419,6 +423,7 @@ export function BusinessManager({
         setCategories(taxonomy.categories);
         loadedSelection.current = selection;
         setLoginRequired(false);
+        if (missingMap && page > 1 && list.items.length === 0) setPage(page - 1);
       })
       .catch((error) => {
         if (!current(access)) return;
@@ -440,6 +445,8 @@ export function BusinessManager({
     active,
     refresh,
     selection,
+    missingMap,
+    page,
     bookingBusiness,
     mediaBusiness,
     detailsBusiness,
@@ -453,19 +460,12 @@ export function BusinessManager({
   function cacheBusiness(business: DirectoryBusiness) {
     reads.current++;
     setItems((rows) =>
-      reviewOnly &&
-      business.status !== "pending" &&
-      !business.editorialRevision &&
-      !business.pendingMedia
-        ? (rows?.filter((row) => row.id !== business.id) ?? null)
-        : patchDirectoryBusinessCache(
-            rows,
-            business,
-            archived,
-            !searchQuery &&
-              page === 1 &&
-              ((all && isOwner) || business.ownerId === expectedAccountId),
-          ),
+      patchDirectoryBusinessCache(
+        rows,
+        business,
+        filter,
+        !searchQuery && page === 1 && ((all && isOwner) || business.ownerId === expectedAccountId),
+      ),
     );
   }
   function forgetMutation() {
@@ -1362,7 +1362,7 @@ export function BusinessManager({
                     checked={all}
                     disabled={locked || loading}
                     onChange={(event) => {
-                      setReviewOnly(false);
+                      if (!archived) setFilter("active");
                       setAll(event.target.checked);
                       setPage(1);
                     }}
@@ -1377,15 +1377,27 @@ export function BusinessManager({
                     checked={reviewOnly}
                     disabled={locked || loading}
                     onChange={(event) => {
-                      setReviewOnly(event.target.checked);
-                      if (event.target.checked) {
-                        setAll(true);
-                        setArchived(false);
-                      }
+                      setFilter(event.target.checked ? "review" : "active");
+                      if (event.target.checked) setAll(true);
                       setPage(1);
                     }}
                   />
                   Na pregledu
+                </label>
+              )}
+              {isOwner && embedded && (
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={missingMap}
+                    disabled={locked || loading}
+                    onChange={(event) => {
+                      setFilter(event.target.checked ? "missingMap" : "active");
+                      if (event.target.checked) setAll(true);
+                      setPage(1);
+                    }}
+                  />
+                  Bez lokacije na mapi
                 </label>
               )}
               <label>
@@ -1394,8 +1406,7 @@ export function BusinessManager({
                   checked={archived}
                   disabled={locked || loading}
                   onChange={(event) => {
-                    setReviewOnly(false);
-                    setArchived(event.target.checked);
+                    setFilter(event.target.checked ? "archived" : "active");
                     setPage(1);
                   }}
                 />
@@ -1426,11 +1437,13 @@ export function BusinessManager({
                   ? "Nema rezultata za ovu pretragu."
                   : reviewOnly
                     ? "Nema djelatnosti na pregledu."
-                    : archived
-                      ? "Nema arhiviranih djelatnosti."
-                      : "Tvoj sljedeći korak počinje ovdje."}
+                    : missingMap
+                      ? "Sve objavljene djelatnosti imaju lokaciju na mapi."
+                      : archived
+                        ? "Nema arhiviranih djelatnosti."
+                        : "Tvoj sljedeći korak počinje ovdje."}
               </h2>
-              {!searchQuery && !reviewOnly && (
+              {!searchQuery && !reviewOnly && !missingMap && (
                 <p>
                   {archived
                     ? "Ovdje ćeš pronaći arhivirane profile."

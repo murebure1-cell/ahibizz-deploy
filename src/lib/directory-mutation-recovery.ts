@@ -109,17 +109,25 @@ export function directoryMutationFieldsMatch(
   return true;
 }
 
+export type DirectoryListFilter = "active" | "archived" | "review" | "missingMap";
+
 /** Update confirmed cached rows before a fallible background list refresh. */
 export function patchDirectoryBusinessCache(
   items: DirectoryBusiness[] | null,
   fresh: DirectoryBusiness,
-  archived: boolean,
+  filter: DirectoryListFilter,
   includeMissing = false,
 ): DirectoryBusiness[] | null {
   if (!items) return items;
   const previous = items.find((row) => row.id === fresh.id);
   if (previous && previous.version > fresh.version) return items;
-  const belongs = (fresh.status === "archived") === archived;
+  const belongs =
+    filter === "missingMap"
+      ? fresh.status === "published" && (fresh.latitude === null || fresh.longitude === null)
+      : filter === "review"
+        ? fresh.status !== "archived" &&
+          (fresh.status === "pending" || fresh.editorialRevision || fresh.pendingMedia)
+        : (fresh.status === "archived") === (filter === "archived");
   if (!belongs) return previous ? items.filter((row) => row.id !== fresh.id) : items;
   if (previous) return items.map((row) => (row.id === fresh.id ? fresh : row));
   return includeMissing ? [fresh, ...items].slice(0, 20) : items;

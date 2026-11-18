@@ -142,7 +142,7 @@ export function createDirectoryHttpHandler({
           return reply(
             await service.listAdmin(
               request.headers,
-              query(url, ["q", "page", "pageSize", "status"]),
+              query(url, ["q", "page", "pageSize", "status", "map"]),
             ),
           );
         if (id && !action) {

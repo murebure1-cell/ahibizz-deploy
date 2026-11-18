@@ -1745,6 +1745,71 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           assert.equal((await directory.listPublic({ q: "capljina QA" })).items.length, 0);
         },
       );
+      await t.test(
+        "admin finds published businesses missing a live pin across pages and owners",
+        async () => {
+          const ids = Array.from({ length: 22 }, () => randomUUID());
+          const city = "Karta QA";
+          await pool.query(
+            `INSERT INTO directory_business (id,owner_user_id,title,category_id,city,status,editorial_revision)
+          SELECT id,CASE WHEN n % 2 = 0 THEN $2 ELSE $3 END,'Radnja '||n,$4,$5,'published',
+                 CASE WHEN n = 1 THEN '{"fields":{"latitude":44.5,"longitude":18.7}}'::jsonb END
+          FROM unnest($1::uuid[]) WITH ORDINALITY AS fixture(id,n)`,
+            [ids.slice(0, 21), member.user.id, owner.user.id, root.id, city],
+          );
+          await pool.query(
+            `INSERT INTO directory_business (id,owner_user_id,title,category_id,city,status,latitude,longitude)
+           VALUES ($1,$2,'Na mapi',$3,$4,'published',0,0)`,
+            [ids[21], member.user.id, root.id, city],
+          );
+          await pool.query(
+            `INSERT INTO directory_business (id,owner_user_id,title,category_id,city,status,archived_at)
+           SELECT gen_random_uuid(),$1,'Druga stanja',$2,$3,s,CASE WHEN s='archived' THEN now() END
+           FROM unnest(ARRAY['pending','draft','archived']) AS statuses(s)`,
+            [member.user.id, root.id, city],
+          );
+          const route = "/api/directory/admin?map=missing&q=Karta+QA";
+          const first = await directoryRequest("GET", route, { actor: owner });
+          const second = await directoryRequest("GET", `${route}&page=2`, { actor: owner });
+          assert.equal(first.status, 200);
+          assert.equal(first.data.hasMore, true);
+          assert.equal(first.data.items.length, 20);
+          assert.equal(second.status, 200);
+          assert.equal(second.data.hasMore, false);
+          assert.equal(second.data.items.length, 1);
+          assert.deepEqual(
+            [...first.data.items, ...second.data.items].map((row) => row.id).sort(),
+            ids.slice(0, 21).sort(),
+          );
+          assert.equal(
+            (await directoryRequest("GET", `${route}&status=archived`, { actor: owner })).status,
+            400,
+          );
+          assert.equal(
+            (await directoryRequest("GET", "/api/directory/admin?map=invalid", { actor: owner }))
+              .status,
+            400,
+          );
+          assert.equal((await directoryRequest("GET", route, { actor: member })).status, 403);
+          for (const area of ["businesses", "review", "mine"]) {
+            assert.equal(
+              (
+                await directoryRequest("GET", `/api/directory/${area}?map=missing`, {
+                  actor: owner,
+                })
+              ).status,
+              400,
+            );
+          }
+          const empty = await directoryRequest(
+            "GET",
+            "/api/directory/admin?map=missing&q=Na+mapi+Karta+QA",
+            { actor: owner },
+          );
+          assert.equal(empty.status, 200);
+          assert.deepEqual(empty.data.items, []);
+        },
+      );
       assert.equal(outboundAttempts, 0);
       assert.deepEqual(await outsideTables(administration, schema), outside);
     } finally {

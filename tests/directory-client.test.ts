@@ -62,6 +62,11 @@ test("directory endpoint input cannot escape the private directory path", async 
       "mine?page=501",
       "review?pageSize=1",
       "mine?status=all",
+      "mine?map=missing",
+      "review?map=missing",
+      "admin?map=invalid",
+      "admin?map=missing&map=missing",
+      "admin?map=missing&status=archived",
       "admin?q=%0A",
       "admin?q=%ZZ",
       "admin?q=" + "a".repeat(121),
@@ -97,6 +102,7 @@ test("the real account-bound transport accepts private collection filters and en
       "review?q=",
       "mine?page=2",
       "admin?page=1&status=archived",
+      "admin?map=missing&page=2&q=Tuzla",
     ];
     for (const area of ["mine", "admin", "review"]) {
       paths.push(`${area}?${new URLSearchParams({ page: "2", pageSize: "20", q })}`);
