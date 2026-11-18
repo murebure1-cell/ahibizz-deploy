@@ -9,6 +9,7 @@ import {
 } from "../../lib/public-business";
 import { FavoriteButton } from "../favorites/FavoriteButton";
 import { Icon } from "../Icon";
+import { VerificationBadge } from "../VerificationBadge";
 import { BusinessAmenities, BusinessOpenStatus } from "./BusinessDetails";
 import { BusinessLogo } from "./BusinessLogo";
 import { BusinessRating } from "./BusinessRating";
@@ -90,12 +91,7 @@ export function DirectoryResultCard({ business }: { business: PublicBusinessView
             <Link href={profile} title={business.title}>
               {business.title}
             </Link>
-            {business.verified && (
-              <span className={styles.verified} title="Verifikovana djelatnost">
-                <Icon name="check" />
-                <span className={styles.srOnly}>Verifikovana djelatnost</span>
-              </span>
-            )}
+            {business.verified && <VerificationBadge kind="business" />}
           </h2>
           {hasLocation && (
             <p className={styles.location}>

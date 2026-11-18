@@ -156,8 +156,7 @@
 }
 .identity h2 {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: start;
   max-width: calc(100% - 70px);
   font-size: 21px;
   font-weight: 650;
@@ -204,21 +203,8 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
-.verified {
-  display: inline-grid;
-  flex: 0 0 19px;
-  place-items: center;
-  width: 19px;
-  height: 19px;
-  margin-top: 3px;
-  border-radius: 50%;
-  background: var(--ui-success);
-  color: var(--ui-surface);
-}
-.verified svg {
-  width: 12px;
-  height: 12px;
-  stroke-width: 2.5;
+.identity h2 > [role="img"] {
+  margin-top: 0.2em;
 }
 .footer {
   display: flex;
@@ -296,17 +282,6 @@
 }
 .cover:focus-visible {
   outline-offset: -4px;
-}
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
 }
 @media (max-width: 650px) {
   .card {

@@ -43,6 +43,7 @@ import {
   uncertainDirectoryMutation,
 } from "../../lib/directory-mutation-recovery";
 import type { DirectoryBusiness } from "../../server/directory/types";
+import { ProfileVerification } from "../admin/ProfileVerification";
 import { BusinessBookingManager } from "../booking/BusinessBookingManager";
 import { Icon } from "../Icon";
 import { BusinessDetailsManager } from "./BusinessDetailsManager";
@@ -154,6 +155,7 @@ export function BusinessManager({
   mediaApi = businessMediaRequest,
   detailsApi = businessDetailsRequest,
   ownershipApi = businessOwnershipApi,
+  adminVerification = false,
   mediaImageUrl = businessMediaUrl,
 }: {
   active: boolean;
@@ -166,6 +168,7 @@ export function BusinessManager({
   mediaApi?: typeof businessMediaRequest;
   detailsApi?: BusinessDetailsRequest;
   ownershipApi?: BusinessOwnershipApi;
+  adminVerification?: boolean;
   mediaImageUrl?: (id: string, asset: BusinessMediaAsset, area: "mine" | "public") => string | null;
 }) {
   const [items, setItems] = useState<DirectoryBusiness[] | null>(null);
@@ -1085,6 +1088,16 @@ export function BusinessManager({
                   <Icon name="user" />
                   Dodijeli vlasnika
                 </button>
+              )}
+              {isOwner && adminVerification && active && expectedAccountId && (
+                <ProfileVerification
+                  kind="business"
+                  id={editing.id}
+                  actorId={expectedAccountId}
+                  disabled={locked || editorDirty}
+                  canGrant={editing.status !== "archived"}
+                  onAccessDenied={denied}
+                />
               )}
             </div>
           )}

@@ -8,6 +8,7 @@ import {
 export type PublicPerson = {
   id: string;
   name: string;
+  verified: boolean;
   city: string | null;
   countryCode: string | null;
   bio: string | null;
@@ -52,6 +53,7 @@ export function readPublicPerson(value: unknown): PublicPerson {
     typeof row.name !== "string" ||
     !row.name.trim() ||
     row.name.length > 100 ||
+    (row.verified !== undefined && typeof row.verified !== "boolean") ||
     !optional(row.city, 100) ||
     !optional(row.bio, 1200) ||
     !(row.countryCode === null || isProfileCountryCode(row.countryCode)) ||
@@ -68,6 +70,7 @@ export function readPublicPerson(value: unknown): PublicPerson {
   return {
     id: row.id,
     name: row.name,
+    verified: row.verified === true,
     city: row.city as string | null,
     countryCode: row.countryCode as string | null,
     bio: row.bio as string | null,

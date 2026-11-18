@@ -1,0 +1,24 @@
+.badge {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: clamp(1rem, 0.85em, 1.5rem);
+  aspect-ratio: 1;
+  margin-inline-start: 0.28em;
+  vertical-align: 0.04em;
+  border-radius: 50%;
+  background: var(--ui-primary);
+  color: var(--ui-on-primary);
+}
+
+.badge svg {
+  width: 72%;
+  height: 72%;
+  stroke-width: 3;
+}
+
+@media (forced-colors: active) {
+  .badge {
+    outline: 1px solid CanvasText;
+  }
+}

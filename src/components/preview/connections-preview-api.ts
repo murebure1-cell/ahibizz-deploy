@@ -11,6 +11,7 @@ const fixtures: [PublicPerson, PublicPerson] = [
   {
     id: "preview-designer",
     name: "Ogledna dizajnerica",
+    verified: false,
     city: "Tuzla",
     countryCode: "BA",
     bio: "Dizajn prostora i vizuelnih identiteta.",
@@ -22,6 +23,7 @@ const fixtures: [PublicPerson, PublicPerson] = [
   {
     id: "preview-developer",
     name: "Ogledni programer",
+    verified: false,
     city: "Sarajevo",
     countryCode: "BA",
     bio: "Razvoj web aplikacija i digitalnih proizvoda.",

@@ -11,6 +11,7 @@ const connectionId = "d170008a-cafe-4c60-8564-6c581bc758be";
 const person: PublicPerson = {
   id: "fixture-person",
   name: "Fixture person",
+  verified: false,
   city: "Tuzla",
   countryCode: "BA",
   bio: null,

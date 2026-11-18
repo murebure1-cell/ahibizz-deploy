@@ -17,6 +17,7 @@ import {
 const person: PublicPerson = {
   id: "fixture-person",
   name: "Fixture person",
+  verified: false,
   city: null,
   countryCode: null,
   bio: null,
@@ -42,10 +43,14 @@ test("public person projection removes private account data and copies mutable s
     canCustomizeCover: true,
     role: "owner",
     approval: "approved",
+    emailVerified: true,
+    verificationNote: "private",
     skills: ["Dizajn"],
   };
   const output = readPublicPerson(input);
   assert.deepEqual(output, person);
+  assert.equal(readPublicPerson({ ...input, verified: undefined }).verified, false);
+  assert.deepEqual(readPublicPerson({ ...input, verified: true }), { ...person, verified: true });
   input.skills.push("Private later change");
   assert.deepEqual(output.skills, ["Dizajn"]);
   assert.deepEqual(
@@ -62,6 +67,7 @@ test("public person accepts only bounded primitive fields, known status and posi
     { ...person, id: "" },
     { ...person, name: " " },
     { ...person, name: "x".repeat(101) },
+    { ...person, verified: "true" },
     { ...person, city: "" },
     { ...person, city: "x".repeat(101) },
     { ...person, countryCode: "ba" },

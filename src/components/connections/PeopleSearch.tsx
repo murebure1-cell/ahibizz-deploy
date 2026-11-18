@@ -8,6 +8,7 @@ import { connectionError, connectionRequest } from "../../lib/connections-client
 import { profileCountries, workStatusLabels } from "../../lib/people";
 import { Icon } from "../Icon";
 import { personalProfileImage, profileInitials } from "../people/PersonalProfileCard";
+import { VerificationBadge } from "../VerificationBadge";
 import styles from "./connections.module.css";
 
 export type PersonMediaUrl = (person: PublicPerson, kind: "photo" | "cover") => string | null;
@@ -189,7 +190,10 @@ export function PeopleSearch({
               <Link className={styles.personLink} href={profileHref(person.id)}>
                 <PersonAvatar person={person} imageUrl={imageUrl} />
                 <div className={styles.personInfo}>
-                  <h3>{person.name}</h3>
+                  <h3>
+                    {person.name}
+                    {person.verified && <VerificationBadge kind="person" />}
+                  </h3>
                   {personLocation(person) && (
                     <p className={styles.location}>
                       <Icon name="pin" />

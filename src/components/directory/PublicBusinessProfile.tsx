@@ -15,6 +15,7 @@ import {
 import { FavoriteButton } from "../favorites/FavoriteButton";
 import { Icon } from "../Icon";
 import { BusinessReviews } from "../reviews/BusinessReviews";
+import { VerificationBadge } from "../VerificationBadge";
 import { BusinessAmenities, BusinessHours } from "./BusinessDetails";
 import { BusinessLogo } from "./BusinessLogo";
 import { BusinessRating } from "./BusinessRating";
@@ -119,7 +120,10 @@ export function PublicBusinessProfile({
         </div>
         <div className={styles.title}>
           {taxonomy && <p className={styles.category}>{taxonomy}</p>}
-          <Title>{business.title}</Title>
+          <Title>
+            {business.title}
+            {business.verified && <VerificationBadge kind="business" />}
+          </Title>
           <p className={styles.locationSummary}>
             <Icon name="pin" />
             {location}
@@ -134,12 +138,6 @@ export function PublicBusinessProfile({
                 <BusinessRating summary={business.reviews} />
               </a>
             ))}
-          {business.verified && (
-            <span className={styles.verified}>
-              <Icon name="check" />
-              Potvrđena djelatnost
-            </span>
-          )}
         </div>
         <div className={styles.quickActions}>
           {actions}

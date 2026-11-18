@@ -17,6 +17,7 @@ import {
   connectionRequest,
 } from "../../lib/connections-client";
 import { Icon } from "../Icon";
+import { VerificationBadge } from "../VerificationBadge";
 import styles from "./connections.module.css";
 import { PersonAvatar, type PersonMediaUrl, personLocation } from "./PeopleSearch";
 
@@ -376,7 +377,10 @@ export function ConnectionsPanel({
                 <div className={styles.personInfo}>
                   <h3>
                     {item.person ? (
-                      <Link href={profileHref(item.person.id)}>{item.person.name}</Link>
+                      <Link href={profileHref(item.person.id)}>
+                        {item.person.name}
+                        {item.person.verified && <VerificationBadge kind="person" />}
+                      </Link>
                     ) : (
                       "Profil nije javno dostupan"
                     )}

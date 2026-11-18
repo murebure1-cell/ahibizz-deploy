@@ -120,7 +120,10 @@ async function profile(client: Pick<PoolClient, "query">, id: string): Promise<S
   if (!result.rows[0]) fail(404, "ACCOUNT_NOT_FOUND");
   return result.rows[0];
 }
-async function transaction<T>(pool: Pool, body: (client: PoolClient) => Promise<T>): Promise<T> {
+export async function accountTransaction<T>(
+  pool: Pool,
+  body: (client: PoolClient) => Promise<T>,
+): Promise<T> {
   let client: PoolClient;
   try {
     client = await pool.connect();
@@ -153,7 +156,7 @@ async function transaction<T>(pool: Pool, body: (client: PoolClient) => Promise<
   }
 }
 
-export function createAccountService({ auth, pool }: { auth: AuthService; pool: Pool }) {
+export function createAccountAccess(auth: AuthService) {
   async function session(headers: Headers) {
     const expectedAccountId = headers.get("X-AhiBizz-Account-ID");
     if (expectedAccountId !== null && !/^[A-Za-z0-9_-]{1,128}$/.test(expectedAccountId))
@@ -191,9 +194,14 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
       fail(401, "ACCOUNT_IDENTITY_CHANGED");
     return user;
   }
+  return { session, authority };
+}
+
+export function createAccountService({ auth, pool }: { auth: AuthService; pool: Pool }) {
+  const { session, authority } = createAccountAccess(auth);
   async function read(headers: Headers): Promise<SafeAccountProfile> {
     const current = await session(headers);
-    return transaction(pool, async (client) => {
+    return accountTransaction(pool, async (client) => {
       const user = await authority(client, current);
       return profile(client, user.id);
     });
@@ -203,7 +211,7 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
     async update(headers: Headers, input: unknown): Promise<SafeAccountProfile> {
       const value = updateInput(input),
         current = await session(headers);
-      return transaction(pool, async (client) => {
+      return accountTransaction(pool, async (client) => {
         const user = await authority(client, current);
         if (
           value.expectedAppearance !== undefined &&
@@ -232,7 +240,7 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
     },
     async listPending(headers: Headers) {
       const current = await session(headers);
-      return transaction(pool, async (client) => {
+      return accountTransaction(pool, async (client) => {
         await authority(client, current, true);
         const result = await client.query<SafeAccountProfile>(
           `SELECT ${profileColumns} FROM ${profileJoin} WHERE u.approval = 'pending' ORDER BY u."createdAt", u.id LIMIT 101`,
@@ -247,7 +255,7 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
     async listAccounts(headers: Headers, input: unknown): Promise<AccountListPage> {
       const value = parseAccountListInput(input);
       const current = await session(headers);
-      return transaction(pool, async (client) => {
+      return accountTransaction(pool, async (client) => {
         await authority(client, current, true);
         const pattern = value.q ? `%${value.q.replace(/[!%_]/g, "!$&")}%` : null;
         const result = await client.query<SafeAccountProfile>(
@@ -274,7 +282,7 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
       )
         fail(400, "INVALID_DECISION");
       const current = await session(headers);
-      return transaction(pool, async (client) => {
+      return accountTransaction(pool, async (client) => {
         const actor = await authority(client, current, true);
         const target = (
           await client.query<CurrentAuthUser>(

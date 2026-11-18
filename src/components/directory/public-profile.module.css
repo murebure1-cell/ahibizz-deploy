@@ -184,20 +184,6 @@
   color: var(--ui-accent-text);
 }
 
-.verified {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 10px;
-  color: var(--ui-success);
-  font-size: 11px;
-}
-
-.verified svg {
-  width: 14px;
-  height: 14px;
-}
-
 .quickActions {
   display: flex;
   align-items: stretch;

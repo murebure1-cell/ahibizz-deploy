@@ -13,6 +13,7 @@ import {
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { Icon } from "../Icon";
 import styles from "./admin.module.css";
+import { ProfileVerification } from "./ProfileVerification";
 import {
   type AdminRequest,
   AdminRequestError,
@@ -32,7 +33,12 @@ const filters: { approval: AdminAccountApproval; label: string; empty: string }[
 ];
 const initialView = adminAccountQuery("pending", 1);
 
-type Props = { request?: AdminAccountRequest; expectedAccountId?: string; embedded?: boolean };
+type Props = {
+  request?: AdminAccountRequest;
+  expectedAccountId?: string;
+  embedded?: boolean;
+  active?: boolean;
+};
 export function AccountApprovals(props: Props) {
   return <ApprovalWorkspace key={props.expectedAccountId ?? "unavailable"} {...props} />;
 }
@@ -40,6 +46,7 @@ function ApprovalWorkspace({
   request = browserAdminRequest,
   expectedAccountId,
   embedded = false,
+  active = true,
 }: Props) {
   const scopedRequest = useMemo(
     () => adminActorRequest(expectedAccountId, request),
@@ -422,40 +429,53 @@ function ApprovalWorkspace({
               <span>{account.email}</span>
               <small>{account.emailVerified ? "Email je potvrđen" : "Email nije potvrđen"}</small>
             </div>
-            {account.role === "owner" ? (
-              <span className={styles.accountReadOnly}>Administrator · samo pregled</span>
-            ) : (
-              <div className={styles.actions}>
-                {account.approval !== "approved" && (
-                  <button
-                    className={styles.primary}
-                    type="button"
-                    disabled={disabled || !account.emailVerified}
-                    onClick={() => void decide(account, "approved")}
-                  >
-                    {pending?.id === account.id && pending.approval === "approved"
-                      ? "Spremanje…"
-                      : account.approval === "suspended"
-                        ? "Aktiviraj"
-                        : "Odobri"}
-                  </button>
-                )}
-                {account.approval !== "suspended" && (
-                  <button
-                    className={styles.secondary}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => void decide(account, "suspended")}
-                  >
-                    {pending?.id === account.id && pending.approval === "suspended"
-                      ? "Spremanje…"
-                      : account.approval === "pending"
-                        ? "Odbij"
-                        : "Suspendiraj"}
-                  </button>
-                )}
-              </div>
-            )}
+            <div className={styles.actions}>
+              {expectedAccountId && active && (
+                <ProfileVerification
+                  kind="person"
+                  id={account.id}
+                  actorId={expectedAccountId}
+                  request={request}
+                  disabled={disabled}
+                  canGrant={account.emailVerified && account.approval === "approved"}
+                  onAccessDenied={clearPrivate}
+                />
+              )}
+              {account.role === "owner" ? (
+                <span className={styles.accountReadOnly}>Administrator</span>
+              ) : (
+                <>
+                  {account.approval !== "approved" && (
+                    <button
+                      className={styles.primary}
+                      type="button"
+                      disabled={disabled || !account.emailVerified}
+                      onClick={() => void decide(account, "approved")}
+                    >
+                      {pending?.id === account.id && pending.approval === "approved"
+                        ? "Spremanje…"
+                        : account.approval === "suspended"
+                          ? "Aktiviraj"
+                          : "Odobri"}
+                    </button>
+                  )}
+                  {account.approval !== "suspended" && (
+                    <button
+                      className={styles.secondary}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => void decide(account, "suspended")}
+                    >
+                      {pending?.id === account.id && pending.approval === "suspended"
+                        ? "Spremanje…"
+                        : account.approval === "pending"
+                          ? "Odbij"
+                          : "Suspendiraj"}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </article>
         ))}
       </div>

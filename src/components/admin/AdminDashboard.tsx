@@ -151,7 +151,12 @@ export function AdminDashboard({
         </header>
         <div hidden={section !== "accounts"}>
           {(visited.accounts || section === "accounts") && (
-            <AccountApprovals key={initial.id} expectedAccountId={initial.id} embedded />
+            <AccountApprovals
+              key={initial.id}
+              expectedAccountId={initial.id}
+              active={section === "accounts"}
+              embedded
+            />
           )}
         </div>
         <div hidden={section !== "categories"}>
@@ -167,6 +172,7 @@ export function AdminDashboard({
               active={section === "businesses"}
               isOwner
               initialAll
+              adminVerification
               embedded
             />
           )}

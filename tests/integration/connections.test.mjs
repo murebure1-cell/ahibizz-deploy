@@ -94,6 +94,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0012_business_reviews.sql",
           "0013_business_favorites.sql",
           "0014_business_ownership.sql",
+          "0015_profile_verification.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -357,9 +358,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
               "workStatus",
               "photoVersion",
               "coverVersion",
+              "verified",
             ].sort(),
           );
           assert.equal(profile.name, "Alice javni profil");
+          assert.equal(profile.verified, false);
           assert.equal(JSON.stringify(profile).includes("2000-02-29"), false);
           for (const secret of [
             "email",

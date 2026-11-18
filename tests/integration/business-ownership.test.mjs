@@ -6,6 +6,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { loadMigrations, runMigrations } from "../../scripts/migrate.mjs";
 import { integrationConfiguration } from "./postgres.test.mjs";
+import { testManualVerification } from "./verification-cases.mjs";
 
 const baseURL = "https://ownership-ci.ahibizz.invalid";
 const password = "Ownership-only-fixture-password-2032!";
@@ -199,6 +200,16 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         directory.archive(admin.headers, business.id, {
           expectedVersion: (await directory.readOwn(admin.headers, business.id)).version,
         });
+      await testManualVerification(t, {
+        auth,
+        accounts,
+        pool,
+        admin,
+        member: previous,
+        create,
+        archive,
+        baseURL,
+      });
       let main = await create(previous);
       main = await directory.publish(previous.headers, main.id, { expectedVersion: main.version });
       main = await directory.moderate(admin.headers, main.id, {
