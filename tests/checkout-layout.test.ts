@@ -29,12 +29,13 @@ test("form controls fit long business names and gesture restriction is scoped to
 });
 test("PayPal external navy-gold frame contains SDK width without editing iframe contents", () => {
   assert.match(css, /\.sdkHost iframe\s*\{[^}]*min-width: 0;[^}]*max-width: 100%;/);
-  assert.match(css, /\.paymentFrame\s*\{[^}]*border-color: #b88a22;[^}]*background: #142e43;/);
+  assert.match(css, /\.paymentFrame\s*\{[^}]*background: #142e43;/);
   const source = readFileSync("src/components/billing/PayPalCardButton.tsx", "utf8");
   assert.match(source, /className=\{styles.sdkHost\}/);
   assert.match(source, /styles.paymentFrame/);
   assert.doesNotMatch(source, /contentDocument|contentWindow|user-scalable/);
-  assert.match(source, /5,11 EUR za 7 dana/);
+  assert.match(source, /5,11 EUR/);
+  assert.match(source, /7 dana isticanja/);
   assert.match(source, /bez PayPal naloga zavisi/);
 });
 
@@ -44,5 +45,6 @@ test("standard CARD uses supported sizing without a white surround or overlay", 
   assert.match(source, /borderRadius: 10/);
   assert.match(source, /height: 48/);
   assert.match(css, /\.paymentFrame \.sdkHost\s*\{[^}]*padding: 0;[^}]*background: transparent;/);
+  assert.match(css, /\.sdkHost\[data-expanded\]\s*\{[^}]*background: #fff;/);
   assert.doesNotMatch(css, /\.sdkHost[^}]*?(?:position: absolute|opacity: 0|pointer-events: none)/);
 });

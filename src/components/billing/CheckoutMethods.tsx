@@ -44,10 +44,20 @@ export function CheckoutMethods({
     };
   }, []);
   const paypalStatus = paypalAvailabilityText(availability, unavailable);
+  const methodNotes = (
+    <>
+      <p id="paypal-availability" role="status">
+        {paypalStatus}
+      </p>
+      <p id="dodo-availability">Kartično plaćanje putem Dodo još je u provjeri.</p>
+      <a className={styles.supportLink} href="/podrzi">
+        Podrži AhiBizz
+      </a>
+    </>
+  );
   const selector = (
     <section className={styles.card} aria-labelledby="checkout-methods-heading">
       <h2 id="checkout-methods-heading">Odaberi način plaćanja</h2>
-      <p>Izbor načina plaćanja ne pokreće naplatu.</p>
       <div className={styles.choices}>
         <button
           type="button"
@@ -61,23 +71,18 @@ export function CheckoutMethods({
           Kartica (Dodo) · u provjeri
         </button>
       </div>
-      <p id="paypal-availability" role="status">
-        <strong>PayPal:</strong> {paypalStatus}
-      </p>
-      <p>Kartice putem PayPala dostupne su nakon pregleda narudžbe, zavisno od kupca.</p>
-      <p id="dodo-availability">
-        <strong>Kartica (Dodo):</strong> račun je u provjeri. Plaćanje nije dostupno.
-      </p>
-      <p className={styles.footer}>
-        Dobrovoljna podrška:
-        <a href="/podrzi">Podrži AhiBizz</a>.
-      </p>
+      {methodNotes}
     </section>
   );
   return selected === "paypal" ? (
     <>
-      <div className={styles.page} style={{ paddingBottom: 0 }}>
-        {selector}
+      <div className={`${styles.page} ${styles.methodBar}`}>
+        <details className={styles.methodDetails}>
+          <summary>
+            Način plaćanja <strong>PayPal i kartice</strong>
+          </summary>
+          {methodNotes}
+        </details>
       </div>
       <Checkout
         userId={userId}
@@ -90,8 +95,7 @@ export function CheckoutMethods({
     <main id="glavni-sadrzaj" className={styles.page}>
       <a href="/nalog">← Moj nalog</a>
       <header>
-        <span className={styles.label}>AHIBIZZ PLAĆANJE</span>
-        <h1>Način plaćanja</h1>
+        <h1>Plaćanje</h1>
       </header>
       {selector}
     </main>

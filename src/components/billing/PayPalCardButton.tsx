@@ -29,6 +29,16 @@ export function PayPalCardButton(props: Props) {
   const [status, setStatus] = useState("Učitavam PayPal opciju za kartice…");
   const [retry, setRetry] = useState(false);
   const { clientId, userId } = props;
+  useEffect(() => {
+    const container = host.current;
+    if (!container || typeof ResizeObserver === "undefined") return;
+    // PayPal resizes its host when the card form replaces the compact button.
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) container.toggleAttribute("data-expanded", entry.contentRect.height > 120);
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Explicit retry reloads the SDK button, not payment requests.
   useEffect(() => {
     const controller = new AbortController();
@@ -109,10 +119,7 @@ export function PayPalCardButton(props: Props) {
           return;
         }
         await buttons.render(host.current);
-        if (current())
-          setStatus(
-            "Karticu obrađuje PayPal. Dostupnost plaćanja bez PayPal naloga zavisi od kupca i PayPala.",
-          );
+        if (current()) setStatus("Plaćanje bez PayPal naloga zavisi od dostupnosti kod PayPala.");
       })
       .catch(() => {
         if (current()) {
@@ -129,13 +136,17 @@ export function PayPalCardButton(props: Props) {
   }, [clientId, userId, attempt]);
   return (
     <section className={`${styles.card} ${styles.paymentFrame}`} aria-label="Kartica putem PayPala">
-      <h2>Plati karticom putem PayPala</h2>
-      <p>
-        Jednokratno 5,11 EUR za 7 dana isticanja. Podatke kartice unosiš samo u PayPalov obrazac, ne
-        na AhiBizz.
-      </p>
+      <div className={styles.cardSummary}>
+        <div>
+          <h2>Plati karticom</h2>
+          <p>7 dana isticanja</p>
+        </div>
+        <strong>5,11 EUR</strong>
+      </div>
       <div ref={host} className={styles.sdkHost} />
-      <p role="status">{status}</p>
+      <p className={styles.providerNote} role="status">
+        {status}
+      </p>
       {retry && (
         <button type="button" onClick={() => setAttempt((value) => value + 1)}>
           Ponovo učitaj kartično dugme

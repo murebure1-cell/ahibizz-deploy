@@ -46,8 +46,7 @@ const messages: Record<string, string> = {
   CHECKOUT_UNAVAILABLE: "Plaćanje trenutno nije dostupno. Pokušaj ponovo.",
   ORDER_NOT_FOUND: "Narudžba nije pronađena na ovom nalogu.",
 };
-const money = (minor: number) =>
-  new Intl.NumberFormat("bs-BA", { style: "currency", currency: "EUR" }).format(minor / 100);
+const money = (minor: number) => `${(minor / 100).toFixed(2).replace(".", ",")} EUR`;
 function cents(value: string) {
   const match = /^(\d{1,4})(?:[.,](\d{1,2}))?$/.exec(value.trim());
   return match ? Number(match[1]) * 100 + Number((match[2] ?? "").padEnd(2, "0")) : 0;
@@ -249,18 +248,14 @@ export function Checkout({
     <main id="glavni-sadrzaj" className={styles.page}>
       <a href="/nalog">← Moj nalog</a>
       <header>
-        <span className={styles.label}>
-          {catalog?.environment === "sandbox"
-            ? "TESTNO PLAĆANJE · BEZ STVARNOG NOVCA"
-            : "SIGURNO PLAĆANJE"}
-        </span>
+        {catalog?.environment === "sandbox" && (
+          <span className={styles.label}>Testno plaćanje · bez stvarnog novca</span>
+        )}
         <h1>{kind === "promotion" ? "Istakni svoju djelatnost" : "Podrži razvoj AhiBizza"}</h1>
-        <p>Pregled je na bosanskom; PayPalov obrazac može biti na engleskom.</p>
       </header>
-      {!catalog?.available && (
+      {catalog?.available === false && (
         <p role="status" className={styles.notice}>
-          Naplata još nije uključena. Neće biti slanja na stvarno plaćanje dok povezivanje i
-          provjere ne budu završeni.
+          Naplata trenutno nije dostupna.
         </p>
       )}
       {!userId && (
@@ -291,20 +286,20 @@ export function Checkout({
       )}
       {!order && !initialOrderId && (
         <>
-          <section className={styles.choices} aria-label="Namjena uplate">
-            <button
-              type="button"
-              disabled={busy}
-              aria-pressed={kind === "promotion"}
-              onClick={() => {
-                setKind("promotion");
-                setReview(false);
-                key.current = null;
-              }}
-            >
-              Isticanje profila
-            </button>
-            {catalog?.environment === "sandbox" ? (
+          {catalog?.environment === "sandbox" && (
+            <section className={styles.choices} aria-label="Namjena uplate">
+              <button
+                type="button"
+                disabled={busy}
+                aria-pressed={kind === "promotion"}
+                onClick={() => {
+                  setKind("promotion");
+                  setReview(false);
+                  key.current = null;
+                }}
+              >
+                Isticanje profila
+              </button>
               <button
                 type="button"
                 disabled={busy}
@@ -317,10 +312,8 @@ export function Checkout({
               >
                 Podrži razvoj AhiBizza
               </button>
-            ) : (
-              <a href="/podrzi">Podrži razvoj AhiBizza · postojeće opcije</a>
-            )}
-          </section>
+            </section>
+          )}
           <section className={styles.card}>
             {kind === "promotion" ? (
               <>
@@ -388,7 +381,12 @@ export function Checkout({
                 >
                   {busy ? "Pripremam narudžbu…" : "Nastavi na PayPal"}
                 </button>
-                <button type="button" disabled={busy} onClick={() => setReview(false)}>
+                <button
+                  type="button"
+                  className={styles.back}
+                  disabled={busy}
+                  onClick={() => setReview(false)}
+                >
                   Nazad
                 </button>
               </>
