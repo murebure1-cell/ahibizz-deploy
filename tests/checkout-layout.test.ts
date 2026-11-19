@@ -48,3 +48,15 @@ test("standard CARD uses supported sizing without a white surround or overlay", 
   assert.match(css, /\.sdkHost\[data-expanded\]\s*\{[^}]*background: #fff;/);
   assert.doesNotMatch(css, /\.sdkHost[^}]*?(?:position: absolute|opacity: 0|pointer-events: none)/);
 });
+
+test("expanding the standard card keeps the dark checkout shell and its summary colors", () => {
+  const expandedShellRules = css
+    .split("}")
+    .map((rule) => rule.slice(0, rule.indexOf("{")).trim())
+    .filter((selector) => selector.includes(".paymentFrame:has(.sdkHost[data-expanded])"));
+  assert.ok(expandedShellRules.length > 0);
+  for (const selector of expandedShellRules) {
+    assert.ok(selector.startsWith(':global(html[data-theme="light"])'));
+  }
+  assert.match(css, /\.paymentFrame \.sdkHost\[data-expanded\] \{\s*background: #fff;/);
+});

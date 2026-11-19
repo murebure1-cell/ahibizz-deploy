@@ -268,14 +268,16 @@
 .paymentFrame .sdkHost[data-expanded] {
   background: #fff;
 }
-.paymentFrame:has(.sdkHost[data-expanded]) {
+:global(html[data-theme="light"]) .paymentFrame:has(.sdkHost[data-expanded]) {
   color: #142e43;
   background: #fff;
   border-color: #c9d4dc;
 }
-.paymentFrame:has(.sdkHost[data-expanded]) :is(.cardSummary p, .providerNote) {
+:global(html[data-theme="light"])
+  .paymentFrame:has(.sdkHost[data-expanded])
+  :is(.cardSummary p, .providerNote) {
   color: #40576a;
 }
-.paymentFrame:has(.sdkHost[data-expanded]) .cardSummary strong {
+:global(html[data-theme="light"]) .paymentFrame:has(.sdkHost[data-expanded]) .cardSummary strong {
   color: #795a1b;
 }
