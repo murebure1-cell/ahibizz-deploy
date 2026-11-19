@@ -251,7 +251,7 @@ export function createCheckoutService({
     async create(headers, input) {
       payable();
       chargePurpose(input.kind);
-      if (input.flow === "guest" && input.kind !== "promotion")
+      if ((input.flow === "guest" || input.flow === "card-fields") && input.kind !== "promotion")
         throw new CheckoutHttpError(400, "INVALID_CHECKOUT_FLOW");
       let order = await store.create(await actor(headers), {
         ...input,
@@ -302,7 +302,10 @@ export function createCheckoutService({
       matching(order);
       chargePurpose(order.kind);
       if (terminal.has(order.status)) return { order: dto(order) };
-      const value = await provider.capture(providerOrder(order));
+      const value = await provider.capture(
+        providerOrder(order),
+        paypalOrderFlow(order.offerVersion),
+      );
       if (value.status !== "COMPLETED" || !value.captureId || !value.completedAt)
         throw new CheckoutHttpError(409, "PAYMENT_NOT_COMPLETED");
       return {

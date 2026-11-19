@@ -163,6 +163,35 @@ test("saved guest checkout resumes the exact existing order and cannot fall thro
   assert.equal(t.calls.length, 2);
   assert.equal(t.updates.at(-1)?.status, "captured");
 });
+
+test("advanced approval creates a card-fields order and only captures the returned provider ID", async () => {
+  const advanced: CardOrder = { ...order, flow: "card-fields", status: "provider_created" };
+  const t = setup(async (path) =>
+    path === "orders"
+      ? { order: advanced, providerOrderId }
+      : { order: { ...advanced, status: "captured" } },
+  );
+  assert.equal(t.flow.click(), true);
+  assert.equal(await t.flow.create("card-fields"), providerOrderId);
+  assert.equal((t.calls[0]?.body as { flow: string } | undefined)?.flow, "card-fields");
+  await assert.rejects(t.flow.approve("WRONGORDER12345"));
+  await t.flow.approve(providerOrderId);
+  await t.flow.approve(providerOrderId);
+  assert.equal(t.calls.filter((c) => c.path.endsWith("/capture")).length, 1);
+  for (const saved of [
+    advanced,
+    { ...order, flow: "sdk" as const },
+    { ...advanced, flow: "guest" as const },
+  ]) {
+    const previous = setup(undefined, saved);
+    assert.equal(canOfferPayPalCard(saved, false, "promotion"), true);
+    previous.flow.click();
+    await assert.rejects(
+      previous.flow.create(saved.flow === "card-fields" ? "sdk" : "card-fields"),
+    );
+    assert.equal(previous.calls.length, 0);
+  }
+});
 test("failed or mismatched guest recovery cannot issue a new create, retain a provider ID or capture", async () => {
   const guest: CardOrder = { ...order, flow: "guest", status: "provider_created" };
   for (const invalid of [

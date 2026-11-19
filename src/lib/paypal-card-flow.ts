@@ -1,5 +1,7 @@
 import type { PayPalOrderFlow } from "./paypal-order-flow";
 
+export const checkoutEuro = (minor: number) => `${(minor / 100).toFixed(2).replace(".", ",")} EUR`;
+
 /** Browser controller only. Orders, price, approval and fulfillment stay server-authoritative. */
 export type CardOrder = {
   id: string;
@@ -22,7 +24,8 @@ export function canOfferPayPalCard(
 ): boolean {
   return order
     ? order.kind === "promotion" &&
-        ((order.flow === "sdk" && ["created", "provider_created"].includes(order.status)) ||
+        (((order.flow === "sdk" || order.flow === "card-fields") &&
+          ["created", "provider_created"].includes(order.status)) ||
           (order.flow === "guest" && order.status === "provider_created"))
     : reviewed && kind === "promotion";
 }
@@ -62,7 +65,7 @@ export function createPayPalCardFlow(options: {
       current = null;
       return true;
     },
-    create(): Promise<string> {
+    create(method: "sdk" | "card-fields" = "sdk"): Promise<string> {
       alive();
       if (!acquired) return Promise.reject(new Error("Prvo odaberi kartično plaćanje."));
       if (creating) return creating;
@@ -74,6 +77,7 @@ export function createPayPalCardFlow(options: {
           if (
             saved &&
             (!canOfferPayPalCard(saved, false, "promotion") ||
+              (saved.flow === "card-fields") !== (method === "card-fields") ||
               saved.businessId !== businessId ||
               saved.requestId !== requestId)
           )
@@ -87,7 +91,7 @@ export function createPayPalCardFlow(options: {
                 )
               : await options.send(
                   "orders",
-                  { requestId, businessId, kind: "promotion", flow: "sdk" },
+                  { requestId, businessId, kind: "promotion", flow: method },
                   controller.signal,
                 );
           alive();
@@ -108,7 +112,7 @@ export function createPayPalCardFlow(options: {
             throw new Error("Odgovor ne odgovara sačuvanoj narudžbi. Osvježi njen status.");
           if (result.order) options.onOrder(result.order);
           if (
-            result.order?.flow !== (saved?.flow ?? "sdk") ||
+            result.order?.flow !== (saved?.flow ?? method) ||
             result.order.kind !== "promotion" ||
             result.order.businessId !== businessId ||
             result.order.amountMinor !== 511 ||

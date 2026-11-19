@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { readCheckoutOrder } from "../../lib/checkout-order-read";
-import { canOfferPayPalCard, type CardOrder as Order } from "../../lib/paypal-card-flow";
+import {
+  canOfferPayPalCard,
+  checkoutEuro as money,
+  type CardOrder as Order,
+} from "../../lib/paypal-card-flow";
 import { Icon } from "../Icon";
 import styles from "./checkout-preview.module.css";
 import { PayPalCardButton } from "./PayPalCardButton";
@@ -33,7 +37,6 @@ const messages: Record<string, string> = {
   CHECKOUT_UNAVAILABLE: "Plaćanje trenutno nije dostupno. Pokušaj ponovo.",
   ORDER_NOT_FOUND: "Narudžba nije pronađena na ovom nalogu.",
 };
-const money = (minor: number) => `${(minor / 100).toFixed(2).replace(".", ",")} EUR`;
 function cents(value: string) {
   const match = /^(\d{1,4})(?:[.,](\d{1,2}))?$/.exec(value.trim());
   return match ? Number(match[1]) * 100 + Number((match[2] ?? "").padEnd(2, "0")) : 0;
@@ -156,7 +159,7 @@ export function Checkout({
   }, [userId, initialOrderId, reloadOrder]);
   async function act(action: "create" | "capture" | "reconcile") {
     if (locked.current || !userId || (initialOrderId && !order) || orderLoading) return;
-    if (action === "create" && (order?.flow === "sdk" || order?.flow === "guest")) return;
+    if (action === "create" && order?.flow && order.flow !== "redirect") return;
     if (order?.status === "cancelled" && action !== "reconcile") return;
     if (
       action !== "reconcile" &&
@@ -201,7 +204,7 @@ export function Checkout({
         );
         return;
       }
-      if (action === "create" && value.approvalUrl && value.order?.flow !== "sdk") {
+      if (action === "create" && value.approvalUrl && value.order?.flow === "redirect") {
         const link = new URL(value.approvalUrl);
         const expected =
           value.order?.environment === "sandbox" ? "www.sandbox.paypal.com" : "www.paypal.com";
@@ -230,14 +233,22 @@ export function Checkout({
       ? Boolean(businessId)
       : selectedAmount >= (catalog?.support.minMinor ?? 100) &&
         selectedAmount <= (catalog?.support.maxMinor ?? 100000);
+  const openCardOrder =
+    order &&
+    !returned &&
+    catalog?.available &&
+    catalog.paypalClientId &&
+    canOfferPayPalCard(order, review, kind);
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
-      <a href="/nalog">← Moj nalog</a>
+      <a className={styles.accountLink} href="/nalog">
+        ← Moj nalog
+      </a>
       <header>
         {catalog?.environment === "sandbox" && (
           <span className={styles.label}>Testno plaćanje · bez stvarnog novca</span>
         )}
-        <h1>{kind === "promotion" ? "Istakni svoju djelatnost" : "Podrži razvoj AhiBizza"}</h1>
+        <h1>{kind === "promotion" ? "Isticanje djelatnosti" : "Podrži razvoj AhiBizza"}</h1>
       </header>
       {catalog?.available === false && (
         <p role="status" className={styles.notice}>
@@ -253,7 +264,7 @@ export function Checkout({
           </a>
         </p>
       )}
-      {initialOrderId && userId && (
+      {initialOrderId && userId && !order && (
         <section aria-label="Sačuvana narudžba" className={styles.notice}>
           <p role="status">
             {orderLoading
@@ -305,29 +316,42 @@ export function Checkout({
           <section className={styles.card}>
             {kind === "promotion" ? (
               <>
-                <h2>Isticanje u kategoriji · 7 dana</h2>
-                <p className={styles.price}>10 KM ≈ {money(511)}</p>
-                <p>
-                  Naplaćuje se {money(511)}, jednokratno, bez automatske obnove. Isticanje počinje
-                  tek nakon potvrđene uplate. Ne dodjeljuje verifikacijsku ili halal oznaku.
-                </p>
-                <label htmlFor="checkout-business">Tvoja objavljena djelatnost</label>
-                <select
-                  id="checkout-business"
-                  disabled={review || busy}
-                  value={businessId}
-                  onChange={(e) => {
-                    setBusinessId(e.target.value);
-                    key.current = null;
-                  }}
-                >
-                  <option value="">Odaberi djelatnost</option>
-                  {businesses.map((business) => (
-                    <option key={business.id} value={business.id}>
-                      {business.title}
-                    </option>
-                  ))}
-                </select>
+                <div className={styles.orderSummary}>
+                  <div>
+                    <h2>Isticanje u kategoriji</h2>
+                    <p>{catalog?.promotion.days ?? 7} dana · jednokratno</p>
+                  </div>
+                  <div className={styles.orderPrice}>
+                    <strong>{money(selectedAmount)}</strong>
+                    {selectedAmount === 511 && <small>≈ 10 KM</small>}
+                  </div>
+                </div>
+                {review ? (
+                  <p className={styles.businessName}>
+                    <Icon name="shop" width={18} height={18} />
+                    {businesses.find((business) => business.id === businessId)?.title}
+                  </p>
+                ) : (
+                  <>
+                    <label htmlFor="checkout-business">Tvoja objavljena djelatnost</label>
+                    <select
+                      id="checkout-business"
+                      disabled={review || busy}
+                      value={businessId}
+                      onChange={(e) => {
+                        setBusinessId(e.target.value);
+                        key.current = null;
+                      }}
+                    >
+                      <option value="">Odaberi djelatnost</option>
+                      {businesses.map((business) => (
+                        <option key={business.id} value={business.id}>
+                          {business.title}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
               </>
             ) : (
               <>
@@ -352,27 +376,35 @@ export function Checkout({
                 <p>Od 1 do 1.000 EUR. Iznos biraš samostalno.</p>
               </>
             )}
-            {review ? (
+            {review && kind === "support" && (
               <p>
                 <strong>Ukupno za plaćanje: {money(selectedAmount)}</strong>
               </p>
-            ) : (
+            )}
+            {!review && (
               <button
                 type="button"
                 className={styles.primary}
                 disabled={!userId || !canReview || !catalog?.available}
                 onClick={() => {
                   key.current ??= crypto.randomUUID();
+                  setCardOpen(kind === "promotion" && Boolean(catalog?.paypalClientId));
                   setReview(true);
                 }}
               >
-                Pregledaj prije plaćanja
+                Odaberi način plaćanja
               </button>
             )}
           </section>
         </>
       )}
-      {order && (
+      {order && openCardOrder && (
+        <div className={styles.savedSummary}>
+          <span>{order.businessTitle ?? "Isticanje u kategoriji"}</span>
+          <strong>{money(order.amountMinor)}</strong>
+        </div>
+      )}
+      {order && !openCardOrder && (
         <section className={styles.card}>
           <h2>
             {order.kind === "promotion"
@@ -416,7 +448,7 @@ export function Checkout({
                   ? "Vratio si se s PayPala. Povratak nije dokaz uplate."
                   : "Uplata još nije potvrđena. Ne otvaraj novu narudžbu za isti pokušaj."}
               </p>
-              {(returned || (order.flow !== "sdk" && order.flow !== "guest")) && (
+              {(returned || !order.flow || order.flow === "redirect") && (
                 <button
                   type="button"
                   disabled={
@@ -446,22 +478,34 @@ export function Checkout({
             canOfferPayPalCard(order, review, kind) && (
               <div className={styles.cardMethod}>
                 {!order && (
-                  <button
-                    type="button"
-                    className={styles.payCard}
-                    aria-controls="karticni-obrazac"
-                    aria-expanded={cardOpen}
-                    disabled={busy}
-                    onClick={() => setCardOpen((open) => !open)}
-                  >
-                    <Icon name="card" width={20} height={20} />
-                    Plati karticom
-                  </button>
+                  <fieldset className={styles.methodPicker} aria-label="Odaberi način plaćanja">
+                    <button
+                      type="button"
+                      className={styles.payCard}
+                      aria-controls="karticni-obrazac"
+                      aria-pressed={cardOpen}
+                      disabled={busy}
+                      onClick={() => setCardOpen(true)}
+                    >
+                      <Icon name="card" width={20} height={20} />
+                      Plati karticom
+                    </button>
+                    <button
+                      type="button"
+                      aria-controls="paypal-novcanik"
+                      aria-pressed={!cardOpen}
+                      disabled={busy}
+                      onClick={() => setCardOpen(false)}
+                    >
+                      PayPal
+                    </button>
+                  </fieldset>
                 )}
                 <div id="karticni-obrazac" hidden={!cardOpen && !order}>
                   {(cardOpen || order) && (
                     <PayPalCardButton
                       environment={catalog.environment}
+                      amountMinor={selectedAmount}
                       savedOrder={order ?? undefined}
                       key={userId}
                       clientId={catalog.paypalClientId}
@@ -499,14 +543,17 @@ export function Checkout({
             )}
           {!order && (
             <div className={styles.methodFooter}>
-              <button
-                type="button"
-                className={styles.payWallet}
-                disabled={busy || !catalog?.available || !userId}
-                onClick={() => act("create")}
-              >
-                Nastavi na PayPal
-              </button>
+              {(!cardOpen || !catalog?.paypalClientId) && (
+                <button
+                  type="button"
+                  id="paypal-novcanik"
+                  className={styles.payWallet}
+                  disabled={busy || !catalog?.available || !userId}
+                  onClick={() => act("create")}
+                >
+                  Nastavi na PayPal
+                </button>
+              )}
               <button
                 type="button"
                 className={styles.back}
@@ -522,11 +569,24 @@ export function Checkout({
           )}
         </section>
       ) : null}
+      {order && openCardOrder && (
+        <details className={styles.orderDetails}>
+          <summary>Detalji narudžbe</summary>
+          <p>Broj narudžbe: {order.id}</p>
+          <p>Uplata još nije potvrđena.</p>
+          <button type="button" disabled={busy} onClick={() => act("reconcile")}>
+            Osvježi status uplate
+          </button>
+        </details>
+      )}
       {error && (
         <p role="alert" className={styles.notice}>
           {error}
         </p>
       )}
+      <a className={styles.supportLink} href="/podrzi">
+        Podrži AhiBizz
+      </a>
     </main>
   );
 }

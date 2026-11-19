@@ -80,6 +80,12 @@ test("guest card resume reads and validates the saved PayPal order without creat
   assert.ok(unit);
   unit.payments.captures.length = 0;
   assert.equal(await client.canResumeCard(order), true);
+  Reflect.deleteProperty(unit, "payments");
+  detail.status = "CREATED";
+  assert.equal(await client.canResumeCard(order), true);
+  Object.assign(unit, { payments: null });
+  await assert.rejects(client.canResumeCard(order), /INVALID_PROVIDER_RESPONSE/);
+  Reflect.deleteProperty(unit, "payments");
   for (const status of ["APPROVED", "VOIDED", "COMPLETED"]) {
     detail.status = status;
     assert.equal(await client.canResumeCard(order), false);
@@ -337,6 +343,77 @@ test("SDK rejects completed, wrong recipient, amount and unsafe approval links",
         transport,
       ).create(order, "sdk"),
     );
+  }
+});
+
+test("integrated card fields request SCA when required and keep issuer links inside the SDK", async () => {
+  const mock = (async (url, init) => {
+    if (String(url).endsWith("/token")) return Response.json({ access_token: "fixture" });
+    const body = JSON.parse(String(init?.body));
+    assert.deepEqual(body.payment_source, {
+      card: {
+        attributes: { verification: { method: "SCA_WHEN_REQUIRED" } },
+        experience_context: {
+          return_url: `https://ahibizz.invalid/naplata/povratak?narudzba=${order.id}`,
+          cancel_url: `https://ahibizz.invalid/naplata/odustajanje?narudzba=${order.id}`,
+        },
+      },
+    });
+    return Response.json({
+      ...provider(),
+      status: "CREATED",
+      links: [{ rel: "payer-action", href: "https://issuer.invalid/challenge" }],
+    });
+  }) as typeof fetch;
+  const paypal = createLivePayPal({ ...config, chargingApproved: true }, mock);
+  assert.deepEqual(await paypal.create(order, "card-fields"), {
+    providerOrderId: order.providerOrderId,
+    approvalUrl: null,
+  });
+  await assert.rejects(
+    paypal.create({ ...order, purpose: "support" }, "card-fields"),
+    /INVALID_CHECKOUT_FLOW/,
+  );
+});
+
+test("advanced card captures use the provider's SCA decision before any charge", async () => {
+  const authentication = (liability: string, enrollment: string, status?: string) => ({
+    liability_shift: liability,
+    three_d_secure: { enrollment_status: enrollment, authentication_status: status },
+  });
+  const cases: [unknown, boolean][] = [
+    [{}, true],
+    [{ authentication_result: authentication("POSSIBLE", "Y", "Y") }, true],
+    [{ authentication_result: authentication("POSSIBLE", "Y", "A") }, true],
+    [{ authentication_result: authentication("NO", "N") }, true],
+    [{ authentication_result: authentication("NO", "B") }, true],
+    [{ authentication_result: authentication("NO", "Y", "R") }, false],
+    [{ authentication_result: authentication("UNKNOWN", "Y", "C") }, false],
+    [{ authentication_result: authentication("POSSIBLE", "Y", "N") }, false],
+    [{ authentication_result: {} }, false],
+    [undefined, false],
+  ];
+  for (const [card, canCapture] of cases) {
+    let captureCount = 0;
+    const mock = (async (url, init) => {
+      if (String(url).endsWith("/token")) return Response.json({ access_token: "fixture" });
+      if (init?.method === "POST") {
+        assert.ok(String(url).endsWith("/capture"));
+        assert.equal(new Headers(init.headers).get("PayPal-Request-Id"), order.captureRequestId);
+        captureCount++;
+        return Response.json(provider());
+      }
+      if (captureCount) return Response.json(provider());
+      assert.equal(new URL(String(url)).searchParams.get("fields"), "payment_source");
+      return Response.json({ ...provider(), status: "APPROVED", payment_source: { card } });
+    }) as typeof fetch;
+    const operation = createLivePayPal({ ...config, chargingApproved: true }, mock).capture(
+      order,
+      "card-fields",
+    );
+    if (canCapture) assert.equal((await operation).status, "COMPLETED");
+    else await assert.rejects(operation);
+    assert.equal(captureCount, canCapture ? 1 : 0);
   }
 });
 test("redirect create retains wallet experience context and requires approval link", async () => {

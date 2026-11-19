@@ -39,7 +39,7 @@ test("card selection opens the embedded form locally and only wallet resumes a r
   assert.match(checkout, /canOfferPayPalCard\(order, review, kind\)/);
   assert.match(
     checkout,
-    /action === "create" && value.approvalUrl && value.order\?\.flow !== "sdk"/,
+    /action === "create" && value.approvalUrl && value.order\?\.flow === "redirect"/,
   );
   assert.match(checkout, /onClick=\{\(\) => act\("create"\)\}/);
 });

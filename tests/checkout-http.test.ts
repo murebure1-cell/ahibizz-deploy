@@ -518,6 +518,13 @@ test("promotion accepts SDK and guest flows without a client price; guest is una
   assert.throws(() =>
     checkoutInput({ requestId: id, kind: "support", amountMinor: 511, flow: "guest" }),
   );
+  assert.equal(
+    checkoutInput({ requestId: id, kind: "promotion", businessId: id, flow: "card-fields" }).flow,
+    "card-fields",
+  );
+  assert.throws(() =>
+    checkoutInput({ requestId: id, kind: "support", amountMinor: 511, flow: "card-fields" }),
+  );
   assert.throws(() =>
     checkoutInput({
       requestId: id,
@@ -548,7 +555,7 @@ test("SDK catalog exposes only public client ID when released", () => {
   assert.equal(JSON.stringify(catalog).includes("private-secret"), false);
   assert.equal(checkoutCatalog({ ...f.config, chargingApproved: false }).paypalClientId, null);
 });
-for (const method of ["sdk", "guest"] as const) {
+for (const method of ["sdk", "guest", "card-fields"] as const) {
   test(`${method} persists mode before create and reads and resumes the same provider order`, async () => {
     const f = serviceFixture();
     const row = await f.store.read({ userId: "buyer", id: "session", token: "fixture" }, id);

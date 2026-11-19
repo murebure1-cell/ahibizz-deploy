@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { getAccountService } from "../../server/auth/accounts";
-import { CheckoutMethods } from "./CheckoutMethods";
+import { Checkout } from "./Checkout";
 export async function CheckoutEntry({
   searchParams,
   returned = false,
@@ -21,12 +21,5 @@ export async function CheckoutEntry({
   } catch {
     /* Show login without leaking account details. */
   }
-  return (
-    <CheckoutMethods
-      userId={userId}
-      initialOrderId={id}
-      returned={returned}
-      cancelled={cancelled}
-    />
-  );
+  return <Checkout userId={userId} initialOrderId={id} returned={returned} cancelled={cancelled} />;
 }

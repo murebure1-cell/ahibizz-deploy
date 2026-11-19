@@ -81,6 +81,30 @@ function orderUnit(value: unknown, expected: LiveOrder) {
     throw new PayPalLiveError("ORDER_MISMATCH");
   return { order, unit };
 }
+
+function verifyCardAuthentication(order: Json) {
+  const card = record(record(order.payment_source).card);
+  // SCA_WHEN_REQUIRED can approve a card without any 3D Secure challenge.
+  if (card.authentication_result === undefined) return;
+  const result = record(card.authentication_result);
+  const details = result.three_d_secure === undefined ? undefined : record(result.three_d_secure);
+  const enrollment = details?.enrollment_status;
+  const authentication = details?.authentication_status;
+  if (
+    result.liability_shift === "POSSIBLE" &&
+    (!details || (enrollment === "Y" && (authentication === "Y" || authentication === "A")))
+  )
+    return;
+  // PayPal also allows unenrolled, unavailable-at-enrollment, or bypassed cards
+  // when no authentication was attempted and liability stays with the merchant.
+  if (
+    result.liability_shift === "NO" &&
+    (enrollment === "N" || enrollment === "U" || enrollment === "B") &&
+    (authentication === undefined || authentication === "")
+  )
+    return;
+  throw new PayPalLiveError("CARD_AUTHENTICATION_NOT_APPROVED");
+}
 function captureFacts(capture: Json, expected: LiveOrder): Omit<VerifiedCapture, "status"> {
   const amount = record(capture.amount);
   if (
@@ -242,19 +266,22 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
     if (!response.ok) throw new PayPalLiveError("PAYPAL_REQUEST_FAILED");
     return record(await response.json());
   }
-  async function readOrder(order: LiveOrder) {
-    const data = await request(`/v2/checkout/orders/${providerId(order.providerOrderId)}`);
+  async function readOrder(order: LiveOrder, includePaymentSource = false) {
+    const fields = includePaymentSource ? "?fields=payment_source" : "";
+    const data = await request(`/v2/checkout/orders/${providerId(order.providerOrderId)}${fields}`);
     orderUnit(data, order);
     return data;
   }
   return {
     async create(order: LiveOrder, flow: PayPalOrderFlow = "redirect") {
       if (
-        !["redirect", "sdk", "guest"].includes(flow) ||
-        (flow === "guest" && order.purpose !== "promotion")
+        !["redirect", "sdk", "guest", "card-fields"].includes(flow) ||
+        ((flow === "guest" || flow === "card-fields") && order.purpose !== "promotion")
       )
         throw new PayPalLiveError("INVALID_CHECKOUT_FLOW");
       canCharge(order);
+      const returnUrl = `${origin.origin}/naplata/povratak?narudzba=${order.id}`;
+      const cancelUrl = `${origin.origin}/naplata/odustajanje?narudzba=${order.id}`;
       const data = await request(
         "/v2/checkout/orders",
         "POST",
@@ -272,34 +299,48 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
               amount: { currency_code: "EUR", value: liveAmount(order.amountMinor) },
             },
           ],
-          ...(flow === "sdk"
+          ...(flow === "card-fields"
             ? {
-                application_context: { shipping_preference: "NO_SHIPPING", user_action: "PAY_NOW" },
-              }
-            : {
                 payment_source: {
-                  paypal: {
-                    experience_context: {
-                      ...(flow === "guest" ? { landing_page: "GUEST_CHECKOUT" } : {}),
-                      brand_name: "AhiBizz",
-                      locale: "en-BA",
-                      shipping_preference: "NO_SHIPPING",
-                      user_action: "PAY_NOW",
-                      return_url: `${origin.origin}/naplata/povratak?narudzba=${order.id}`,
-                      cancel_url: `${origin.origin}/naplata/odustajanje?narudzba=${order.id}`,
-                    },
+                  card: {
+                    attributes: { verification: { method: "SCA_WHEN_REQUIRED" } },
+                    experience_context: { return_url: returnUrl, cancel_url: cancelUrl },
                   },
                 },
-              }),
+              }
+            : flow === "sdk"
+              ? {
+                  application_context: {
+                    shipping_preference: "NO_SHIPPING",
+                    user_action: "PAY_NOW",
+                  },
+                }
+              : {
+                  payment_source: {
+                    paypal: {
+                      experience_context: {
+                        ...(flow === "guest" ? { landing_page: "GUEST_CHECKOUT" } : {}),
+                        brand_name: "AhiBizz",
+                        locale: "en-BA",
+                        shipping_preference: "NO_SHIPPING",
+                        user_action: "PAY_NOW",
+                        return_url: returnUrl,
+                        cancel_url: cancelUrl,
+                      },
+                    },
+                  },
+                }),
         },
         order.createRequestId,
       );
-      if (flow === "sdk") {
+      if (flow === "sdk" || flow === "card-fields") {
         if (
           !["CREATED", "SAVED", "APPROVED", "PAYER_ACTION_REQUIRED"].includes(String(data.status))
         )
           throw new PayPalLiveError("INVALID_ORDER_RESPONSE");
         orderUnit(data, { ...order, providerOrderId: providerId(data.id) });
+        if (flow === "card-fields")
+          return { providerOrderId: providerId(data.id), approvalUrl: null };
       }
       if (data.links !== undefined && !Array.isArray(data.links))
         throw new PayPalLiveError("INVALID_ORDER_RESPONSE");
@@ -312,11 +353,12 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
           flow === "sdk" && !approval ? null : liveApprovalUrl(approval?.href, environment),
       };
     },
-    async capture(order: LiveOrder) {
+    async capture(order: LiveOrder, flow: PayPalOrderFlow = "redirect") {
       canCharge(order);
-      let data = await readOrder(order);
+      let data = await readOrder(order, flow === "card-fields");
       const before = verifyLiveOrder(data, order, false);
       if (before.status !== "COMPLETED") {
+        if (flow === "card-fields") verifyCardAuthentication(data);
         await request(
           `/v2/checkout/orders/${order.providerOrderId}/capture`,
           "POST",
@@ -330,7 +372,7 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
     async canResumeCard(order: LiveOrder) {
       const data = await readOrder(order);
       const { unit } = orderUnit(data, order);
-      const captures = record(unit.payments).captures;
+      const captures = unit.payments === undefined ? undefined : record(unit.payments).captures;
       return (
         ["CREATED", "SAVED", "PAYER_ACTION_REQUIRED"].includes(String(data.status)) &&
         (captures === undefined || (Array.isArray(captures) && captures.length === 0))

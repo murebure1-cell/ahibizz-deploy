@@ -364,7 +364,8 @@ export function createCheckoutStore(pool: Pool) {
         if (!/^[A-Z0-9]{10,32}$/.test(value.providerOrderId)) fail(400, "INVALID_PROVIDER_ID");
         const o = await row(c, id);
         const url = value.approvalUrl === null ? null : new URL(value.approvalUrl);
-        if (!url && paypalOrderFlow(o.offerVersion) !== "sdk") fail(400, "INVALID_APPROVAL_URL");
+        if (!url && !["sdk", "card-fields"].includes(paypalOrderFlow(o.offerVersion)))
+          fail(400, "INVALID_APPROVAL_URL");
         if (
           url &&
           (url.protocol !== "https:" ||

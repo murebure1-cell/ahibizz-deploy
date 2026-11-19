@@ -1,4 +1,4 @@
-/** PayPal v6 guest card entry stays in the provider-hosted overlay. */
+/** Both PayPal v6 card integrations keep card details inside provider-owned frames. */
 export type PayPalEnvironment = "sandbox" | "live";
 export type GuestSession = {
   start(
@@ -13,19 +13,42 @@ export type GuestCallbacks = {
   onCancel(): void;
   onError(error: unknown): void;
 };
+export type CardFieldType = "number" | "expiry" | "cvv";
+export type HostedField = HTMLElement & { destroy?: () => void | Promise<void> };
+export type HostedFieldState = { isEmpty: boolean; isValid: boolean };
+export type AdvancedSession = {
+  createCardFieldsComponent(options: {
+    type: CardFieldType;
+    placeholder: string;
+    ariaLabel: string;
+    ariaInvalidErrorMessage: string;
+    style: Record<string, Record<string, string>>;
+  }): HostedField;
+  on(
+    name: "change" | "validitychange" | "empty" | "notempty",
+    handler: (event: { data: Partial<Record<CardFieldType, HostedFieldState>> }) => void,
+  ): void;
+  submit(
+    id: string,
+  ): Promise<{ state: "succeeded" | "canceled" | "failed"; data?: { orderId?: string } }>;
+  destroy(): void | Promise<void>;
+};
+export type CardSdkInstance = {
+  findEligibleMethods(options: {
+    currencyCode: "EUR";
+    amount: string;
+  }): Promise<{ isEligible(method: "card" | "advanced_cards"): boolean }>;
+  createPayPalGuestOneTimePaymentSession(
+    callbacks: GuestCallbacks,
+  ): GuestSession | Promise<GuestSession>;
+  createCardFieldsOneTimePaymentSession?: () => AdvancedSession;
+};
 export type Sdk = {
   createInstance(options: {
     clientId: string;
-    components: ["paypal-guest-payments"];
+    components: Array<"paypal-guest-payments" | "card-fields">;
     pageType: "checkout";
-  }): Promise<{
-    findEligibleMethods(options: {
-      currencyCode: "EUR";
-    }): Promise<{ isEligible(method: "card"): boolean }>;
-    createPayPalGuestOneTimePaymentSession(
-      callbacks: GuestCallbacks,
-    ): GuestSession | Promise<GuestSession>;
-  }>;
+  }): Promise<CardSdkInstance>;
 };
 
 const loads = new WeakMap<Document, Map<string, Promise<Sdk>>>();

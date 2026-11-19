@@ -54,7 +54,7 @@ type CheckoutCreateInput = {
   kind: "promotion" | "support";
   businessId?: string;
   amountMinor?: number;
-  flow?: "sdk" | "guest";
+  flow?: "sdk" | "guest" | "card-fields";
 };
 export interface CheckoutHttpService {
   catalog(): unknown;
@@ -105,8 +105,10 @@ function amount(value: unknown, minimum = 100): number {
 export function checkoutInput(value: unknown): CheckoutCreateInput {
   const input = object(value, ["requestId", "kind", "businessId", "amountMinor", "flow"]);
   const flow = input.flow;
-  if (flow !== undefined && flow !== "sdk" && flow !== "guest") fail(400, "INVALID_CHECKOUT_FLOW");
-  if (flow === "guest" && input.kind !== "promotion") fail(400, "INVALID_CHECKOUT_FLOW");
+  if (flow !== undefined && flow !== "sdk" && flow !== "guest" && flow !== "card-fields")
+    fail(400, "INVALID_CHECKOUT_FLOW");
+  if ((flow === "guest" || flow === "card-fields") && input.kind !== "promotion")
+    fail(400, "INVALID_CHECKOUT_FLOW");
   if (input.kind === "promotion") {
     if (
       input.amountMinor !== undefined ||

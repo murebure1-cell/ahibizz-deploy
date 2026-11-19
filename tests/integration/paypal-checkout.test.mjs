@@ -253,6 +253,7 @@ test("durable checkout isolated PostgreSQL authority, replay, rights and refunds
         for (const offerVersion of [
           "category-seven-days-20261118",
           "category-seven-days-20261118:sdk",
+          "category-seven-days-20261118:card-fields",
         ]) {
           await assert.rejects(store.create(user, { ...input, offerVersion }), /COMMAND_CONFLICT/);
           await assert.rejects(
@@ -265,7 +266,15 @@ test("durable checkout isolated PostgreSQL authority, replay, rights and refunds
             requestId: randomUUID(),
             businessId: await makeBusiness(),
           };
-          await store.create(user, existing);
+          const previous = await store.create(user, existing);
+          if (offerVersion.endsWith(":card-fields")) {
+            const fields = await store.attachProvider(previous.id, {
+              providerOrderId: "CARDFIELDS12345",
+              approvalUrl: null,
+            });
+            assert.equal(fields.approvalUrl, null);
+            assert.equal(fields.providerOrderId, "CARDFIELDS12345");
+          }
           await assert.rejects(
             store.create(user, {
               ...existing,
