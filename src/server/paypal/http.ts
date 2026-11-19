@@ -63,6 +63,7 @@ export interface CheckoutHttpService {
     cursors?: { ordersAfter?: string | null; refundsAfter?: string | null },
   ): Promise<unknown>;
   read(headers: Headers, id: string): Promise<unknown>;
+  resumeCard(headers: Headers, id: string): Promise<unknown>;
   create(headers: Headers, value: CheckoutCreateInput): Promise<unknown>;
   capture(headers: Headers, id: string): Promise<unknown>;
   reconcile(headers: Headers, id: string): Promise<unknown>;
@@ -176,7 +177,9 @@ export function createCheckoutHttpHandler(service: CheckoutHttpService, origin: 
       const path = url.pathname.slice("/api/checkout/".length);
       if (!url.pathname.startsWith("/api/checkout/")) return reply({ code: "NOT_FOUND" }, 404);
       if (request.method === "GET" && path === "catalog") return reply(service.catalog());
-      const match = /^orders\/([a-f0-9-]{36})(?:\/(capture|reconcile|refund))?$/.exec(path);
+      const match = /^orders\/([a-f0-9-]{36})(?:\/(card-session|capture|reconcile|refund))?$/.exec(
+        path,
+      );
       if (match && !uuid.test(match[1] ?? "")) fail(400, "INVALID_CHECKOUT_INPUT");
       if (request.method === "GET" && match && !match[2])
         return reply({ order: await service.read(request.headers, match[1] ?? "") });
@@ -225,6 +228,7 @@ export function createCheckoutHttpHandler(service: CheckoutHttpService, origin: 
         );
       }
       object(input, []);
+      if (action === "card-session") return reply(await service.resumeCard(request.headers, id));
       return reply(
         action === "capture"
           ? await service.capture(request.headers, id)

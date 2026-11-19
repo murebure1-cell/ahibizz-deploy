@@ -327,6 +327,15 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
       }
       return verifyLiveOrder(data, order);
     },
+    async canResumeCard(order: LiveOrder) {
+      const data = await readOrder(order);
+      const { unit } = orderUnit(data, order);
+      const captures = record(unit.payments).captures;
+      return (
+        ["CREATED", "SAVED", "PAYER_ACTION_REQUIRED"].includes(String(data.status)) &&
+        (captures === undefined || (Array.isArray(captures) && captures.length === 0))
+      );
+    },
     async inspect(order: LiveOrder) {
       const data = await readOrder(order);
       if (

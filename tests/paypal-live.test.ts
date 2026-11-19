@@ -62,6 +62,32 @@ test("unreleased live adapter cannot create or capture even with credentials", a
   await assert.rejects(client.capture(order), /LIVE_CHECKOUT_NOT_RELEASED/);
   assert.equal(calls, 0);
 });
+test("guest card resume reads and validates the saved PayPal order without creating or capturing", async () => {
+  const detail = provider();
+  const route = async (url: string | URL | Request, init?: RequestInit) => {
+    if (String(url).endsWith("/v1/oauth2/token")) return Response.json({ access_token: "fixture" });
+    assert.equal(
+      String(url),
+      `https://api-m.paypal.com/v2/checkout/orders/${order.providerOrderId}`,
+    );
+    assert.equal(init?.method, "GET");
+    return Response.json(detail);
+  };
+  const client = createLivePayPal(config, route);
+  detail.status = "PAYER_ACTION_REQUIRED";
+  assert.equal(await client.canResumeCard(order), false);
+  const unit = detail.purchase_units[0];
+  assert.ok(unit);
+  unit.payments.captures.length = 0;
+  assert.equal(await client.canResumeCard(order), true);
+  for (const status of ["APPROVED", "VOIDED", "COMPLETED"]) {
+    detail.status = status;
+    assert.equal(await client.canResumeCard(order), false);
+  }
+  detail.status = "PAYER_ACTION_REQUIRED";
+  unit.amount.value = "5.12";
+  await assert.rejects(client.canResumeCard(order), /ORDER_MISMATCH/);
+});
 test("live endpoint cannot accept sandbox redirects or non-HTTPS callbacks", () => {
   assert.equal(
     liveApprovalUrl("https://www.paypal.com/checkoutnow?token=fixture"),

@@ -332,6 +332,54 @@ test("durable checkout isolated PostgreSQL authority, replay, rights and refunds
         );
       },
     );
+    await t.test(
+      "only an eligible owner can reopen an existing unpaid guest card order",
+      async () => {
+        const input = {
+          requestId: randomUUID(),
+          kind: "promotion",
+          businessId: await makeBusiness(),
+          amountMinor: 511,
+          merchantId: "FIXTURE_MERCHANT",
+          environment: "sandbox",
+          offerVersion: "category-seven-days-20261118:guest",
+        };
+        const pending = await store.create(user, input);
+        await assert.rejects(store.readPendingGuestCard(user, pending.id), /ORDER_NOT_PAYABLE/);
+        const attached = await attach(pending);
+        const initialVersion = attached.version;
+        const current = await store.readPendingGuestCard(user, pending.id);
+        assert.equal(current.providerOrderId, attached.providerOrderId);
+        assert.equal(current.version, initialVersion);
+        await assert.rejects(store.readPendingGuestCard(other, pending.id), /ORDER_NOT_FOUND/);
+        await assert.rejects(
+          store.readPendingGuestCard({ ...user, expectedAccountId: other.userId }, pending.id),
+          /ACCOUNT_IDENTITY_CHANGED/,
+        );
+        const wallet = await attach(await make());
+        await assert.rejects(store.readPendingGuestCard(user, wallet.id), /ORDER_NOT_PAYABLE/);
+        await pool.query("UPDATE directory_business SET category_id=$2 WHERE id=$1", [
+          input.businessId,
+          category2,
+        ]);
+        await assert.rejects(store.readPendingGuestCard(user, pending.id), /BUSINESS_CHANGED/);
+        await pool.query("UPDATE directory_business SET category_id=$2 WHERE id=$1", [
+          input.businessId,
+          category,
+        ]);
+        await pool.query(
+          "UPDATE paypal_checkout_order SET capture_lease_until=now()+interval '1 minute' WHERE id=$1",
+          [pending.id],
+        );
+        await assert.rejects(store.readPendingGuestCard(user, pending.id), /ORDER_BUSY_OR_EXPIRED/);
+        await pool.query(
+          "UPDATE paypal_checkout_order SET capture_lease_until=NULL, expires_at=now()-interval '1 second' WHERE id=$1",
+          [pending.id],
+        );
+        await assert.rejects(store.readPendingGuestCard(user, pending.id), /ORDER_BUSY_OR_EXPIRED/);
+        assert.equal((await store.read(user, pending.id)).version, initialVersion);
+      },
+    );
     await t.test("capture lease, verified amount and exactly one grant", async () => {
       first = await attach(first);
       await store.prepareCapture(user, first.id);

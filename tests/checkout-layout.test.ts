@@ -19,7 +19,7 @@ test("form controls fit long business names and gesture restriction is scoped to
     /\.page select,\s*\.page input\s*\{[^}]*width: 100%;[^}]*max-width: 100%;[^}]*min-width: 0;[^}]*min-height: 48px;[^}]*font-size: 16px;/,
   );
   assert.match(css, /\.page\s*\{[^}]*touch-action: pan-y;/);
-  assert.match(css, /\.sdkHost\s*\{[^}]*touch-action: auto;/);
+  assert.match(css, /\.guestHost\s*\{[^}]*touch-action: auto;/);
   assert.doesNotMatch(css, /(?:html|body|:root)\s*\{[^}]*touch-action/);
   assert.doesNotMatch(css, /user-scalable|touch-action:\s*none/);
   assert.match(
@@ -27,49 +27,25 @@ test("form controls fit long business names and gesture restriction is scoped to
     /\.page button\s*\{[^}]*max-width: 100%;[^}]*min-width: 0;[^}]*min-height: 48px/,
   );
 });
-test("PayPal external navy-gold frame contains SDK width without editing iframe contents", () => {
-  assert.match(css, /\.sdkHost iframe\s*\{[^}]*min-width: 0;[^}]*max-width: 100%;/);
-  assert.match(css, /\.paymentFrame\s*\{[^}]*background: #142e43;/);
-  const source = readFileSync("src/components/billing/PayPalCardButton.tsx", "utf8");
-  assert.match(source, /className=\{styles.sdkHost\}/);
-  assert.match(source, /styles.paymentFrame/);
-  assert.doesNotMatch(source, /contentDocument|contentWindow|user-scalable/);
-  assert.match(source, /5,11 EUR/);
-  assert.match(source, /7 dana isticanja/);
-  assert.match(source, /status narudžbe/);
-});
-
-test("standard CARD uses supported sizing without a white surround or overlay", () => {
-  const source = readFileSync("src/components/billing/PayPalCardButton.tsx", "utf8");
-  assert.match(source, /color: "black"/);
-  assert.match(source, /borderRadius: 10/);
-  assert.match(source, /height: 48/);
-  assert.match(css, /\.paymentFrame \.sdkHost\s*\{[^}]*padding: 0;[^}]*background: transparent;/);
-  assert.match(css, /\.sdkHost\[data-expanded\]\s*\{[^}]*background: #fff;/);
-  assert.doesNotMatch(
-    css,
-    /\.sdkHost iframe\s*\{[^}]*(?:position: absolute|opacity: 0|pointer-events: none)/,
-  );
-});
-
-test("compact card respects the provider color scheme and keeps its signature above the backing", () => {
-  const source = readFileSync("src/components/billing/PayPalCardButton.tsx", "utf8");
-  assert.match(source, /"data-attribution", height >= 65 && height <= 120/);
-  assert.match(css, /\.sdkHost:not\(\[data-expanded\]\) iframe\s*\{\s*color-scheme: light;/);
+test("card selection opens the embedded form locally and only wallet resumes a redirect", () => {
+  const checkout = readFileSync("src/components/billing/Checkout.tsx", "utf8");
+  const card = checkout.match(/<button[^>]*?className=\{styles\.payCard\}[\s\S]*?<\/button>/)?.[0];
+  assert.ok(card);
+  assert.match(card, /aria-controls="karticni-obrazac"/);
+  assert.match(card, /setCardOpen/);
+  assert.doesNotMatch(card, /act\(|fetch\(|window\.location/);
+  assert.doesNotMatch(checkout, /act\("create",\s*"guest"\)/);
+  assert.match(checkout, /\(cardOpen \|\| order\) && \(\s*<PayPalCardButton/);
+  assert.match(checkout, /canOfferPayPalCard\(order, review, kind\)/);
   assert.match(
-    css,
-    /\.sdkHost\[data-attribution\]::before\s*\{[^}]*z-index: -1;[^}]*pointer-events: none;/,
+    checkout,
+    /action === "create" && value.approvalUrl && value.order\?\.flow !== "sdk"/,
   );
+  assert.match(checkout, /onClick=\{\(\) => act\("create"\)\}/);
 });
-
-test("expanding the standard card keeps the dark checkout shell and its summary colors", () => {
-  const expandedShellRules = css
-    .split("}")
-    .map((rule) => rule.slice(0, rule.indexOf("{")).trim())
-    .filter((selector) => selector.includes(".paymentFrame:has(.sdkHost[data-expanded])"));
-  assert.ok(expandedShellRules.length > 0);
-  for (const selector of expandedShellRules) {
-    assert.ok(selector.startsWith(':global(html[data-theme="light"])'));
-  }
-  assert.match(css, /\.paymentFrame \.sdkHost\[data-expanded\] \{\s*background: #fff;/);
+test("AhiBizz uses a theme-aware card surface and keeps hosted controls visible", () => {
+  assert.match(css, /\.cardMethod\s*\{[^}]*background: var\(--ui-surface\)/);
+  assert.match(css, /\.cardMethod \.payCard\s*\{[^}]*background: #e8cd91/);
+  assert.match(css, /\.paymentFrame\s*\{[^}]*background: transparent/);
+  assert.doesNotMatch(css, /contentWindow|mix-blend-mode|filter:\s*invert|data-expanded|#fff\b/i);
 });

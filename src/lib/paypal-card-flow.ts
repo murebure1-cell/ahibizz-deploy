@@ -22,8 +22,8 @@ export function canOfferPayPalCard(
 ): boolean {
   return order
     ? order.kind === "promotion" &&
-        order.flow === "sdk" &&
-        ["created", "provider_created"].includes(order.status)
+        ((order.flow === "sdk" && ["created", "provider_created"].includes(order.status)) ||
+          (order.flow === "guest" && order.status === "provider_created"))
     : reviewed && kind === "promotion";
 }
 export function createPayPalCardFlow(options: {
@@ -33,6 +33,7 @@ export function createPayPalCardFlow(options: {
     signal: AbortSignal,
   ) => Promise<{ order?: CardOrder; providerOrderId?: string; pending?: boolean }>;
   input: () => { requestId: string; businessId: string };
+  savedOrder?: () => CardOrder | undefined;
   onOrder: (order: CardOrder) => void;
   acquire: () => boolean;
   release: () => void;
@@ -69,23 +70,50 @@ export function createPayPalCardFlow(options: {
       creating = (async () => {
         try {
           const { requestId, businessId } = options.input();
-          const result = await options.send(
-            "orders",
-            { requestId, businessId, kind: "promotion", flow: "sdk" },
-            controller.signal,
-          );
+          const saved = options.savedOrder?.();
+          if (
+            saved &&
+            (!canOfferPayPalCard(saved, false, "promotion") ||
+              saved.businessId !== businessId ||
+              saved.requestId !== requestId)
+          )
+            throw new Error("Sačuvana narudžba više nije dostupna za kartično plaćanje.");
+          const result =
+            saved?.flow === "guest"
+              ? await options.send(
+                  `orders/${encodeURIComponent(saved.id)}/card-session`,
+                  {},
+                  controller.signal,
+                )
+              : await options.send(
+                  "orders",
+                  { requestId, businessId, kind: "promotion", flow: "sdk" },
+                  controller.signal,
+                );
           alive();
           if (generation !== revision)
             throw new Error("Kartični pokušaj je zatvoren. Provjeri sačuvanu narudžbu.");
           // Persist a server-returned order before interpreting provider readiness.
+          if (
+            saved &&
+            (result.order?.id !== saved.id ||
+              result.order.requestId !== saved.requestId ||
+              result.order.environment !== saved.environment ||
+              result.order.businessId !== saved.businessId ||
+              result.order.kind !== saved.kind ||
+              result.order.amountMinor !== saved.amountMinor ||
+              result.order.currency !== saved.currency ||
+              result.order.flow !== saved.flow)
+          )
+            throw new Error("Odgovor ne odgovara sačuvanoj narudžbi. Osvježi njen status.");
           if (result.order) options.onOrder(result.order);
           if (
-            result.order?.flow !== "sdk" ||
+            result.order?.flow !== (saved?.flow ?? "sdk") ||
             result.order.kind !== "promotion" ||
             result.order.businessId !== businessId ||
             result.order.amountMinor !== 511 ||
             result.order.currency !== "EUR" ||
-            !["created", "provider_created"].includes(result.order.status) ||
+            !canOfferPayPalCard(result.order, false, "promotion") ||
             !result.providerOrderId ||
             !/^[A-Z0-9]{10,32}$/.test(result.providerOrderId)
           )
@@ -109,14 +137,16 @@ export function createPayPalCardFlow(options: {
           "Odobrenje ne odgovara ovoj narudžbi ili je već obrađeno. Osvježi status uplate.",
         );
       approved = true;
+      const generation = revision;
+      const expected = current.order;
       try {
         const result = await options.send(
-          `orders/${current.order.id}/capture`,
+          `orders/${encodeURIComponent(expected.id)}/capture`,
           {},
           controller.signal,
         );
         alive();
-        if (!result.order || result.order.id !== current.order.id)
+        if (generation !== revision || !result.order || result.order.id !== expected.id)
           throw new Error("Odgovor nije potvrđen. Osvježi status sačuvane narudžbe.");
         options.onOrder(result.order);
         if (result.pending || result.order.status !== "captured")
@@ -124,7 +154,7 @@ export function createPayPalCardFlow(options: {
             "Uplata još nije potvrđena. Osvježi status sačuvane narudžbe; ne plaćaj ponovo.",
           );
       } finally {
-        release();
+        if (generation === revision) release();
       }
     },
     cancel() {

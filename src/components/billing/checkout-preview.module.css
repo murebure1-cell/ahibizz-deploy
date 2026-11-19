@@ -151,42 +151,52 @@
 .choices button + button {
   margin-inline-start: 0;
 }
-.paymentActions {
+.methodPanel {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-  gap: 12px;
-  min-width: 0;
-  margin: 20px 0 0;
-  padding: 0;
-  border: 0;
+  gap: 14px;
+  margin-top: 16px;
 }
-.payCard,
-.payWallet {
-  display: inline-flex;
+.cardMethod {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+}
+.cardMethod .payCard {
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 9px;
-  font-weight: 650;
-}
-.paymentActions .payCard {
+  width: 100%;
+  font-weight: 700;
   color: #302919;
   background: #e8cd91;
   border-color: #d6b674;
+  border-radius: 15px;
 }
-.paymentActions .payCard:hover:enabled {
+.cardMethod .payCard:hover:enabled {
   background: #e2c17d;
 }
-.paymentActions .payWallet {
-  margin: 0;
+.cardMethod .payCard[aria-expanded="true"] {
+  border-radius: 15px 15px 0 0;
+}
+.methodFooter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.methodFooter .payWallet {
+  background: var(--ui-surface);
+}
+.methodFooter .back {
+  color: var(--ui-text-secondary);
+  border-color: transparent;
   background: transparent;
 }
-.paymentActions .payWallet:hover:enabled {
-  background: var(--ui-accent-soft);
-}
-.card .handoffNote {
-  margin-block: 9px 6px;
-  font-size: 14px;
-  color: var(--ui-text-secondary);
+.methodFooter button + button {
+  margin: 0;
 }
 .card .primary {
   background: var(--ui-primary);
@@ -196,11 +206,6 @@
 }
 .card .primary:hover:enabled {
   background: var(--ui-primary-hover);
-}
-.card .back {
-  background: transparent;
-  border-color: transparent;
-  color: var(--ui-text-secondary);
 }
 .card p + p,
 .card p + button,
@@ -228,16 +233,17 @@
   font-size: 14px;
   color: var(--ui-text-secondary);
 }
-.sdkHost {
-  touch-action: auto;
+.guestHost {
   width: 100%;
   min-width: 0;
-  max-width: 100%;
+  touch-action: auto;
 }
-.sdkHost > div,
-.sdkHost iframe {
-  min-width: 0;
+.guestHost paypal-basic-card-container,
+.guestHost paypal-basic-card-button {
+  display: block;
+  width: 100%;
   max-width: 100%;
+  --paypal-button-border-radius: 10px;
 }
 @media (max-width: 600px) {
   .page {
@@ -254,6 +260,7 @@
     margin-inline-start: 0;
     margin-top: 12px;
   }
+  .methodFooter button + button,
   .choices button + button {
     margin-top: 0;
   }
@@ -267,78 +274,16 @@
   }
 }
 .paymentFrame {
-  border-color: var(--ui-border-strong);
-  background: #142e43;
-  color: #f8fafc;
+  padding: clamp(12px, 3vw, 22px);
+  background: transparent;
+  color: var(--ui-text);
 }
-.cardSummary {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 6px 16px;
-  margin-bottom: 18px;
-}
-.cardSummary h2 {
-  font-size: clamp(20px, 4vw, 24px);
-}
-.paymentFrame .cardSummary p,
 .providerNote {
-  color: #d4dfe8;
+  margin: 12px 0 0;
+  color: var(--ui-text-secondary);
   font-size: 14px;
   line-height: 1.5;
 }
-.cardSummary strong {
-  font-size: 20px;
-  font-variant-numeric: tabular-nums;
-  color: #edcd86;
-  white-space: nowrap;
-}
-.providerNote {
-  margin-top: 14px;
-}
 .providerNote:empty {
   margin: 0;
-}
-.paymentFrame .sdkHost {
-  padding: 0;
-  border-radius: 10px;
-  background: transparent;
-}
-/* Match the compact PayPal document so the browser composites its transparent pixels. */
-.sdkHost:not([data-expanded]),
-.sdkHost:not([data-expanded]) iframe {
-  color-scheme: light;
-}
-.sdkHost[data-attribution] {
-  position: relative;
-  isolation: isolate;
-}
-/* A light backing for the original PayPal signature, below its 48px button. */
-.sdkHost[data-attribution]::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: 50px 0 1px;
-  width: min(168px, 100%);
-  margin-inline: auto;
-  border-radius: 999px;
-  background: #f4f7fa;
-  pointer-events: none;
-}
-.paymentFrame .sdkHost[data-expanded] {
-  background: #fff;
-}
-:global(html[data-theme="light"]) .paymentFrame:has(.sdkHost[data-expanded]) {
-  color: #142e43;
-  background: #fff;
-  border-color: #c9d4dc;
-}
-:global(html[data-theme="light"])
-  .paymentFrame:has(.sdkHost[data-expanded])
-  :is(.cardSummary p, .providerNote) {
-  color: #40576a;
-}
-:global(html[data-theme="light"]) .paymentFrame:has(.sdkHost[data-expanded]) .cardSummary strong {
-  color: #795a1b;
 }

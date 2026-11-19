@@ -27,6 +27,10 @@ function fixture() {
       calls.push("read");
       return {};
     },
+    resumeCard: async () => {
+      calls.push("card-session");
+      return {};
+    },
     create: async () => {
       calls.push("create");
       return {};
@@ -110,6 +114,19 @@ test("webhook is exempt from browser Origin only, delegates signature verificati
     200,
   );
   assert.deepEqual(f.calls, ["webhook"]);
+});
+test("guest card session accepts only a same-origin empty POST for the existing order", async () => {
+  const f = fixture();
+  const path = `orders/${id}/card-session`;
+  assert.equal((await f.handle(new Request(`${origin}/api/checkout/${path}`))).status, 404);
+  assert.equal(
+    (await f.handle(request(path, {}, { origin: "https://other.invalid" }))).status,
+    403,
+  );
+  assert.equal((await f.handle(request(path, { providerOrderId: "PAYMENT123456" }))).status, 400);
+  assert.deepEqual(f.calls, []);
+  assert.equal((await f.handle(request(path, {}))).status, 200);
+  assert.deepEqual(f.calls, ["card-session"]);
 });
 test("refund requires UUID, cents and reason", async () => {
   const f = fixture();
@@ -575,3 +592,39 @@ for (const method of ["sdk", "guest"] as const) {
     assert.equal(calls, 1);
   });
 }
+test("inline recovery exposes only an eligible saved provider ID and rechecks ownership after provider IO", async () => {
+  const f = serviceFixture();
+  const raw = await f.store.read({ userId: "buyer", id: "session", token: "fixture" }, id);
+  const saved = { ...raw, offerVersion: "category-seven-days-20261118:guest" };
+  let reads = 0,
+    authorized = true,
+    payable = true;
+  f.store.readPendingGuestCard = async (actor, orderId) => {
+    assert.equal(orderId, id);
+    assert.equal(actor.userId, "buyer");
+    reads++;
+    if (!authorized) throw new Error("BUSINESS_CHANGED");
+    return saved;
+  };
+  f.provider.canResumeCard = async (expected) => {
+    assert.equal(expected.id, id);
+    assert.equal(expected.providerOrderId, saved.providerOrderId);
+    return payable;
+  };
+  const result = (await f.service.resumeCard(new Headers(), id)) as {
+    order: { id: string; flow: string };
+    providerOrderId: string;
+  };
+  assert.equal(result.order.id, id);
+  assert.equal(result.order.flow, "guest");
+  assert.equal(result.providerOrderId, saved.providerOrderId);
+  assert.deepEqual(Object.keys(result).sort(), ["order", "providerOrderId"]);
+  assert.equal(reads, 2);
+  payable = false;
+  await assert.rejects(f.service.resumeCard(new Headers(), id), /ORDER_NOT_PAYABLE/);
+  f.provider.canResumeCard = async () => {
+    authorized = false;
+    return true;
+  };
+  await assert.rejects(f.service.resumeCard(new Headers(), id), /BUSINESS_CHANGED/);
+});

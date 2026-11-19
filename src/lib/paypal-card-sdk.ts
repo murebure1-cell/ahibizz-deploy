@@ -1,37 +1,32 @@
-/** PayPal JS SDK v5 standard card button, not Advanced Card Fields.
- * https://developer.paypal.com/sdk/js/v5/configuration
- * Callers must check Buttons(...).isEligible() before rendering. Public client ID only.
- */
-export type PayPalCardButtonOptions = {
-  fundingSource: string;
-  createOrder(data?: unknown, actions?: unknown): string | Promise<string>;
-  onApprove(data: { orderID: string }, actions?: unknown): void | Promise<void>;
-  onCancel?(data: unknown, actions?: unknown): void | Promise<void>;
-  onError?(error: unknown): void;
-  onClick?(
-    data: unknown,
-    actions: { resolve(): Promise<void>; reject(): Promise<void> },
-  ): void | Promise<void>;
-  style?: {
-    layout?: "vertical" | "horizontal";
-    color?: "gold" | "blue" | "silver" | "white" | "black";
-    shape?: "rect" | "pill";
-    label?: "paypal" | "checkout" | "buynow" | "pay";
-    height?: number;
-    borderRadius?: number;
-    tagline?: boolean;
-  };
+/** PayPal v6 guest card entry stays in the provider-hosted overlay. */
+export type PayPalEnvironment = "sandbox" | "live";
+export type GuestSession = {
+  start(
+    options: { presentationMode: "auto"; targetElement: HTMLElement },
+    order: Promise<{ orderId: string }>,
+  ): Promise<void>;
+  destroy(): void | Promise<void>;
 };
-export type PayPalCardButtons = {
-  isEligible(): boolean;
-  render(element: HTMLElement): Promise<void>;
-  close(): void | Promise<void>;
+export type GuestCallbacks = {
+  onApprove(data: { orderId: string }): Promise<void>;
+  onComplete(): void;
+  onCancel(): void;
+  onError(error: unknown): void;
 };
 export type Sdk = {
-  FUNDING: { CARD: string };
-  Buttons(options: PayPalCardButtonOptions): PayPalCardButtons;
+  createInstance(options: {
+    clientId: string;
+    components: ["paypal-guest-payments"];
+    pageType: "checkout";
+  }): Promise<{
+    findEligibleMethods(options: {
+      currencyCode: "EUR";
+    }): Promise<{ isEligible(method: "card"): boolean }>;
+    createPayPalGuestOneTimePaymentSession(
+      callbacks: GuestCallbacks,
+    ): GuestSession | Promise<GuestSession>;
+  }>;
 };
-export type PayPalCardSdk = Sdk;
 
 const loads = new WeakMap<Document, Map<string, Promise<Sdk>>>();
 let namespaceCounter = 0;
@@ -39,9 +34,7 @@ const timeoutMs = 15000;
 function sdkValue(value: unknown): Sdk | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<Sdk>;
-  return typeof candidate.Buttons === "function" && typeof candidate.FUNDING?.CARD === "string"
-    ? (candidate as Sdk)
-    : null;
+  return typeof candidate.createInstance === "function" ? (candidate as Sdk) : null;
 }
 function abortError() {
   return new DOMException("Učitavanje je otkazano.", "AbortError");
@@ -52,9 +45,15 @@ function abortError() {
  * a fresh namespace on retry prevents a late old script from replacing the new SDK.
  * No merchant secret, locale, buyer-country or arbitrary URL can be supplied here.
  */
-export function loadPayPalCardSdk(clientId: string, signal: AbortSignal): Promise<Sdk> {
+export function loadPayPalCardSdk(
+  clientId: string,
+  signal: AbortSignal,
+  environment: PayPalEnvironment = "live",
+): Promise<Sdk> {
   if (!/^[A-Za-z0-9_-]{1,256}$/.test(clientId))
     return Promise.reject(new Error("PAYPAL_INVALID_CLIENT_ID"));
+  if (environment !== "live" && environment !== "sandbox")
+    return Promise.reject(new Error("PAYPAL_INVALID_ENVIRONMENT"));
   if (signal.aborted) return Promise.reject(abortError());
   if (typeof window === "undefined" || typeof document === "undefined")
     return Promise.reject(new Error("PAYPAL_BROWSER_REQUIRED"));
@@ -66,15 +65,10 @@ export function loadPayPalCardSdk(clientId: string, signal: AbortSignal): Promis
     cache = new Map();
     loads.set(ownerDocument, cache);
   }
-  const parameters = new URLSearchParams({
-    "client-id": clientId,
-    currency: "EUR",
-    intent: "capture",
-    components: "buttons",
-    "enable-funding": "card",
-    commit: "true",
-  });
-  const url = `https://www.paypal.com/sdk/js?${parameters}`;
+  const url =
+    environment === "sandbox"
+      ? "https://www.sandbox.paypal.com/web-sdk/v6/core"
+      : "https://www.paypal.com/web-sdk/v6/core";
   let shared = cache.get(url);
   if (!shared) {
     const namespace = `ahiPayPalCard_${Date.now().toString(36)}_${++namespaceCounter}`;

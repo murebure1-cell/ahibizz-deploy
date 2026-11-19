@@ -14,12 +14,6 @@ class Script extends EventTarget {
     this.removed = true;
   }
 }
-function mockButtons() {
-  return { isEligible: () => true, render: async () => {}, close: async () => {} };
-}
-function invalidButtons() {
-  return {};
-}
 function fakeBrowser() {
   const oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const oldDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
@@ -51,8 +45,10 @@ function fakeBrowser() {
   Object.defineProperty(globalThis, "window", { value: win, configurable: true });
   Object.defineProperty(globalThis, "document", { value: doc, configurable: true });
   const sdk: Sdk = {
-    FUNDING: { CARD: "card" },
-    Buttons: mockButtons,
+    createInstance: async () => ({
+      findEligibleMethods: async () => ({ isEligible: () => true }),
+      createPayPalGuestOneTimePaymentSession: () => ({ start: async () => {}, destroy: () => {} }),
+    }),
   };
   return {
     scripts,
@@ -86,7 +82,7 @@ test("SDK loader validates ID and abort before touching browser", async () => {
     name: "AbortError",
   });
 });
-test("SDK deduplicates identical configuration and loads only exact v5 card parameters", async () => {
+test("SDK deduplicates configuration and loads only the official v6 core", async () => {
   const browser = fakeBrowser();
   try {
     const first = loadPayPalCardSdk("publicFixture", new AbortController().signal);
@@ -95,10 +91,7 @@ test("SDK deduplicates identical configuration and loads only exact v5 card para
     assert.equal(browser.scripts.length, 1);
     const script = browser.scripts[0];
     assert.ok(script);
-    assert.equal(
-      script.src,
-      "https://www.paypal.com/sdk/js?client-id=publicFixture&currency=EUR&intent=capture&components=buttons&enable-funding=card&commit=true",
-    );
+    assert.equal(script.src, "https://www.paypal.com/web-sdk/v6/core");
     assert.equal(script.async, true);
     assert.ok(script.attributes.get("data-namespace")?.startsWith("ahiPayPalCard_"));
     browser.load(script);
@@ -115,16 +108,18 @@ test("SDK deduplicates identical configuration and loads only exact v5 card para
     browser.restore();
   }
 });
-test("different client IDs never share an SDK namespace", async () => {
+test("sandbox and live core scripts use separate namespaces and exact provider origins", async () => {
   const browser = fakeBrowser();
   try {
-    const first = loadPayPalCardSdk("merchantOne", new AbortController().signal);
+    const first = loadPayPalCardSdk("merchantOne", new AbortController().signal, "sandbox");
     const second = loadPayPalCardSdk("merchantTwo", new AbortController().signal);
     await tick();
     const a = browser.scripts[0],
       b = browser.scripts[1];
     assert.ok(a);
     assert.ok(b);
+    assert.equal(a.src, "https://www.sandbox.paypal.com/web-sdk/v6/core");
+    assert.equal(b.src, "https://www.paypal.com/web-sdk/v6/core");
     assert.notEqual(a.attributes.get("data-namespace"), b.attributes.get("data-namespace"));
     browser.load(a);
     browser.load(b);
@@ -190,7 +185,7 @@ test("timeout and invalid SDK shape fail closed and can retry", async () => {
     await tick();
     const script = browser.scripts[1];
     assert.ok(script);
-    browser.load(script, { Buttons: invalidButtons });
+    browser.load(script, { createInstance: true });
     await invalid;
     assert.equal(script.removed, true);
   } finally {

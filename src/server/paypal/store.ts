@@ -136,6 +136,21 @@ async function audit(c: PoolClient, id: string, action: string, details: unknown
     [randomUUID(), id, action, JSON.stringify(details)],
   );
 }
+async function requireCurrentPromotionBusiness(
+  c: PoolClient,
+  order: CheckoutOrder,
+  actor: CheckoutActor,
+) {
+  if (!order.businessId) return;
+  const b = await business(c, order.businessId);
+  if (
+    !b ||
+    b.owner_user_id !== actor.userId ||
+    b.category_id !== order.categoryId ||
+    b.status !== "published"
+  )
+    fail(409, "BUSINESS_CHANGED");
+}
 async function event(c: PoolClient, o: CheckoutOrder, eventId?: string) {
   if (!eventId) return true;
   if (!/^[A-Za-z0-9_.:-]{1,160}$/.test(eventId)) fail(400, "INVALID_EVENT_ID");
@@ -292,6 +307,33 @@ export function createCheckoutStore(pool: Pool) {
         return o;
       });
     },
+    async readPendingGuestCard(actor: CheckoutActor, id: string) {
+      return transaction(pool, async (c) => {
+        await authority(c, actor);
+        const order = await row(c, id);
+        if (order.userId !== actor.userId) fail(404, "ORDER_NOT_FOUND");
+        if (
+          order.kind !== "promotion" ||
+          !order.businessId ||
+          paypalOrderFlow(order.offerVersion) !== "guest" ||
+          order.status !== "provider_created" ||
+          !order.providerOrderId ||
+          order.captureId ||
+          order.amountMinor !== 511 ||
+          order.currency !== "EUR" ||
+          order.refundedMinor !== 0 ||
+          order.refundTotalUnknown
+        )
+          fail(409, "ORDER_NOT_PAYABLE");
+        await requireCurrentPromotionBusiness(c, order, actor);
+        const available = await c.query(
+          "SELECT id FROM paypal_checkout_order WHERE id=$1 AND expires_at>clock_timestamp() AND (capture_lease_until IS NULL OR capture_lease_until<clock_timestamp())",
+          [id],
+        );
+        if (!available.rowCount) fail(409, "ORDER_BUSY_OR_EXPIRED");
+        return order;
+      });
+    },
     async prepareCapture(actor: CheckoutActor, id: string) {
       return transaction(pool, async (c) => {
         await authority(c, actor);
@@ -305,16 +347,7 @@ export function createCheckoutStore(pool: Pool) {
         )
           return o;
         if (o.status !== "provider_created" || !o.providerOrderId) fail(409, "ORDER_NOT_PAYABLE");
-        if (o.businessId) {
-          const b = await business(c, o.businessId);
-          if (
-            !b ||
-            b.owner_user_id !== actor.userId ||
-            b.category_id !== o.categoryId ||
-            b.status !== "published"
-          )
-            fail(409, "BUSINESS_CHANGED");
-        }
+        await requireCurrentPromotionBusiness(c, o, actor);
         const locked = await c.query(
           "UPDATE paypal_checkout_order SET capture_lease_until=now()+interval '60 seconds' WHERE id=$1 AND expires_at>now() AND (capture_lease_until IS NULL OR capture_lease_until<now()) RETURNING id",
           [id],

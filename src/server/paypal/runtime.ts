@@ -234,6 +234,20 @@ export function createCheckoutService({
       matching(order);
       return dto(order);
     },
+    async resumeCard(headers, id) {
+      payable();
+      const identity = await actor(headers);
+      const order = await store.readPendingGuestCard(identity, id);
+      matching(order);
+      if (!(await provider.canResumeCard(providerOrder(order))))
+        throw new CheckoutHttpError(409, "ORDER_NOT_PAYABLE");
+      // Ownership, session or capture state may change while PayPal reads the order.
+      const current = await store.readPendingGuestCard(identity, id);
+      matching(current);
+      if (current.providerOrderId !== order.providerOrderId)
+        throw new CheckoutHttpError(409, "PROVIDER_ORDER_CONFLICT");
+      return { order: dto(current), providerOrderId: current.providerOrderId };
+    },
     async create(headers, input) {
       payable();
       chargePurpose(input.kind);

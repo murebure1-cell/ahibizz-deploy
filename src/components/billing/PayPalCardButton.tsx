@@ -1,56 +1,53 @@
 "use client";
+
 import { useEffect, useRef, useState } from "react";
 import { type CardOrder, createPayPalCardFlow } from "../../lib/paypal-card-flow";
-import { loadPayPalCardSdk } from "../../lib/paypal-card-sdk";
+import {
+  type GuestSession,
+  loadPayPalCardSdk,
+  type PayPalEnvironment,
+} from "../../lib/paypal-card-sdk";
 import styles from "./checkout-preview.module.css";
 
 type Props = {
   clientId: string;
+  environment: PayPalEnvironment;
   userId: string;
+  savedOrder?: CardOrder;
   input: () => { requestId: string; businessId: string };
   onOrder: (order: CardOrder) => void;
   acquire: () => boolean;
   release: () => void;
 };
-const failure =
-  "Kartično plaćanje trenutno nije dostupno. Možeš koristiti PayPal opciju. Ako si već pokušao platiti, prvo osvježi status sačuvane narudžbe.";
+
+const failure = "Kartični obrazac se nije učitao. Pokušaj ponovo.";
 const errors: Record<string, string> = {
   CHECKOUT_FLOW_MISMATCH:
-    "Već postoji otvorena narudžba za drugi način plaćanja. Nastavi prethodni PayPal pokušaj pomoću opcije Nastavi na PayPal. Ne otvaraj novu narudžbu.",
-  ACCOUNT_IDENTITY_CHANGED: "Nalog je promijenjen. Ponovo učitaj stranicu prije nastavka.",
-  AUTHENTICATION_REQUIRED: "Ponovo se prijavi prije nastavka plaćanja.",
-  ORDER_BUSY_OR_EXPIRED: "Narudžba se obrađuje ili je istekla. Prvo osvježi njen status.",
+    "Postoji otvorena narudžba s drugim načinom plaćanja. Provjeri njen status.",
+  ACCOUNT_IDENTITY_CHANGED: "Nalog je promijenjen. Ponovo učitaj stranicu.",
+  AUTHENTICATION_REQUIRED: "Prijavi se za nastavak plaćanja.",
+  ORDER_BUSY_OR_EXPIRED: "Narudžba se obrađuje ili je istekla. Osvježi njen status.",
 };
+
 export function PayPalCardButton(props: Props) {
   const host = useRef<HTMLDivElement>(null);
   const latest = useRef(props);
   latest.current = props;
   const [attempt, setAttempt] = useState(0);
-  const [status, setStatus] = useState("Učitavam PayPal opciju za kartice…");
+  const [status, setStatus] = useState("");
   const [retry, setRetry] = useState(false);
-  const { clientId, userId } = props;
-  useEffect(() => {
-    const container = host.current;
-    if (!container || typeof ResizeObserver === "undefined") return;
-    // PayPal resizes its host when the card form replaces the compact button.
-    const observer = new ResizeObserver(([entry]) => {
-      if (!entry) return;
-      const height = entry.contentRect.height;
-      container.toggleAttribute("data-expanded", height > 120);
-      container.toggleAttribute("data-attribution", height >= 65 && height <= 120);
-    });
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Explicit retry reloads the SDK button, not payment requests.
+  const { clientId, environment, userId } = props;
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Explicit retry recreates the hosted session without creating an order.
   useEffect(() => {
     const controller = new AbortController();
-    let close: (() => void | Promise<void>) | undefined;
-    setStatus("Učitavam PayPal opciju za kartice…");
-    setRetry(false);
     const current = () => !controller.signal.aborted && latest.current.userId === userId;
+    let interaction = 0;
+    let session: GuestSession | undefined;
+    let container: HTMLElement | undefined;
     const flow = createPayPalCardFlow({
       input: () => latest.current.input(),
+      savedOrder: () => latest.current.savedOrder,
       acquire: () => current() && latest.current.acquire(),
       release: () => {
         if (current()) latest.current.release();
@@ -68,91 +65,115 @@ export function PayPalCardButton(props: Props) {
           signal: AbortSignal.any([signal, AbortSignal.timeout(30000)]),
         });
         const result = await response.json();
-        if (!response.ok) throw new Error(errors[result.code] ?? failure);
+        if (!response.ok)
+          throw new Error(errors[result.code] ?? "Provjeri status narudžbe pa pokušaj ponovo.");
         return result;
       },
     });
-    const report = (error: unknown) => {
+    const showError = (message: string) => {
       if (!current()) return;
+      interaction++;
       flow.cancel();
-      setStatus(error instanceof Error ? error.message : failure);
+      setStatus(message);
       setRetry(true);
     };
-    loadPayPalCardSdk(clientId, controller.signal)
-      .then(async (sdk) => {
-        if (!current() || !host.current) return;
-        const buttons = sdk.Buttons({
-          fundingSource: sdk.FUNDING.CARD,
-          // Standard CARD supports black/white, not custom brand colors.
-          style: {
-            layout: "vertical",
-            color: "black",
-            shape: "rect",
-            borderRadius: 10,
-            height: 48,
-          },
-          onClick: (_data, actions) => (flow.click() ? actions.resolve() : actions.reject()),
-          createOrder: () =>
-            flow.create().catch((error) => {
-              report(error);
-              throw error;
-            }),
-          onApprove: async (data) => {
-            try {
-              await flow.approve(data.orderID);
-              if (current()) setStatus("Server je potvrdio uplatu.");
-            } catch (error) {
-              report(error);
-            }
-          },
-          onCancel: () => {
-            flow.cancel();
-            if (current())
-              setStatus(
-                "Unos kartice je zatvoren. Prije ponovnog plaćanja provjeri status narudžbe.",
-              );
-          },
-          onError: report,
-        });
-        close = () => buttons.close();
-        if (!buttons.isEligible()) {
-          setStatus(
-            "PayPal za ovaj uređaj ili kupca ne nudi kartično dugme. Koristi PayPal opciju iznad.",
-          );
-          return;
-        }
-        await buttons.render(host.current);
-        if (current()) setStatus("");
-      })
-      .catch(() => {
-        if (current()) {
-          setStatus(failure);
-          setRetry(true);
-        }
+    function destroySession(value: GuestSession | undefined) {
+      if (value)
+        void Promise.resolve()
+          .then(() => value.destroy())
+          .catch(() => {});
+    }
+
+    setStatus("Učitavanje kartičnog obrasca…");
+    setRetry(false);
+    async function mount() {
+      const sdk = await loadPayPalCardSdk(clientId, controller.signal, environment);
+      if (!current()) return;
+      const instance = await sdk.createInstance({
+        clientId,
+        components: ["paypal-guest-payments"],
+        pageType: "checkout",
       });
+      if (!current()) return;
+      const methods = await instance.findEligibleMethods({ currencyCode: "EUR" });
+      if (!current()) return;
+      if (!methods.isEligible("card")) {
+        setStatus("PayPal trenutno ne nudi unos kartice na ovom uređaju.");
+        return;
+      }
+      const created = await instance.createPayPalGuestOneTimePaymentSession({
+        onApprove: async ({ orderId }) => {
+          if (!current()) throw new Error("Kartični pokušaj je zatvoren.");
+          const pending = interaction;
+          try {
+            await flow.approve(orderId);
+            if (current()) setStatus("Uplata je potvrđena.");
+          } catch (error) {
+            if (pending === interaction)
+              showError(error instanceof Error ? error.message : "Provjeri status uplate.");
+            throw error;
+          }
+        },
+        // The capture response in onApprove is the authority on fulfillment.
+        onComplete: () => {},
+        onCancel: () => {
+          if (!current()) return;
+          interaction++;
+          flow.cancel();
+          setStatus("Unos kartice je zatvoren.");
+        },
+        onError: () => showError("Kartični pokušaj nije završen. Provjeri status narudžbe."),
+      });
+      if (!current() || !host.current) {
+        destroySession(created);
+        return;
+      }
+      session = created;
+      container = document.createElement("paypal-basic-card-container");
+      const button = document.createElement("paypal-basic-card-button");
+      button.addEventListener(
+        "click",
+        () => {
+          if (!current() || !flow.click()) return;
+          const pending = ++interaction;
+          setStatus("");
+          setRetry(false);
+          const order = flow.create().then((orderId) => ({ orderId }));
+          void order.catch((error: unknown) => {
+            if (pending === interaction)
+              showError(error instanceof Error ? error.message : failure);
+          });
+          void Promise.resolve()
+            .then(() => created.start({ presentationMode: "auto", targetElement: button }, order))
+            .catch(() => {
+              if (pending === interaction)
+                showError("Kartični obrazac se nije otvorio. Provjeri status narudžbe.");
+            });
+        },
+        { signal: controller.signal },
+      );
+      container.append(button);
+      host.current.append(container);
+      setStatus("");
+    }
+    void mount().catch(() => showError(failure));
     return () => {
-      // Dispose releases the parent lock before invalidating this identity's callbacks.
       flow.dispose();
       controller.abort();
-      if (close) void Promise.resolve(close()).catch(() => {});
+      destroySession(session);
+      container?.remove();
     };
-  }, [clientId, userId, attempt]);
+  }, [clientId, environment, userId, attempt]);
+
   return (
-    <section className={`${styles.card} ${styles.paymentFrame}`} aria-label="Kartica putem PayPala">
-      <div className={styles.cardSummary}>
-        <div>
-          <h2>Plati karticom</h2>
-          <p>7 dana isticanja</p>
-        </div>
-        <strong>5,11 EUR</strong>
-      </div>
-      <div ref={host} className={styles.sdkHost} />
+    <section className={styles.paymentFrame} aria-label="Kartica putem PayPala">
+      <div ref={host} className={styles.guestHost} />
       <p className={styles.providerNote} role="status">
         {status}
       </p>
       {retry && (
         <button type="button" onClick={() => setAttempt((value) => value + 1)}>
-          Ponovo učitaj kartično dugme
+          Ponovo učitaj obrazac
         </button>
       )}
     </section>
