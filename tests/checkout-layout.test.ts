@@ -36,7 +36,7 @@ test("PayPal external navy-gold frame contains SDK width without editing iframe 
   assert.doesNotMatch(source, /contentDocument|contentWindow|user-scalable/);
   assert.match(source, /5,11 EUR/);
   assert.match(source, /7 dana isticanja/);
-  assert.match(source, /bez PayPal naloga zavisi/);
+  assert.match(source, /status narudžbe/);
 });
 
 test("standard CARD uses supported sizing without a white surround or overlay", () => {
@@ -46,7 +46,20 @@ test("standard CARD uses supported sizing without a white surround or overlay", 
   assert.match(source, /height: 48/);
   assert.match(css, /\.paymentFrame \.sdkHost\s*\{[^}]*padding: 0;[^}]*background: transparent;/);
   assert.match(css, /\.sdkHost\[data-expanded\]\s*\{[^}]*background: #fff;/);
-  assert.doesNotMatch(css, /\.sdkHost[^}]*?(?:position: absolute|opacity: 0|pointer-events: none)/);
+  assert.doesNotMatch(
+    css,
+    /\.sdkHost iframe\s*\{[^}]*(?:position: absolute|opacity: 0|pointer-events: none)/,
+  );
+});
+
+test("compact card respects the provider color scheme and keeps its signature above the backing", () => {
+  const source = readFileSync("src/components/billing/PayPalCardButton.tsx", "utf8");
+  assert.match(source, /"data-attribution", height >= 65 && height <= 120/);
+  assert.match(css, /\.sdkHost:not\(\[data-expanded\]\) iframe\s*\{\s*color-scheme: light;/);
+  assert.match(
+    css,
+    /\.sdkHost\[data-attribution\]::before\s*\{[^}]*z-index: -1;[^}]*pointer-events: none;/,
+  );
 });
 
 test("expanding the standard card keeps the dark checkout shell and its summary colors", () => {

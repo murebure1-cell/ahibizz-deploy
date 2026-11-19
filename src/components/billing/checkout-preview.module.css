@@ -260,10 +260,34 @@
 .providerNote {
   margin-top: 14px;
 }
+.providerNote:empty {
+  margin: 0;
+}
 .paymentFrame .sdkHost {
   padding: 0;
   border-radius: 10px;
   background: transparent;
+}
+/* Match the compact PayPal document so the browser composites its transparent pixels. */
+.sdkHost:not([data-expanded]),
+.sdkHost:not([data-expanded]) iframe {
+  color-scheme: light;
+}
+.sdkHost[data-attribution] {
+  position: relative;
+  isolation: isolate;
+}
+/* A light backing for the original PayPal signature, below its 48px button. */
+.sdkHost[data-attribution]::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 50px 0 1px;
+  width: min(168px, 100%);
+  margin-inline: auto;
+  border-radius: 999px;
+  background: #f4f7fa;
+  pointer-events: none;
 }
 .paymentFrame .sdkHost[data-expanded] {
   background: #fff;

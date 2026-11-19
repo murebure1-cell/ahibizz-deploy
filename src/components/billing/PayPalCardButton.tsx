@@ -34,7 +34,10 @@ export function PayPalCardButton(props: Props) {
     if (!container || typeof ResizeObserver === "undefined") return;
     // PayPal resizes its host when the card form replaces the compact button.
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) container.toggleAttribute("data-expanded", entry.contentRect.height > 120);
+      if (!entry) return;
+      const height = entry.contentRect.height;
+      container.toggleAttribute("data-expanded", height > 120);
+      container.toggleAttribute("data-attribution", height >= 65 && height <= 120);
     });
     observer.observe(container);
     return () => observer.disconnect();
@@ -106,7 +109,7 @@ export function PayPalCardButton(props: Props) {
             flow.cancel();
             if (current())
               setStatus(
-                "Odustao si od kartičnog pokušaja. Odustajanje nije dokaz naplate; provjeri status sačuvane narudžbe prije novog pokušaja.",
+                "Unos kartice je zatvoren. Prije ponovnog plaćanja provjeri status narudžbe.",
               );
           },
           onError: report,
@@ -119,7 +122,7 @@ export function PayPalCardButton(props: Props) {
           return;
         }
         await buttons.render(host.current);
-        if (current()) setStatus("Plaćanje bez PayPal naloga zavisi od dostupnosti kod PayPala.");
+        if (current()) setStatus("");
       })
       .catch(() => {
         if (current()) {
