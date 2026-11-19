@@ -331,4 +331,37 @@ test("redirect create retains wallet experience context and requires approval li
   ).create(order);
   assert.ok(body && Object.hasOwn(body, "payment_source"));
   assert.equal(result.approvalUrl, "https://www.sandbox.paypal.com/checkoutnow?token=fixture");
+  assert.equal(JSON.stringify(body).includes("landing_page"), false);
+});
+
+test("guest handoff requests the hosted card landing and keeps the same return URLs and request ID", async () => {
+  const approvalUrl = "https://www.sandbox.paypal.com/checkoutnow?token=ORDER12345678";
+  let links = [{ rel: "payer-action", href: approvalUrl }];
+  const transport = (async (url: string | URL | Request, init?: RequestInit) => {
+    if (String(url).endsWith("/token")) return Response.json({ access_token: "fixture" });
+    const body = JSON.parse(String(init?.body));
+    assert.deepEqual(body.payment_source.paypal.experience_context, {
+      landing_page: "GUEST_CHECKOUT",
+      brand_name: "AhiBizz",
+      locale: "en-BA",
+      shipping_preference: "NO_SHIPPING",
+      user_action: "PAY_NOW",
+      return_url: `${config.publicOrigin}/naplata/povratak?narudzba=${order.id}`,
+      cancel_url: `${config.publicOrigin}/naplata/odustajanje?narudzba=${order.id}`,
+    });
+    assert.equal(new Headers(init?.headers).get("PayPal-Request-Id"), order.createRequestId);
+    return Response.json({ id: "ORDER12345678", links });
+  }) as typeof fetch;
+  const paypal = createLivePayPal(
+    { ...config, chargingApproved: true, environment: "sandbox" },
+    transport,
+  );
+  assert.deepEqual(await paypal.create(order, "guest"), {
+    providerOrderId: "ORDER12345678",
+    approvalUrl,
+  });
+  links = [];
+  await assert.rejects(paypal.create(order, "guest"), /INVALID_APPROVAL_URL/);
+  links = [{ rel: "payer-action", href: "https://www.paypal.com/checkoutnow?token=fixture" }];
+  await assert.rejects(paypal.create(order, "guest"), /INVALID_APPROVAL_URL/);
 });

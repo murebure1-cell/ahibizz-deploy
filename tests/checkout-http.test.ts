@@ -487,13 +487,29 @@ test("webhook verification and reconciliation remain available with new sales di
   assert.deepEqual(f.calls, ["verify-signature", "find", "atomic-refund"]);
 });
 
-test("SDK create accepts only the explicit SDK flow and never a client price", () => {
+test("promotion accepts SDK and guest flows without a client price; guest is unavailable for support", () => {
   assert.equal(
     checkoutInput({ requestId: id, kind: "promotion", businessId: id, flow: "sdk" }).flow,
     "sdk",
   );
   for (const flow of ["redirect", "card", "live", true, null])
     assert.throws(() => checkoutInput({ requestId: id, kind: "promotion", businessId: id, flow }));
+  assert.equal(
+    checkoutInput({ requestId: id, kind: "promotion", businessId: id, flow: "guest" }).flow,
+    "guest",
+  );
+  assert.throws(() =>
+    checkoutInput({ requestId: id, kind: "support", amountMinor: 511, flow: "guest" }),
+  );
+  assert.throws(() =>
+    checkoutInput({
+      requestId: id,
+      kind: "promotion",
+      businessId: id,
+      amountMinor: 1,
+      flow: "guest",
+    }),
+  );
   assert.throws(() =>
     checkoutInput({
       requestId: id,
@@ -515,39 +531,47 @@ test("SDK catalog exposes only public client ID when released", () => {
   assert.equal(JSON.stringify(catalog).includes("private-secret"), false);
   assert.equal(checkoutCatalog({ ...f.config, chargingApproved: false }).paypalClientId, null);
 });
-test("SDK service persists mode before create and returns the same saved provider order", async () => {
-  const f = serviceFixture();
-  const row = await f.store.read({ userId: "buyer", id: "session", token: "fixture" }, id);
-  let saved = {
-    ...row,
-    providerOrderId: null as string | null,
-    offerVersion: "category-seven-days-20261118:sdk",
-    approvalUrl: null as string | null,
-    status: "created",
-  };
-  let calls = 0;
-  f.store.create = async (_actor, input) => {
-    assert.equal(input.offerVersion, "category-seven-days-20261118:sdk");
-    assert.equal(input.amountMinor, 511);
-    return saved;
-  };
-  f.provider.create = async (_order, flow) => {
-    calls++;
-    assert.equal(flow, "sdk");
-    return { providerOrderId: "SDKORDER123456", approvalUrl: null };
-  };
-  f.store.attachProvider = async (_id, value) => {
-    saved = { ...saved, ...value, status: "provider_created" };
-    return saved;
-  };
-  const input = { requestId: id, kind: "promotion" as const, businessId: id, flow: "sdk" as const };
-  const first = (await f.service.create(new Headers(), input)) as {
-    providerOrderId: string;
-    order: { flow: string };
-  };
-  const again = (await f.service.create(new Headers(), input)) as { providerOrderId: string };
-  assert.equal(first.providerOrderId, "SDKORDER123456");
-  assert.equal(first.order.flow, "sdk");
-  assert.equal(again.providerOrderId, first.providerOrderId);
-  assert.equal(calls, 1);
-});
+for (const method of ["sdk", "guest"] as const) {
+  test(`${method} persists mode before create and reads and resumes the same provider order`, async () => {
+    const f = serviceFixture();
+    const row = await f.store.read({ userId: "buyer", id: "session", token: "fixture" }, id);
+    let saved = {
+      ...row,
+      providerOrderId: null as string | null,
+      offerVersion: `category-seven-days-20261118:${method}`,
+      approvalUrl: null as string | null,
+      status: "created",
+    };
+    let calls = 0;
+    const approvalUrl =
+      method === "guest" ? "https://www.paypal.com/checkoutnow?token=PAYMENT123456" : null;
+    f.store.create = async (_actor, input) => {
+      assert.equal(input.offerVersion, `category-seven-days-20261118:${method}`);
+      assert.equal(input.amountMinor, 511);
+      return saved;
+    };
+    f.store.read = async () => saved;
+    f.provider.create = async (_order, flow) => {
+      calls++;
+      assert.equal(flow, method);
+      return { providerOrderId: "PAYMENT123456", approvalUrl };
+    };
+    f.store.attachProvider = async (_id, value) => {
+      saved = { ...saved, ...value, status: "provider_created" };
+      return saved;
+    };
+    const input = { requestId: id, kind: "promotion" as const, businessId: id, flow: method };
+    const first = (await f.service.create(new Headers(), input)) as {
+      providerOrderId: string;
+      approvalUrl: string | null;
+      order: { flow: string };
+    };
+    const again = (await f.service.create(new Headers(), input)) as { providerOrderId: string };
+    assert.equal(first.providerOrderId, "PAYMENT123456");
+    assert.equal(first.order.flow, method);
+    assert.equal(first.approvalUrl, approvalUrl);
+    assert.deepEqual(await f.service.read(new Headers(), id), first.order);
+    assert.equal(again.providerOrderId, first.providerOrderId);
+    assert.equal(calls, 1);
+  });
+}

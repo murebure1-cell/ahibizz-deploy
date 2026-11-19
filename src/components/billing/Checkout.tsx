@@ -2,24 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { readCheckoutOrder } from "../../lib/checkout-order-read";
-import { canOfferPayPalCard } from "../../lib/paypal-card-flow";
+import { canOfferPayPalCard, type CardOrder as Order } from "../../lib/paypal-card-flow";
+import { Icon } from "../Icon";
 import styles from "./checkout-preview.module.css";
 import { PayPalCardButton } from "./PayPalCardButton";
 
-type Order = {
-  id: string;
-  requestId: string;
-  flow?: "sdk" | "redirect";
-  kind: "promotion" | "support";
-  businessId: string | null;
-  businessTitle: string | null;
-  amountMinor: number;
-  currency: "EUR";
-  environment: "sandbox" | "live";
-  status: string;
-  refundedMinor: number;
-  endsAt: string | null;
-};
 type Catalog = {
   paypalClientId?: string | null;
   available: boolean;
@@ -165,7 +152,7 @@ export function Checkout({
       });
     return () => controller.abort();
   }, [userId, initialOrderId, reloadOrder]);
-  async function act(action: "create" | "capture" | "reconcile") {
+  async function act(action: "create" | "capture" | "reconcile", newMethod?: "guest") {
     if (locked.current || !userId || (initialOrderId && !order) || orderLoading) return;
     if (order?.status === "cancelled" && action !== "reconcile") return;
     if (
@@ -189,7 +176,7 @@ export function Checkout({
                 ? {
                     requestId: order.requestId,
                     kind: order.kind,
-                    ...(order.flow === "sdk" ? { flow: "sdk" } : {}),
+                    ...(order.flow && order.flow !== "redirect" ? { flow: order.flow } : {}),
                     ...(order.kind === "promotion"
                       ? { businessId: order.businessId }
                       : { amountMinor: order.amountMinor }),
@@ -197,6 +184,7 @@ export function Checkout({
                 : {
                     requestId: key.current,
                     kind,
+                    ...(newMethod ? { flow: newMethod } : {}),
                     ...(kind === "promotion" ? { businessId } : { amountMinor: cents(support) }),
                   },
             )
@@ -373,14 +361,34 @@ export function Checkout({
                   PayPal može prikazati vlastitu konverziju ako tvoj izvor sredstava koristi drugu
                   valutu. Pregledaj konačan iznos na PayPalu.
                 </p>
-                <button
-                  type="button"
-                  className={styles.primary}
-                  disabled={busy || !catalog?.available || !userId}
-                  onClick={() => act("create")}
-                >
-                  {busy ? "Pripremam narudžbu…" : "Nastavi na PayPal"}
-                </button>
+                <fieldset className={styles.paymentActions} aria-label="Način plaćanja">
+                  {kind === "promotion" && catalog?.paypalClientId && (
+                    <button
+                      type="button"
+                      className={styles.payCard}
+                      disabled={busy || !catalog.available || !userId}
+                      aria-describedby="card-handoff"
+                      onClick={() => act("create", "guest")}
+                    >
+                      <Icon name="card" width={20} height={20} />
+                      Plati karticom
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.payWallet}
+                    disabled={busy || !catalog?.available || !userId}
+                    onClick={() => act("create")}
+                  >
+                    Nastavi na PayPal
+                  </button>
+                </fieldset>
+                {kind === "promotion" && catalog?.paypalClientId && (
+                  <p id="card-handoff" className={styles.handoffNote}>
+                    Podatke kartice unosiš na PayPalu.
+                  </p>
+                )}
+                {busy && <p role="status">Pripremam narudžbu…</p>}
                 <button
                   type="button"
                   className={styles.back}
@@ -475,6 +483,7 @@ export function Checkout({
       {userId &&
         catalog?.available &&
         catalog.paypalClientId &&
+        order &&
         canOfferPayPalCard(order, review, kind) && (
           <PayPalCardButton
             key={userId}

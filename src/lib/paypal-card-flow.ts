@@ -1,3 +1,5 @@
+import type { PayPalOrderFlow } from "./paypal-order-flow";
+
 /** Browser controller only. Orders, price, approval and fulfillment stay server-authoritative. */
 export type CardOrder = {
   id: string;
@@ -11,7 +13,7 @@ export type CardOrder = {
   status: string;
   refundedMinor: number;
   endsAt: string | null;
-  flow?: "sdk" | "redirect";
+  flow?: PayPalOrderFlow;
 };
 export function canOfferPayPalCard(
   order: CardOrder | null,

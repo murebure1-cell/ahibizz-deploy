@@ -1,3 +1,4 @@
+import { paypalOrderFlow } from "../../lib/paypal-order-flow";
 import { getAccountService } from "../auth/accounts";
 import { getAuthDatabasePool, getAuthService, readAuthConfiguration } from "../auth/service";
 import {
@@ -96,7 +97,7 @@ export function checkoutCatalog(config: CheckoutConfiguration | null) {
 function dto(order: CheckoutOrder) {
   return {
     id: order.id,
-    flow: order.offerVersion.endsWith(":sdk") ? "sdk" : "redirect",
+    flow: paypalOrderFlow(order.offerVersion),
     requestId: order.requestId,
     kind: order.kind,
     businessId: order.businessId,
@@ -236,12 +237,14 @@ export function createCheckoutService({
     async create(headers, input) {
       payable();
       chargePurpose(input.kind);
+      if (input.flow === "guest" && input.kind !== "promotion")
+        throw new CheckoutHttpError(400, "INVALID_CHECKOUT_FLOW");
       let order = await store.create(await actor(headers), {
         ...input,
         amountMinor: input.kind === "promotion" ? 511 : (input.amountMinor ?? 0),
         environment: config.environment,
         merchantId: config.merchantId,
-        offerVersion: `category-seven-days-20261118${input.flow === "sdk" ? ":sdk" : ""}`,
+        offerVersion: `category-seven-days-20261118${input.flow ? `:${input.flow}` : ""}`,
       });
       matching(order);
       chargePurpose(order.kind);
@@ -250,10 +253,7 @@ export function createCheckoutService({
         if (!order.providerOrderId)
           order = await store.attachProvider(
             order.id,
-            await provider.create(
-              providerOrder(order),
-              order.offerVersion.endsWith(":sdk") ? "sdk" : "redirect",
-            ),
+            await provider.create(providerOrder(order), paypalOrderFlow(order.offerVersion)),
           );
         return {
           order: dto(order),

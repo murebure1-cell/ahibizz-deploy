@@ -223,6 +223,61 @@ test("durable checkout isolated PostgreSQL authority, replay, rights and refunds
       );
     });
     await t.test(
+      "guest orders retain their approval link and cannot be mistaken for wallet or SDK orders",
+      async () => {
+        const input = {
+          requestId: randomUUID(),
+          kind: "promotion",
+          businessId: await makeBusiness(),
+          amountMinor: 511,
+          merchantId: "FIXTURE_MERCHANT",
+          environment: "sandbox",
+          offerVersion: "category-seven-days-20261118:guest",
+        };
+        const created = await store.create(user, input);
+        await assert.rejects(
+          store.attachProvider(created.id, {
+            providerOrderId: "GUESTORDER123456",
+            approvalUrl: null,
+          }),
+          /INVALID_APPROVAL_URL/,
+        );
+        const attached = await attach(created);
+        for (const requestId of [input.requestId, randomUUID()]) {
+          const resumed = await store.create(user, { ...input, requestId });
+          assert.equal(resumed.id, attached.id);
+          assert.equal(resumed.providerOrderId, attached.providerOrderId);
+          assert.equal(resumed.approvalUrl, attached.approvalUrl);
+          assert.equal(resumed.createRequestId, attached.createRequestId);
+        }
+        for (const offerVersion of [
+          "category-seven-days-20261118",
+          "category-seven-days-20261118:sdk",
+        ]) {
+          await assert.rejects(store.create(user, { ...input, offerVersion }), /COMMAND_CONFLICT/);
+          await assert.rejects(
+            store.create(user, { ...input, offerVersion, requestId: randomUUID() }),
+            /CHECKOUT_FLOW_MISMATCH/,
+          );
+          const existing = {
+            ...input,
+            offerVersion,
+            requestId: randomUUID(),
+            businessId: await makeBusiness(),
+          };
+          await store.create(user, existing);
+          await assert.rejects(
+            store.create(user, {
+              ...existing,
+              offerVersion: input.offerVersion,
+              requestId: randomUUID(),
+            }),
+            /CHECKOUT_FLOW_MISMATCH/,
+          );
+        }
+      },
+    );
+    await t.test(
       "SDK mode preserves neutral provider ID and cannot resume a wallet order",
       async () => {
         const input = {

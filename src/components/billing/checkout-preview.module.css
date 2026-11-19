@@ -151,6 +151,43 @@
 .choices button + button {
   margin-inline-start: 0;
 }
+.paymentActions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 12px;
+  min-width: 0;
+  margin: 20px 0 0;
+  padding: 0;
+  border: 0;
+}
+.payCard,
+.payWallet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-weight: 650;
+}
+.paymentActions .payCard {
+  color: #302919;
+  background: #e8cd91;
+  border-color: #d6b674;
+}
+.paymentActions .payCard:hover:enabled {
+  background: #e2c17d;
+}
+.paymentActions .payWallet {
+  margin: 0;
+  background: transparent;
+}
+.paymentActions .payWallet:hover:enabled {
+  background: var(--ui-accent-soft);
+}
+.card .handoffNote {
+  margin-block: 9px 6px;
+  font-size: 14px;
+  color: var(--ui-text-secondary);
+}
 .card .primary {
   background: var(--ui-primary);
   border-color: var(--ui-primary);

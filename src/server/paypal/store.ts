@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import { paypalOrderFlow } from "../../lib/paypal-order-flow";
 
 export type CheckoutActor = {
   userId: string;
@@ -217,7 +218,7 @@ export function createCheckoutStore(pool: Pool) {
             if (
               candidate?.userId === actor.userId &&
               ["created", "provider_created"].includes(candidate.status) &&
-              candidate.offerVersion.endsWith(":sdk") !== input.offerVersion.endsWith(":sdk")
+              paypalOrderFlow(candidate.offerVersion) !== paypalOrderFlow(input.offerVersion)
             )
               fail(409, "CHECKOUT_FLOW_MISMATCH");
             // Only resume the same owner's unchanged unpaid offer. Never reveal a
@@ -330,7 +331,7 @@ export function createCheckoutStore(pool: Pool) {
         if (!/^[A-Z0-9]{10,32}$/.test(value.providerOrderId)) fail(400, "INVALID_PROVIDER_ID");
         const o = await row(c, id);
         const url = value.approvalUrl === null ? null : new URL(value.approvalUrl);
-        if (!url && !o.offerVersion.endsWith(":sdk")) fail(400, "INVALID_APPROVAL_URL");
+        if (!url && paypalOrderFlow(o.offerVersion) !== "sdk") fail(400, "INVALID_APPROVAL_URL");
         if (
           url &&
           (url.protocol !== "https:" ||

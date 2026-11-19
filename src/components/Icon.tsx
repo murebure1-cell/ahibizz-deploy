@@ -1,6 +1,7 @@
 import type { ReactNode, SVGProps } from "react";
 
 export type IconName =
+  | "card"
   | "arrow"
   | "search"
   | "pin"
@@ -30,6 +31,12 @@ export type IconName =
   | "download";
 
 const paths: Record<IconName, ReactNode> = {
+  card: (
+    <>
+      <rect x="2.5" y="4.5" width="19" height="15" rx="3" />
+      <path d="M3 9h18M6.5 15h3" />
+    </>
+  ),
   download: (
     <>
       <path d="M12 3v12m-5-5 5 5 5-5M5 15v6h14v-6" />

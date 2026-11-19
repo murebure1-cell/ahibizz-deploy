@@ -49,6 +49,13 @@ export class CheckoutHttpError extends Error {
     super(code);
   }
 }
+type CheckoutCreateInput = {
+  requestId: string;
+  kind: "promotion" | "support";
+  businessId?: string;
+  amountMinor?: number;
+  flow?: "sdk" | "guest";
+};
 export interface CheckoutHttpService {
   catalog(): unknown;
   reconcileBatch(
@@ -56,16 +63,7 @@ export interface CheckoutHttpService {
     cursors?: { ordersAfter?: string | null; refundsAfter?: string | null },
   ): Promise<unknown>;
   read(headers: Headers, id: string): Promise<unknown>;
-  create(
-    headers: Headers,
-    value: {
-      requestId: string;
-      kind: "promotion" | "support";
-      businessId?: string;
-      amountMinor?: number;
-      flow?: "sdk";
-    },
-  ): Promise<unknown>;
+  create(headers: Headers, value: CheckoutCreateInput): Promise<unknown>;
   capture(headers: Headers, id: string): Promise<unknown>;
   reconcile(headers: Headers, id: string): Promise<unknown>;
   refund(
@@ -103,9 +101,11 @@ function amount(value: unknown, minimum = 100): number {
     fail(400, "INVALID_AMOUNT");
   return value;
 }
-export function checkoutInput(value: unknown) {
+export function checkoutInput(value: unknown): CheckoutCreateInput {
   const input = object(value, ["requestId", "kind", "businessId", "amountMinor", "flow"]);
-  if (input.flow !== undefined && input.flow !== "sdk") fail(400, "INVALID_CHECKOUT_FLOW");
+  const flow = input.flow;
+  if (flow !== undefined && flow !== "sdk" && flow !== "guest") fail(400, "INVALID_CHECKOUT_FLOW");
+  if (flow === "guest" && input.kind !== "promotion") fail(400, "INVALID_CHECKOUT_FLOW");
   if (input.kind === "promotion") {
     if (
       input.amountMinor !== undefined ||
@@ -114,7 +114,7 @@ export function checkoutInput(value: unknown) {
     )
       fail(400, "INVALID_PROMOTION");
     return {
-      ...(input.flow === "sdk" ? { flow: "sdk" as const } : {}),
+      ...(flow ? { flow } : {}),
       requestId: requestId(input.requestId),
       kind: "promotion" as const,
       businessId: input.businessId,

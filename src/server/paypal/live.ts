@@ -1,3 +1,5 @@
+import type { PayPalOrderFlow } from "../../lib/paypal-order-flow";
+
 /** Server-only transport. Durable authorization/order persistence belongs to the checkout service. */
 export class PayPalLiveError extends Error {}
 export type LiveOrder = {
@@ -246,8 +248,12 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
     return data;
   }
   return {
-    async create(order: LiveOrder, flow: "redirect" | "sdk" = "redirect") {
-      if (!["redirect", "sdk"].includes(flow)) throw new PayPalLiveError("INVALID_CHECKOUT_FLOW");
+    async create(order: LiveOrder, flow: PayPalOrderFlow = "redirect") {
+      if (
+        !["redirect", "sdk", "guest"].includes(flow) ||
+        (flow === "guest" && order.purpose !== "promotion")
+      )
+        throw new PayPalLiveError("INVALID_CHECKOUT_FLOW");
       canCharge(order);
       const data = await request(
         "/v2/checkout/orders",
@@ -274,6 +280,7 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
                 payment_source: {
                   paypal: {
                     experience_context: {
+                      ...(flow === "guest" ? { landing_page: "GUEST_CHECKOUT" } : {}),
                       brand_name: "AhiBizz",
                       locale: "en-BA",
                       shipping_preference: "NO_SHIPPING",
