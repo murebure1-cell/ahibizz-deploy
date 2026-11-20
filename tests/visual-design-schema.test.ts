@@ -21,7 +21,16 @@ test("a published design preserves the actual homepage order, plain text, and in
     mobileDark: { "backdrop-filter": "blur(8px)" },
   };
   const safe = parseVisualDesign(model);
-  assert.deepEqual(safe.homeOrder, model.homeOrder);
+  assert.deepEqual(safe.homeOrder, [
+    "categoryFeatured",
+    "nearby",
+    "promotion",
+    "featured",
+    "ad",
+    "credits",
+    "logos",
+    "community",
+  ]);
   assert.equal(safe.rules["home-title"]?.base?.color, "#aabbcc");
   const css = designCss(safe);
   assert.match(css, /@media\(max-width:760px\).*font-size:24px/);

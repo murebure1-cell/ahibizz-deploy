@@ -181,6 +181,14 @@ export async function verifyMarketing({ auth, pool, owner, member, second, categ
   await command(owner, { ...settle, id: featured, reference: "GLOBAL-FIXTURE-856" });
   await command(owner, { ...settle, id: nearby, reference: "LOCAL-FIXTURE-172" });
   assert.deepEqual(
+    (await directory.listPublic(near)).items.map((b) => [b.id, b.localFeatured]),
+    [
+      [business, true],
+      [closer, false],
+    ],
+  );
+  assert.deepEqual((await directory.listPublic({}, "category")).items, []);
+  assert.deepEqual(
     (await directory.listPublic({}, true)).items.map((b) => b.id),
     [business],
   );

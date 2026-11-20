@@ -32,7 +32,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     subcategoryId = text(params.subcategoryId, 128);
   const rawPage = text(params.page, 10),
     page = rawPage && /^\d{1,3}$/.test(rawPage) ? Number(rawPage) : 1;
-  const featuredOnly = params.istaknute === "1";
+  const featuredOnly = params.istaknute === "kategorija" ? "category" : params.istaknute === "1";
   let items: PublicDirectoryBusiness[] = [],
     categories: DirectoryCategory[] = [],
     hasMore = false,
@@ -66,7 +66,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   }
   function pageHref(next: number) {
     const values = new URLSearchParams();
-    if (featuredOnly) values.set("istaknute", "1");
+    if (featuredOnly) values.set("istaknute", featuredOnly === "category" ? "kategorija" : "1");
     if (query) values.set("q", query);
     if (city) values.set("mjesto", city);
     if (categoryId) values.set("categoryId", categoryId);
@@ -95,7 +95,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <span>
             {filtered
               ? [
-                  featuredOnly ? "Istaknute djelatnosti" : null,
+                  featuredOnly === "category"
+                    ? "Istaknuto u kategoriji"
+                    : featuredOnly
+                      ? "Istaknute djelatnosti"
+                      : null,
                   query,
                   city,
                   categories.find((item) => item.id === categoryId)?.name,

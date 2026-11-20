@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { accountReturnPath } from "../../lib/account-return";
 import { authReturnLinks } from "../../lib/auth-return";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
@@ -71,11 +71,25 @@ export function AuthForm({
   const [error, setError] = useState("");
   const [complete, setComplete] = useState(false);
   const [visible, setVisible] = useState(false);
+  const passwordField = useRef<HTMLInputElement>(null);
   const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationSent, setVerificationSent] = useState(false);
   const hasPassword = mode === "sign-in" || mode === "sign-up" || mode === "reset-password";
   const copy = text[mode];
   const links = authReturnLinks(returnTo);
+  function suggestPassword() {
+    if (!passwordField.current) return;
+    // A 32-character alphabet avoids both ambiguous characters and modulo bias.
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const groups = Array.from({ length: 4 }, () => {
+      const bytes = crypto.getRandomValues(new Uint8Array(5));
+      return Array.from(bytes, (byte) => alphabet.charAt(byte % alphabet.length)).join("");
+    });
+    passwordField.current.value = groups.join("-");
+    setVisible(true);
+    passwordField.current.focus();
+    passwordField.current.select();
+  }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || !available) return;
@@ -250,6 +264,7 @@ export function AuthForm({
                 <span className={styles.password}>
                   <input
                     name="password"
+                    ref={passwordField}
                     type={visible ? "text" : "password"}
                     autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
                     required
@@ -268,6 +283,16 @@ export function AuthForm({
                 </span>
                 {mode !== "sign-in" && <small>Najmanje 12 znakova.</small>}
               </label>
+            )}
+            {mode === "reset-password" && token && (
+              <button
+                type="button"
+                className={styles.suggestion}
+                onClick={suggestPassword}
+                disabled={!ready || !available || busy}
+              >
+                Predloži jaku lozinku
+              </button>
             )}
             {mode === "sign-in" && (
               <div className={styles.options}>

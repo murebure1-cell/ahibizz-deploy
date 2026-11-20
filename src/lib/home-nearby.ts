@@ -67,6 +67,7 @@ export function readNearbyBusinesses(
       latitude: row.latitude as number,
       longitude: row.longitude as number,
       verified: row.verified,
+      localFeatured: row.localFeatured === true,
       details: row.details == null ? null : readBusinessDetails(row.details),
       reviews: row.reviews == null ? { count: 0, sum: 0 } : readReviewSummary(row.reviews),
       ...publicBusinessImages(row.id, row.media as BusinessMediaSummary | undefined),

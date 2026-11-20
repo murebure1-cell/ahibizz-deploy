@@ -6,6 +6,18 @@
   gap: 10px;
   min-width: 0;
 }
+.group {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.group h3 {
+  font-size: clamp(16px, 2vw, 20px);
+  margin: 0 0 12px;
+  line-height: 1.3;
+}
+.group + .group {
+  margin-top: 8px;
+}
 
 .more {
   grid-column: 1 / -1;

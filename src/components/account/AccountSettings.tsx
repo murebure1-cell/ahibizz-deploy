@@ -16,6 +16,7 @@ import { useAppAppearance } from "../appearance/AppAppearance";
 import { Icon } from "../Icon";
 import { DevicePush } from "../pwa/DevicePush";
 import permissionStyles from "../pwa/permissions.module.css";
+import { AccountPassword } from "./AccountPassword";
 import styles from "./account.module.css";
 
 const choices = [
@@ -192,6 +193,9 @@ function SettingsWorkspace({
           <Icon name="sliders" />
         </span>
       </header>
+      {active && !blocked && !accessLost && request === accountSettingsRequest && (
+        <AccountPassword accountId={initial.id} email={initial.email} />
+      )}
       <section className={styles.settingsCard} aria-labelledby="appearance-heading">
         <h2 id="appearance-heading">Izgled</h2>
         <fieldset

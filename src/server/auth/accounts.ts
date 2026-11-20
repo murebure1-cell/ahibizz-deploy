@@ -212,6 +212,66 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
   }
   return {
     read,
+    async changePassword(headers: Headers, input: unknown): Promise<void> {
+      const { currentPassword, newPassword } = object(input, ["currentPassword", "newPassword"]);
+      const { password } = await auth.$context;
+      if (
+        typeof currentPassword !== "string" ||
+        !currentPassword.length ||
+        currentPassword.length > password.config.maxPasswordLength ||
+        typeof newPassword !== "string" ||
+        newPassword.length < password.config.minPasswordLength ||
+        newPassword.length > password.config.maxPasswordLength
+      )
+        fail(400, "INVALID_PASSWORD_LENGTH");
+      if (newPassword.normalize("NFKC") === currentPassword.normalize("NFKC"))
+        fail(400, "PASSWORD_UNCHANGED");
+      const current = await session(headers);
+      if (!current.expectedAccountId) fail(401, "ACCOUNT_IDENTITY_CHANGED");
+      const changed = await accountTransaction(pool, async (client) => {
+        const user = await authority(client, current);
+        // Commit failed attempts, with one bounded window per account across devices and instances.
+        const limitKey = `account-password:${user.id}`;
+        const attempt = await client.query(
+          `INSERT INTO auth_rate_limit (id,key,count,"lastRequest")
+           VALUES ($1,$1,1,(extract(epoch from clock_timestamp())*1000)::bigint)
+           ON CONFLICT (key) DO UPDATE SET
+             count=CASE WHEN EXCLUDED."lastRequest"-auth_rate_limit."lastRequest">=60000 THEN 1 ELSE auth_rate_limit.count+1 END,
+             "lastRequest"=CASE WHEN EXCLUDED."lastRequest"-auth_rate_limit."lastRequest">=60000 THEN EXCLUDED."lastRequest" ELSE auth_rate_limit."lastRequest" END
+           WHERE auth_rate_limit.count<5 OR EXCLUDED."lastRequest"-auth_rate_limit."lastRequest">=60000
+           RETURNING count`,
+          [limitKey],
+        );
+        if (!attempt.rowCount) fail(429, "TOO_MANY_REQUESTS");
+        const credential = (
+          await client.query<{ id: string; password: string | null }>(
+            'SELECT id,password FROM auth_account WHERE "userId"=$1 AND "providerId"=\'credential\' FOR UPDATE',
+            [user.id],
+          )
+        ).rows[0];
+        if (
+          !credential?.password ||
+          !(await password.verify({ hash: credential.password, password: currentPassword }))
+        )
+          return false;
+        const hash = await password.hash(newPassword);
+        await client.query('UPDATE auth_account SET password=$2, "updatedAt"=now() WHERE id=$1', [
+          credential.id,
+          hash,
+        ]);
+        await client.query('DELETE FROM auth_session WHERE "userId"=$1 AND id<>$2', [
+          user.id,
+          current.id,
+        ]);
+        await client.query(
+          "DELETE FROM auth_verification WHERE value=$1 AND identifier LIKE 'reset-password:%'",
+          [user.id],
+        );
+        await client.query("DELETE FROM auth_rate_limit WHERE key=$1", [limitKey]);
+        return true;
+      });
+      if (!changed) fail(400, "INVALID_CURRENT_PASSWORD");
+    },
     async overview(headers: Headers) {
       const current = await session(headers);
       return accountTransaction(pool, async (client) => {

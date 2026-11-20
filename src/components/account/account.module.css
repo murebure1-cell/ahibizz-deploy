@@ -508,6 +508,50 @@
   letter-spacing: -0.035em;
   margin: 0 0 23px;
 }
+.passwordChange {
+  min-width: 0;
+}
+.passwordChange summary {
+  width: fit-content;
+  min-height: 46px;
+  padding: 12px 16px;
+  color: var(--ui-text);
+  background: var(--ui-surface-soft);
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.passwordChange form {
+  display: grid;
+  gap: 14px;
+  max-width: 440px;
+  margin: 18px 0 0;
+}
+.passwordChange label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.passwordChange input[type="password"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 10px 13px;
+  background: var(--ui-input);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 16px;
+}
+.passwordLength {
+  margin-top: -9px;
+  color: var(--ui-muted);
+}
 .appearanceChoices {
   min-width: 0;
   display: grid;
@@ -658,6 +702,10 @@
   font-size: 13px;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+.passwordChange .settingsActions,
+.passwordChange .settingsError {
+  margin-top: 0;
 }
 @media (max-width: 350px) {
   .sidebar nav {

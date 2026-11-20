@@ -129,7 +129,7 @@ export async function listDirectory(
   condition: string,
   parameters: unknown[],
   publicOnly = false,
-  featuredOnly = false,
+  featuredOnly: boolean | "category" = false,
 ) {
   const { page, pageSize, categoryId, subcategoryId, status, q, city, nearby } = pageInput(
     input,
@@ -169,21 +169,28 @@ export async function listDirectory(
     order = `(${distance}) ASC, b.id ASC`;
   }
   const paidCategory =
-    publicOnly && Boolean(categoryId) && process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY === "true";
+    publicOnly &&
+    (Boolean(categoryId) || featuredOnly === "category") &&
+    process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY === "true";
   const paid = paidCategory ? promotionSql("b") : null;
   if (paid) order = `(${paid}) DESC, ${order}`;
-  if (publicOnly && (nearby || city)) order = `(${paidPlacementSql("nearby")}) DESC, ${order}`;
+  const localPlacement =
+    publicOnly && (nearby || city)
+      ? `(b.latitude IS NOT NULL AND b.longitude IS NOT NULL AND ${paidPlacementSql("nearby")})`
+      : null;
+  if (localPlacement) order = `"localFeatured" DESC, ${order}`;
   if (publicOnly && featuredOnly) {
-    filters.push(paidPlacementSql("featured"));
+    filters.push(featuredOnly === "category" ? (paid ?? "FALSE") : paidPlacementSql("featured"));
     // Stable within an hour for scrolling/pagination, then gives other paid profiles the lead.
     order = "md5(b.id::text || floor(extract(epoch FROM now())/3600)::text), b.id";
   }
-  const selectedColumns =
+  let selectedColumns =
     publicOnly && paid
       ? publicColumns.replace("b.is_featured AS featured", `(${paid}) AS featured`)
       : publicOnly
         ? publicColumns
         : columns;
+  if (localPlacement) selectedColumns += `, ${localPlacement} AS "localFeatured"`;
   const limitIndex = values.push(pageSize + 1),
     offsetIndex = values.push((page - 1) * pageSize);
   const result = await database.query(
@@ -209,7 +216,7 @@ export function createPublicDirectoryService({ database }: { database: Directory
           )
         ).rows as DirectoryCategory[],
       })),
-    async listPublic(input: unknown = {}, featuredOnly = false) {
+    async listPublic(input: unknown = {}, featuredOnly: boolean | "category" = false) {
       object(input, [
         "page",
         "pageSize",

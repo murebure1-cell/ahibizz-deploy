@@ -15,6 +15,45 @@ import { HomeCategories } from "./HomeCategories";
 import { HomeLogoMarquee } from "./HomeLogoMarquee";
 import { HomeRail } from "./HomeRail";
 import styles from "./home.module.css";
+import nearbyStyles from "./nearby.module.css";
+
+export function HomeNearbyGroups({
+  local,
+  organic,
+  expanded = false,
+}: {
+  local: ReactNode[];
+  organic: ReactNode[];
+  expanded?: boolean;
+}) {
+  function show(items: ReactNode[], label: string) {
+    return expanded ? (
+      <div className={styles.nearbyGrid}>{items}</div>
+    ) : (
+      <HomeRail listings label={label} className={styles.businessGrid}>
+        {items.slice(0, 4)}
+      </HomeRail>
+    );
+  }
+  return (
+    <>
+      <div className={nearbyStyles.group} data-design="home-local-featured">
+        <h3>Istaknuto na tvojoj lokaciji</h3>
+        {local.length ? (
+          show(local, "Istaknuto na tvojoj lokaciji")
+        ) : (
+          <p className={styles.availability}>Trenutno nema lokalnih isticanja.</p>
+        )}
+      </div>
+      {organic.length > 0 && (
+        <div className={nearbyStyles.group}>
+          <h3>Djelatnosti u blizini</h3>
+          {show(organic, "Djelatnosti u blizini")}
+        </div>
+      )}
+    </>
+  );
+}
 
 export function HomeEmptyState({
   children,
@@ -42,6 +81,8 @@ export function HomeSurface({
   categories,
   featured,
   featuredHref,
+  categoryFeatured = [],
+  categoryAvailable = true,
   nearby,
   nearbyControl,
   nearbyBefore,
@@ -57,6 +98,8 @@ export function HomeSurface({
   categories: readonly HomeCategory[];
   featured?: ReactNode;
   featuredHref: string;
+  categoryFeatured?: ReactNode[];
+  categoryAvailable?: boolean;
   nearby: ReactNode;
   nearbyControl: ReactNode;
   nearbyBefore?: ReactNode;
@@ -86,6 +129,38 @@ export function HomeSurface({
         >
           {featured}
         </HomeRail>
+      </section>
+    ),
+    categoryFeatured: (
+      <section
+        className={`${styles.container} ${styles.section}`}
+        data-design="home-category-featured"
+        aria-labelledby="category-featured-heading"
+      >
+        <div className={styles.sectionHeading}>
+          <h2 id="category-featured-heading">
+            {titles.categoryFeatured || "Istaknuto u kategoriji"}
+          </h2>
+          {categoryFeatured.length > 0 && (
+            <Link
+              href={searchAction === "/pretraga" ? "/pretraga?istaknute=kategorija" : searchAction}
+              className={styles.subtleLink}
+            >
+              Pogledaj sve <Icon name="chevron" />
+            </Link>
+          )}
+        </div>
+        {categoryFeatured.length > 0 ? (
+          <HomeRail listings label="Istaknuto u kategoriji" className={styles.businessGrid}>
+            {categoryFeatured}
+          </HomeRail>
+        ) : (
+          <p className={styles.availability}>
+            {categoryAvailable
+              ? "Trenutno nema istaknutih djelatnosti u kategorijama."
+              : "Imenik trenutno nije dostupan."}
+          </p>
+        )}
       </section>
     ),
     ad: !IS_PLAY_EDITION && (
@@ -138,6 +213,38 @@ export function HomeSurface({
       </section>
     ),
     logos: <HomeLogoMarquee title={titles.logos} />,
+    promotion: !IS_PLAY_EDITION && (
+      <section
+        className={`${styles.container} ${styles.callout}`}
+        data-design="home-promotion"
+        aria-labelledby="promotion-heading"
+      >
+        <div>
+          <h2 id="promotion-heading">
+            {titles.promotion || "Želiš li istaknuti svoju djelatnost?"}
+          </h2>
+          <p>Odaberi isticanje u svojoj kategoriji, na lokaciji ili na početnoj stranici.</p>
+        </div>
+        <Link className={styles.button} href="/oglasavanje">
+          Pročitaj više <Icon name="arrow" />
+        </Link>
+      </section>
+    ),
+    community: (
+      <section
+        className={`${styles.container} ${styles.callout} ${styles.community}`}
+        data-design="home-community"
+        aria-labelledby="community-heading"
+      >
+        <div>
+          <h2 id="community-heading">{titles.community || "AhiBizz zajednica"}</h2>
+          <p>Upoznaj ljude iza djelatnosti, poveži se s njima i započni razgovor.</p>
+        </div>
+        <Link className={styles.subtleLink} href="/o-nama">
+          O zajednici <Icon name="chevron" />
+        </Link>
+      </section>
+    ),
     credits: !IS_PLAY_EDITION && (
       <section
         className={`${styles.container} ${styles.credits}`}

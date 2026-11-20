@@ -93,6 +93,21 @@
   font-weight: 400;
   color: var(--ui-muted);
 }
+.suggestion {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--ui-accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
 .options {
   display: flex;
   align-items: center;

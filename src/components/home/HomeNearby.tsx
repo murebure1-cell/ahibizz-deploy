@@ -9,8 +9,7 @@ import type { PublicBusinessView } from "../../lib/public-business";
 import { DirectoryResultCard } from "../directory/DirectoryResultCard";
 import { Icon } from "../Icon";
 import { useDeviceLocation } from "../location/DeviceLocation";
-import { HomeRail } from "./HomeRail";
-import { HomeEmptyState } from "./HomeSurface";
+import { HomeEmptyState, HomeNearbyGroups } from "./HomeSurface";
 import homeStyles from "./home.module.css";
 import styles from "./nearby.module.css";
 
@@ -182,21 +181,27 @@ export function HomeNearbyResults() {
     );
   if (state === "waiting")
     return (
-      <HomeEmptyState icon="pin">
-        {location.status === "unavailable"
-          ? "Lokacija nije dostupna. Možeš odabrati grad."
-          : location.status === "locating"
-            ? "Pronalazimo tvoju lokaciju…"
-            : "Dozvoli lokaciju za prikaz djelatnosti u blizini."}
-      </HomeEmptyState>
+      <div className={styles.group} data-design="home-local-featured">
+        <h3>Istaknuto na tvojoj lokaciji</h3>
+        <p className={homeStyles.availability}>
+          {location.status === "unavailable"
+            ? "Lokacija nije dostupna. Možeš odabrati grad."
+            : location.status === "locating"
+              ? "Pronalazimo tvoju lokaciju…"
+              : "Odaberi grad ili dozvoli pristup lokaciji."}
+        </p>
+      </div>
     );
   if (!businesses.length)
     return (
-      <HomeEmptyState>
-        {useGps
-          ? "Još nema objavljenih djelatnosti u blizini."
-          : `Još nema objavljenih djelatnosti za ${place}.`}
-      </HomeEmptyState>
+      <div className={styles.group} data-design="home-local-featured">
+        <h3>Istaknuto na tvojoj lokaciji</h3>
+        <p className={homeStyles.availability}>
+          {useGps
+            ? "U tvojoj blizini još nema objavljenih djelatnosti."
+            : `Još nema objavljenih djelatnosti za ${place}.`}
+        </p>
+      </div>
     );
   return <NearbyCards key={searchPath ?? place} />;
 }
@@ -245,27 +250,24 @@ function NearbyCards() {
       window.clearTimeout(timer);
     };
   }, [request, searchPath, categoryOptions]);
-  const combined = expanded
-    ? [...new Map([...businesses, ...more.items].map((item) => [item.id, item])).values()]
-    : businesses.slice(0, 4);
-  const cards = combined.map((business) => (
-    <DirectoryResultCard key={business.id} business={business} />
-  ));
+  const combined = [
+    ...new Map([...businesses, ...more.items].map((item) => [item.id, item])).values(),
+  ];
+  const local = combined.filter((business) => business.localFeatured);
+  const organic = combined.filter((business) => !business.localFeatured);
+  function card(business: PublicBusinessView) {
+    return <DirectoryResultCard key={business.id} business={business} />;
+  }
+  const moreAvailable = local.length > 4 || organic.length > 4 || hasMore;
   return (
     <>
-      {expanded ? (
-        cards
-      ) : (
-        <HomeRail listings label="Djelatnosti u blizini" className={homeStyles.businessGrid}>
-          {cards}
-        </HomeRail>
-      )}
-      {!useGps && businesses.length > 4 && (
+      <HomeNearbyGroups local={local.map(card)} organic={organic.map(card)} expanded={expanded} />
+      {!useGps && moreAvailable && (
         <Link className={styles.more} href={`/pretraga?mjesto=${encodeURIComponent(place)}`}>
           Sve djelatnosti u ovom mjestu
         </Link>
       )}
-      {useGps && !expanded && (businesses.length > 4 || hasMore) && (
+      {useGps && !expanded && moreAvailable && (
         <button className={styles.more} onClick={() => setExpanded(true)} type="button">
           Sve u blizini
         </button>

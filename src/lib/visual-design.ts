@@ -88,6 +88,10 @@ export const designTargets: readonly DesignTarget[] = [
   target("home-search", "Brza pretraga", "home"),
   target("home-categories", "Traka kategorija", "home"),
   target("home-featured", "Istaknute djelatnosti", "home"),
+  target("home-category-featured", "Istaknuto u kategoriji", "home"),
+  target("home-local-featured", "Istaknuto na lokaciji", "home"),
+  target("home-promotion", "Poziv na isticanje", "home"),
+  target("home-community", "AhiBizz zajednica", "home"),
   target("home-ad", "Oglas", "home"),
   target("home-nearby", "Djelatnosti u blizini", "home"),
   target("home-logos", "Traka logotipa", "home"),
@@ -137,9 +141,12 @@ export function findDesignTarget(element: Element, boundary: Element) {
 export const homeSections = [
   { id: "featured", label: "Istaknute djelatnosti" },
   { id: "ad", label: "Oglasni prostor" },
+  { id: "categoryFeatured", label: "Istaknuto u kategoriji" },
   { id: "nearby", label: "Blizu tebe" },
+  { id: "promotion", label: "Poziv na isticanje" },
   { id: "logos", label: "Poslovna mreža" },
   { id: "credits", label: "Ahi Credits" },
+  { id: "community", label: "AhiBizz zajednica" },
 ] as const;
 
 export type DesignProperty = {
@@ -352,14 +359,23 @@ export function parseVisualDesign(input: unknown): VisualDesign {
   const order = value.homeOrder;
   if (
     !Array.isArray(order) ||
-    order.length !== ids.length ||
-    new Set(order).size !== ids.length ||
+    new Set(order).size !== order.length ||
     !order.every((id) => typeof id === "string" && ids.includes(id))
   )
     invalid();
+  const legacySections = ["featured", "ad", "nearby", "logos", "credits"];
+  const legacyOrder =
+    order.length === legacySections.length && order.every((id) => legacySections.includes(id));
+  if (!legacyOrder && order.length !== ids.length) invalid();
+  const homeOrder = [...order];
+  if (legacyOrder) {
+    homeOrder.splice(homeOrder.indexOf("nearby"), 0, "categoryFeatured");
+    homeOrder.splice(homeOrder.indexOf("nearby") + 1, 0, "promotion");
+    homeOrder.push("community");
+  }
   const design: VisualDesign = {
     rules: {},
-    homeOrder: [...order],
+    homeOrder,
     heroTitle: plainText(value.heroTitle, 100, 3, true),
     heroImage: homeCoverId(value.heroImage),
     heroSubtitle: plainText(value.heroSubtitle === undefined ? "" : value.heroSubtitle, 160, 2),

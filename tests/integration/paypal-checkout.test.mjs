@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import test from "node:test";
 import { Pool } from "pg";
 import { loadMigrations, runMigrations } from "../../scripts/migrate.mjs";
+import { createPublicDirectoryService } from "../../src/server/directory/read-service.ts";
 import { createCheckoutStore, promotionSql } from "../../src/server/paypal/store.ts";
 import { integrationConfiguration } from "./postgres.test.mjs";
 
@@ -408,6 +409,30 @@ test("durable checkout isolated PostgreSQL authority, replay, rights and refunds
       assert.equal(paid.status, "captured");
       assert.equal(Date.parse(paid.endsAt) - Date.parse(paid.startsAt), 7 * 86400000);
       assert.equal(await visible(first.businessId), true);
+      const directory = createPublicDirectoryService({ database: pool });
+      const previous = process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY;
+      try {
+        process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY = "true";
+        assert.ok(
+          (await directory.listPublic({ categoryId: category }, "category")).items.some(
+            (item) => item.id === first.businessId,
+          ),
+        );
+        assert.deepEqual(
+          (await directory.listPublic({ categoryId: category2 }, "category")).items,
+          [],
+        );
+        assert.ok(
+          !(await directory.listPublic({}, true)).items.some(
+            (item) => item.id === first.businessId,
+          ),
+        );
+        process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY = "false";
+        assert.deepEqual((await directory.listPublic({}, "category")).items, []);
+      } finally {
+        if (previous === undefined) delete process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY;
+        else process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY = previous;
+      }
       assert.equal((await capture(first, "EVENT-PAID")).captureId, paid.captureId);
       assert.equal(
         (

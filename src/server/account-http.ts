@@ -85,7 +85,8 @@ export function createAccountHttpHandler({
           return reply(await service.listAccounts(request.headers, query));
         }
       }
-      if (request.method !== "PATCH" || (pathname !== "/api/account" && !target))
+      const passwordChange = pathname === "/api/account/password" && !url.search;
+      if (request.method !== "PATCH" || (pathname !== "/api/account" && !target && !passwordChange))
         return reply({ code: "NOT_FOUND" }, 404);
       if (request.headers.get("origin") !== new URL(baseURL).origin)
         return reply({ code: "INVALID_ORIGIN" }, 403);
@@ -95,6 +96,10 @@ export function createAccountHttpHandler({
       )
         return reply({ code: "INVALID_CONTENT_TYPE" }, 415);
       const value = await readAccountJson(request);
+      if (passwordChange) {
+        await service.changePassword(request.headers, value);
+        return reply({ ok: true });
+      }
       if (!target && value && typeof value === "object" && Object.hasOwn(value, "name")) {
         const denied = await checkContribution(request);
         if (denied) return denied;

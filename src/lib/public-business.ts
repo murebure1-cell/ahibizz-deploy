@@ -25,6 +25,7 @@ export type PublicBusinessView = {
   latitude: number | null;
   longitude: number | null;
   verified: boolean;
+  localFeatured?: boolean;
   image?: { src: string; alt: string };
   gallery?: { src: string; alt: string }[];
   logo?: { src: string; alt: string };

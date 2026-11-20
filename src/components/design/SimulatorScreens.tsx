@@ -13,7 +13,7 @@ import { DirectoryResultCard } from "../directory/DirectoryResultCard";
 import { DirectorySearchForm } from "../directory/DirectorySearchForm";
 import { PublicBusinessProfile } from "../directory/PublicBusinessProfile";
 import search from "../directory/public-search.module.css";
-import { HomeSurface } from "../home/HomeSurface";
+import { HomeNearbyGroups, HomeSurface } from "../home/HomeSurface";
 import { Icon } from "../Icon";
 import { MessagingInbox } from "../messaging/MessagingInbox";
 import { PersonalProfileCard } from "../people/PersonalProfileCard";
@@ -108,9 +108,10 @@ export function SimulatorScreens({
         categories={categories}
         featuredHref="/pretraga"
         featured={cardList}
+        categoryFeatured={cardList.slice(0, 1)}
         advertisingHref="/nalog?odjeljak=oglasi"
         nearbyControl={<span>Tuzla</span>}
-        nearby={cardList.slice(0, 2)}
+        nearby={<HomeNearbyGroups local={cardList.slice(1, 2)} organic={cardList.slice(2)} />}
       />
     );
   if (screen === "auth") return <AuthForm mode="sign-in" available />;

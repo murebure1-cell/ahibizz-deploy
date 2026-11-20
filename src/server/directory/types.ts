@@ -42,6 +42,7 @@ export type DirectoryBusiness = BusinessFields & {
   version: number;
   verified: boolean;
   featured: boolean;
+  localFeatured?: boolean;
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;

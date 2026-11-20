@@ -1771,6 +1771,91 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           }
         },
       );
+      await t.test(
+        "settings changes one credential atomically and keeps only the requesting device",
+        async () => {
+          const otherDevice = new Cookies();
+          const login = (candidate, cookies) =>
+            request("POST", "/api/auth/sign-in/email", {
+              body: { email, password: candidate },
+              cookies,
+            });
+          assert.equal((await login(replacementPassword, otherDevice)).response.status, 200);
+          const change = (currentPassword, newPassword, options = {}) =>
+            request("PATCH", "/api/account/password", {
+              cookies: first,
+              expectedAccountId: userId,
+              body: { currentPassword, newPassword },
+              ...options,
+            });
+          const choices = ["Changed-fixture-password-Alpha!", "Changed-fixture-password-Beta!"];
+          assert.equal(
+            (await change(replacementPassword, choices[0], { origin: "https://outside.invalid" }))
+              .response.status,
+            403,
+          );
+          assert.equal(
+            (await change(replacementPassword, choices[0], { expectedAccountId: "other-person" }))
+              .response.status,
+            401,
+          );
+          assert.equal(
+            (await change(replacementPassword, choices[0], { cookies: new Cookies() })).response
+              .status,
+            401,
+          );
+          assert.equal((await change(replacementPassword, "short")).response.status, 400);
+          assert.equal(
+            (await change(replacementPassword, replacementPassword)).data.code,
+            "PASSWORD_UNCHANGED",
+          );
+          for (let attempt = 0; attempt < 5; attempt++) {
+            assert.equal(
+              (await change("Incorrect-fixture-password", choices[0])).data.code,
+              "INVALID_CURRENT_PASSWORD",
+            );
+          }
+          assert.equal((await change(replacementPassword, choices[0])).response.status, 429);
+          assert.equal((await session(otherDevice)).user.id, userId);
+          await pool.query(
+            'UPDATE auth_rate_limit SET "lastRequest" = "lastRequest" - 61000 WHERE key=$1',
+            [`account-password:${userId}`],
+          );
+          assert.equal(
+            (
+              await request("POST", "/api/auth/request-password-reset", {
+                body: { email, redirectTo: "/nova-lozinka" },
+              })
+            ).response.status,
+            200,
+          );
+          const expiredLink = await request("GET", mail.at(-1).url);
+          const token = new URL(
+            expiredLink.response.headers.get("location"),
+            baseURL,
+          ).searchParams.get("token");
+          assert.ok(token);
+          const outcomes = await Promise.all(
+            choices.map((candidate) => change(replacementPassword, candidate)),
+          );
+          assert.deepEqual(outcomes.map((result) => result.response.status).sort(), [200, 400]);
+          const winner = outcomes.findIndex((result) => result.response.status === 200);
+          assert.deepEqual(outcomes[winner].data, { ok: true });
+          assert.equal((await session(first)).user.id, userId);
+          assert.equal(await session(otherDevice), null);
+          assert.equal(
+            (
+              await request("POST", "/api/auth/reset-password", {
+                body: { token, newPassword: replacementPassword },
+              })
+            ).response.status,
+            400,
+          );
+          assert.equal((await login(replacementPassword)).response.status, 401);
+          assert.equal((await login(choices[winner], otherDevice)).response.status, 200);
+          assert.equal((await session(otherDevice)).user.id, userId);
+        },
+      );
       assert.ok(
         (await pool.query("SELECT count(*)::integer AS n FROM auth_rate_limit")).rows[0].n > 0,
       );

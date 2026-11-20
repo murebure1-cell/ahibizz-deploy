@@ -10,6 +10,7 @@ const config: NextConfig = {
   async rewrites() {
     const webOnlyRoutes = [
       "/paketi",
+      "/oglasavanje",
       "/naplata",
       "/podrzi",
       "/probna-naplata",

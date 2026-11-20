@@ -31,17 +31,20 @@ export default async function HomePage({
   let available = false;
   let businesses: PublicDirectoryBusiness[] = [];
   let featured: PublicDirectoryBusiness[] = [];
+  let inCategory: PublicDirectoryBusiness[] = [];
   let categories: DirectoryCategory[] = [];
   try {
     const service = getPublicDirectoryService();
     if (service) {
-      const [classification, result, highlights] = await Promise.all([
+      const [classification, result, highlights, categoryHighlights] = await Promise.all([
         service.categories(),
         place ? service.listPublic({ city: place }) : Promise.resolve(null),
         service.listPublic({}, true),
+        service.listPublic({}, "category"),
       ]);
-      businesses = result?.items.slice(0, 5) ?? [];
+      businesses = result?.items ?? [];
       featured = highlights.items.slice(0, 6);
+      inCategory = categoryHighlights.items.slice(0, 6);
       categories = classification.categories;
       available = true;
     }
@@ -71,6 +74,13 @@ export default async function HomePage({
             : undefined
         }
         advertisingHref="/nalog?odjeljak=oglasi"
+        categoryFeatured={inCategory.map((business) => (
+          <DirectoryResultCard
+            key={business.id}
+            business={publicBusinessView(business, categories)}
+          />
+        ))}
+        categoryAvailable={available}
         banner={banner}
         creditsHref="/nalog?odjeljak=krediti"
         nearbyControl={<HomeNearbyControl />}

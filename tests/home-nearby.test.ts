@@ -45,6 +45,17 @@ test("nearby pages preserve the fifth result and validate the requested page", (
   assert.equal(readNearbyBusinesses(second, [], 2)[4]?.id, rows[4]?.id);
   assert.throws(() => readNearbyBusinesses(result(rows), [], 2));
 });
+test("only the explicit local entitlement puts a nearby result in the highlighted group", () => {
+  const rows = [
+    { ...row, featured: true },
+    { ...row, localFeatured: true },
+    { ...row, localFeatured: false },
+  ];
+  assert.deepEqual(
+    readNearbyBusinesses(result(rows), []).map((business) => business.localFeatured),
+    [false, true, false],
+  );
+});
 test("GPS and city results carry the same opening hours, amenities and rating onto their cards", () => {
   const hours = Array.from({ length: 7 }, (_, index) => ({
     weekday: index + 1,
