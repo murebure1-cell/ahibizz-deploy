@@ -677,17 +677,19 @@ export function Checkout({
                   Nastavi na PayPal
                 </button>
               )}
-              {!initialQuoteId && <button
-                type="button"
-                className={styles.back}
-                disabled={busy}
-                onClick={() => {
-                  setReview(false);
-                  setCardOpen(false);
-                }}
-              >
-                Nazad
-              </button>}
+              {!initialQuoteId && (
+                <button
+                  type="button"
+                  className={styles.back}
+                  disabled={busy}
+                  onClick={() => {
+                    setReview(false);
+                    setCardOpen(false);
+                  }}
+                >
+                  Nazad
+                </button>
+              )}
             </div>
           )}
         </section>
