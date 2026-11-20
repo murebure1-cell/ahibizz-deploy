@@ -192,10 +192,13 @@ test("client financial requests preserve the exact actor, command key/body and s
       "admin/receipts?owner=other",
       "admin/businesses?page=1&q=x#bad",
       "admin?page=1&page=2",
+      "admin/pending?page=1&extra=1",
     ])
       await assert.rejects(billingRequest(path), BillingRequestError);
     await assert.rejects(billingActorRequest(undefined)("admin"), BillingRequestError);
     assert.equal(calls.length, 1);
+    await request("admin/pending?page=1");
+    assert.equal(calls[1]?.url, "/api/billing/admin/pending?page=1");
   } finally {
     globalThis.fetch = old;
   }

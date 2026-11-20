@@ -122,7 +122,7 @@ export class BillingRequestError extends Error {
 }
 export const billingRequest: BillingRequest = async (path, options = {}) => {
   if (
-    !/^(?:catalog|admin(?:\/development)?(?:\?page=[1-9]\d{0,2})?|admin\/businesses(?:\?(?:page=[1-9]\d{0,2}(?:&q=[^&#]*)?|q=[^&#]*(?:&page=[1-9]\d{0,2})?))?|admin\/receipts(?:\/[a-f0-9-]{36})?|admin\/commands\/[a-f0-9-]{36})$/i.test(
+    !/^(?:catalog|admin(?:\/(?:development|pending))?(?:\?page=[1-9]\d{0,2})?|admin\/businesses(?:\?(?:page=[1-9]\d{0,2}(?:&q=[^&#]*)?|q=[^&#]*(?:&page=[1-9]\d{0,2})?))?|admin\/receipts(?:\/[a-f0-9-]{36})?|admin\/commands\/[a-f0-9-]{36})$/i.test(
       path,
     )
   )
