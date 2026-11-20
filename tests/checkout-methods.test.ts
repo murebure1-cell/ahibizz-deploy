@@ -21,6 +21,6 @@ test("checkout app entry does not replace original package prices or expose Dodo
   );
   assert.match(
     readFileSync("src/components/directory/BusinessManager.tsx", "utf8"),
-    /href="\/naplata"/,
+    /\/naplata\?djelatnost=/,
   );
 });

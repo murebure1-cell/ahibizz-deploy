@@ -64,7 +64,7 @@ async function lockTarget(client: PoolClient, target: Target) {
           (approval='approved' AND "emailVerified") AS eligible FROM auth_user WHERE id=$1 FOR UPDATE`
       : `SELECT b.is_verified AS verified, b.verification_version AS version, b.owner_user_id AS "ownerId", b.title AS "subjectLabel", b.owner_user_id AS identity,
           (b.status<>'archived' AND u.approval='approved' AND u."emailVerified") AS eligible
-        FROM directory_business b JOIN auth_user u ON u.id=b.owner_user_id WHERE b.id=$1 FOR UPDATE OF b`;
+        FROM directory_business b JOIN auth_user u ON u.id=b.owner_user_id WHERE b.id=$1 AND b.deleted_at IS NULL FOR UPDATE OF b`;
   return (await client.query<TargetState>(sql, [target.id])).rows[0];
 }
 
@@ -83,7 +83,7 @@ export function createVerificationService({ pool, auth }: { pool: Pool; auth: Au
         target.kind === "business"
           ? (
               await client.query<{ owner_user_id: string }>(
-                "SELECT owner_user_id FROM directory_business WHERE id=$1",
+                "SELECT owner_user_id FROM directory_business WHERE id=$1 AND deleted_at IS NULL",
                 [target.id],
               )
             ).rows[0]?.owner_user_id

@@ -138,7 +138,7 @@ async function classify(client: PoolClient, value: BusinessFields): Promise<void
 }
 async function business(client: Pick<PoolClient, "query">, id: string): Promise<DirectoryBusiness> {
   const result = await client.query<Row>(
-    `SELECT ${columns} FROM directory_business b WHERE b.id = $1`,
+    `SELECT ${columns} FROM directory_business b WHERE b.id = $1 AND b.deleted_at IS NULL`,
     [id],
   );
   if (!result.rows[0]) fail(404, "BUSINESS_NOT_FOUND");
@@ -148,14 +148,14 @@ async function lockedBusiness(client: PoolClient, identity: DirectoryIdentity, i
   const actorId = identity.id;
   const hint = (
     await client.query<{ owner_user_id: string }>(
-      "SELECT owner_user_id FROM directory_business WHERE id = $1",
+      "SELECT owner_user_id FROM directory_business WHERE id = $1 AND deleted_at IS NULL",
       [id],
     )
   ).rows[0];
   if (!hint) fail(404, "BUSINESS_NOT_FOUND");
   const users = await lockUsers(client, identity, hint.owner_user_id);
   const result = await client.query<Row>(
-    `SELECT ${columns} FROM directory_business b WHERE b.id = $1 FOR UPDATE`,
+    `SELECT ${columns} FROM directory_business b WHERE b.id = $1 AND b.deleted_at IS NULL FOR UPDATE`,
     [id],
   );
   const row = result.rows[0];
@@ -586,6 +586,59 @@ export function createDirectoryService({
         current(before, expected);
         if (before.status === "archived") return before;
         return save(client, before, fields(before), "archived");
+      });
+    },
+    async remove(headers: Headers, id: string, input: unknown) {
+      const expected = versionInput(input),
+        identity = await actor(headers),
+        key = uuid(id);
+      return transaction(pool, async (client) => {
+        const { actor: currentActor, before } = await lockedBusiness(client, identity, key);
+        current(before, expected);
+        // Booking and sales creation take this same business lock before writing.
+        const { rows } = await client.query<{
+          bookings: boolean;
+          contract: boolean;
+          payments: boolean;
+        }>(
+          `SELECT
+            (EXISTS (SELECT 1 FROM booking_entry WHERE business_id=$1 AND kind<>'block'
+                 AND status IN ('requested','confirmed'))
+              OR EXISTS (SELECT 1 FROM rental_booking WHERE business_id=$1 AND kind='customer'
+                 AND status IN ('requested','confirmed') AND ends_at>now())
+              OR EXISTS (SELECT 1 FROM stay_booking WHERE business_id=$1 AND kind='customer'
+                 AND status IN ('requested','confirmed') AND check_out>(now() AT TIME ZONE timezone)::date)) AS bookings,
+            (EXISTS (SELECT 1 FROM live_package_contract WHERE business_id=$1 AND
+                 (status NOT IN ('CANCELLED','EXPIRED') OR ends_at>now() OR settlement_hold_until>now()))
+              OR EXISTS (SELECT 1 FROM billing_receipt WHERE business_id=$1 AND kind='subscription'
+                 AND gross_minor>refunded_minor AND service_ends_on>(now() AT TIME ZONE 'Europe/Sarajevo')::date)) AS contract,
+            (EXISTS (SELECT 1 FROM marketing_order WHERE business_id=$1 AND
+                 (production_receipt_conflict OR
+                   (status='paid' AND revoked_at IS NULL AND ends_at>now())))
+              OR EXISTS (SELECT 1 FROM paypal_promotion_entitlement e
+                 JOIN paypal_checkout_order p ON p.id=e.order_id AND p.environment='live'
+                 WHERE e.business_id=$1 AND e.revoked_at IS NULL AND e.ends_at>now())
+              OR EXISTS (SELECT 1 FROM paypal_checkout_order p
+                 LEFT JOIN marketing_order m ON m.id=p.quote_id
+                 WHERE (p.business_id=$1 OR m.business_id=$1) AND p.environment='live' AND
+                   (p.status='review' OR p.refund_total_unknown OR p.capture_lease_until>now()
+                    OR (p.status IN ('created','provider_created') AND p.expires_at>now())
+                    OR EXISTS (SELECT 1 FROM paypal_refund_command r WHERE r.order_id=p.id AND r.status='reserved')))) AS payments`,
+          [key],
+        );
+        const obligations = rows[0];
+        if (!obligations) fail(503, "DIRECTORY_UNAVAILABLE");
+        if (obligations.bookings) fail(409, "BUSINESS_HAS_BOOKINGS");
+        if (obligations.contract) fail(409, "BUSINESS_HAS_CONTRACT");
+        if (obligations.payments) fail(409, "BUSINESS_HAS_PAYMENTS");
+        await clearBusinessImageProposals(client, key);
+        await client.query(
+          `UPDATE directory_business SET deleted_at=now(), deleted_by=$2, status='archived',
+            archived_at=COALESCE(archived_at,now()), editorial_revision=NULL, version=version+1, updated_at=now()
+           WHERE id=$1`,
+          [key, currentActor.id],
+        );
+        return { deleted: true as const };
       });
     },
     async recover(headers: Headers, id: string, input: unknown) {

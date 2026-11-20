@@ -158,6 +158,7 @@ test("bad input is rejected before any connection; real initial SQL has a fixed 
       "0028_marketing_offers.sql",
       "0029_marketing_online_checkout.sql",
       "0030_production_orders.sql",
+      "0031_directory_removal.sql",
     ],
   );
   assert.equal(files[0].version, "0001_platform.sql");

@@ -46,6 +46,7 @@ import {
   uncertainDirectoryMutation,
 } from "../../lib/directory-mutation-recovery";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
+import { placementOfferPath } from "../../lib/marketing";
 import type { DirectoryBusiness } from "../../server/directory/types";
 import { ProfileVerification } from "../admin/ProfileVerification";
 import { BusinessBookingManager } from "../booking/BusinessBookingManager";
@@ -53,6 +54,7 @@ import { Icon } from "../Icon";
 import { RentalFleet } from "../rentals/RentalFleet";
 import { StayUnits } from "../stays/StayUnits";
 import { BusinessChanges } from "./BusinessChanges";
+import { BusinessDeleteAction } from "./BusinessDeleteAction";
 import { BusinessDetailsManager } from "./BusinessDetailsManager";
 import {
   BusinessEditor,
@@ -205,6 +207,7 @@ export function BusinessManager({
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const [promotionId, setPromotionId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<DirectoryListFilter>(
@@ -282,6 +285,7 @@ export function BusinessManager({
     loadedSelection.current = "";
     setSearchText("");
     setSearchQuery("");
+    setPromotionId(null);
     setItems(null);
     setCategories([]);
     setHasMore(false);
@@ -1132,11 +1136,6 @@ export function BusinessManager({
           </button>
         )}
       </div>
-      {!IS_PLAY_EDITION && !all && !locked && editing === undefined && (
-        <p className={styles.notice}>
-          <Link href="/naplata">Istakni djelatnost</Link>
-        </p>
-      )}
       {(error || readError) && (
         <p role="alert" className={styles.error}>
           {error || readError}
@@ -1339,116 +1338,118 @@ export function BusinessManager({
               </fieldset>
             </form>
           )}
-          {isOwner && (
-            <search aria-label="Pretraga djelatnosti">
-              <form
-                className={styles.manageSearch}
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  applySearch(searchText);
+          <div className={styles.listControls}>
+            {isOwner && (
+              <search aria-label="Pretraga djelatnosti">
+                <form
+                  className={styles.manageSearch}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    applySearch(searchText);
+                  }}
+                >
+                  <input
+                    type="search"
+                    name="q"
+                    aria-label="Naziv ili grad"
+                    placeholder="Naziv ili grad"
+                    maxLength={120}
+                    disabled={locked}
+                    value={searchText}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setSearchText(next);
+                      if (!next && searchQuery) applySearch("");
+                    }}
+                  />
+                  <button type="submit" className={styles.secondary} disabled={locked}>
+                    Pretraži
+                  </button>
+                  {(searchQuery || searchText) && (
+                    <button
+                      type="button"
+                      className={styles.cancel}
+                      disabled={locked}
+                      onClick={() => applySearch("")}
+                    >
+                      Očisti pretragu
+                    </button>
+                  )}
+                </form>
+              </search>
+            )}
+            <div className={styles.toolbar}>
+              <div className={styles.filters}>
+                {isOwner && (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={all}
+                      disabled={locked || loading}
+                      onChange={(event) => {
+                        if (!archived) setFilter("active");
+                        setAll(event.target.checked);
+                        setPage(1);
+                      }}
+                    />
+                    Sve djelatnosti
+                  </label>
+                )}
+                {isOwner && (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={reviewOnly}
+                      disabled={locked || loading}
+                      onChange={(event) => {
+                        setFilter(event.target.checked ? "review" : "active");
+                        if (event.target.checked) setAll(true);
+                        setPage(1);
+                      }}
+                    />
+                    Na pregledu
+                  </label>
+                )}
+                {isOwner && embedded && (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={missingMap}
+                      disabled={locked || loading}
+                      onChange={(event) => {
+                        setFilter(event.target.checked ? "missingMap" : "active");
+                        if (event.target.checked) setAll(true);
+                        setPage(1);
+                      }}
+                    />
+                    Bez lokacije na mapi
+                  </label>
+                )}
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={archived}
+                    disabled={locked || loading}
+                    onChange={(event) => {
+                      setFilter(event.target.checked ? "archived" : "active");
+                      setPage(1);
+                    }}
+                  />
+                  Arhivirane
+                </label>
+              </div>
+              <button
+                type="button"
+                className={styles.cancel}
+                disabled={locked || loading}
+                onClick={() => {
+                  setError("");
+                  setRefresh((value) => value + 1);
                 }}
               >
-                <input
-                  type="search"
-                  name="q"
-                  aria-label="Naziv ili grad"
-                  placeholder="Naziv ili grad"
-                  maxLength={120}
-                  disabled={locked}
-                  value={searchText}
-                  onChange={(event) => {
-                    const next = event.target.value;
-                    setSearchText(next);
-                    if (!next && searchQuery) applySearch("");
-                  }}
-                />
-                <button type="submit" className={styles.secondary} disabled={locked}>
-                  Pretraži
-                </button>
-                {(searchQuery || searchText) && (
-                  <button
-                    type="button"
-                    className={styles.cancel}
-                    disabled={locked}
-                    onClick={() => applySearch("")}
-                  >
-                    Očisti pretragu
-                  </button>
-                )}
-              </form>
-            </search>
-          )}
-          <div className={styles.toolbar}>
-            <div className={styles.filters}>
-              {isOwner && (
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={all}
-                    disabled={locked || loading}
-                    onChange={(event) => {
-                      if (!archived) setFilter("active");
-                      setAll(event.target.checked);
-                      setPage(1);
-                    }}
-                  />
-                  Sve djelatnosti
-                </label>
-              )}
-              {isOwner && (
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={reviewOnly}
-                    disabled={locked || loading}
-                    onChange={(event) => {
-                      setFilter(event.target.checked ? "review" : "active");
-                      if (event.target.checked) setAll(true);
-                      setPage(1);
-                    }}
-                  />
-                  Na pregledu
-                </label>
-              )}
-              {isOwner && embedded && (
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={missingMap}
-                    disabled={locked || loading}
-                    onChange={(event) => {
-                      setFilter(event.target.checked ? "missingMap" : "active");
-                      if (event.target.checked) setAll(true);
-                      setPage(1);
-                    }}
-                  />
-                  Bez lokacije na mapi
-                </label>
-              )}
-              <label>
-                <input
-                  type="checkbox"
-                  checked={archived}
-                  disabled={locked || loading}
-                  onChange={(event) => {
-                    setFilter(event.target.checked ? "archived" : "active");
-                    setPage(1);
-                  }}
-                />
-                Arhivirane
-              </label>
+                Osvježi
+              </button>
             </div>
-            <button
-              type="button"
-              className={styles.cancel}
-              disabled={locked || loading}
-              onClick={() => {
-                setError("");
-                setRefresh((value) => value + 1);
-              }}
-            >
-              Osvježi
-            </button>
           </div>
           {!items && !error && !readError && <p role="status">Dohvaćanje djelatnosti…</p>}
           {categories.length === 0 && items && isOwner && (
@@ -1479,6 +1480,11 @@ export function BusinessManager({
           )}
           <div className={styles.list}>
             {items?.map((item) => {
+              const canPromote =
+                !IS_PLAY_EDITION &&
+                item.status === "published" &&
+                !item.packagePaymentNeeded &&
+                expectedAccountId === item.ownerId;
               const stays =
                 item.hasStayUnits ||
                 hasStayCategory(categories, item.categoryId, item.subcategoryId);
@@ -1650,6 +1656,20 @@ export function BusinessManager({
                             Vrati u nacrt
                           </button>
                         )}
+                        {canPromote && (
+                          <button
+                            type="button"
+                            className={styles.promote}
+                            aria-expanded={promotionId === item.id}
+                            aria-controls={`isticanje-${item.id}`}
+                            disabled={locked || loading}
+                            onClick={() =>
+                              setPromotionId((current) => (current === item.id ? null : item.id))
+                            }
+                          >
+                            <Icon name="star" /> Istakni djelatnost
+                          </button>
+                        )}
                         <button
                           type="button"
                           className={styles.cancel}
@@ -1669,7 +1689,56 @@ export function BusinessManager({
                         Vrati u nacrte
                       </button>
                     )}
+                    {expectedAccountId && (isOwner || expectedAccountId === item.ownerId) && (
+                      <BusinessDeleteAction
+                        business={item}
+                        accountId={expectedAccountId}
+                        disabled={locked || loading}
+                        onDeleted={() => {
+                          setItems((current) => current?.filter((b) => b.id !== item.id) ?? null);
+                          setRefresh((value) => value + 1);
+                        }}
+                      />
+                    )}
                   </div>
+                  {canPromote && (
+                    <nav
+                      hidden={promotionId !== item.id || locked}
+                      id={`isticanje-${item.id}`}
+                      className={styles.placements}
+                      aria-labelledby={`mjesto-${item.id}`}
+                    >
+                      <h3 id={`mjesto-${item.id}`}>Gdje želiš istaknuti djelatnost?</h3>
+                      <Link
+                        prefetch={false}
+                        href={`/naplata?djelatnost=${encodeURIComponent(item.id)}`}
+                      >
+                        <span>U kategoriji</span>
+                        <Icon name="chevron" />
+                      </Link>
+                      <Link
+                        prefetch={false}
+                        href={placementOfferPath({ businessId: item.id, placement: "nearby" })}
+                      >
+                        <span>Na lokaciji</span>
+                        <Icon name="chevron" />
+                      </Link>
+                      <Link
+                        prefetch={false}
+                        href={placementOfferPath({ businessId: item.id, placement: "featured" })}
+                      >
+                        <span>Na početnoj</span>
+                        <Icon name="chevron" />
+                      </Link>
+                      <Link
+                        prefetch={false}
+                        href={placementOfferPath({ businessId: item.id, placement: "banner" })}
+                      >
+                        <span>Baner na početnoj</span>
+                        <Icon name="chevron" />
+                      </Link>
+                    </nav>
+                  )}
                 </article>
               );
             })}

@@ -60,11 +60,17 @@ test("login retains only exact known messaging destinations and previous safe pr
     `/djelatnosti/${business}#recenzije`,
     "/ljudi/person_A-1",
     `/naplata?ponuda=${business}`,
+    `/naplata?djelatnost=${business}`,
+    `/nalog?odjeljak=oglasi&mjesto=nearby&djelatnost=${business}`,
   ])
     assert.equal(accountReturnPath(value), value);
   for (const value of [
     undefined,
     `/naplata?ponuda=${business}&iznos=1`,
+    `/naplata?djelatnost=${business}&iznos=1`,
+    `/nalog?odjeljak=oglasi&mjesto=nepoznat&djelatnost=${business}`,
+    `/nalog?odjeljak=oglasi&mjesto=banner&djelatnost=${business}&iznos=1`,
+    `/nalog?odjeljak=oglasi&mjesto=banner&mjesto=featured&djelatnost=${business}`,
     "/naplata?ponuda=//evil.invalid",
     "/nalog?odjeljak=oglasi&usluga=produkcija&nastavi=//evil.invalid",
     null,

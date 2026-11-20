@@ -801,6 +801,22 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           );
         },
       );
+      await t.test("removed businesses are inaccessible in all owner workspaces", async () => {
+        const item = await create(admin, "Removed workspace fixture");
+        await directory.remove(admin.headers, item.id, { expectedVersion: item.version });
+        await denied(ownership.read(admin.headers, item.id), 404, "BUSINESS_NOT_FOUND");
+        await denied(media.readOwn(admin.headers, item.id), 404, "BUSINESS_NOT_FOUND");
+        await denied(booking.readSettings(admin.headers, item.id), 404, "BUSINESS_NOT_FOUND");
+        const { createRentalService } = await import("../../src/server/rentals/service.ts");
+        const { createStayService } = await import("../../src/server/stays/service.ts");
+        for (const service of [createRentalService, createStayService]) {
+          await denied(
+            service({ auth, accounts, pool }).ownerCatalog(admin.headers, item.id),
+            404,
+            "BUSINESS_NOT_FOUND",
+          );
+        }
+      });
       assert.equal(outboundAttempts, 0);
       assert.equal(captures.size, 5);
       assert.deepEqual(await outsideTables(administration, schema), outside);

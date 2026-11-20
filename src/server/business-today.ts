@@ -21,7 +21,7 @@ export async function readBusinessToday(
   instant = new Date(),
 ): Promise<BusinessTodayData | null> {
   const choices = await client.query<BusinessChoice>(
-    `SELECT id,title FROM directory_business WHERE owner_user_id=$1 AND status<>'archived'
+    `SELECT id,title FROM directory_business WHERE owner_user_id=$1 AND deleted_at IS NULL AND status<>'archived'
      ORDER BY (status='published') DESC, lower(title), id`,
     [accountId],
   );
@@ -47,7 +47,7 @@ export async function readBusinessToday(
      LEFT JOIN directory_category sc ON sc.id=b.subcategory_id
      LEFT JOIN directory_business_details d ON d.business_id=b.id
      LEFT JOIN booking_settings bs ON bs.business_id=b.id
-     WHERE b.id=$1 AND b.owner_user_id=$2 AND b.status<>'archived' FOR SHARE OF b`,
+     WHERE b.id=$1 AND b.owner_user_id=$2 AND b.deleted_at IS NULL AND b.status<>'archived' FOR SHARE OF b`,
     [selected, accountId],
   );
   const business = selectedRows.rows[0];

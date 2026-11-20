@@ -61,7 +61,7 @@ export async function readOwnerOverview(
        CROSS JOIN LATERAL (
          SELECT count(*)::integer AS businesses,
            (count(*) FILTER (WHERE b.status='published' AND package_allows_listing(b) AND (${promotionSql("b")} OR ${paidPlacementSql("featured")} OR (b.latitude IS NOT NULL AND b.longitude IS NOT NULL AND ${paidPlacementSql("nearby")}))))::integer AS "promotedBusinesses"
-         FROM directory_business b WHERE b.owner_user_id=u.id AND b.status<>'archived'
+         FROM directory_business b WHERE b.owner_user_id=u.id AND b.deleted_at IS NULL AND b.status<>'archived'
        ) stats WHERE u.id=$1`,
     [accountId],
   );

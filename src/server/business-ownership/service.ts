@@ -124,7 +124,7 @@ async function freshSession(client: PoolClient, signed: Session) {
 async function context(client: PoolClient, signed: Session, id: string, targetId?: string) {
   const hint = (
     await client.query<{ owner_user_id: string }>(
-      "SELECT owner_user_id FROM directory_business WHERE id=$1",
+      "SELECT owner_user_id FROM directory_business WHERE id=$1 AND deleted_at IS NULL",
       [id],
     )
   ).rows[0];
@@ -145,7 +145,7 @@ async function context(client: PoolClient, signed: Session, id: string, targetId
   await freshSession(client, signed);
   const row = (
     await client.query<Row>(
-      `SELECT ${columns} FROM directory_business b WHERE b.id=$1 FOR UPDATE`,
+      `SELECT ${columns} FROM directory_business b WHERE b.id=$1 AND b.deleted_at IS NULL FOR UPDATE`,
       [id],
     )
   ).rows[0];

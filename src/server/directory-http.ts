@@ -161,7 +161,8 @@ export function createDirectoryHttpHandler({
       const change =
         request.method === "PATCH" && id && !action && (area === "mine" || area === "review");
       const move = request.method === "POST" && id && action && area === "mine";
-      if (!create && !change && !move) return reply({ code: "NOT_FOUND" }, 404);
+      const remove = request.method === "DELETE" && area === "mine" && id && !action;
+      if (!create && !change && !move && !remove) return reply({ code: "NOT_FOUND" }, 404);
       query(url, []);
       if (request.headers.get("origin") !== new URL(baseURL).origin)
         return reply({ code: "INVALID_ORIGIN" }, 403);
@@ -192,6 +193,7 @@ export function createDirectoryHttpHandler({
               ? await service.moderate(request.headers, id, body)
               : await service.update(request.headers, id, body),
         });
+      if (remove) return reply(await service.remove(request.headers, id, body));
       if (action === "publish")
         return reply({ business: await service.publish(request.headers, id, body) });
       if (action === "archive")

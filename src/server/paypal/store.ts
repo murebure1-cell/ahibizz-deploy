@@ -132,7 +132,7 @@ async function business(c: PoolClient, id: string) {
       title: string;
       status: string;
     }>(
-      "SELECT id,owner_user_id,category_id,title, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status FROM directory_business b WHERE id=$1 FOR UPDATE",
+      "SELECT id,owner_user_id,category_id,title, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status FROM directory_business b WHERE id=$1 AND b.deleted_at IS NULL FOR UPDATE",
       [uuid(id)],
     )
   ).rows[0];

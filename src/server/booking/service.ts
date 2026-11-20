@@ -112,7 +112,7 @@ async function transaction<T>(pool: Pool, body: (client: PoolClient) => Promise<
 async function business(query: Query, id: string): Promise<Business> {
   const row = (
     await query.query<Business>(
-      "SELECT id, owner_user_id, title, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status FROM directory_business b WHERE id = $1",
+      "SELECT id, owner_user_id, title, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status FROM directory_business b WHERE id = $1 AND b.deleted_at IS NULL",
       [id],
     )
   ).rows[0];
@@ -159,7 +159,7 @@ async function context(
   const { actor, users } = await authority(client, identity, [hint.owner_user_id, ...extra]);
   const locked = (
     await client.query<Business>(
-      "SELECT id, owner_user_id, title, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status FROM directory_business b WHERE id = $1 FOR UPDATE",
+      "SELECT id, owner_user_id, title, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status FROM directory_business b WHERE id = $1 AND b.deleted_at IS NULL FOR UPDATE",
       [businessId],
     )
   ).rows[0];

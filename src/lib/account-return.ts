@@ -7,6 +7,7 @@ import {
   readBusinessInquiry,
   readCalendarTarget,
 } from "./business-today";
+import { type PlacementTarget, placementOfferPath, readPlacementTarget } from "./marketing";
 import { type MessageTarget, messageLink, readMessageTarget } from "./messaging";
 
 const accountSections = {
@@ -59,10 +60,13 @@ export function readAccountNavigation(params: URLSearchParams): {
   invalidMessageTarget: boolean;
   businessThread?: string;
   calendarTarget?: CalendarTarget;
+  placementTarget?: PlacementTarget;
 } {
   const values = params.getAll("odjeljak");
   const section =
     params.size === 0 ? "overview" : accountSection(values.length === 1 ? values[0] : undefined);
+  const placementTarget = readPlacementTarget(params);
+  if (placementTarget) return { section, placementTarget, invalidMessageTarget: false };
   const calendarTarget = readCalendarTarget(params);
   if (calendarTarget) return { section, calendarTarget, invalidMessageTarget: false };
   const businessThread = readBusinessInquiry(params);
@@ -91,6 +95,8 @@ export function accountReturnPath(value: unknown): string {
   if (value === productionRequestPath) return value;
   if (value.startsWith("/nalog?")) {
     const params = new URLSearchParams(value.slice(7));
+    const placement = readPlacementTarget(params);
+    if (placement && value === placementOfferPath(placement)) return value;
     const calendar = readCalendarTarget(params),
       thread = readBusinessInquiry(params);
     if (
@@ -103,7 +109,7 @@ export function accountReturnPath(value: unknown): string {
     /^\/naplata(?:\/(?:povratak|odustajanje))?(?:\?narudzba=[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})?$/i.test(
       value,
     ) ||
-    /^\/naplata\?ponuda=[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(
+    /^\/naplata\?(?:ponuda|djelatnost)=[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(
       value,
     )
   )

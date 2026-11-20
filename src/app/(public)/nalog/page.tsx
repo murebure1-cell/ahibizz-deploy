@@ -13,6 +13,7 @@ import {
   readBusinessInquiry,
   readCalendarTarget,
 } from "../../../lib/business-today";
+import { placementOfferPath, readPlacementTarget } from "../../../lib/marketing";
 import { type MessageTarget, messageLink, readMessageTarget } from "../../../lib/messaging";
 import {
   AccountAccessError,
@@ -34,6 +35,7 @@ export default async function AccountPage({
   for (const [name, values] of Object.entries(query))
     for (const value of Array.isArray(values) ? values : values === undefined ? [] : [values])
       params.append(name, value);
+  const placement = readPlacementTarget(params);
   const calendar = readCalendarTarget(params),
     inquiry = readBusinessInquiry(params);
   if (query.odjeljak === "poruke" && !inquiry) {
@@ -46,17 +48,19 @@ export default async function AccountPage({
   const continuation = invalidMessageTarget
     ? "/nalog"
     : accountReturnPath(
-        calendar
-          ? ownerCalendarPath(calendar)
-          : inquiry
-            ? businessInquiryPath(inquiry)
-            : messageTarget
-              ? messageLink(messageTarget)
-              : query.odjeljak === "oglasi" && query.usluga === "produkcija"
-                ? productionRequestPath
-                : typeof query.odjeljak === "string"
-                  ? `/nalog?odjeljak=${encodeURIComponent(query.odjeljak)}`
-                  : "/nalog",
+        placement
+          ? placementOfferPath(placement)
+          : calendar
+            ? ownerCalendarPath(calendar)
+            : inquiry
+              ? businessInquiryPath(inquiry)
+              : messageTarget
+                ? messageLink(messageTarget)
+                : query.odjeljak === "oglasi" && query.usluga === "produkcija"
+                  ? productionRequestPath
+                  : typeof query.odjeljak === "string"
+                    ? `/nalog?odjeljak=${encodeURIComponent(query.odjeljak)}`
+                    : "/nalog",
       );
   let profile: SafeAccountProfile | undefined;
   try {

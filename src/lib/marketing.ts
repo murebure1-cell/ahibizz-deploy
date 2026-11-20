@@ -1,3 +1,5 @@
+import { businessUuid } from "./business-today";
+
 export type MarketingMode = "ads" | "credits" | "admin";
 export const adPlacements = {
   banner: "Baner na početnoj",
@@ -17,6 +19,19 @@ export function isProductionService(value: unknown): value is ProductionService 
 export function isPlacement(value: unknown): value is Placement {
   return typeof value === "string" && Object.hasOwn(adPlacements, value);
 }
+export type PlacementTarget = { businessId: string; placement: Placement };
+
+export function placementOfferPath({ businessId, placement }: PlacementTarget) {
+  return `/nalog?odjeljak=oglasi&mjesto=${placement}&djelatnost=${encodeURIComponent(businessId)}`;
+}
+
+export function readPlacementTarget(params: URLSearchParams): PlacementTarget | undefined {
+  if (params.size !== 3 || params.get("odjeljak") !== "oglasi") return;
+  const businessId = params.get("djelatnost"),
+    placement = params.get("mjesto");
+  if (businessUuid(businessId) && isPlacement(placement)) return { businessId, placement };
+}
+
 export type MarketingOrder = {
   id: string;
   kind: Placement | ProductionService | "credits";

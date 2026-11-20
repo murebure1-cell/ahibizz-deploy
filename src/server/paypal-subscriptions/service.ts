@@ -192,7 +192,7 @@ export function createPackageSubscriptions({
         alreadyCovered: boolean;
         located: boolean;
       }>(
-        'SELECT owner_user_id,status,title,(latitude IS NOT NULL AND longitude IS NOT NULL) AS located,package_allows_listing(b) AS "alreadyCovered" FROM directory_business b WHERE id=$1 FOR UPDATE',
+        'SELECT owner_user_id,status,title,(latitude IS NOT NULL AND longitude IS NOT NULL) AS located,package_allows_listing(b) AS "alreadyCovered" FROM directory_business b WHERE id=$1 AND b.deleted_at IS NULL FOR UPDATE',
         [id],
       )
     ).rows[0];

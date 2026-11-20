@@ -18,6 +18,7 @@ import { Icon } from "../Icon";
 import { BusinessReviews } from "../reviews/BusinessReviews";
 import { VerificationBadge } from "../VerificationBadge";
 import { BusinessAmenities, BusinessHours } from "./BusinessDetails";
+import { BusinessGallery } from "./BusinessGallery";
 import { BusinessLogo } from "./BusinessLogo";
 import { BusinessRating } from "./BusinessRating";
 import { LocationMap } from "./LocationMap";
@@ -117,6 +118,27 @@ export function PublicBusinessProfile({
             height={39}
             unoptimized
           />
+        )}
+        {!preview && (
+          <details
+            className={styles.profileOptions}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.open = false;
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.currentTarget.open = false;
+                e.currentTarget.querySelector("summary")?.focus();
+              }
+            }}
+          >
+            <summary aria-label="Opcije djelatnosti">
+              <span aria-hidden="true">•••</span>
+            </summary>
+            <Link className={styles.reportLink} href={reportUrl("business", business.id)}>
+              <Icon name="shield" /> Prijavi djelatnost
+            </Link>
+          </details>
         )}
       </div>
 
@@ -272,19 +294,7 @@ export function PublicBusinessProfile({
               <div className={styles.sectionHeading}>
                 <h2 id="business-gallery-heading">Galerija</h2>
               </div>
-              <div className={styles.gallery}>
-                {gallery.map((image) => (
-                  <figure key={image.src}>
-                    <Image
-                      src={image.src}
-                      alt={image.alt}
-                      fill
-                      sizes="(max-width: 760px) 100vw, 560px"
-                      unoptimized
-                    />
-                  </figure>
-                ))}
-              </div>
+              <BusinessGallery key={business.id} businessId={business.id} photos={gallery} />
             </section>
           )}
 
@@ -401,7 +411,6 @@ export function PublicBusinessProfile({
                 <Icon name="arrow" />
               </a>
             )}
-            {!preview && <Link href={reportUrl("business", business.id)}>Prijavi djelatnost</Link>}
           </aside>
         )}
       </div>

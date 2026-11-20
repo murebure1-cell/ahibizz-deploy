@@ -12,6 +12,7 @@ import {
   type MarketingMode,
   type MarketingOrder,
   marketingLabels,
+  type PlacementTarget,
   productionServices,
 } from "../../lib/marketing";
 import styles from "./marketing.module.css";
@@ -196,16 +197,18 @@ function OfferCard({
     </article>
   );
 }
-export function MarketingWorkspace({
-  accountId,
-  mode,
-}: {
-  accountId: string;
-  mode: MarketingMode;
-}) {
-  return <MarketingView key={`${accountId}:${mode}`} accountId={accountId} mode={mode} />;
+export function MarketingWorkspace({ accountId, mode, target }: MarketingProps) {
+  return (
+    <MarketingView
+      key={`${accountId}:${mode}:${target?.businessId ?? ""}:${target?.placement ?? ""}`}
+      accountId={accountId}
+      mode={mode}
+      target={target}
+    />
+  );
 }
-function MarketingView({ accountId, mode }: { accountId: string; mode: MarketingMode }) {
+type MarketingProps = { accountId: string; mode: MarketingMode; target?: PlacementTarget };
+function MarketingView({ accountId, mode, target }: MarketingProps) {
   const [data, setData] = useState<MarketingData | null>(null),
     [page, setPage] = useState(0),
     [refresh, setRefresh] = useState(0),
@@ -214,6 +217,14 @@ function MarketingView({ accountId, mode }: { accountId: string; mode: Marketing
     [failed, setFailed] = useState(false);
   const running = useRef(false);
   const mounted = useRef(false);
+  const placementForm = useRef<HTMLFormElement>(null);
+  const openedPlacement = useRef(false);
+  useEffect(() => {
+    if (data && target && !openedPlacement.current) {
+      openedPlacement.current = true;
+      placementForm.current?.scrollIntoView({ block: "center" });
+    }
+  }, [data, target]);
   const openedProduction = useRef(false);
   useEffect(() => {
     if (
@@ -323,6 +334,9 @@ function MarketingView({ accountId, mode }: { accountId: string; mode: Marketing
         <div className={styles.skeleton} />
       </div>
     );
+  const initialBusiness = target
+    ? (data.businesses.find((business) => business.id === target.businessId)?.id ?? "")
+    : undefined;
   return (
     <section className={styles.workspace}>
       {mode !== "admin" && <h1>{mode === "ads" ? "Moji oglasi" : "Ahi Credits"}</h1>}
@@ -379,11 +393,11 @@ function MarketingView({ accountId, mode }: { accountId: string; mode: Marketing
         <article className={styles.order}>
           <h2>{mode === "credits" ? "Kupi kredite" : "Novi oglas"}</h2>
           {mode === "credits" && <small>Zatraži cijenu za željeni broj kredita.</small>}
-          <form onSubmit={request} className={styles.form}>
+          <form ref={placementForm} onSubmit={request} className={styles.form}>
             {mode === "ads" && (
               <label>
                 Mjesto prikaza
-                <select name="placement">
+                <select name="placement" defaultValue={target?.placement}>
                   {Object.entries(adPlacements).map(([id, label]) => (
                     <option key={id} value={id}>
                       {label}
@@ -395,7 +409,16 @@ function MarketingView({ accountId, mode }: { accountId: string; mode: Marketing
             {mode === "ads" && (
               <label>
                 Djelatnost
-                <select name="business" required>
+                <select
+                  name="business"
+                  required
+                  defaultValue={initialBusiness}
+                >
+                  {initialBusiness === "" && (
+                    <option value="" disabled>
+                      Odaberi objavljenu djelatnost
+                    </option>
+                  )}
                   {data.businesses.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.title}

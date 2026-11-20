@@ -218,14 +218,16 @@ export function HomeSurface({
         data-design="home-promotion"
         aria-labelledby="promotion-heading"
       >
-        <div>
-          <h2 id="promotion-heading">
-            {titles.promotion || "Želiš li istaknuti svoju djelatnost?"}
-          </h2>
-          <p>Odaberi isticanje u svojoj kategoriji, na lokaciji ili na početnoj stranici.</p>
-        </div>
-        <Link className={styles.button} href="/oglasavanje">
-          Pročitaj više <Icon name="arrow" />
+        <Link
+          href="/oglasavanje"
+          className={styles.calloutLink}
+          aria-labelledby="promotion-heading"
+        >
+          <span aria-hidden="true" className={styles.calloutIcon}>
+            <Icon name="star" />
+          </span>
+          <h2 id="promotion-heading">{titles.promotion || "Istakni svoju djelatnost"}</h2>
+          <Icon name="chevron" className={styles.calloutArrow} />
         </Link>
       </section>
     ),
@@ -235,12 +237,12 @@ export function HomeSurface({
         data-design="home-community"
         aria-labelledby="community-heading"
       >
-        <div>
+        <Link href="/o-nama" className={styles.calloutLink} aria-labelledby="community-heading">
+          <span aria-hidden="true" className={styles.calloutIcon}>
+            <Icon name="people" />
+          </span>
           <h2 id="community-heading">{titles.community || "AhiBizz zajednica"}</h2>
-          <p>Upoznaj ljude iza djelatnosti, poveži se s njima i započni razgovor.</p>
-        </div>
-        <Link className={styles.subtleLink} href="/o-nama">
-          O zajednici <Icon name="chevron" />
+          <Icon name="chevron" className={styles.calloutArrow} />
         </Link>
       </section>
     ),
@@ -256,7 +258,6 @@ export function HomeSurface({
         <div>
           <span className={styles.kicker}>AHI CREDITS</span>
           <h2 id="credits-heading">{titles.credits || "Daj svom poslu\nviše prostora."}</h2>
-          <p>Istakni se tamo gdje te ljudi traže.</p>
         </div>
         {creditsHref ? (
           <Link href={creditsHref} className={styles.button}>

@@ -48,12 +48,14 @@ export function Checkout({
   userId,
   initialOrderId,
   initialQuoteId,
+  initialBusinessId,
   returned = false,
   cancelled = false,
 }: {
   userId: string | null;
   initialOrderId?: string;
   initialQuoteId?: string;
+  initialBusinessId?: string;
   returned?: boolean;
   cancelled?: boolean;
 }) {
@@ -63,7 +65,9 @@ export function Checkout({
   const [offer, setOffer] = useState<PayableOffer | null>(null);
   const [offerError, setOfferError] = useState("");
   const [offerAttempt, setOfferAttempt] = useState(0);
-  const [businessId, setBusinessId] = useState("");
+  const [chosenBusinessId, setBusinessId] = useState<string>();
+  const businessId =
+    chosenBusinessId ?? businesses.find((b) => b.id === initialBusinessId)?.id ?? "";
   const [support, setSupport] = useState("");
   const [loadedOrder, setLoadedOrder] = useState<{ userId: string | null; order: Order } | null>(
     null,
@@ -111,7 +115,7 @@ export function Checkout({
     setBusy(false);
     setReview(false);
     setCardOpen(false);
-    setBusinessId("");
+    setBusinessId(undefined);
     setBusinesses([]);
     fetch("/api/checkout/catalog", { cache: "no-store" })
       .then((r) => r.json())
@@ -137,9 +141,17 @@ export function Checkout({
         const result = await response.json();
         if (!Array.isArray(result.items)) throw new Error();
         if (!active) return;
-        mine.push(...result.items);
+        mine.push(
+          ...result.items.filter(
+            (item: { packagePaymentNeeded?: boolean }) => !item.packagePaymentNeeded,
+          ),
+        );
         setBusinesses([...mine]);
-        if (!result.hasMore || !result.items.length) return;
+        if (!result.hasMore || !result.items.length) {
+          if (initialBusinessId && !mine.some((b) => b.id === initialBusinessId))
+            setError("Odabrana djelatnost nije dostupna za isticanje.");
+          return;
+        }
       }
     }
     if (userId && !initialQuoteId && !initialOrderId)
@@ -150,7 +162,7 @@ export function Checkout({
       active = false;
       controller.abort();
     };
-  }, [userId, initialQuoteId, initialOrderId]);
+  }, [userId, initialQuoteId, initialOrderId, initialBusinessId]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: An explicit retry refreshes the account-bound quote.
   useEffect(() => {
     if (!userId || !initialQuoteId) return;
@@ -349,7 +361,7 @@ export function Checkout({
       {!userId && (
         <p>
           <a
-            href={`/prijava?nastavi=${encodeURIComponent(`/naplata${returned ? "/povratak" : cancelled ? "/odustajanje" : ""}${initialOrderId ? `?narudzba=${initialOrderId}` : initialQuoteId ? `?ponuda=${initialQuoteId}` : ""}`)}`}
+            href={`/prijava?nastavi=${encodeURIComponent(`/naplata${returned ? "/povratak" : cancelled ? "/odustajanje" : ""}${initialOrderId ? `?narudzba=${initialOrderId}` : initialQuoteId ? `?ponuda=${initialQuoteId}` : initialBusinessId ? `?djelatnost=${initialBusinessId}` : ""}`)}`}
           >
             Prijavi se za nastavak
           </a>

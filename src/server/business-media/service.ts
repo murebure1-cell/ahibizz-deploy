@@ -83,7 +83,7 @@ async function transaction<T>(pool: Pool, body: (client: PoolClient) => Promise<
 async function context(client: PoolClient, session: SignedSession, businessId: string) {
   const hint = (
     await client.query<{ owner_user_id: string }>(
-      "SELECT owner_user_id FROM directory_business WHERE id=$1",
+      "SELECT owner_user_id FROM directory_business WHERE id=$1 AND deleted_at IS NULL",
       [businessId],
     )
   ).rows[0];
@@ -108,7 +108,7 @@ async function context(client: PoolClient, session: SignedSession, businessId: s
     await client.query<Business>(
       `SELECT b.id,b.owner_user_id,b.status,b.version,
               EXISTS(SELECT 1 FROM directory_business_image_proposal p WHERE p.business_id=b.id) AS pending_media
-         FROM directory_business b WHERE b.id=$1 FOR UPDATE OF b`,
+         FROM directory_business b WHERE b.id=$1 AND b.deleted_at IS NULL FOR UPDATE OF b`,
       [businessId],
     )
   ).rows[0];

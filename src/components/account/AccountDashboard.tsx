@@ -10,6 +10,7 @@ import {
   readAccountNavigation,
 } from "../../lib/account-return";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
+import { placementOfferPath } from "../../lib/marketing";
 import type { MessageTarget } from "../../lib/messaging";
 import { clearBrowserMessagingRecovery } from "../../lib/messaging-recovery-storage";
 import { type PersonalProfile, profileImageUrl } from "../../lib/people";
@@ -175,7 +176,7 @@ function AccountWorkspace({
     <AccountAuthorityBoundary
       expectedAccountId={initial.id}
       expectedRole={initial.role}
-      loginHref={`/prijava?nastavi=${encodeURIComponent(accountSectionPath(section))}`}
+      loginHref={`/prijava?nastavi=${encodeURIComponent(view.placementTarget ? placementOfferPath(view.placementTarget) : accountSectionPath(section))}`}
       onConfirmed={setProfile}
     >
       {(hasAccess) => (
@@ -370,6 +371,7 @@ function AccountWorkspace({
                   key={section}
                   accountId={initial.id}
                   mode={section === "credits" ? "credits" : "ads"}
+                  target={view.placementTarget}
                 />
               )}
             {IS_PLAY_EDITION && section === "advertising" && (

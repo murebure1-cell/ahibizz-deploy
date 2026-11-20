@@ -10,7 +10,7 @@ export async function readAdminTodayQueues(client: PoolClient): Promise<AdminTod
     SELECT 'businesses', count(*)::int, min(least(CASE WHEN b.status='pending' OR b.editorial_revision IS NOT NULL THEN b.updated_at END, images.oldest))
     FROM directory_business b
     LEFT JOIN (SELECT business_id,min(updated_at) AS oldest FROM directory_business_image_proposal GROUP BY business_id) images ON images.business_id=b.id
-    WHERE b.status='pending' OR b.editorial_revision IS NOT NULL OR images.business_id IS NOT NULL
+    WHERE b.deleted_at IS NULL AND (b.status='pending' OR b.editorial_revision IS NOT NULL OR images.business_id IS NOT NULL)
     UNION ALL
     SELECT 'reports',count(*)::int,min(created_at) FROM support_request WHERE resolved_at IS NULL
     UNION ALL

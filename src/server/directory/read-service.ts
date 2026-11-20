@@ -136,7 +136,7 @@ export async function listDirectory(
     input,
     publicOnly,
   );
-  const filters = [condition],
+  const filters = [condition, "b.deleted_at IS NULL"],
     values = [...parameters];
   if (!publicOnly && status === undefined) filters.push("b.status <> 'archived'");
   for (const [column, value] of [

@@ -63,7 +63,7 @@ test("real isolated confirmed-receipt ledger, accounting corrections and current
     pool.on("error", () => {});
     assert.equal((await pool.query("SELECT current_schema() AS name")).rows[0].name, schema);
     const migrations = await loadMigrations();
-    assert.equal(migrations.at(-1).version, "0030_production_orders.sql");
+    assert.equal(migrations.at(-1).version, "0031_directory_removal.sql");
     assert.equal((await runMigrations({ pool, migrations })).applied.length, migrations.length);
     assert.deepEqual(await runMigrations({ pool, migrations }), { applied: [] });
     globalThis.fetch = async () => {
@@ -591,6 +591,11 @@ test("real isolated confirmed-receipt ledger, accounting corrections and current
           item.id,
         );
         assert.equal((await call("GET", "admin/businesses?page=1&q=x&q=y")).status, 400);
+        await directory.remove(owner.headers, item.id, { expectedVersion: item.version });
+        assert.deepEqual(
+          (await billing.listBusinesses(owner.headers, { q: item.id })).businesses,
+          [],
+        );
       },
     );
     await t.test(

@@ -2,6 +2,7 @@ import type { DirectoryBusiness } from "../server/directory/types";
 import { DirectoryRequestError } from "./directory-create-submission";
 
 export type DirectoryReply = {
+  deleted?: true;
   business?: DirectoryBusiness;
   items?: DirectoryBusiness[];
   categories?: { id: string; name: string; parentId: string | null }[];

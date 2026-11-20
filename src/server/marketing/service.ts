@@ -92,7 +92,7 @@ async function validBusiness(
   kind: MarketingOrder["kind"],
 ) {
   const found = await client.query(
-    "SELECT id,latitude,longitude,CASE WHEN $3::text IN ('featured','nearby') THEN paid_package_placement_until(b,$3)::text END AS included_until FROM directory_business b WHERE id=$1 AND owner_user_id=$2 AND CASE WHEN $3::text IN ('photo','video','photo_video') THEN status<>'archived' ELSE status='published' AND package_allows_listing(b) END FOR UPDATE",
+    "SELECT id,latitude,longitude,CASE WHEN $3::text IN ('featured','nearby') THEN paid_package_placement_until(b,$3)::text END AS included_until FROM directory_business b WHERE id=$1 AND owner_user_id=$2 AND deleted_at IS NULL AND CASE WHEN $3::text IN ('photo','video','photo_video') THEN status<>'archived' ELSE status='published' AND package_allows_listing(b) END FOR UPDATE",
     [id, user, kind],
   );
   if (!found.rowCount) fail(409, "BUSINESS_CHANGED");
@@ -164,7 +164,7 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           mode === "ads"
             ? (
                 await client.query<{ id: string; title: string; adEligible: boolean }>(
-                  "SELECT id,title,(status='published' AND package_allows_listing(b)) AS \"adEligible\" FROM directory_business b WHERE owner_user_id=$1 AND status<>'archived' ORDER BY title,id",
+                  "SELECT id,title,(status='published' AND package_allows_listing(b)) AS \"adEligible\" FROM directory_business b WHERE owner_user_id=$1 AND deleted_at IS NULL AND status<>'archived' ORDER BY title,id",
                   [actor.id],
                 )
               ).rows

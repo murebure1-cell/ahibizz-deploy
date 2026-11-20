@@ -70,7 +70,7 @@ async function business(
       COALESCE(d.timezone,bs.timezone,'Europe/Sarajevo') AS timezone
      FROM directory_business b JOIN auth_user u ON u.id=b.owner_user_id JOIN directory_category c ON c.id=b.category_id
      LEFT JOIN directory_category s ON s.id=b.subcategory_id LEFT JOIN directory_business_details d ON d.business_id=b.id
-     LEFT JOIN booking_settings bs ON bs.business_id=b.id WHERE b.id=$1 ${locking}`,
+     LEFT JOIN booking_settings bs ON bs.business_id=b.id WHERE b.id=$1 AND b.deleted_at IS NULL ${locking}`,
     [uuid(id)],
   );
   const row = result.rows[0];
@@ -153,7 +153,7 @@ export function createStayService({
     return accountTransaction(pool, async (client) => {
       const hint = (
         await client.query<{ owner: string }>(
-          "SELECT owner_user_id AS owner FROM directory_business WHERE id=$1",
+          "SELECT owner_user_id AS owner FROM directory_business WHERE id=$1 AND deleted_at IS NULL",
           [uuid(businessId)],
         )
       ).rows[0];

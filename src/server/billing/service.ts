@@ -376,7 +376,7 @@ export function createBillingService({
         const user = await lockedActor(client, signed),
           pattern = value.q ? `%${value.q.replace(/[\\%_]/g, "\\$&")}%` : null;
         const result = await client.query<{ id: string; title: string }>(
-          "SELECT id,title FROM directory_business WHERE $1::text IS NULL OR title ILIKE $1 ESCAPE E'\\\\' OR id::text ILIKE $1 ESCAPE E'\\\\' ORDER BY created_at DESC,id DESC LIMIT $2 OFFSET $3",
+          "SELECT id,title FROM directory_business WHERE deleted_at IS NULL AND ($1::text IS NULL OR title ILIKE $1 ESCAPE E'\\\\' OR id::text ILIKE $1 ESCAPE E'\\\\') ORDER BY created_at DESC,id DESC LIMIT $2 OFFSET $3",
           [pattern, pageSize + 1, (value.page - 1) * pageSize],
         );
         return {
@@ -455,7 +455,7 @@ export function createBillingService({
             ? null
             : (
                 await client.query<{ title: string }>(
-                  "SELECT title FROM directory_business WHERE id=$1 FOR SHARE",
+                  "SELECT title FROM directory_business WHERE id=$1 AND deleted_at IS NULL FOR SHARE",
                   [value.businessId],
                 )
               ).rows[0];

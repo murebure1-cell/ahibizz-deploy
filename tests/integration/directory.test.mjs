@@ -5,6 +5,7 @@ import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { loadMigrations, runMigrations } from "../../scripts/migrate.mjs";
+import { testDirectoryRemoval } from "./directory-removal-cases.mjs";
 import { integrationConfiguration } from "./postgres.test.mjs";
 
 const baseURL = "https://directory-ci.ahibizz.invalid";
@@ -113,6 +114,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0028_marketing_offers.sql",
           "0029_marketing_online_checkout.sql",
           "0030_production_orders.sql",
+          "0031_directory_removal.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -1820,6 +1822,14 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           assert.deepEqual(empty.data.items, []);
         },
       );
+      await testDirectoryRemoval(t, {
+        pool,
+        directoryRequest,
+        owner,
+        member,
+        other,
+        categoryId: root.id,
+      });
       assert.equal(outboundAttempts, 0);
       assert.deepEqual(await outsideTables(administration, schema), outside);
     } finally {
