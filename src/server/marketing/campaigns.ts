@@ -189,12 +189,15 @@ export async function saveCampaignBrief(
     ).rowCount
   )
     invalid("CAMPAIGN_IMAGE_CHANGED", 409);
-  if (
-    b.dailyWindow &&
-    !(await client.query("SELECT 1 FROM pg_timezone_names WHERE name=$1", [b.dailyWindow.timeZone]))
-      .rowCount
-  )
-    invalid();
+  if (b.dailyWindow) {
+    try {
+      await client.query("SELECT timezone($1::text,now())", [b.dailyWindow.timeZone]);
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "22023")
+        invalid();
+      throw error;
+    }
+  }
   if (
     b.countryCode &&
     !(
