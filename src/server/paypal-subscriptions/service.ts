@@ -115,6 +115,14 @@ export type StartInput = {
   accepted: boolean;
   benefitsVersion?: number;
 };
+function approval(record: SandboxRecord) {
+  const pending = record.status === "APPROVAL_PENDING";
+  return {
+    contract: dto(record),
+    approvalUrl: pending ? record.approvalUrl : null,
+    subscriptionId: pending ? record.providerId : null,
+  };
+}
 function validateStart(value: unknown): StartInput {
   if (
     !value ||
@@ -397,7 +405,7 @@ export function createPackageSubscriptions({
         if (!inserted) return fail(503, "SANDBOX_SUBSCRIPTIONS_UNAVAILABLE");
         return normalized(inserted);
       });
-      if (r.status !== "CREATING") return { contract: dto(r), approvalUrl: r.approvalUrl };
+      if (r.status !== "CREATING") return approval(r);
       // PayPal stores the subscription create request key for 72 hours.
       // Allow time for the final network call before its deduplication window ends.
       if (Date.now() - Date.parse(r.createdAt) >= (72 * 60 - 1) * 60000)
@@ -429,7 +437,7 @@ export function createPackageSubscriptions({
         const bound = await read(c, r.id, uid);
         return terminalSnapshot ? snapshot(c, bound, terminalSnapshot) : bound;
       });
-      return { contract: dto(result), approvalUrl: result.approvalUrl };
+      return approval(result);
     },
     refresh,
     async cancel(h: Headers, id: string) {

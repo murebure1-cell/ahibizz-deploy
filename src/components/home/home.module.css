@@ -161,6 +161,17 @@
 .categoryNav {
   margin-top: 25px;
 }
+.browseHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.browseHeading h2 {
+  font-size: clamp(18px, 2vw, 24px);
+  letter-spacing: -0.025em;
+}
 .categories {
   gap: 10px;
 }
@@ -230,6 +241,16 @@
   color: var(--ui-muted);
   font-size: 14px;
   margin: 0;
+}
+.section[data-empty="true"] {
+  padding-block: 22px;
+  border-bottom: 1px solid var(--home-line);
+}
+.section[data-empty="true"] .sectionHeading {
+  margin-bottom: 5px;
+}
+.section:where([data-empty="true"]) h2 {
+  font-size: 18px;
 }
 .callout {
   display: flex;

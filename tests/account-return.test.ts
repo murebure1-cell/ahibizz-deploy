@@ -53,10 +53,13 @@ test("login retains only exact known messaging destinations and previous safe pr
     `/djelatnosti/${business}#business-appointments`,
     `/djelatnosti/${business}#recenzije`,
     "/ljudi/person_A-1",
+    `/naplata?ponuda=${business}`,
   ])
     assert.equal(accountReturnPath(value), value);
   for (const value of [
     undefined,
+    `/naplata?ponuda=${business}&iznos=1`,
+    "/naplata?ponuda=//evil.invalid",
     null,
     [],
     {},

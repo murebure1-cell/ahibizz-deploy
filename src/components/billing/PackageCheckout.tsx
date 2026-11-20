@@ -17,6 +17,7 @@ import {
   type SandboxPackageQuote,
 } from "../../lib/sandbox-subscriptions";
 import styles from "./billing.module.css";
+import { SubscriptionCardButton } from "./SubscriptionCardButton";
 
 type Business = {
   id: string;
@@ -30,6 +31,12 @@ type Catalog = PackageBenefitsCatalog & {
   available: boolean;
   packages: SandboxPackageQuote[];
   sellable: BillingPackageId[];
+  paypalClientId?: string | null;
+};
+type ContractApproval = {
+  contract: SandboxPackageContract;
+  approvalUrl?: string | null;
+  subscriptionId?: string | null;
 };
 
 const statusLabels: Record<SandboxContractStatus, string> = {
@@ -124,6 +131,10 @@ export function PackageCheckout({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "paypal">("paypal");
+  const [cardResume, setCardResume] = useState("");
+  const cardReturnPath = useRef("");
+  const cardAttempt = useRef(0);
 
   const eventLock = useRef(false);
   const reportPoll = useRef<AbortController | null>(null);
@@ -232,6 +243,88 @@ export function PackageCheckout({
     };
   }, [pendingReturn, userId, contractsPath]);
 
+  function contractPath(contract: SandboxPackageContract) {
+    const params = new URLSearchParams({
+      paket: contract.packageId,
+      period: contract.period,
+      ugovor: contract.id,
+    });
+    return `${pagePath}?${params}`;
+  }
+
+  function remember(contract: SandboxPackageContract) {
+    setContracts((values) => [contract, ...values.filter((c) => c.id !== contract.id)]);
+  }
+
+  function prepare(existing?: SandboxPackageContract) {
+    const selection = `${chosenBusiness}:${packageId}:${period}:${catalog?.version ?? ""}`;
+    if (!existing && pendingKey.current?.selection !== selection)
+      pendingKey.current = { selection, id: crypto.randomUUID() };
+    return request<ContractApproval>(contractsPath, userId, undefined, {
+      requestId: existing?.requestId ?? pendingKey.current?.id,
+      businessId: existing?.businessId ?? chosenBusiness,
+      packageId: existing?.packageId ?? packageId,
+      period: existing?.period ?? period,
+      accepted: true,
+      ...(!sandbox ? { benefitsVersion: existing?.benefitsVersion ?? catalog?.version } : {}),
+    });
+  }
+
+  async function startCard(existing?: SandboxPackageContract) {
+    if (eventLock.current || (!existing && !canSubmit))
+      throw new Error("Plaćanje trenutno nije dostupno.");
+    reportPoll.current?.abort();
+    eventLock.current = true;
+    const attempt = ++cardAttempt.current;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await prepare(existing);
+      if (attempt !== cardAttempt.current) throw new Error("Kartično plaćanje je zatvoreno.");
+      remember(result.contract);
+      if (
+        result.contract.status !== "APPROVAL_PENDING" ||
+        !result.subscriptionId ||
+        !/^I-[A-Z0-9]{5,32}$/.test(result.subscriptionId)
+      )
+        throw new Error("Provjeri status postojeće pretplate.");
+      cardReturnPath.current = contractPath(result.contract);
+      window.history.replaceState(window.history.state, "", cardReturnPath.current);
+      return { localId: result.contract.id, subscriptionId: result.subscriptionId };
+    } catch (e) {
+      if (attempt === cardAttempt.current)
+        finishCard(e instanceof Error ? e.message : "Zahtjev nije završen.");
+      throw e;
+    }
+  }
+
+  function finishCard(message: string) {
+    cardAttempt.current++;
+    cardReturnPath.current = "";
+    eventLock.current = false;
+    setBusy(false);
+    setError((current) => current || message);
+  }
+
+  function cardButton(existing?: SandboxPackageContract) {
+    if (!catalog?.paypalClientId)
+      return <p className={styles.notice}>Kartično plaćanje trenutno nije dostupno.</p>;
+    return (
+      <SubscriptionCardButton
+        key={existing?.id ?? `${chosenBusiness}:${packageId}:${period}:${catalog.version}`}
+        clientId={catalog.paypalClientId}
+        environment={environment}
+        accepted={Boolean(existing) || accepted}
+        create={() => startCard(existing)}
+        approved={() => {
+          if (eventLock.current && cardReturnPath.current)
+            window.location.assign(cardReturnPath.current);
+        }}
+        finished={finishCard}
+      />
+    );
+  }
+
   async function perform(
     action: "create" | "resume" | "refresh" | "cancel",
     existing?: SandboxPackageContract,
@@ -242,27 +335,14 @@ export function PackageCheckout({
     setBusy(true);
     setError("");
     try {
-      let result: { contract: SandboxPackageContract; approvalUrl?: string | null };
+      let result: ContractApproval;
       if (action === "create" || action === "resume") {
-        const selection = `${chosenBusiness}:${packageId}:${period}`;
-        if (!existing && pendingKey.current?.selection !== selection)
-          pendingKey.current = { selection, id: crypto.randomUUID() };
-        result = await request(contractsPath, userId, undefined, {
-          requestId: existing?.requestId ?? pendingKey.current?.id,
-          businessId: existing?.businessId ?? chosenBusiness,
-          packageId: existing?.packageId ?? packageId,
-          period: existing?.period ?? period,
-          accepted: true,
-          ...(!sandbox ? { benefitsVersion: existing?.benefitsVersion ?? catalog?.version } : {}),
-        });
+        result = await prepare(existing);
       } else {
         if (!existing) return;
         result = await request(`${contractsPath}/${existing.id}/${action}`, userId, undefined, {});
       }
-      setContracts((values) => [
-        result.contract,
-        ...values.filter((c) => c.id !== result.contract.id),
-      ]);
+      remember(result.contract);
       if (action === "refresh" && result.contract.id === initialContract)
         setReturnChecked(result.contract.id);
       setConfirmCancel("");
@@ -276,11 +356,7 @@ export function PackageCheckout({
           approval.password
         )
           throw new Error("Adresa za odobravanje plaćanja nije ispravna.");
-        window.history.replaceState(
-          window.history.state,
-          "",
-          `${pagePath}?paket=${result.contract.packageId}&period=${result.contract.period}&ugovor=${encodeURIComponent(result.contract.id)}`,
-        );
+        window.history.replaceState(window.history.state, "", contractPath(result.contract));
         window.location.assign(approval.href);
       }
     } catch (e) {
@@ -355,7 +431,7 @@ export function PackageCheckout({
           className={styles.form}
           onSubmit={(e) => {
             e.preventDefault();
-            void perform("create");
+            if (paymentMethod === "paypal") void perform("create");
           }}
         >
           <fieldset disabled={busy}>
@@ -393,7 +469,7 @@ export function PackageCheckout({
                 </select>
               </label>
               <label>
-                Plaćanje
+                Raspored uplata
                 <select
                   value={period}
                   onChange={(e) => {
@@ -425,11 +501,34 @@ export function PackageCheckout({
                   ? "Prihvatam ugovor na 12 mjeseci i 12 prikazanih mjesečnih rata."
                   : "Prihvatam jednu uplatu za 12 mjeseci usluge."}
             </label>
-            <div className={styles.actions}>
-              <button type="submit" disabled={!canSubmit} className={styles.primary}>
-                {sandbox ? "Odobri u PayPal Sandboxu" : "Nastavi na PayPal"}
-              </button>
-            </div>
+            <fieldset className={styles.methodPicker}>
+              <legend>Način plaćanja</legend>
+              {(["card", "paypal"] as const).map((method) => (
+                <label key={method}>
+                  <input
+                    type="radio"
+                    name="package-method"
+                    value={method}
+                    checked={paymentMethod === method}
+                    onChange={() => {
+                      setPaymentMethod(method);
+                      setCardResume("");
+                      setError("");
+                    }}
+                  />
+                  {method === "card" ? "Kartica" : "PayPal"}
+                </label>
+              ))}
+            </fieldset>
+            {paymentMethod === "card" && !cardResume
+              ? cardButton()
+              : paymentMethod === "paypal" && (
+                  <div className={styles.actions}>
+                    <button type="submit" disabled={!canSubmit} className={styles.primary}>
+                      {sandbox ? "Odobri u PayPal Sandboxu" : "Nastavi na PayPal"}
+                    </button>
+                  </div>
+                )}
           </fieldset>
         </form>
       )}
@@ -494,14 +593,30 @@ export function PackageCheckout({
               )}
               <div className={styles.actions}>
                 {(c.status === "CREATING" || c.status === "APPROVAL_PENDING") && (
-                  <button
-                    type="button"
-                    className={styles.primary}
-                    disabled={busy}
-                    onClick={() => void perform("resume", c)}
-                  >
-                    Nastavi odobravanje
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className={styles.primary}
+                      disabled={busy}
+                      onClick={() => void perform("resume", c)}
+                    >
+                      Nastavi preko PayPala
+                    </button>
+                    {catalog?.paypalClientId && (
+                      <button
+                        type="button"
+                        className={styles.secondary}
+                        disabled={busy}
+                        onClick={() => {
+                          setCardResume(c.id);
+                          setPaymentMethod("card");
+                          setError("");
+                        }}
+                      >
+                        Nastavi karticom
+                      </button>
+                    )}
+                  </>
                 )}
                 {c.status !== "CREATING" && (
                   <button
@@ -546,6 +661,9 @@ export function PackageCheckout({
                     </button>
                   ))}
               </div>
+              {cardResume === c.id &&
+                (c.status === "CREATING" || c.status === "APPROVAL_PENDING") &&
+                cardButton(c)}
             </article>
           ))}
         </section>

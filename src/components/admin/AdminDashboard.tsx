@@ -72,7 +72,8 @@ export function AdminDashboard({
     () => (query === undefined ? initialSection : readAdminNavigation(new URLSearchParams(query))),
     [query, initialSection],
   );
-  const navigation = useRef<HTMLElement>(null);
+  const navigationToggle = useRef<HTMLButtonElement>(null);
+  const [navigationOpen, setNavigationOpen] = useState(false);
   const [visited, setVisited] = useState({
     accounts: section === "accounts",
     categories: section === "categories",
@@ -83,27 +84,15 @@ export function AdminDashboard({
   useEffect(() => {
     setVisited((previous) => (previous[section] ? previous : { ...previous, [section]: true }));
   }, [section]);
-  useEffect(() => {
-    const nav = navigation.current;
-    if (!nav) return;
-    const reveal = () => {
-      const selected = nav.querySelector<HTMLElement>(`[data-admin-section="${section}"]`);
-      if (!selected || nav.scrollWidth <= nav.clientWidth) return;
-      const left = selected.getBoundingClientRect().left - nav.getBoundingClientRect().left;
-      const right = left + selected.offsetWidth;
-      if (left < 0) nav.scrollLeft += left;
-      else if (right > nav.clientWidth) nav.scrollLeft += right - nav.clientWidth;
-    };
-    reveal();
-    const observer = new ResizeObserver(reveal);
-    observer.observe(nav);
-    return () => observer.disconnect();
-  }, [section]);
   function changeSection(next: AdminSection) {
     const href = adminSectionPath(next);
     setVisited((previous) => (previous[next] ? previous : { ...previous, [next]: true }));
     if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== href)
       window.history.pushState(null, "", href);
+    if (navigationOpen && navigationToggle.current?.getClientRects().length) {
+      navigationToggle.current.focus({ preventScroll: true });
+    }
+    setNavigationOpen(false);
   }
   const current = sections.find((item) => item.id === section) ?? sections[0];
   return (
@@ -118,7 +107,21 @@ export function AdminDashboard({
             <small>{initial.name}</small>
           </div>
         </div>
-        <nav ref={navigation} aria-label="Administratorski odjeljci">
+        <button
+          className={styles.navigationToggle}
+          ref={navigationToggle}
+          type="button"
+          aria-expanded={navigationOpen}
+          aria-controls="admin-navigation"
+          onClick={() => setNavigationOpen(!navigationOpen)}
+        >
+          <Icon name="menu" /> Odjeljci
+        </button>
+        <nav
+          id="admin-navigation"
+          data-expanded={navigationOpen}
+          aria-label="Administratorski odjeljci"
+        >
           {sections.map((item) => (
             <button
               key={item.id}
@@ -133,18 +136,23 @@ export function AdminDashboard({
               <Icon name="chevron" className={styles.chevron} />
             </button>
           ))}
+          <section aria-label="Alati" className={styles.toolsGroup}>
+            <span className={styles.toolsLabel} aria-hidden="true">
+              Alati
+            </span>
+            <Link href="/administracija/zahtjevi">
+              <Icon name="message" /> Zahtjevi i prijave
+            </Link>
+            {!IS_PLAY_EDITION && (
+              <Link href="/administracija/oglasi">
+                <Icon name="star" /> Oglašavanje i krediti
+              </Link>
+            )}
+            <Link href="/administracija/izgled">
+              <Icon name="sliders" /> Uređivač izgleda
+            </Link>
+          </section>
         </nav>
-        <Link className={styles.accountLink} href="/administracija/izgled">
-          <Icon name="sliders" /> Uređivač izgleda
-        </Link>
-        {!IS_PLAY_EDITION && (
-          <Link className={styles.accountLink} href="/administracija/oglasi">
-            <Icon name="shop" /> Oglašavanje i krediti
-          </Link>
-        )}
-        <Link className={styles.accountLink} href="/administracija/zahtjevi">
-          <Icon name="message" /> Zahtjevi i prijave
-        </Link>
         <Link className={styles.accountLink} href="/nalog">
           <Icon name="user" />
           Moj nalog

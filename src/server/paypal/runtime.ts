@@ -101,6 +101,7 @@ function dto(order: CheckoutOrder) {
     requestId: order.requestId,
     kind: order.kind,
     businessId: order.businessId,
+    ...(order.quoteId ? { quoteId: order.quoteId } : {}),
     businessTitle: order.businessTitle,
     amountMinor: order.amountMinor,
     currency: order.currency,
@@ -126,8 +127,8 @@ export function createCheckoutService({
   function payable() {
     if (!config.chargingApproved) throw new CheckoutHttpError(503, "CHECKOUT_NOT_RELEASED");
   }
-  function chargePurpose(kind: "promotion" | "support") {
-    if (config.environment === "live" && kind !== "promotion")
+  function chargePurpose(kind: "promotion" | "support" | "quote") {
+    if (config.environment === "live" && kind === "support")
       throw new CheckoutHttpError(403, "LIVE_SUPPORT_NOT_RELEASED");
   }
   function matching(order: CheckoutOrder) {
@@ -251,14 +252,16 @@ export function createCheckoutService({
     async create(headers, input) {
       payable();
       chargePurpose(input.kind);
-      if ((input.flow === "guest" || input.flow === "card-fields") && input.kind !== "promotion")
+      if ((input.flow === "guest" || input.flow === "card-fields") && input.kind === "support")
         throw new CheckoutHttpError(400, "INVALID_CHECKOUT_FLOW");
       let order = await store.create(await actor(headers), {
         ...input,
-        amountMinor: input.kind === "promotion" ? 511 : (input.amountMinor ?? 0),
+        ...(input.kind === "quote"
+          ? {}
+          : { amountMinor: input.kind === "promotion" ? 511 : (input.amountMinor ?? 0) }),
         environment: config.environment,
         merchantId: config.merchantId,
-        offerVersion: `category-seven-days-20261118${input.flow ? `:${input.flow}` : ""}`,
+        offerVersion: `${input.kind === "quote" ? "marketing-quote-v1" : "category-seven-days-20261118"}${input.flow ? `:${input.flow}` : ""}`,
       });
       matching(order);
       chargePurpose(order.kind);

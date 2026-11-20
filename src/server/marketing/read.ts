@@ -6,9 +6,9 @@ import { promotionSql } from "../paypal/store";
 export function creditBalanceSql(account: string) {
   if (!/^(?:\$[1-9]\d*|[a-z_]\w*\.[a-z_]\w*)$/i.test(account))
     throw new Error("Invalid account expression");
-  return `(COALESCE((SELECT sum(amount) FROM booking_completion_credit WHERE recipient_user_id=${account}),0)
+  return `GREATEST(0,COALESCE((SELECT sum(amount) FROM booking_completion_credit WHERE recipient_user_id=${account}),0)
     + COALESCE((SELECT sum(CASE WHEN kind='credits' THEN quantity ELSE -credit_price END)
-        FROM marketing_order WHERE account_id=${account} AND status='paid' AND (kind='credits' OR bank_reference IS NULL)),0))`;
+        FROM marketing_order WHERE account_id=${account} AND status='paid' AND ((kind='credits' AND revoked_at IS NULL) OR (kind<>'credits' AND bank_reference IS NULL AND online_checkout_id IS NULL))),0))`;
 }
 // Directory callers have already constrained the business to its eligible public owner.
 export function paidPlacementSql(kind: "featured" | "nearby") {

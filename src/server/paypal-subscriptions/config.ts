@@ -1,10 +1,15 @@
-import { type BillingPackageId, type BillingPeriod, billingPackages } from "../../lib/billing";
+import {
+  type BillingPackageId,
+  type BillingPeriod,
+  bamToEuroMinor,
+  billingPackages,
+} from "../../lib/billing";
 
 export type PlanReferences = Record<string, string>;
 export const sandboxPackageCatalog = billingPackages.map((p) => ({
   ...p,
-  monthlyEurMinor: Math.round((p.monthlyMinor * 100000) / 195583),
-  annualEurMinor: Math.round((p.annualMinor * 100000) / 195583),
+  monthlyEurMinor: bamToEuroMinor(p.monthlyMinor),
+  annualEurMinor: bamToEuroMinor(p.annualMinor),
 }));
 
 export function packageQuote(packageId: BillingPackageId, period: BillingPeriod) {

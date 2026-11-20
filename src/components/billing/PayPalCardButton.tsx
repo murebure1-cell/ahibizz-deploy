@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { type CardOrder, createPayPalCardFlow } from "../../lib/paypal-card-flow";
+import {
+  type CardOrder,
+  type CardPurchaseInput,
+  createPayPalCardFlow,
+} from "../../lib/paypal-card-flow";
 import {
   type AdvancedSession,
   type CardSdkInstance,
@@ -18,7 +22,7 @@ type Props = {
   amountMinor: number;
   userId: string;
   savedOrder?: CardOrder;
-  input: () => { requestId: string; businessId: string };
+  input: () => CardPurchaseInput;
   onOrder: (order: CardOrder) => void;
   acquire: () => boolean;
   release: () => void;

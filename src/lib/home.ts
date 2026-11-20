@@ -22,13 +22,17 @@ export function homeCategories(
     parentId: string | null;
     accommodation?: boolean;
   }[],
+  place = "",
 ): HomeCategory[] {
   return categories
     .filter((category) => category.parentId === null)
     .map((category) => ({
       id: category.id,
       label: category.name,
-      href: `/pretraga?${new URLSearchParams({ categoryId: category.id })}`,
+      href: `/pretraga?${new URLSearchParams({
+        categoryId: category.id,
+        ...(place ? { mjesto: place } : {}),
+      })}`,
       icon: category.accommodation ? "bed" : categoryIcon(category.name),
     }));
 }

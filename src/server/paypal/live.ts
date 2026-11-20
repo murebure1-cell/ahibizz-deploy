@@ -4,7 +4,7 @@ import type { PayPalOrderFlow } from "../../lib/paypal-order-flow";
 export class PayPalLiveError extends Error {}
 export type LiveOrder = {
   id: string;
-  purpose: "promotion" | "support";
+  purpose: "promotion" | "support" | "quote";
   amountMinor: number;
   currency: "EUR";
   merchantId: string;
@@ -43,7 +43,7 @@ function providerId(value: unknown): string {
   return value;
 }
 export function liveAmount(minor: number): string {
-  if (!Number.isSafeInteger(minor) || minor < 1 || minor > 1000000)
+  if (!Number.isSafeInteger(minor) || minor < 1 || minor > 51129188)
     throw new PayPalLiveError("INVALID_AMOUNT");
   return `${Math.floor(minor / 100)}.${String(minor % 100).padStart(2, "0")}`;
 }
@@ -225,6 +225,8 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
       !/^[a-f0-9-]{36}$/.test(order.id)
     )
       throw new PayPalLiveError("INVALID_ORDER");
+    if (order.purpose !== "quote" && order.amountMinor > 1000000)
+      throw new PayPalLiveError("INVALID_AMOUNT");
     liveAmount(order.amountMinor);
   }
   async function request(
@@ -276,7 +278,7 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
     async create(order: LiveOrder, flow: PayPalOrderFlow = "redirect") {
       if (
         !["redirect", "sdk", "guest", "card-fields"].includes(flow) ||
-        ((flow === "guest" || flow === "card-fields") && order.purpose !== "promotion")
+        ((flow === "guest" || flow === "card-fields") && order.purpose === "support")
       )
         throw new PayPalLiveError("INVALID_CHECKOUT_FLOW");
       canCharge(order);
@@ -294,7 +296,9 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
               description:
                 order.purpose === "promotion"
                   ? "AhiBizz: isticanje profila u kategoriji, 7 dana"
-                  : "AhiBizz: dobrovoljna podrška razvoju",
+                  : order.purpose === "quote"
+                    ? "AhiBizz: ponuda za oglase ili kredite"
+                    : "AhiBizz: dobrovoljna podrška razvoju",
               payee: { merchant_id: config.merchantId },
               amount: { currency_code: "EUR", value: liveAmount(order.amountMinor) },
             },

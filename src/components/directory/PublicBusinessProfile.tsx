@@ -71,6 +71,11 @@ export function PublicBusinessProfile({
     return safe ? [safe] : [];
   });
   const hasAppointments = Boolean(children);
+  const hasAbout = Boolean(business.description?.trim() || business.details?.amenities.length);
+  const hasLocation = hasAddress || Boolean(point);
+  const contactMessage =
+    messageHref ?? (!preview ? messageLink({ kind: "business", targetId: business.id }) : null);
+  const hasContact = Boolean(links.phone || links.email || links.website || contactMessage);
   const Title = backHref === null ? "h2" : "h1";
 
   return (
@@ -84,7 +89,8 @@ export function PublicBusinessProfile({
       {backHref !== null && (
         <nav className={styles.breadcrumb} aria-label="Povratak na djelatnosti">
           <Link href={backHref}>
-            <Icon name="arrow" /> Sve djelatnosti
+            <Icon name="arrow" />{" "}
+            {backHref.startsWith("/pretraga?") ? "Nazad na rezultate" : "Sve djelatnosti"}
           </Link>
           {business.city && <span>{business.city}</span>}
         </nav>
@@ -103,17 +109,14 @@ export function PublicBusinessProfile({
             unoptimized
           />
         ) : (
-          <>
-            <Image
-              className={styles.brandMark}
-              src="/brand/ahi-logo-white.svg"
-              alt=""
-              width={144}
-              height={39}
-              unoptimized
-            />
-            <span className={styles.coverCaption}>PROFIL DJELATNOSTI</span>
-          </>
+          <Image
+            className={styles.brandMark}
+            src="/brand/ahi-logo-white.svg"
+            alt=""
+            width={144}
+            height={39}
+            unoptimized
+          />
         )}
       </div>
 
@@ -131,10 +134,12 @@ export function PublicBusinessProfile({
             {business.title}
             {business.verified && <VerificationBadge kind="business" />}
           </Title>
-          <p className={styles.locationSummary}>
-            <Icon name="pin" />
-            {location}
-          </p>
+          {hasLocation && (
+            <p className={styles.locationSummary}>
+              <Icon name="pin" />
+              {location}
+            </p>
+          )}
           {Boolean(business.reviews?.count) &&
             (preview ? (
               <span className={styles.reviewLink}>
@@ -149,10 +154,10 @@ export function PublicBusinessProfile({
         <div className={styles.quickActions}>
           {actions}
           {!preview && <FavoriteButton businessId={business.id} title={business.title} />}
-          {(!preview || messageHref) && (
+          {contactMessage && (
             <Link
               className={styles.secondary}
-              href={messageHref ?? messageLink({ kind: "business", targetId: business.id })}
+              href={contactMessage}
               aria-label="Poruka — pošalji poruku"
             >
               <Icon name="message" /> Poruka
@@ -182,17 +187,11 @@ export function PublicBusinessProfile({
               </a>
             )
           )}
-          {(links.phone || links.email || links.website) && (
-            <a className={styles.secondary} href="#business-contact">
-              Kontakt
-              <Icon name="chevron" />
-            </a>
-          )}
         </div>
       </header>
 
       <nav className={styles.sectionNavigation} aria-label="Na ovoj stranici">
-        <a href="#business-about">O djelatnosti</a>
+        {hasAbout && <a href="#business-about">O djelatnosti</a>}
         {business.details?.hours && <a href="#business-hours">Radno vrijeme</a>}
         {accommodation && <a href="#business-stays">Smještaj</a>}
         {rental && <a href="#business-rentals">Automobili</a>}
@@ -202,31 +201,31 @@ export function PublicBusinessProfile({
           </a>
         )}
         {gallery.length > 0 && <a href="#business-gallery">Galerija</a>}
-        <a href="#business-location">Lokacija</a>
-        <a href="#business-contact">Kontakt</a>
+        {hasLocation && <a href="#business-location">Lokacija</a>}
         {!preview && <a href="#recenzije">Recenzije</a>}
+        {hasContact && <a href="#business-contact">Kontakt</a>}
       </nav>
 
       <div className={styles.layout}>
         <div className={styles.details}>
-          <section
-            className={styles.section}
-            id="business-about"
-            aria-labelledby="business-about-heading"
-          >
-            <div className={styles.sectionHeading}>
-              <span>
-                <Icon name="shop" />
-              </span>
-              <h2 id="business-about-heading">O djelatnosti</h2>
-            </div>
-            {business.description?.trim() ? (
-              <p className={styles.description}>{business.description}</p>
-            ) : (
-              <p className={styles.missing}>Opis djelatnosti još nije unesen.</p>
-            )}
-            <BusinessAmenities details={business.details} />
-          </section>
+          {hasAbout && (
+            <section
+              className={styles.section}
+              id="business-about"
+              aria-labelledby="business-about-heading"
+            >
+              <div className={styles.sectionHeading}>
+                <span>
+                  <Icon name="shop" />
+                </span>
+                <h2 id="business-about-heading">O djelatnosti</h2>
+              </div>
+              {business.description?.trim() && (
+                <p className={styles.description}>{business.description}</p>
+              )}
+              <BusinessAmenities details={business.details} />
+            </section>
+          )}
 
           {business.details?.hours && (
             <section
@@ -264,8 +263,6 @@ export function PublicBusinessProfile({
             </section>
           )}
 
-          {!preview && <BusinessReviews key={business.id} businessId={business.id} />}
-
           {gallery.length > 0 && (
             <section
               className={styles.section}
@@ -291,113 +288,122 @@ export function PublicBusinessProfile({
             </section>
           )}
 
-          <section
-            className={styles.section}
-            id="business-location"
-            aria-labelledby="business-location-heading"
-          >
-            <div className={styles.sectionHeading}>
-              <span>
-                <Icon name="pin" />
-              </span>
-              <h2 id="business-location-heading">Lokacija</h2>
-            </div>
-            <p className={styles.address}>{location}</p>
-            {point && (
-              <div className={styles.map}>
-                <LocationMap
-                  point={point}
-                  disabled
-                  readOnly
-                  logoUrl={logo?.src}
-                  onPoint={() => {}}
-                />
+          {hasLocation && (
+            <section
+              className={styles.section}
+              id="business-location"
+              aria-labelledby="business-location-heading"
+            >
+              <div className={styles.sectionHeading}>
+                <span>
+                  <Icon name="pin" />
+                </span>
+                <h2 id="business-location-heading">Lokacija</h2>
               </div>
-            )}
-            {(driving || walking) && (
-              <div className={styles.directions}>
-                <p>
-                  Upute na Google Mapsu <Icon name="external" />
-                </p>
-                <div>
-                  {driving && (
-                    <a href={driving} target="_blank" rel="noopener noreferrer">
-                      <Icon name="car" />
-                      Automobilom
-                      <Icon name="external" />
-                    </a>
-                  )}
-                  {walking && (
-                    <a href={walking} target="_blank" rel="noopener noreferrer">
-                      <Icon name="pin" />
-                      Pješice
-                      <Icon name="external" />
-                    </a>
-                  )}
+              <p className={styles.address}>{location}</p>
+              {point && (
+                <div className={styles.map}>
+                  <LocationMap
+                    point={point}
+                    disabled
+                    readOnly
+                    logoUrl={logo?.src}
+                    onPoint={() => {}}
+                  />
                 </div>
-              </div>
-            )}
-          </section>
+              )}
+              {(driving || walking) && (
+                <div className={styles.directions}>
+                  <p>
+                    Upute na Google Mapsu <Icon name="external" />
+                  </p>
+                  <div>
+                    {driving && (
+                      <a href={driving} target="_blank" rel="noopener noreferrer">
+                        <Icon name="car" />
+                        Automobilom
+                        <Icon name="external" />
+                      </a>
+                    )}
+                    {walking && (
+                      <a href={walking} target="_blank" rel="noopener noreferrer">
+                        <Icon name="pin" />
+                        Pješice
+                        <Icon name="external" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+          {!preview && <BusinessReviews key={business.id} businessId={business.id} />}
         </div>
 
-        <aside
-          className={styles.contact}
-          id="business-contact"
-          aria-labelledby="business-contact-heading"
-        >
-          <div className={styles.contactHeading}>
-            <span>
-              <Icon name="phone" />
-            </span>
-            <h2 id="business-contact-heading">Kontakt</h2>
-          </div>
-          {links.phone && (
-            <a className={styles.contactRow} href={links.phone}>
-              <Icon name="phone" />
+        {hasContact && (
+          <aside
+            className={styles.contact}
+            id="business-contact"
+            aria-labelledby="business-contact-heading"
+          >
+            <div className={styles.contactHeading}>
               <span>
-                <small>Telefon</small>
-                <strong>{business.contactPhone}</strong>
+                <Icon name="phone" />
               </span>
-              <Icon name="chevron" />
-            </a>
-          )}
-          {links.email && (
-            <a className={styles.contactRow} href={links.email}>
-              <Icon name="mail" />
-              <span>
-                <small>Email</small>
-                <strong>{business.contactEmail}</strong>
-              </span>
-              <Icon name="chevron" />
-            </a>
-          )}
-          {links.website && (
-            <a
-              className={styles.contactRow}
-              href={links.website}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Icon name="external" />
-              <span>
-                <small>Web stranica</small>
-                <strong>Posjeti stranicu</strong>
-              </span>
-              <Icon name="external" />
-            </a>
-          )}
-          {!links.phone && !links.email && !links.website && (
-            <p className={styles.missing}>Kontakt podaci još nisu uneseni.</p>
-          )}
-          {point && (
-            <a className={styles.contactLocation} href="#business-location">
-              <Icon name="pin" />
-              <span>Pogledaj lokaciju na karti</span>
-              <Icon name="arrow" />
-            </a>
-          )}
-          {!preview && <Link href={reportUrl("business", business.id)}>Prijavi djelatnost</Link>}
-        </aside>
+              <h2 id="business-contact-heading">Kontakt</h2>
+            </div>
+            {links.phone && (
+              <a className={styles.contactRow} href={links.phone}>
+                <Icon name="phone" />
+                <span>
+                  <small>Telefon</small>
+                  <strong>{business.contactPhone}</strong>
+                </span>
+                <Icon name="chevron" />
+              </a>
+            )}
+            {links.email && (
+              <a className={styles.contactRow} href={links.email}>
+                <Icon name="mail" />
+                <span>
+                  <small>Email</small>
+                  <strong>{business.contactEmail}</strong>
+                </span>
+                <Icon name="chevron" />
+              </a>
+            )}
+            {links.website && (
+              <a
+                className={styles.contactRow}
+                href={links.website}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Icon name="external" />
+                <span>
+                  <small>Web stranica</small>
+                  <strong>Posjeti stranicu</strong>
+                </span>
+                <Icon name="external" />
+              </a>
+            )}
+            {!links.phone && !links.email && !links.website && contactMessage && (
+              <Link className={styles.contactRow} href={contactMessage}>
+                <Icon name="message" />
+                <span>Pošalji poruku djelatnosti</span>
+                <Icon name="chevron" />
+              </Link>
+            )}
+            {point && (
+              <a className={styles.contactLocation} href="#business-location">
+                <Icon name="pin" />
+                <span>Pogledaj lokaciju na karti</span>
+                <Icon name="arrow" />
+              </a>
+            )}
+            {!preview && <Link href={reportUrl("business", business.id)}>Prijavi djelatnost</Link>}
+          </aside>
+        )}
       </div>
     </article>
   );

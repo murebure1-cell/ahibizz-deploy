@@ -334,7 +334,7 @@ export function RentalCalendar({
                 {error}{" "}
                 {login && (
                   <Link
-                    href={`/prijava?nastavi=${encodeURIComponent(`/djelatnosti/${car.businessId}`)}`}
+                    href={`/prijava?nastavi=${encodeURIComponent(`/djelatnosti/${car.businessId}#business-rentals`)}`}
                   >
                     Prijava
                   </Link>

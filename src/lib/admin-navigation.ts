@@ -40,6 +40,9 @@ export const businessLocationBatchPath = "/administracija/lokacije";
 export function adminReturnPath(value: unknown): string | null {
   if (
     value === "/administracija" ||
+    value === "/administracija/izgled" ||
+    value === "/administracija/zahtjevi" ||
+    value === "/administracija/oglasi" ||
     value === businessImportPath ||
     value === businessLocationBatchPath
   )

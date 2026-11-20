@@ -88,23 +88,24 @@ export function DirectorySearchForm({
               ))}
           </select>
         </label>
-        <label htmlFor={`${prefix}-subcategory`}>
-          Podkategorija
-          <select
-            id={`${prefix}-subcategory`}
-            name="subcategoryId"
-            value={subcategory}
-            disabled={!children.length}
-            onChange={(event) => setSubcategory(event.target.value)}
-          >
-            <option value="">Sve podkategorije</option>
-            {children.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {children.length > 0 && (
+          <label htmlFor={`${prefix}-subcategory`}>
+            Podkategorija
+            <select
+              id={`${prefix}-subcategory`}
+              name="subcategoryId"
+              value={subcategory}
+              onChange={(event) => setSubcategory(event.target.value)}
+            >
+              <option value="">Sve podkategorije</option>
+              {children.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
       <button type="submit">
         <Icon name="search" />

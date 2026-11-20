@@ -1,3 +1,7 @@
+export function bamToEuroMinor(bamMinor: number) {
+  return Math.round((bamMinor * 100000) / 195583);
+}
+
 export type BillingPackageId = "basic" | "business" | "premium";
 export type BillingReceiptKind = "subscription" | "photo_video";
 export type BillingPeriod = "monthly" | "annual";

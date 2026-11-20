@@ -15,11 +15,26 @@ export async function CheckoutEntry({
     typeof query.narudzba === "string" && /^[a-f0-9-]{36}$/i.test(query.narudzba)
       ? query.narudzba
       : undefined;
+  const quote =
+    !id &&
+    typeof query.ponuda === "string" &&
+    /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(query.ponuda)
+      ? query.ponuda
+      : undefined;
   let userId: string | null = null;
   try {
     userId = (await getAccountService()?.read(await headers()))?.id ?? null;
   } catch {
     /* Show login without leaking account details. */
   }
-  return <Checkout userId={userId} initialOrderId={id} returned={returned} cancelled={cancelled} />;
+  return (
+    <Checkout
+      key={`${userId}:${id ?? quote ?? ""}`}
+      userId={userId}
+      initialOrderId={id}
+      initialQuoteId={quote}
+      returned={returned}
+      cancelled={cancelled}
+    />
+  );
 }

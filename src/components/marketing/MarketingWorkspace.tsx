@@ -16,6 +16,7 @@ import styles from "./marketing.module.css";
 
 const messages: Record<string, string> = {
   OFFER_CHANGED: "Ponuda je promijenjena. Osvježi pregled.",
+  QUOTE_PAYMENT_PENDING: "Online uplata za ovu ponudu je otvorena. Provjeri njeno stanje.",
   OPEN_OFFER: "Već postoji otvoren zahtjev. Pogledaj ga ispod.",
   INSUFFICIENT_CREDITS: "Nemaš dovoljno kredita za ovu ponudu.",
   ACTIVE_BANNER: "Oglas na ovom mjestu već traje.",
@@ -40,11 +41,13 @@ function price(value: FormDataEntryValue | null) {
 function OfferCard({
   order,
   admin,
+  checkoutAvailable,
   submit,
   busy,
 }: {
   order: MarketingOrder;
   admin: boolean;
+  checkoutAvailable: boolean;
   submit: (command: MarketingCommand) => void;
   busy: boolean;
 }) {
@@ -86,7 +89,9 @@ function OfferCard({
               : "Dopuna kredita"}
           </small>
         </div>
-        <span className={styles.status}>{marketingLabels[order.status]}</span>
+        <span className={styles.status}>
+          {order.revokedAt ? "Obustavljeno" : marketingLabels[order.status]}
+        </span>
       </header>
       {order.amountMinor !== null && (
         <p className={styles.amount}>
@@ -102,7 +107,12 @@ function OfferCard({
           do {new Date(order.endsAt).toLocaleDateString("bs-BA")}
         </p>
       )}
-      {order.status === "quoted" && (
+      {!admin && order.status === "quoted" && checkoutAvailable && (
+        <Link className={styles.primaryLink} href={`/naplata?ponuda=${order.id}`}>
+          {order.onlinePending ? "Nastavi otvorenu uplatu" : "Plati ponudu"}
+        </Link>
+      )}
+      {order.status === "quoted" && !order.onlinePending && (
         <div className={styles.instructions}>
           <strong>Upute za uplatu</strong>
           <p>{order.instructions}</p>
@@ -130,7 +140,7 @@ function OfferCard({
           </button>
         </form>
       )}
-      {admin && order.status === "quoted" && (
+      {admin && order.status === "quoted" && !order.onlinePending && (
         <form onSubmit={confirm} className={styles.form}>
           <label>
             Primljeno na računu (KM)
@@ -145,16 +155,19 @@ function OfferCard({
           </button>
         </form>
       )}
-      {!admin && order.status === "quoted" && order.creditPrice !== null && (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => submit({ action: "useCredits", id: order.id })}
-        >
-          Plati {credits(order.creditPrice)} kredita
-        </button>
-      )}
-      {["requested", "quoted"].includes(order.status) && (
+      {!admin &&
+        order.status === "quoted" &&
+        !order.onlinePending &&
+        order.creditPrice !== null && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => submit({ action: "useCredits", id: order.id })}
+          >
+            Plati {credits(order.creditPrice)} kredita
+          </button>
+        )}
+      {["requested", "quoted"].includes(order.status) && !order.onlinePending && (
         <button
           type="button"
           className={styles.secondary}
@@ -389,6 +402,7 @@ function MarketingView({ accountId, mode }: { accountId: string; mode: Marketing
           <OfferCard
             key={order.id}
             order={order}
+            checkoutAvailable={data.checkoutAvailable}
             admin={mode === "admin"}
             busy={busy}
             submit={submit}

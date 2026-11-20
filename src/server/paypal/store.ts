@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { paypalOrderFlow } from "../../lib/paypal-order-flow";
+import { payableQuote, pendingQuoteOrder, settleOnlineQuote } from "../marketing/online-quote";
 
 export type CheckoutActor = {
   userId: string;
@@ -12,9 +13,10 @@ export type CheckoutEnvironment = "sandbox" | "live";
 export type CheckoutOrder = {
   id: string;
   userId: string;
+  quoteId: string | null;
   requestId: string;
   environment: CheckoutEnvironment;
-  kind: "promotion" | "support";
+  kind: "promotion" | "support" | "quote";
   businessId: string | null;
   categoryId: string | null;
   businessTitle: string | null;
@@ -53,7 +55,7 @@ const uuid = (v: string) => {
     fail(400, "INVALID_CHECKOUT_ID");
   return v;
 };
-const columns = `id,user_id AS "userId",request_id AS "requestId",environment,kind,business_id AS "businessId",category_id AS "categoryId",business_title AS "businessTitle",offer_version AS "offerVersion",original_bam_minor AS "originalBamMinor",amount_minor AS "amountMinor",currency,merchant_id AS "merchantId",status,provider_order_id AS "providerOrderId",approval_url AS "approvalUrl",capture_id AS "captureId",create_request_id AS "createRequestId",capture_request_id AS "captureRequestId",refunded_minor AS "refundedMinor",refund_total_unknown AS "refundTotalUnknown",starts_at::text AS "startsAt",ends_at::text AS "endsAt",expires_at::text AS "expiresAt",captured_at::text AS "capturedAt",version`;
+const columns = `id,user_id AS "userId",request_id AS "requestId",environment,kind,quote_id AS "quoteId",business_id AS "businessId",category_id AS "categoryId",business_title AS "businessTitle",offer_version AS "offerVersion",original_bam_minor AS "originalBamMinor",amount_minor AS "amountMinor",currency,merchant_id AS "merchantId",status,provider_order_id AS "providerOrderId",approval_url AS "approvalUrl",capture_id AS "captureId",create_request_id AS "createRequestId",capture_request_id AS "captureRequestId",refunded_minor AS "refundedMinor",refund_total_unknown AS "refundTotalUnknown",starts_at::text AS "startsAt",ends_at::text AS "endsAt",expires_at::text AS "expiresAt",captured_at::text AS "capturedAt",version`;
 
 export function promotionSql(alias = "b") {
   if (!/^[a-z][a-z0-9_]*$/i.test(alias)) throw new Error("Invalid SQL alias");
@@ -141,6 +143,15 @@ async function requireCurrentPromotionBusiness(
   order: CheckoutOrder,
   actor: CheckoutActor,
 ) {
+  if (order.quoteId) {
+    const offer = await payableQuote(c, actor.userId, order.quoteId, true);
+    if (
+      !offer ||
+      offer.amountMinor !== order.amountMinor ||
+      offer.originalBamMinor !== order.originalBamMinor
+    )
+      fail(409, "QUOTE_NOT_PAYABLE");
+  }
   if (!order.businessId) return;
   const b = await business(c, order.businessId);
   if (
@@ -174,9 +185,10 @@ export function createCheckoutStore(pool: Pool) {
       actor: CheckoutActor,
       input: {
         requestId: string;
-        kind: "promotion" | "support";
+        kind: "promotion" | "support" | "quote";
         businessId?: string;
-        amountMinor: number;
+        amountMinor?: number;
+        quoteId?: string;
         merchantId: string;
         environment: CheckoutEnvironment;
         offerVersion: string;
@@ -184,17 +196,21 @@ export function createCheckoutStore(pool: Pool) {
     ) {
       uuid(input.requestId);
       if (
-        !["promotion", "support"].includes(input.kind) ||
+        !["promotion", "support", "quote"].includes(input.kind) ||
         !["sandbox", "live"].includes(input.environment) ||
-        !Number.isSafeInteger(input.amountMinor) ||
-        input.amountMinor < 1 ||
-        input.amountMinor > 1000000 ||
+        (input.kind !== "quote" &&
+          (!Number.isSafeInteger(input.amountMinor) ||
+            (input.amountMinor ?? 0) < 1 ||
+            (input.amountMinor ?? 0) > 1000000)) ||
+        (input.kind === "quote") !== Boolean(input.quoteId) ||
+        (input.kind === "quote" && input.amountMinor !== undefined) ||
         !input.merchantId ||
         !input.offerVersion
       )
         fail(400, "INVALID_CHECKOUT_INPUT");
       if ((input.kind === "promotion") !== Boolean(input.businessId))
         fail(400, "INVALID_CHECKOUT_INPUT");
+      if (input.quoteId) uuid(input.quoteId);
       const fingerprint = createHash("sha256")
         .update(
           JSON.stringify([
@@ -204,6 +220,7 @@ export function createCheckoutStore(pool: Pool) {
             input.merchantId,
             input.environment,
             input.offerVersion,
+            ...(input.quoteId ? [input.quoteId] : []),
           ]),
         )
         .digest("hex");
@@ -218,6 +235,28 @@ export function createCheckoutStore(pool: Pool) {
         if (existing) {
           if (existing.fingerprint !== fingerprint) fail(409, "COMMAND_CONFLICT");
           return existing;
+        }
+        const quote = input.quoteId
+          ? await payableQuote(c, actor.userId, input.quoteId, true)
+          : null;
+        if (input.quoteId && !quote) fail(409, "QUOTE_NOT_PAYABLE");
+        const price = quote?.amountMinor ?? input.amountMinor;
+        if (price === undefined) fail(400, "INVALID_CHECKOUT_INPUT");
+        if (quote) {
+          const pending = await pendingQuoteOrder(c, quote.id, input.environment);
+          if (pending) {
+            if (!["created", "provider_created"].includes(pending.status))
+              fail(409, "QUOTE_PAYMENT_PENDING");
+            const saved = await row(c, pending.id);
+            if (saved.offerVersion !== input.offerVersion) fail(409, "CHECKOUT_FLOW_MISMATCH");
+            if (
+              saved.userId !== actor.userId ||
+              saved.amountMinor !== price ||
+              saved.merchantId !== input.merchantId
+            )
+              fail(409, "QUOTE_NOT_PAYABLE");
+            return saved;
+          }
         }
         let b: Awaited<ReturnType<typeof business>>;
         if (input.businessId) {
@@ -272,7 +311,7 @@ export function createCheckoutStore(pool: Pool) {
         }
         const id = randomUUID();
         await c.query(
-          "INSERT INTO paypal_checkout_order(id,user_id,request_id,fingerprint,environment,kind,business_id,category_id,business_title,offer_version,original_bam_minor,amount_minor,merchant_id,create_request_id,capture_request_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)",
+          "INSERT INTO paypal_checkout_order(id,user_id,request_id,fingerprint,environment,kind,business_id,category_id,business_title,offer_version,original_bam_minor,amount_minor,merchant_id,create_request_id,capture_request_id,quote_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)",
           [
             id,
             actor.userId,
@@ -282,18 +321,19 @@ export function createCheckoutStore(pool: Pool) {
             input.kind,
             b?.id ?? null,
             b?.category_id ?? null,
-            b?.title ?? null,
+            b?.title ?? quote?.title ?? null,
             input.offerVersion,
-            b ? 1000 : null,
-            input.amountMinor,
+            quote?.originalBamMinor ?? (b ? 1000 : null),
+            price,
             input.merchantId,
             randomUUID(),
             randomUUID(),
+            quote?.id ?? null,
           ],
         );
         await audit(c, id, "created", {
           kind: input.kind,
-          amountMinor: input.amountMinor,
+          amountMinor: price,
           currency: "EUR",
         });
         return row(c, id);
@@ -313,13 +353,13 @@ export function createCheckoutStore(pool: Pool) {
         const order = await row(c, id);
         if (order.userId !== actor.userId) fail(404, "ORDER_NOT_FOUND");
         if (
-          order.kind !== "promotion" ||
-          !order.businessId ||
+          (order.kind !== "promotion" && order.kind !== "quote") ||
+          (order.kind === "promotion" && !order.businessId) ||
           paypalOrderFlow(order.offerVersion) !== "guest" ||
           order.status !== "provider_created" ||
           !order.providerOrderId ||
           order.captureId ||
-          order.amountMinor !== 511 ||
+          (order.kind === "promotion" && order.amountMinor !== 511) ||
           order.currency !== "EUR" ||
           order.refundedMinor !== 0 ||
           order.refundTotalUnknown
@@ -441,6 +481,19 @@ export function createCheckoutStore(pool: Pool) {
                 b.status === "published",
             );
         }
+        if (o.quoteId) {
+          const listed = await c.query<{ business_id: string | null }>(
+            "SELECT business_id FROM marketing_order WHERE id=$1",
+            [o.quoteId],
+          );
+          if (listed.rows[0]?.business_id) await business(c, listed.rows[0].business_id);
+          const offer = await payableQuote(c, o.userId, o.quoteId, true);
+          eligible =
+            eligible &&
+            offer !== null &&
+            offer.amountMinor === o.amountMinor &&
+            offer.originalBamMinor === o.originalBamMinor;
+        }
         // Late payment is recorded for review/refund, never granted over a newer reservation.
         const timely = await c.query(
           "SELECT id FROM paypal_checkout_order WHERE id=$1 AND expires_at>now()",
@@ -457,6 +510,8 @@ export function createCheckoutStore(pool: Pool) {
             "INSERT INTO paypal_promotion_entitlement(order_id,business_id,user_id,category_id,starts_at,ends_at) SELECT id,business_id,user_id,category_id,starts_at,ends_at FROM paypal_checkout_order WHERE id=$1 ON CONFLICT DO NOTHING",
             [id],
           );
+        if (eligible && o.quoteId && o.environment === "live")
+          await settleOnlineQuote(c, o.userId, o.quoteId, o.id);
         await audit(c, id, "capture_confirmed", { captureId: value.captureId, status });
         return row(c, id);
       });

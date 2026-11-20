@@ -50,8 +50,28 @@ export type Sdk = {
     pageType: "checkout";
   }): Promise<CardSdkInstance>;
 };
+export type SubscriptionButtons = {
+  isEligible(): boolean;
+  render(target: HTMLElement): Promise<void>;
+  close(): Promise<void>;
+};
+type SubscriptionSdk = {
+  Buttons(options: {
+    fundingSource: "card";
+    style: { layout: "vertical"; shape: "rect"; height: number };
+    onClick(
+      data: unknown,
+      actions: { resolve(): Promise<void>; reject(): Promise<void> },
+    ): Promise<void>;
+    createSubscription(): Promise<string>;
+    onApprove(data: { subscriptionID?: string }): Promise<void>;
+    onCancel(): void;
+    onError(): void;
+  }): SubscriptionButtons;
+};
 
 const loads = new WeakMap<Document, Map<string, Promise<Sdk>>>();
+const subscriptionLoads = new WeakMap<Document, Map<string, Promise<SubscriptionSdk>>>();
 let namespaceCounter = 0;
 const timeoutMs = 15000;
 function sdkValue(value: unknown): Sdk | null {
@@ -73,6 +93,43 @@ export function loadPayPalCardSdk(
   signal: AbortSignal,
   environment: PayPalEnvironment = "live",
 ): Promise<Sdk> {
+  return loadPayPalScript(clientId, signal, environment, "/web-sdk/v6/core", loads, sdkValue);
+}
+
+/** Use the subscription integration's own funding eligibility, not a one-time card check. */
+export function loadSubscriptionCardSdk(
+  clientId: string,
+  signal: AbortSignal,
+  environment: PayPalEnvironment,
+) {
+  const params = new URLSearchParams({
+    "client-id": clientId,
+    currency: "EUR",
+    components: "buttons",
+    intent: "subscription",
+    vault: "true",
+  });
+  return loadPayPalScript(
+    clientId,
+    signal,
+    environment,
+    `/sdk/js?${params}`,
+    subscriptionLoads,
+    (value) =>
+      value && typeof (value as SubscriptionSdk).Buttons === "function"
+        ? (value as SubscriptionSdk)
+        : null,
+  );
+}
+
+function loadPayPalScript<T>(
+  clientId: string,
+  signal: AbortSignal,
+  environment: PayPalEnvironment,
+  sdkPath: string,
+  sourceCache: WeakMap<Document, Map<string, Promise<T>>>,
+  decode: (value: unknown) => T | null,
+): Promise<T> {
   if (!/^[A-Za-z0-9_-]{1,256}$/.test(clientId))
     return Promise.reject(new Error("PAYPAL_INVALID_CLIENT_ID"));
   if (environment !== "live" && environment !== "sandbox")
@@ -83,22 +140,21 @@ export function loadPayPalCardSdk(
   const ownerDocument = document;
   const ownerWindow = window;
   const globals = ownerWindow as unknown as Record<string, unknown>;
-  let cache = loads.get(ownerDocument);
+  let cache = sourceCache.get(ownerDocument);
   if (!cache) {
     cache = new Map();
-    loads.set(ownerDocument, cache);
+    sourceCache.set(ownerDocument, cache);
   }
   const url =
-    environment === "sandbox"
-      ? "https://www.sandbox.paypal.com/web-sdk/v6/core"
-      : "https://www.paypal.com/web-sdk/v6/core";
+    (environment === "sandbox" ? "https://www.sandbox.paypal.com" : "https://www.paypal.com") +
+    sdkPath;
   let shared = cache.get(url);
   if (!shared) {
     const namespace = `ahiPayPalCard_${Date.now().toString(36)}_${++namespaceCounter}`;
     // Starting in a microtask ensures the shared entry exists before script events run.
     shared = Promise.resolve().then(
       () =>
-        new Promise<Sdk>((resolve, reject) => {
+        new Promise<T>((resolve, reject) => {
           const script = ownerDocument.createElement("script");
           script.src = url;
           script.async = true;
@@ -119,7 +175,7 @@ export function loadPayPalCardSdk(
           }
           function loaded() {
             if (settled) return;
-            const sdk = sdkValue(globals[namespace]);
+            const sdk = decode(globals[namespace]);
             if (!sdk) {
               finishError("PAYPAL_SDK_INVALID");
               return;
@@ -149,7 +205,7 @@ export function loadPayPalCardSdk(
     });
   }
   const pending = shared;
-  return new Promise<Sdk>((resolve, reject) => {
+  return new Promise<T>((resolve, reject) => {
     let finished = false;
     function abort() {
       if (finished) return;

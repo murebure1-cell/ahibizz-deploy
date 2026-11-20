@@ -89,16 +89,6 @@
   opacity: 0.5;
 }
 
-.coverCaption {
-  position: absolute;
-  bottom: 54px;
-  left: 32px;
-  color: #dae5ed;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-}
-
 .identity {
   position: relative;
   z-index: 1;
@@ -324,7 +314,6 @@
   overflow-wrap: anywhere;
 }
 
-.missing,
 .address {
   color: var(--ui-text-secondary);
   font-size: 13px;
@@ -337,7 +326,7 @@
 }
 
 .appointments:empty,
-.profile:not(:has(.appointments > *)) .appointmentsLink {
+.profile:not(:has([id="business-appointments"] > *)) .appointmentsLink {
   display: none;
 }
 
@@ -577,12 +566,6 @@
     width: 119px;
   }
 
-  .coverCaption {
-    bottom: 42px;
-    left: 23px;
-    font-size: 8px;
-  }
-
   .identity {
     gap: 14px;
     margin: -22px 10px 0;
@@ -670,8 +653,7 @@
     line-height: 1.9;
   }
 
-  .address,
-  .missing {
+  .address {
     font-size: 12px;
   }
 

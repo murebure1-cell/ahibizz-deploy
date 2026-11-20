@@ -182,7 +182,6 @@ export function HomeNearbyResults() {
   if (state === "waiting")
     return (
       <div className={styles.group} data-design="home-local-featured">
-        <h3>Istaknuto na tvojoj lokaciji</h3>
         <p className={homeStyles.availability}>
           {location.status === "unavailable"
             ? "Lokacija nije dostupna. Možeš odabrati grad."
@@ -195,12 +194,14 @@ export function HomeNearbyResults() {
   if (!businesses.length)
     return (
       <div className={styles.group} data-design="home-local-featured">
-        <h3>Istaknuto na tvojoj lokaciji</h3>
         <p className={homeStyles.availability}>
           {useGps
             ? "U tvojoj blizini još nema objavljenih djelatnosti."
             : `Još nema objavljenih djelatnosti za ${place}.`}
         </p>
+        <Link className={homeStyles.subtleLink} href="/pretraga">
+          Istraži sve djelatnosti <Icon name="arrow" />
+        </Link>
       </div>
     );
   return <NearbyCards key={searchPath ?? place} />;

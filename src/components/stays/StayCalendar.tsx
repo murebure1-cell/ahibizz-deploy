@@ -393,7 +393,7 @@ export function StayCalendar({
                 {error}{" "}
                 {login && (
                   <Link
-                    href={`/prijava?nastavi=${encodeURIComponent(`/djelatnosti/${unit.businessId}`)}`}
+                    href={`/prijava?nastavi=${encodeURIComponent(`/djelatnosti/${unit.businessId}#business-stays`)}`}
                   >
                     Prijava
                   </Link>

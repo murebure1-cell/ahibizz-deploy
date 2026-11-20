@@ -5,7 +5,8 @@ import { bookingReturnPath } from "../src/lib/booking-return";
 test("booking login return accepts only an exact same-app profile and appointment anchor", () => {
   const path = "/djelatnosti/11111111-1111-4111-8111-111111111111";
   assert.equal(bookingReturnPath(path), path);
-  assert.equal(bookingReturnPath(`${path}#business-appointments`), `${path}#business-appointments`);
+  for (const section of ["appointments", "rentals", "stays"])
+    assert.equal(bookingReturnPath(`${path}#business-${section}`), `${path}#business-${section}`);
   for (const value of [
     undefined,
     null,

@@ -9,7 +9,7 @@ export type CheckoutActor = {
 export type CheckoutRecord = {
   id: string;
   userId: string;
-  kind: "promotion" | "support";
+  kind: "promotion" | "support" | "quote";
   businessId: string | null;
   amountMinor: number;
   currency: "EUR";
@@ -51,8 +51,9 @@ export class CheckoutHttpError extends Error {
 }
 type CheckoutCreateInput = {
   requestId: string;
-  kind: "promotion" | "support";
+  kind: "promotion" | "support" | "quote";
   businessId?: string;
+  quoteId?: string;
   amountMinor?: number;
   flow?: "sdk" | "guest" | "card-fields";
 };
@@ -92,21 +93,44 @@ function requestId(value: unknown): string {
   if (typeof value !== "string" || !uuid.test(value)) fail(400, "INVALID_REQUEST_ID");
   return value;
 }
-function amount(value: unknown, minimum = 100): number {
+function amount(value: unknown, minimum = 100, maximum = 100000): number {
   if (
     typeof value !== "number" ||
     !Number.isSafeInteger(value) ||
     value < minimum ||
-    value > 100000
+    value > maximum
   )
     fail(400, "INVALID_AMOUNT");
   return value;
 }
 export function checkoutInput(value: unknown): CheckoutCreateInput {
-  const input = object(value, ["requestId", "kind", "businessId", "amountMinor", "flow"]);
+  const input = object(value, [
+    "requestId",
+    "kind",
+    "businessId",
+    "quoteId",
+    "amountMinor",
+    "flow",
+  ]);
   const flow = input.flow;
   if (flow !== undefined && flow !== "sdk" && flow !== "guest" && flow !== "card-fields")
     fail(400, "INVALID_CHECKOUT_FLOW");
+  if (input.kind === "quote") {
+    if (
+      input.businessId !== undefined ||
+      input.amountMinor !== undefined ||
+      typeof input.quoteId !== "string" ||
+      !uuid.test(input.quoteId)
+    )
+      fail(400, "INVALID_QUOTE");
+    return {
+      requestId: requestId(input.requestId),
+      kind: "quote",
+      quoteId: input.quoteId,
+      ...(flow ? { flow } : {}),
+    };
+  }
+  if (input.quoteId !== undefined) fail(400, "INVALID_QUOTE");
   if ((flow === "guest" || flow === "card-fields") && input.kind !== "promotion")
     fail(400, "INVALID_CHECKOUT_FLOW");
   if (input.kind === "promotion") {
@@ -224,7 +248,7 @@ export function createCheckoutHttpHandler(service: CheckoutHttpService, origin: 
         return reply(
           await service.refund(request.headers, id, {
             requestId: requestId(value.requestId),
-            amountMinor: amount(value.amountMinor, 1),
+            amountMinor: amount(value.amountMinor, 1, 51129188),
             reason: value.reason.trim(),
           }),
         );

@@ -5,6 +5,7 @@ import { Pool } from "pg";
 import { loadMigrations, runMigrations } from "../../scripts/migrate.mjs";
 import { createPublicDirectoryService } from "../../src/server/directory/read-service.ts";
 import { createCheckoutStore, promotionSql } from "../../src/server/paypal/store.ts";
+import { verifyMarketingOnlineQuotes } from "./marketing-online-cases.mjs";
 import { integrationConfiguration } from "./postgres.test.mjs";
 
 test("durable checkout isolated PostgreSQL authority, replay, rights and refunds", {
@@ -682,6 +683,16 @@ test("durable checkout isolated PostgreSQL authority, replay, rights and refunds
         [p.id],
       );
       assert.equal(await visible(p.businessId), false);
+    });
+    await verifyMarketingOnlineQuotes(t, {
+      pool,
+      store,
+      user,
+      owner,
+      other,
+      makeBusiness,
+      attach,
+      capture,
     });
   } finally {
     if (pool) await pool.end();

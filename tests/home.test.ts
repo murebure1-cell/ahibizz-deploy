@@ -2,6 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { homeCategories, homePlace } from "../src/lib/home";
 
+test("selecting a home category keeps the chosen city in the search", () => {
+  const [category] = homeCategories([{ id: "servisi", name: "Servisi", parentId: null }], "Tuzla");
+  assert.ok(category);
+  const href = new URL(category.href, "https://ahibizz.example");
+  assert.equal(href.searchParams.get("mjesto"), "Tuzla");
+  assert.equal(href.searchParams.get("categoryId"), "servisi");
+});
+
 test("home location accepts one bounded place and discards duplicate or control-character input", () => {
   assert.equal(homePlace(" Tuzla "), "Tuzla");
   assert.equal(homePlace("Živinice"), "Živinice");

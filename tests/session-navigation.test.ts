@@ -36,6 +36,10 @@ test("eligible sign-in shortcuts use only closed paths and preserve owner admin 
   for (const path of [
     "/administracija",
     "/administracija/uvoz-prijava",
+    "/administracija/lokacije",
+    "/administracija/zahtjevi",
+    "/administracija/oglasi",
+    "/administracija/izgled",
     "/administracija?odjeljak=nalozi",
     "/administracija?odjeljak=kategorije",
     "/administracija?odjeljak=djelatnosti",

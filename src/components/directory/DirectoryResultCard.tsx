@@ -18,9 +18,11 @@ import styles from "./directory-card.module.css";
 export function DirectoryResultCard({
   business,
   preview = false,
+  searchSuffix = "",
 }: {
   business: PublicBusinessView;
   preview?: boolean;
+  searchSuffix?: string;
 }) {
   const logo = safeBusinessImage(business.logo, preview);
   const cover = safeBusinessImage(business.image, preview);
@@ -30,7 +32,7 @@ export function DirectoryResultCard({
       : business.gallery
           ?.map((photo) => safeBusinessImage(photo, preview))
           .find((photo) => photo && photo.src !== logo?.src);
-  const profile = `/djelatnosti/${business.id}`;
+  const profile = `/djelatnosti/${business.id}${searchSuffix}`;
   const monogram = business.title
     .trim()
     .split(/\s+/)

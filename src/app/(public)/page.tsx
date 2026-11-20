@@ -64,7 +64,7 @@ export default async function HomePage({
         searchAction="/pretraga"
         placeField="mjesto"
         place={place}
-        categories={homeCategories(categories)}
+        categories={homeCategories(categories, place)}
         featuredHref="/pretraga?istaknute=1"
         featured={
           featured.length

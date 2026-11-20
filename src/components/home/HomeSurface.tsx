@@ -135,6 +135,7 @@ export function HomeSurface({
       <section
         className={`${styles.container} ${styles.section}`}
         data-design="home-category-featured"
+        data-empty={categoryFeatured.length === 0 || undefined}
         aria-labelledby="category-featured-heading"
       >
         <div className={styles.sectionHeading}>
@@ -156,9 +157,7 @@ export function HomeSurface({
           </HomeRail>
         ) : (
           <p className={styles.availability}>
-            {categoryAvailable
-              ? "Trenutno nema istaknutih djelatnosti u kategorijama."
-              : "Imenik trenutno nije dostupan."}
+            {categoryAvailable ? "Nema aktivnih isticanja." : "Imenik trenutno nije dostupan."}
           </p>
         )}
       </section>
@@ -321,7 +320,12 @@ export function HomeSurface({
           </Form>
         </div>
       </section>
-      <HomeCategories categories={categories} searchAction={searchAction} />
+      <HomeCategories
+        categories={categories}
+        searchAction={
+          place ? `${searchAction}?${new URLSearchParams({ [placeField]: place })}` : searchAction
+        }
+      />
       {design.homeOrder.map((id) => (
         <Fragment key={id}>{sections[id]}</Fragment>
       ))}

@@ -5,6 +5,10 @@ import { DirectorySearchForm } from "../../../components/directory/DirectorySear
 import styles from "../../../components/directory/public-search.module.css";
 import { EmptyDirectory } from "../../../components/EmptyDirectory";
 import {
+  type DirectorySearchParams,
+  directorySearchSuffix,
+} from "../../../lib/directory-navigation";
+import {
   DirectoryAccessError,
   type DirectoryCategory,
   getPublicDirectoryService,
@@ -14,17 +18,13 @@ import { publicBusinessView } from "../../../server/directory/public-view";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Istraži djelatnosti" };
-type Params = {
-  q?: string | string[];
-  mjesto?: string | string[];
-  categoryId?: string | string[];
-  subcategoryId?: string | string[];
-  page?: string | string[];
-  istaknute?: string | string[];
-};
 const text = (value: string | string[] | undefined, max: number) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
-export default async function SearchPage({ searchParams }: { searchParams: Promise<Params> }) {
+export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<DirectorySearchParams>;
+}) {
   const params = await searchParams;
   const query = text(params.q, 120),
     city = text(params.mjesto, 100),
@@ -65,21 +65,25 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     if (error instanceof DirectoryAccessError && error.status === 400) invalidFilters = true;
   }
   function pageHref(next: number) {
-    const values = new URLSearchParams();
-    if (featuredOnly) values.set("istaknute", featuredOnly === "category" ? "kategorija" : "1");
-    if (query) values.set("q", query);
-    if (city) values.set("mjesto", city);
-    if (categoryId) values.set("categoryId", categoryId);
-    if (subcategoryId) values.set("subcategoryId", subcategoryId);
-    if (next > 1) values.set("page", String(next));
-    return `/pretraga${values.size ? `?${values}` : ""}`;
+    return `/pretraga${directorySearchSuffix({ ...params, page: String(next) })}`;
   }
+  const sourceQuery = directorySearchSuffix(params);
+  const activeFilters = [
+    { key: "q", label: query },
+    { key: "mjesto", label: city },
+    { key: "categoryId", label: categories.find((item) => item.id === categoryId)?.name },
+    { key: "subcategoryId", label: categories.find((item) => item.id === subcategoryId)?.name },
+    {
+      key: "istaknute",
+      label:
+        featuredOnly === "category" ? "Istaknuto u kategoriji" : featuredOnly ? "Istaknuto" : "",
+    },
+  ] as const;
   const filtered = Boolean(query || city || categoryId || subcategoryId || featuredOnly);
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <header className={styles.intro}>
-        <p>Lokalni imenik</p>
-        <h1>Šta tražiš?</h1>
+        <h1>Pretraga djelatnosti</h1>
       </header>
       <DirectorySearchForm
         featuredOnly={featuredOnly}
@@ -92,25 +96,29 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       />
       <section aria-label="Rezultati pretrage">
         <div className={styles.resultsHeading}>
-          <span>
-            {filtered
-              ? [
-                  featuredOnly === "category"
-                    ? "Istaknuto u kategoriji"
-                    : featuredOnly
-                      ? "Istaknute djelatnosti"
-                      : null,
-                  query,
-                  city,
-                  categories.find((item) => item.id === categoryId)?.name,
-                  categories.find((item) => item.id === subcategoryId)?.name,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")
-              : "Sve djelatnosti"}
-          </span>
-          {filtered && <Link href="/pretraga">Očisti pretragu</Link>}
+          <h2>{filtered ? "Rezultati pretrage" : "Sve djelatnosti"}</h2>
+          {filtered && !invalidFilters && <Link href="/pretraga">Očisti pretragu</Link>}
         </div>
+        {filtered && available && (
+          <ul className={styles.activeFilters} aria-label="Primijenjeni filteri">
+            {activeFilters.map(({ key, label }) => {
+              if (!label) return null;
+              const remaining = { ...params, page: undefined, [key]: undefined };
+              if (key === "categoryId") remaining.subcategoryId = undefined;
+              return (
+                <li key={key}>
+                  <Link
+                    href={`/pretraga${directorySearchSuffix(remaining)}`}
+                    aria-label={`Ukloni filter: ${label}`}
+                  >
+                    <span>{label}</span>
+                    <span aria-hidden="true">×</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
         {invalidFilters ? (
           <div role="alert" className={styles.unavailable}>
             <h2>Provjeri filtere pretrage.</h2>
@@ -126,7 +134,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         ) : items.length ? (
           <div className={styles.grid}>
             {items.map((item) => (
-              <DirectoryResultCard key={item.id} business={publicBusinessView(item, categories)} />
+              <DirectoryResultCard
+                key={item.id}
+                business={publicBusinessView(item, categories)}
+                searchSuffix={sourceQuery}
+              />
             ))}
           </div>
         ) : (

@@ -16,6 +16,8 @@ export type MarketingOrder = {
   amountMinor: number | null;
   creditPrice: number | null;
   instructions: string | null;
+  onlinePending?: boolean;
+  revokedAt?: string | null;
   businessTitle: string | null;
   customer: string;
   startsAt: string | null;

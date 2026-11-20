@@ -6,6 +6,10 @@ import { PublicBusinessProfile } from "../../../../components/directory/PublicBu
 import styles from "../../../../components/directory/public-search.module.css";
 import { RentalFleet } from "../../../../components/rentals/RentalFleet";
 import { StayUnits } from "../../../../components/stays/StayUnits";
+import {
+  type DirectorySearchParams,
+  directorySearchSuffix,
+} from "../../../../lib/directory-navigation";
 import { getBookingService } from "../../../../server/booking";
 import { DirectoryAccessError, getPublicDirectoryService } from "../../../../server/directory";
 import { publicBusinessView } from "../../../../server/directory/public-view";
@@ -14,8 +18,14 @@ import { getStayService } from "../../../../server/stays/service";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Poslovni profil" };
-export default async function PublicBusinessPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function PublicBusinessPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<DirectorySearchParams>;
+}) {
+  const [{ id }, search] = await Promise.all([params, searchParams]);
   if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id))
     notFound();
   try {
@@ -43,6 +53,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
       return (
         <main id="glavni-sadrzaj">
           <PublicBusinessProfile
+            backHref={`/pretraga${directorySearchSuffix(search)}`}
             business={publicBusinessView(business, categories)}
             accommodation={
               hostsGuests && (!stayCatalog || stayCatalog.units.length > 0) ? (

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { loadPayPalCardSdk, type Sdk } from "../src/lib/paypal-card-sdk";
+import { loadPayPalCardSdk, loadSubscriptionCardSdk, type Sdk } from "../src/lib/paypal-card-sdk";
 
 class Script extends EventTarget {
   src = "";
@@ -72,6 +72,44 @@ async function tick() {
   await Promise.resolve();
   await Promise.resolve();
 }
+test("subscriptions use a distinct PayPal vault SDK and are shared only within the same merchant and environment", async () => {
+  const browser = fakeBrowser();
+  try {
+    const signal = new AbortController().signal;
+    const requests = [
+      loadSubscriptionCardSdk("testMerchant", signal, "sandbox"),
+      loadSubscriptionCardSdk("testMerchant", signal, "sandbox"),
+      loadPayPalCardSdk("testMerchant", signal, "sandbox"),
+      loadSubscriptionCardSdk("liveMerchant", signal, "live"),
+    ];
+    await tick();
+    assert.equal(browser.scripts.length, 3);
+    for (const [index, merchant] of [
+      [0, "testMerchant"],
+      [2, "liveMerchant"],
+    ] as const) {
+      const s = browser.scripts[index];
+      assert.ok(s);
+      const url = new URL(s.src);
+      assert.equal(url.origin, index ? "https://www.paypal.com" : "https://www.sandbox.paypal.com");
+      assert.equal(url.pathname, "/sdk/js");
+      assert.deepEqual(Object.fromEntries(url.searchParams), {
+        "client-id": merchant,
+        currency: "EUR",
+        components: "buttons",
+        intent: "subscription",
+        vault: "true",
+      });
+      browser.load(s, { Buttons() {} });
+    }
+    const oneTime = browser.scripts[1];
+    assert.ok(oneTime);
+    browser.load(oneTime);
+    await Promise.all(requests);
+  } finally {
+    browser.restore();
+  }
+});
 
 test("SDK loader validates ID and abort before touching browser", async () => {
   const controller = new AbortController();

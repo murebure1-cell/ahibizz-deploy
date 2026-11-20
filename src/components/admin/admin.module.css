@@ -59,8 +59,22 @@
   display: grid;
   gap: 5px;
 }
+.navigationToggle {
+  display: none;
+}
+.toolsGroup {
+  display: grid;
+  gap: 5px;
+}
+.toolsLabel {
+  margin: 10px 12px 3px;
+  color: var(--ui-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
 
 .sidebar :where(nav) button,
+.toolsGroup a,
 .accountLink {
   display: flex;
   align-items: center;
@@ -77,6 +91,7 @@
 }
 
 .sidebar :where(nav) button:hover,
+.toolsGroup a:hover,
 .accountLink:hover {
   background: var(--ui-surface-hover);
   color: var(--ui-text);
@@ -89,6 +104,7 @@
 }
 
 .sidebar :where(button) > svg,
+.toolsGroup :where(a) > svg,
 .accountLink > svg {
   flex-shrink: 0;
   width: 18px;
@@ -522,27 +538,52 @@
   }
 
   .sidebar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
     margin-bottom: 24px;
-    padding: 17px 13px 10px;
+    padding: 12px;
   }
 
   .identity {
-    padding: 0 5px 16px;
+    padding: 0 5px;
   }
 
-  .sidebar nav {
+  .navigationToggle {
     display: flex;
-    overflow-x: auto;
-    gap: 5px;
-    padding-bottom: 4px;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 12px;
+    min-height: 44px;
+    border-radius: 10px;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-surface-soft);
+    color: var(--ui-text);
+    font-weight: 600;
+  }
+  .sidebar nav[data-expanded="false"] {
+    display: none;
+  }
+  .sidebar nav {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 1px solid var(--ui-border);
+    padding-top: 8px;
+  }
+  .toolsGroup {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .toolsLabel {
+    grid-column: 1 / -1;
   }
 
-  .sidebar :where(nav) button {
-    flex-shrink: 0;
-    width: auto;
+  .sidebar :where(nav) button,
+  .toolsGroup a {
     gap: 8px;
-    padding-inline: 12px;
-    white-space: nowrap;
+    padding-inline: 8px;
+    overflow-wrap: anywhere;
   }
 
   .sidebar :where(button) > .chevron {
@@ -550,7 +591,9 @@
   }
 
   .accountLink {
-    margin-top: 9px;
+    grid-column: 1 / -1;
+    margin: 0;
+    padding-block: 8px;
     font-size: 12px;
   }
 

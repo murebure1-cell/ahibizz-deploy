@@ -7,20 +7,13 @@
 .intro {
   margin-bottom: 27px;
 }
-.intro > p {
-  font-size: 12px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--ui-accent-text);
-  margin-bottom: 12px;
-}
 .intro h1 {
   font-size: clamp(30px, 4vw, 44px);
   letter-spacing: -0.04em;
 }
 .form {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 1fr 1fr auto;
+  grid-template-columns: 1.3fr repeat(2, minmax(0, 1fr)) auto;
   align-items: end;
   gap: 13px;
   background: var(--ui-surface);
@@ -36,6 +29,11 @@
   font-weight: 600;
   color: var(--ui-text-secondary);
   min-width: 0;
+}
+@media (min-width: 1101px) {
+  .form:has(select[name="subcategoryId"]) {
+    grid-template-columns: 1.3fr repeat(3, minmax(0, 1fr)) auto;
+  }
 }
 .form input,
 .form select {
@@ -91,6 +89,39 @@
   color: var(--ui-text-secondary);
   text-decoration: underline;
   text-underline-offset: 4px;
+}
+.resultsHeading h2 {
+  font-size: clamp(18px, 2.4vw, 24px);
+  line-height: 1.25;
+  color: var(--ui-text);
+}
+.activeFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  margin: 0 0 18px;
+  list-style: none;
+}
+.activeFilters li {
+  min-width: 0;
+  max-width: 100%;
+}
+.activeFilters a {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface);
+  font-size: 13px;
+  color: var(--ui-text);
+}
+.activeFilters a span:first-child {
+  overflow-wrap: anywhere;
 }
 .grid {
   display: grid;
@@ -149,9 +180,6 @@
 @media (max-width: 1100px) {
   .intro {
     margin-bottom: 15px;
-  }
-  .intro > p {
-    display: none;
   }
   .form {
     grid-template-columns: minmax(0, 1fr) auto;

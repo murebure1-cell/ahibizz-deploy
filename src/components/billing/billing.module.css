@@ -381,6 +381,41 @@
   gap: 10px;
   margin-top: 20px;
 }
+.form .methodPicker {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+.methodPicker legend {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.methodPicker label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  min-height: 44px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.methodPicker label:has(:checked) {
+  color: var(--ui-text);
+  border-color: var(--ui-accent, #b18c40);
+  background: var(--ui-surface-soft);
+}
+.subscriptionCard {
+  margin-top: 16px;
+  width: 100%;
+  max-width: 420px;
+  min-width: 0;
+}
+.subscriptionCard p {
+  margin-bottom: 8px;
+  color: var(--ui-text-secondary);
+  line-height: 1.5;
+}
 .list {
   display: grid;
   gap: 13px;

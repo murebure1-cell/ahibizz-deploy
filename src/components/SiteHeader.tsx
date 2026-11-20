@@ -122,7 +122,7 @@ export function SiteHeader({
       document.removeEventListener("focusin", onOutside);
     };
   }, [open, closeMenu]);
-  const { primary, more } = headerDestinations(access, {
+  const { primary, business, more } = headerDestinations(access, {
     installed,
     playEdition: IS_PLAY_EDITION,
     supportAvailable,
@@ -185,9 +185,26 @@ export function SiteHeader({
           {primary.map(destination)}
           {access === "owner" &&
             destination({ href: "/administracija", label: "Administracija", icon: "shield" })}
-          <details className="header-more" key={open ? "open" : "closed"}>
+          {business.length > 0 && (
+            <details
+              key={`business-${open}`}
+              className="header-more"
+              open={business.some((link) => link.href === currentHref)}
+            >
+              <summary>
+                Za djelatnosti
+                <Icon name="chevron" />
+              </summary>
+              {business.map(destination)}
+            </details>
+          )}
+          <details
+            className="header-more"
+            key={`info-${open}`}
+            open={more.some((link) => link.href === currentHref)}
+          >
             <summary>
-              Više
+              O aplikaciji
               <Icon name="chevron" />
             </summary>
             {more.map(destination)}

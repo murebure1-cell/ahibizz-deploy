@@ -17,15 +17,19 @@ export function headerDestinations(
   if (access === "member" || access === "owner")
     primary.push({ href: accountSectionPath("messages"), label: "Poruke", icon: "message" });
 
+  const business: NavigationDestination[] = options.playEdition
+    ? []
+    : [
+        { href: "/oglasavanje", label: "Oglašavanje", icon: "star" },
+        { href: "/paketi", label: "Paketi za djelatnosti", icon: "card" },
+      ];
   const more: NavigationDestination[] = [{ href: "/o-nama", label: "O AhiBizzu", icon: "info" }];
-  if (!options.playEdition && (access === "guest" || access === "unknown"))
-    more.push({ href: "/paketi", label: "Paketi", icon: "card" });
   if (!options.playEdition && options.supportAvailable)
     more.push({ href: "/podrzi", label: "Podrži AhiBizz", icon: "heart" });
   if (!options.installed && !options.playEdition)
     more.push({ href: "/instaliraj", label: "Instaliraj aplikaciju", icon: "download" });
   more.push({ href: "/privatnost", label: "Privatnost", icon: "shield" });
-  return { primary, more };
+  return { primary, business, more };
 }
 
 export function headerCurrentDestination(pathname: string, query: URLSearchParams): string {
@@ -39,5 +43,6 @@ export function headerCurrentDestination(pathname: string, query: URLSearchParam
   if (pathname.startsWith("/ljudi/")) return "/ljudi";
   if (pathname.startsWith("/administracija/")) return "/administracija";
   if (pathname.startsWith("/paketi/")) return "/paketi";
+  if (pathname === "/naplata" || pathname.startsWith("/naplata/")) return "/oglasavanje";
   return pathname;
 }

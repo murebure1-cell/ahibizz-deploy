@@ -26,6 +26,10 @@ export async function GET(request: Request) {
   try {
     const store = service(request),
       query = new URL(request.url).searchParams;
+    if (query.has("offer")) {
+      if ([...query].length !== 1) return reply({ code: "INVALID_OFFER" }, 400);
+      return reply(await store.offer(request.headers, query.get("offer") ?? ""), 200);
+    }
     const mode = query.get("mode"),
       page = query.get("page") ?? "0";
     if (!mode || !/^(?:admin|ads|credits)$/.test(mode) || !/^\d{1,3}$/.test(page))

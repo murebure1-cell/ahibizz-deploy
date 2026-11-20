@@ -89,6 +89,7 @@ export async function handlePackageSubscriptions(
       return reply({
         ...schedule,
         available: acceptingOrders,
+        paypalClientId: acceptingOrders ? (config?.clientId ?? null) : null,
         packages: sandboxPackageCatalog,
         sellable: sandboxPackageCatalog
           .filter((p) => schedule.benefits[p.id].enabled)

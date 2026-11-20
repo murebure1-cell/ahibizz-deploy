@@ -21,6 +21,50 @@ const order: CardOrder = {
   flow: "sdk",
 };
 const providerOrderId = "TESTORDER123456";
+test("an accepted quote binds SDK checkout to its server identity and price for creation, retry and capture", async () => {
+  const quote: CardOrder = {
+    ...order,
+    kind: "quote",
+    quoteId: "offer",
+    businessId: null,
+    amountMinor: 2561,
+  };
+  assert.equal(canOfferPayPalCard(null, true, "quote"), true);
+  assert.equal(canOfferPayPalCard({ ...quote, quoteId: null }, true, "quote"), false);
+  for (const response of [quote, { ...quote, quoteId: "other" }, { ...quote, amountMinor: 511 }]) {
+    const calls: { path: string; body: unknown }[] = [];
+    const saved: CardOrder[] = [];
+    const flow = createPayPalCardFlow({
+      input: () => ({ requestId: "retry", quoteId: "offer", amountMinor: 2561 }),
+      acquire: () => true,
+      release: () => {},
+      onOrder: (value) => saved.push(value),
+      send: async (path, body) => {
+        calls.push({ path, body });
+        return path === "orders"
+          ? { order: response, providerOrderId }
+          : { order: { ...quote, status: "captured" } };
+      },
+    });
+    assert.equal(flow.click(), true);
+    if (response === quote) {
+      await Promise.all([flow.create(), flow.create()]);
+      await flow.approve(providerOrderId);
+      await flow.approve(providerOrderId);
+      assert.equal(calls.length, 2);
+      assert.equal(saved.at(-1)?.status, "captured");
+    } else {
+      await assert.rejects(flow.create());
+      await assert.rejects(flow.approve(providerOrderId));
+      assert.equal(saved.length, 0);
+      assert.equal(calls.length, 1);
+    }
+    assert.deepEqual(calls[0], {
+      path: "orders",
+      body: { kind: "quote", quoteId: "offer", requestId: "retry", flow: "sdk" },
+    });
+  }
+});
 function setup(send?: Parameters<typeof createPayPalCardFlow>[0]["send"], saved?: CardOrder) {
   const calls: { path: string; body: unknown }[] = [];
   const updates: CardOrder[] = [];
@@ -98,6 +142,21 @@ test("cancel and disposal cannot capture, and no mutation retry is automatic", a
   await assert.rejects(broken.flow.create());
   assert.equal(broken.calls.length, 1);
   assert.equal(broken.locks(), 0);
+});
+test("a capture with a mismatched purchase cannot display a completed payment", async () => {
+  const t = setup(async (path) =>
+    path === "orders"
+      ? { order, providerOrderId }
+      : { order: { ...order, status: "captured", amountMinor: 1100 } },
+  );
+  assert.equal(t.flow.click(), true);
+  await t.flow.create();
+  await assert.rejects(t.flow.approve(providerOrderId));
+  assert.equal(
+    t.updates.some((value) => value.status === "captured"),
+    false,
+  );
+  assert.equal(t.locks(), 0);
 });
 test("late create after disposal cannot update identity or capture", async () => {
   let resolve!: (value: { order: CardOrder; providerOrderId: string }) => void;

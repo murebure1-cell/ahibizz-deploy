@@ -36,7 +36,10 @@ const messages: Record<string, string> = {
   PAYMENT_NOT_COMPLETED: "Uplata još nije potvrđena.",
   CHECKOUT_UNAVAILABLE: "Plaćanje trenutno nije dostupno. Pokušaj ponovo.",
   ORDER_NOT_FOUND: "Narudžba nije pronađena na ovom nalogu.",
+  QUOTE_NOT_PAYABLE: "Ova ponuda više nije dostupna za plaćanje. Provjeri je u svom nalogu.",
+  QUOTE_PAYMENT_PENDING: "Za ovu ponudu već postoji uplata. Provjeri njen status u svom nalogu.",
 };
+type PayableOffer = { id: string; title: string; amountMinor: number; originalBamMinor: number };
 function cents(value: string) {
   const match = /^(\d{1,4})(?:[.,](\d{1,2}))?$/.exec(value.trim());
   return match ? Number(match[1]) * 100 + Number((match[2] ?? "").padEnd(2, "0")) : 0;
@@ -44,17 +47,22 @@ function cents(value: string) {
 export function Checkout({
   userId,
   initialOrderId,
+  initialQuoteId,
   returned = false,
   cancelled = false,
 }: {
   userId: string | null;
   initialOrderId?: string;
+  initialQuoteId?: string;
   returned?: boolean;
   cancelled?: boolean;
 }) {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [businesses, setBusinesses] = useState<{ id: string; title: string }[]>([]);
-  const [kind, setKind] = useState<"promotion" | "support">("promotion");
+  const [kind, setKind] = useState<Order["kind"]>(initialQuoteId ? "quote" : "promotion");
+  const [offer, setOffer] = useState<PayableOffer | null>(null);
+  const [offerError, setOfferError] = useState("");
+  const [offerAttempt, setOfferAttempt] = useState(0);
   const [businessId, setBusinessId] = useState("");
   const [support, setSupport] = useState("");
   const [loadedOrder, setLoadedOrder] = useState<{ userId: string | null; order: Order } | null>(
@@ -113,26 +121,78 @@ export function Checkout({
       .catch(() => {
         if (active) setError("Naplata trenutno nije dostupna.");
       });
-    if (userId) {
-      fetch("/api/directory/mine?page=1&pageSize=50&status=published", {
-        headers: { "X-AhiBizz-Account-ID": userId },
-        cache: "no-store",
-      })
-        .then((r) => {
-          if (!r.ok) throw new Error();
-          return r.json();
-        })
-        .then((value) => {
-          if (active) setBusinesses(value.items ?? []);
-        })
-        .catch(() => {
-          if (active) setError("Nije moguće učitati tvoje djelatnosti.");
-        });
+    const controller = new AbortController();
+    async function loadBusinesses(account: string) {
+      const mine: { id: string; title: string }[] = [];
+      for (let page = 1; ; page++) {
+        const response = await fetch(
+          `/api/directory/mine?page=${page}&pageSize=50&status=published`,
+          {
+            headers: { "X-AhiBizz-Account-ID": account },
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+        if (!response.ok) throw new Error();
+        const result = await response.json();
+        if (!Array.isArray(result.items)) throw new Error();
+        if (!active) return;
+        mine.push(...result.items);
+        setBusinesses([...mine]);
+        if (!result.hasMore || !result.items.length) return;
+      }
     }
+    if (userId && !initialQuoteId && !initialOrderId)
+      void loadBusinesses(userId).catch(() => {
+        if (active) setError("Nije moguće učitati tvoje djelatnosti.");
+      });
     return () => {
       active = false;
+      controller.abort();
     };
-  }, [userId]);
+  }, [userId, initialQuoteId, initialOrderId]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: An explicit retry refreshes the account-bound quote.
+  useEffect(() => {
+    if (!userId || !initialQuoteId) return;
+    const account = userId,
+      quoteId = initialQuoteId;
+    const controller = new AbortController();
+    setOffer(null);
+    setOfferError("");
+    async function loadOffer() {
+      const response = await fetch(`/api/marketing?offer=${quoteId}`, {
+        headers: { "X-AhiBizz-Account-ID": account },
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("Ponuda nije dostupna za plaćanje na ovom nalogu.");
+      const result = await response.json();
+      if (controller.signal.aborted) return;
+      if (result.orderId && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(result.orderId)) {
+        window.location.replace(`/naplata?narudzba=${encodeURIComponent(result.orderId)}`);
+        return;
+      }
+      const next = result.offer;
+      if (
+        next?.id !== quoteId ||
+        typeof next.title !== "string" ||
+        !Number.isSafeInteger(next.amountMinor) ||
+        next.amountMinor < 1 ||
+        !Number.isSafeInteger(next.originalBamMinor) ||
+        next.originalBamMinor < 1
+      )
+        throw new Error("Podaci za plaćanje ove ponude nisu dostupni.");
+      setOffer(next);
+      setReview(true);
+      setCardOpen(true);
+    }
+    void loadOffer().catch((cause) => {
+      if (!controller.signal.aborted)
+        setOfferError(cause instanceof Error ? cause.message : "Ponuda se nije učitala.");
+    });
+    return () => controller.abort();
+  }, [initialQuoteId, userId, offerAttempt]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Manual reload generation deliberately restarts this read-only effect.
   useEffect(() => {
     if (!userId || !initialOrderId) return;
@@ -160,6 +220,8 @@ export function Checkout({
   async function act(action: "create" | "capture" | "reconcile") {
     if (locked.current || !userId || (initialOrderId && !order) || orderLoading) return;
     if (action === "create" && order?.flow && order.flow !== "redirect") return;
+    if (action === "create" && (order?.kind ?? kind) === "quote" && !(order?.quoteId ?? offer?.id))
+      return;
     if (order?.status === "cancelled" && action !== "reconcile") return;
     if (
       action !== "reconcile" &&
@@ -183,17 +245,34 @@ export function Checkout({
                     requestId: order.requestId,
                     kind: order.kind,
                     ...(order.flow && order.flow !== "redirect" ? { flow: order.flow } : {}),
-                    ...(order.kind === "promotion"
-                      ? { businessId: order.businessId }
-                      : { amountMinor: order.amountMinor }),
+                    ...(order.kind === "quote"
+                      ? { quoteId: order.quoteId }
+                      : order.kind === "promotion"
+                        ? { businessId: order.businessId }
+                        : { amountMinor: order.amountMinor }),
                   }
                 : {
                     requestId: key.current,
                     kind,
-                    ...(kind === "promotion" ? { businessId } : { amountMinor: cents(support) }),
+                    ...(kind === "quote"
+                      ? { quoteId: offer?.id }
+                      : kind === "promotion"
+                        ? { businessId }
+                        : { amountMinor: cents(support) }),
                   },
             )
           : await request(`orders/${order?.id}/${action}`, {});
+      if (
+        action === "create" &&
+        (order?.kind ?? kind) === "quote" &&
+        (value.order?.kind !== "quote" ||
+          value.order.quoteId !== (order?.quoteId ?? offer?.id) ||
+          value.order.amountMinor !== (order?.amountMinor ?? offer?.amountMinor) ||
+          value.order.currency !== "EUR")
+      ) {
+        setError("Podaci ponude su se promijenili. Osvježi prikaz prije plaćanja.");
+        return;
+      }
       if (value.order) {
         setOrder(value.order);
         window.history.replaceState(null, "", `/naplata?narudzba=${value.order.id}`);
@@ -227,12 +306,18 @@ export function Checkout({
   }
   const selectedAmount =
     order?.amountMinor ??
-    (kind === "promotion" ? (catalog?.promotion.amountMinor ?? 511) : cents(support));
+    (kind === "quote"
+      ? (offer?.amountMinor ?? 0)
+      : kind === "promotion"
+        ? (catalog?.promotion.amountMinor ?? 511)
+        : cents(support));
   const canReview =
-    kind === "promotion"
-      ? Boolean(businessId)
-      : selectedAmount >= (catalog?.support.minMinor ?? 100) &&
-        selectedAmount <= (catalog?.support.maxMinor ?? 100000);
+    kind === "quote"
+      ? Boolean(offer && userId)
+      : kind === "promotion"
+        ? Boolean(businessId)
+        : selectedAmount >= (catalog?.support.minMinor ?? 100) &&
+          selectedAmount <= (catalog?.support.maxMinor ?? 100000);
   const openCardOrder =
     order &&
     !returned &&
@@ -248,7 +333,13 @@ export function Checkout({
         {catalog?.environment === "sandbox" && (
           <span className={styles.label}>Testno plaćanje · bez stvarnog novca</span>
         )}
-        <h1>{kind === "promotion" ? "Isticanje djelatnosti" : "Podrži razvoj AhiBizza"}</h1>
+        <h1>
+          {kind === "quote"
+            ? "Plaćanje ponude"
+            : kind === "promotion"
+              ? "Isticanje djelatnosti"
+              : "Podrži razvoj AhiBizza"}
+        </h1>
       </header>
       {catalog?.available === false && (
         <p role="status" className={styles.notice}>
@@ -258,7 +349,7 @@ export function Checkout({
       {!userId && (
         <p>
           <a
-            href={`/prijava?nastavi=${encodeURIComponent(`/naplata${returned ? "/povratak" : cancelled ? "/odustajanje" : ""}${initialOrderId ? `?narudzba=${initialOrderId}` : ""}`)}`}
+            href={`/prijava?nastavi=${encodeURIComponent(`/naplata${returned ? "/povratak" : cancelled ? "/odustajanje" : ""}${initialOrderId ? `?narudzba=${initialOrderId}` : initialQuoteId ? `?ponuda=${initialQuoteId}` : ""}`)}`}
           >
             Prijavi se za nastavak
           </a>
@@ -281,9 +372,23 @@ export function Checkout({
           </button>
         </section>
       )}
-      {!order && !initialOrderId && (
+      {initialQuoteId && !order && !offer && userId && (
+        <section className={styles.notice}>
+          {offerError ? (
+            <>
+              <p role="alert">{offerError}</p>
+              <button type="button" onClick={() => setOfferAttempt((n) => n + 1)}>
+                Pokušaj ponovo
+              </button>
+            </>
+          ) : (
+            <p role="status">Učitavanje ponude…</p>
+          )}
+        </section>
+      )}
+      {!order && !initialOrderId && (!initialQuoteId || offer) && (
         <>
-          {catalog?.environment === "sandbox" && (
+          {!initialQuoteId && catalog?.environment === "sandbox" && (
             <section className={styles.choices} aria-label="Namjena uplate">
               <button
                 type="button"
@@ -314,7 +419,18 @@ export function Checkout({
             </section>
           )}
           <section className={styles.card}>
-            {kind === "promotion" ? (
+            {kind === "quote" && offer ? (
+              <div className={styles.orderSummary}>
+                <div>
+                  <h2>{offer.title}</h2>
+                  <p>Jednokratna uplata po ponudi</p>
+                </div>
+                <div className={styles.orderPrice}>
+                  <strong>{money(offer.amountMinor)}</strong>
+                  <small>{(offer.originalBamMinor / 100).toLocaleString("bs-BA")} KM</small>
+                </div>
+              </div>
+            ) : kind === "promotion" ? (
               <>
                 <div className={styles.orderSummary}>
                   <div>
@@ -388,7 +504,7 @@ export function Checkout({
                 disabled={!userId || !canReview || !catalog?.available}
                 onClick={() => {
                   key.current ??= crypto.randomUUID();
-                  setCardOpen(kind === "promotion" && Boolean(catalog?.paypalClientId));
+                  setCardOpen(kind !== "support" && Boolean(catalog?.paypalClientId));
                   setReview(true);
                 }}
               >
@@ -407,9 +523,11 @@ export function Checkout({
       {order && !openCardOrder && (
         <section className={styles.card}>
           <h2>
-            {order.kind === "promotion"
-              ? (order.businessTitle ?? "Isticanje profila")
-              : "Podrška razvoju"}
+            {order.kind === "quote"
+              ? (order.businessTitle ?? "Plaćanje ponude")
+              : order.kind === "promotion"
+                ? (order.businessTitle ?? "Isticanje profila")
+                : "Podrška razvoju"}
           </h2>
           <p className={styles.price}>{money(order.amountMinor)}</p>
           <p>Narudžba: {order.id}</p>
@@ -420,13 +538,17 @@ export function Checkout({
             <div role="status">
               <h3>Narudžba je stornirana</h3>
               <p>Nije izvršena naplata.</p>
-              <a href="/naplata">Novi pokušaj</a>
+              <a href={order.kind === "quote" ? "/nalog" : "/naplata"}>
+                {order.kind === "quote" ? "Moj nalog" : "Novi pokušaj"}
+              </a>
             </div>
           ) : order.status === "captured" ? (
             <div role="status">
               <h3>Uplata je potvrđena</h3>
               {order.kind === "promotion" && order.endsAt ? (
                 <p>Isticanje važi do {new Date(order.endsAt).toLocaleString("bs-BA")}.</p>
+              ) : order.kind === "quote" ? (
+                <a href="/nalog">Vrati se u moj nalog</a>
               ) : (
                 <p>Hvala na podršci razvoju AhiBizza.</p>
               )}
@@ -434,13 +556,10 @@ export function Checkout({
           ) : ["refunded", "partially_refunded", "reversed"].includes(order.status) ? (
             <div role="status">
               <h3>Uplata je korigovana</h3>
-              <p>Evidentiran povrat: {money(order.refundedMinor)}. Isticanje više nije aktivno.</p>
+              <p>Evidentiran povrat: {money(order.refundedMinor)}.</p>
             </div>
           ) : order.status === "review" ? (
-            <p role="status">
-              Uplata zahtijeva provjeru. Isticanje nije aktivirano. Ne plaćaj ponovo za ovu
-              narudžbu.
-            </p>
+            <p role="status">Uplata zahtijeva provjeru. Ne plaćaj ponovo za ovu narudžbu.</p>
           ) : (
             <>
               <p>
@@ -512,10 +631,14 @@ export function Checkout({
                       userId={userId}
                       input={() => {
                         key.current ??= crypto.randomUUID();
-                        return {
-                          requestId: order?.requestId ?? key.current,
-                          businessId: order?.businessId ?? businessId,
-                        };
+                        const requestId = order?.requestId ?? key.current;
+                        return (order?.kind ?? kind) === "quote"
+                          ? {
+                              requestId,
+                              quoteId: order?.quoteId ?? offer?.id ?? "",
+                              amountMinor: selectedAmount,
+                            }
+                          : { requestId, businessId: order?.businessId ?? businessId };
                       }}
                       acquire={() => {
                         if (locked.current || orderLoading) return false;
@@ -554,7 +677,7 @@ export function Checkout({
                   Nastavi na PayPal
                 </button>
               )}
-              <button
+              {!initialQuoteId && <button
                 type="button"
                 className={styles.back}
                 disabled={busy}
@@ -564,7 +687,7 @@ export function Checkout({
                 }}
               >
                 Nazad
-              </button>
+              </button>}
             </div>
           )}
         </section>

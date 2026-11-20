@@ -133,7 +133,10 @@ test("sandbox package lifecycle reconciles processor evidence without activating
         status: 400,
       });
       await assert.rejects(service.create(stranger.headers, input), { status: 403 });
-      monthly = (await service.create(buyer.headers, input)).contract;
+      const started = await service.create(buyer.headers, input);
+      monthly = started.contract;
+      assert.equal(started.subscriptionId, states.get(monthly.id).id);
+      assert.equal("subscriptionId" in (await service.list(buyer.headers)).contracts[0], false);
       assert.equal(monthly.amountBamMinor, 2900);
       assert.equal(monthly.amountEurMinor, 1483);
       assert.equal(monthly.totalCycles, 12);
@@ -171,6 +174,9 @@ test("sandbox package lifecycle reconciles processor evidence without activating
         assert.equal((await service.list(buyer.headers)).contracts[0].paidCycles, 0);
         const first = (await service.refresh(buyer.headers, monthly.id)).contract;
         assert.equal(first.paidCycles, 1);
+        const replay = await service.create(buyer.headers, input);
+        assert.equal(replay.subscriptionId, null);
+        assert.equal(replay.approvalUrl, null);
         assert.equal(first.endsAt, feb);
         Object.assign(state.snapshot, { updatedAt: feb, payments: [sales[0], sales[1], sales[1]] });
         await Promise.all([webhook(), webhook(), service.refresh(buyer.headers, monthly.id)]);

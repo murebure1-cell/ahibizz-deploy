@@ -10,16 +10,19 @@ test("guest menu contains public destinations and members can reach their inbox"
     guest.primary.map((item) => item.href),
     ["/", "/pretraga", "/ljudi"],
   );
-  assert.ok(guest.more.some((item) => item.href === "/paketi"));
+  assert.deepEqual(
+    guest.business.map((item) => item.href),
+    ["/oglasavanje", "/paketi"],
+  );
   for (const access of ["member", "owner"] as const) {
-    const { primary, more } = headerDestinations(access, browser);
+    const { primary, business } = headerDestinations(access, browser);
     assert.deepEqual(
       primary.map((item) => item.href),
       ["/", "/pretraga", "/ljudi", "/nalog", "/nalog?odjeljak=poruke"],
     );
-    assert.equal(
-      more.some((item) => item.href === "/paketi"),
-      false,
+    assert.deepEqual(
+      business.map((item) => item.href),
+      ["/oglasavanje", "/paketi"],
     );
   }
   const unknown = headerDestinations("unknown", browser);
@@ -32,11 +35,15 @@ test("guest menu contains public destinations and members can reach their inbox"
 
 test("Play menu hides external billing and installation while retaining privacy", () => {
   for (const access of ["unknown", "guest", "member", "owner"] as const) {
-    const { primary, more } = headerDestinations(access, { ...browser, playEdition: true });
+    const { primary, business, more } = headerDestinations(access, {
+      ...browser,
+      playEdition: true,
+    });
+    assert.deepEqual(business, []);
     assert.ok(more.some((item) => item.href === "/privatnost"));
     assert.ok(
-      [...primary, ...more].every(
-        (item) => !["/paketi", "/podrzi", "/instaliraj"].includes(item.href),
+      [...primary, ...business, ...more].every(
+        (item) => !["/oglasavanje", "/paketi", "/podrzi", "/instaliraj"].includes(item.href),
       ),
     );
   }
@@ -63,6 +70,7 @@ test("header selection follows profiles, account subsections and back navigation
     ["/djelatnosti/test", "", "/pretraga"],
     ["/administracija/uvoz-prijava", "", "/administracija"],
     ["/paketi/proba", "", "/paketi"],
+    ["/naplata/povratak", "", "/oglasavanje"],
     ["/privatnost", "", "/privatnost"],
   ] as const)
     assert.equal(headerCurrentDestination(path, new URLSearchParams(search)), selected);

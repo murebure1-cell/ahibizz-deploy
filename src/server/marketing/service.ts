@@ -9,6 +9,7 @@ import { isPlacement } from "../../lib/marketing";
 import { AccountAccessError, accountTransaction, createAccountAccess } from "../auth/accounts";
 import { type AuthService, getAuthDatabasePool, getAuthService } from "../auth/service";
 import { checkoutConfiguration } from "../paypal/runtime";
+import { payableQuote, pendingQuoteOrder } from "./online-quote";
 import { creditBalanceSql, packagePromotions, paidPromotions } from "./read";
 
 function fail(status: number, code: string): never {
@@ -106,6 +107,39 @@ async function wallet(client: PoolClient, user: string) {
 export function createMarketingService(auth: AuthService, pool: Pool) {
   const access = createAccountAccess(auth);
   return {
+    async offer(headers: Headers, id: string) {
+      if (!uuid(id)) fail(400, "INVALID_OFFER");
+      const scope = await access.session(headers);
+      return accountTransaction(pool, async (client) => {
+        const actor = await access.authority(client, scope, false, "read");
+        const quote = await payableQuote(client, actor.id, id);
+        const environment = checkoutConfiguration()?.environment;
+        const prior = environment
+          ? await client.query(
+              `SELECT p.id,p.business_title,p.original_bam_minor,p.amount_minor,o.kind FROM paypal_checkout_order p
+           JOIN marketing_order o ON o.id=p.quote_id WHERE p.quote_id=$1 AND p.user_id=$2 AND o.account_id=$2 AND p.environment=$3
+             AND (p.status IN ('captured','review','reversed','partially_refunded','refunded') OR
+               (p.status IN ('created','provider_created') AND GREATEST(p.expires_at,p.capture_lease_until)>clock_timestamp()))
+             ORDER BY p.created_at DESC LIMIT 1`,
+              [id, actor.id, environment],
+            )
+          : null;
+        const saved = prior?.rows[0];
+        if (saved)
+          return {
+            offer: {
+              id,
+              kind: saved.kind,
+              title: saved.business_title,
+              amountMinor: saved.amount_minor,
+              originalBamMinor: saved.original_bam_minor,
+            },
+            orderId: saved.id,
+          };
+        if (!quote) fail(404, "OFFER_NOT_FOUND");
+        return { offer: quote };
+      });
+    },
     async read(headers: Headers, mode: MarketingMode, page: number): Promise<MarketingData> {
       if (
         !["admin", "ads", "credits"].includes(mode) ||
@@ -121,6 +155,8 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           await client.query<MarketingOrder>(
             `
           SELECT o.id,o.kind,o.status,o.quantity,o.amount_minor AS "amountMinor",o.credit_price AS "creditPrice",
+            o.revoked_at::text AS "revokedAt",EXISTS (SELECT 1 FROM paypal_checkout_order p WHERE p.quote_id=o.id AND p.environment='live'
+              AND (p.status='review' OR (p.status IN ('created','provider_created') AND GREATEST(p.expires_at,p.capture_lease_until)>clock_timestamp()))) AS "onlinePending",
             o.instructions,b.title AS "businessTitle",u.name AS customer,o.starts_at::text AS "startsAt",LEAST(o.ends_at,o.revoked_at)::text AS "endsAt"
           FROM marketing_order o JOIN auth_user u ON u.id=o.account_id LEFT JOIN directory_business b ON b.id=o.business_id
           WHERE ($2::text='admin' OR (o.account_id=$1 AND (o.kind='credits')=($2='credits')))
@@ -216,6 +252,12 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           ])
         ).rows[0];
         if (!order) fail(404, "OFFER_NOT_FOUND");
+        if (
+          order.status === "quoted" &&
+          command.action !== "quote" &&
+          (await pendingQuoteOrder(client, command.id, "live"))
+        )
+          fail(409, "QUOTE_PAYMENT_PENDING");
         if (command.action === "quote") {
           if (includedUntil) fail(409, "INCLUDED_IN_PACKAGE");
           if (order.status !== "requested" || (command.creditPrice && order.kind === "credits"))

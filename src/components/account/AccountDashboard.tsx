@@ -55,15 +55,22 @@ const accountMenu = [
   { id: "overview", label: "Pregled", icon: "home", primary: true },
   { id: "businesses", label: "Djelatnosti", icon: "shop", primary: true },
   { id: "messages", label: "Poruke", icon: "message", primary: true },
-  { id: "profile", label: "Moj profil", icon: "user" },
-  { id: "appointments", label: "Moji termini", icon: "calendar" },
-  { id: "advertising", label: "Moji oglasi", icon: "star" },
-  { id: "credits", label: "Ahi Credits", icon: "card", digital: true },
-  { id: "membership", label: "Pretplate", icon: "crown" },
-  { id: "connections", label: "Prijatelji", icon: "people" },
-  { id: "saved", label: "Sačuvani", icon: "heart" },
-  { id: "settings", label: "Postavke", icon: "sliders" },
-] as { id: AccountSection; label: string; icon: IconName; primary?: boolean; digital?: boolean }[];
+  { id: "profile", label: "Moj profil", icon: "user", group: "Lični nalog" },
+  { id: "appointments", label: "Moji termini", icon: "calendar", group: "Lični nalog" },
+  { id: "connections", label: "Prijatelji", icon: "people", group: "Lični nalog" },
+  { id: "saved", label: "Sačuvane djelatnosti", icon: "heart", group: "Lični nalog" },
+  { id: "settings", label: "Postavke", icon: "sliders", group: "Lični nalog" },
+  { id: "advertising", label: "Moji oglasi", icon: "star", group: "Poslovanje" },
+  { id: "membership", label: "Pretplate", icon: "crown", group: "Poslovanje" },
+  { id: "credits", label: "Ahi Credits", icon: "card", digital: true, group: "Poslovanje" },
+] as {
+  id: AccountSection;
+  label: string;
+  icon: IconName;
+  primary?: boolean;
+  digital?: boolean;
+  group?: "Lični nalog" | "Poslovanje";
+}[];
 
 // Mount a workspace on first visit, then keep drafts and pending commands across pane switches.
 function AccountPane({ selected, children }: { selected: boolean; children: ReactNode }) {
@@ -217,7 +224,14 @@ function AccountWorkspace({
                   className={styles.otherSections}
                   data-expanded={moreMenu}
                 >
-                  {menu.filter((item) => !item.primary).map(tab)}
+                  {(["Lični nalog", "Poslovanje"] as const).map((group) => (
+                    <section className={styles.menuGroup} aria-label={group} key={group}>
+                      <span className={styles.groupLabel} aria-hidden="true">
+                        {group}
+                      </span>
+                      {menu.filter((item) => item.group === group).map(tab)}
+                    </section>
+                  ))}
                   {profile.role === "owner" && (
                     <Link href="/administracija" className={styles.adminLink}>
                       <Icon name="shield" />

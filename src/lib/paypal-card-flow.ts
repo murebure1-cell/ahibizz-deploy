@@ -6,7 +6,8 @@ export const checkoutEuro = (minor: number) => `${(minor / 100).toFixed(2).repla
 export type CardOrder = {
   id: string;
   requestId: string;
-  kind: "promotion" | "support";
+  kind: "promotion" | "support" | "quote";
+  quoteId?: string | null;
   businessId: string | null;
   businessTitle: string | null;
   amountMinor: number;
@@ -23,19 +24,37 @@ export function canOfferPayPalCard(
   kind: string,
 ): boolean {
   return order
-    ? order.kind === "promotion" &&
+    ? (order.kind === "promotion" || (order.kind === "quote" && Boolean(order.quoteId))) &&
         (((order.flow === "sdk" || order.flow === "card-fields") &&
           ["created", "provider_created"].includes(order.status)) ||
           (order.flow === "guest" && order.status === "provider_created"))
-    : reviewed && kind === "promotion";
+    : reviewed && (kind === "promotion" || kind === "quote");
 }
+export type CardPurchaseInput =
+  | { requestId: string; businessId: string }
+  | { requestId: string; quoteId: string; amountMinor: number };
+
+function sameOrder(received: CardOrder, expected: CardOrder) {
+  return (
+    received.id === expected.id &&
+    received.requestId === expected.requestId &&
+    received.environment === expected.environment &&
+    received.businessId === expected.businessId &&
+    received.kind === expected.kind &&
+    (received.quoteId ?? null) === (expected.quoteId ?? null) &&
+    received.amountMinor === expected.amountMinor &&
+    received.currency === expected.currency &&
+    received.flow === expected.flow
+  );
+}
+
 export function createPayPalCardFlow(options: {
   send: (
     path: string,
     body: unknown,
     signal: AbortSignal,
   ) => Promise<{ order?: CardOrder; providerOrderId?: string; pending?: boolean }>;
-  input: () => { requestId: string; businessId: string };
+  input: () => CardPurchaseInput;
   savedOrder?: () => CardOrder | undefined;
   onOrder: (order: CardOrder) => void;
   acquire: () => boolean;
@@ -72,13 +91,25 @@ export function createPayPalCardFlow(options: {
       const generation = revision;
       creating = (async () => {
         try {
-          const { requestId, businessId } = options.input();
+          const input = options.input();
+          const { requestId } = input;
+          const purchase =
+            "quoteId" in input
+              ? { kind: "quote" as const, quoteId: input.quoteId }
+              : { kind: "promotion" as const, businessId: input.businessId };
+          const matchesPurchase = (order: CardOrder) =>
+            order.kind === purchase.kind &&
+            ("quoteId" in input
+              ? order.quoteId === input.quoteId
+              : order.businessId === input.businessId);
+          const amount = "quoteId" in input ? input.amountMinor : 511;
           const saved = options.savedOrder?.();
           if (
             saved &&
             (!canOfferPayPalCard(saved, false, "promotion") ||
               (saved.flow === "card-fields") !== (method === "card-fields") ||
-              saved.businessId !== businessId ||
+              !matchesPurchase(saved) ||
+              saved.amountMinor !== amount ||
               saved.requestId !== requestId)
           )
             throw new Error("Sačuvana narudžba više nije dostupna za kartično plaćanje.");
@@ -91,32 +122,25 @@ export function createPayPalCardFlow(options: {
                 )
               : await options.send(
                   "orders",
-                  { requestId, businessId, kind: "promotion", flow: method },
+                  { requestId, ...purchase, flow: method },
                   controller.signal,
                 );
           alive();
           if (generation !== revision)
             throw new Error("Kartični pokušaj je zatvoren. Provjeri sačuvanu narudžbu.");
           // Persist a server-returned order before interpreting provider readiness.
-          if (
-            saved &&
-            (result.order?.id !== saved.id ||
-              result.order.requestId !== saved.requestId ||
-              result.order.environment !== saved.environment ||
-              result.order.businessId !== saved.businessId ||
-              result.order.kind !== saved.kind ||
-              result.order.amountMinor !== saved.amountMinor ||
-              result.order.currency !== saved.currency ||
-              result.order.flow !== saved.flow)
-          )
+          if (saved && (!result.order || !sameOrder(result.order, saved)))
             throw new Error("Odgovor ne odgovara sačuvanoj narudžbi. Osvježi njen status.");
-          if (result.order) options.onOrder(result.order);
           if (
-            result.order?.flow !== (saved?.flow ?? method) ||
-            result.order.kind !== "promotion" ||
-            result.order.businessId !== businessId ||
-            result.order.amountMinor !== 511 ||
-            result.order.currency !== "EUR" ||
+            !result.order ||
+            !matchesPurchase(result.order) ||
+            result.order.amountMinor !== amount ||
+            result.order.currency !== "EUR"
+          )
+            throw new Error("Odgovor ne odgovara odabranom plaćanju.");
+          options.onOrder(result.order);
+          if (
+            result.order.flow !== (saved?.flow ?? method) ||
             !canOfferPayPalCard(result.order, false, "promotion") ||
             !result.providerOrderId ||
             !/^[A-Z0-9]{10,32}$/.test(result.providerOrderId)
@@ -150,7 +174,7 @@ export function createPayPalCardFlow(options: {
           controller.signal,
         );
         alive();
-        if (generation !== revision || !result.order || result.order.id !== expected.id)
+        if (generation !== revision || !result.order || !sameOrder(result.order, expected))
           throw new Error("Odgovor nije potvrđen. Osvježi status sačuvane narudžbe.");
         options.onOrder(result.order);
         if (result.pending || result.order.status !== "captured")
