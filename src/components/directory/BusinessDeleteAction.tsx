@@ -10,11 +10,11 @@ function deleteError(error: unknown) {
   const code = error instanceof DirectoryRequestError ? error.code : "";
   switch (code) {
     case "BUSINESS_HAS_BOOKINGS":
-      return "Prvo završi ili otkaži otvorene termine i najmove.";
+      return "Prvo riješi otvorene termine za ovu djelatnost.";
     case "BUSINESS_HAS_CONTRACT":
-      return "Djelatnost ima aktivan ugovor. Provjeri ga u odjeljku Paketi.";
+      return "Prvo provjeri ugovor i trajanje paketa za ovu djelatnost.";
     case "BUSINESS_HAS_PAYMENTS":
-      return "Djelatnost ima naplatu u toku. Provjeri status uplate.";
+      return "Prvo provjeri aktivno isticanje i status uplata za ovu djelatnost.";
     case "VERSION_CONFLICT":
       return "Djelatnost je izmijenjena. Osvježi spisak prije brisanja.";
     case "ACCOUNT_IDENTITY_CHANGED":
