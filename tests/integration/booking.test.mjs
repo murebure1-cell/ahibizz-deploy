@@ -17,6 +17,8 @@ const emails = [
   "customer@booking-fixture.invalid",
   "other@booking-fixture.invalid",
   "pagination@booking-fixture.invalid",
+  "accommodation-owner@booking-fixture.invalid",
+  "rental-owner@booking-fixture.invalid",
 ];
 const bookingTables = [
   "booking_settings",
@@ -241,7 +243,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         actors.push({ headers, user: session.user });
       }
       assert.equal(captured.size, emails.length);
-      const [operator, professional, customer, other, paginationCustomer] = actors;
+      const [operator, professional, customer, other, paginationCustomer, host, agencyOwner] =
+        actors;
       assert.equal(
         professional.user.role,
         "member",
@@ -1605,7 +1608,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         directory,
         baseURL,
         operator,
-        owner: paginationCustomer,
+        owner: host,
         customer,
         other,
         unrelatedBusiness: business.id,
@@ -1617,7 +1620,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         directory,
         baseURL,
         operator,
-        owner: paginationCustomer,
+        owner: agencyOwner,
         customer,
         other,
         unrelatedBusiness: business.id,
