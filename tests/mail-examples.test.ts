@@ -68,7 +68,7 @@ test("owner, moderation and support notices link to role-appropriate sections", 
     ["support-reviewed", "/pravila-zajednice"],
     ["deletion-requested", "/brisanje-naloga"],
     ["direct-message", "/nalog?odjeljak=poruke"],
-  ]) {
+  ] as const) {
     assert.ok(rendered(id).text.includes(`${origin}${path}`), id);
   }
 });
