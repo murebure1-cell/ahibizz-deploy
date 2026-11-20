@@ -257,7 +257,6 @@ export function StayUnits({
   const [error, setError] = useState("");
   const [gallery, setGallery] = useState(false);
   const [currentPhotos, setCurrentPhotos] = useState<BusinessMediaAsset[] | null>(null);
-  const [calendarRevision, setCalendarRevision] = useState(0);
   const cat = useStayRead<StayCatalog>(
     !actor && initialCatalog && revision === 0 ? null : (actor ? "owner/" : "public/") + businessId,
     actor,
@@ -265,7 +264,8 @@ export function StayUnits({
   );
   const retained = useRef<StayCatalog | null>(null);
   const last = cat?.data ?? (revision === 0 ? initialCatalog : undefined);
-  if (last) retained.current = last;
+  if (cat?.error) retained.current = null;
+  else if (last) retained.current = last;
   const data = last ?? (!cat?.error ? retained.current : null);
   const refresh = () => setRevision((v) => v + 1);
   async function archive(unit: StayUnit) {
@@ -307,16 +307,7 @@ export function StayUnits({
         <div className={common.agenda}>
           <h3>Zahtjevi za smještaj</h3>
           {data.upcoming?.map((entry) => (
-            <StayEntry
-              key={entry.id}
-              owner
-              actor={actor}
-              entry={entry}
-              changed={() => {
-                refresh();
-                setCalendarRevision((v) => v + 1);
-              }}
-            />
+            <StayEntry key={entry.id} owner actor={actor} entry={entry} changed={refresh} />
           ))}
         </div>
       )}
@@ -439,8 +430,9 @@ export function StayUnits({
               )}
               {open && (
                 <StayCalendar
-                  key={[unit.id, unit.version, calendarRevision].join(":")}
+                  key={[unit.id, unit.version, actor ?? "public"].join(":")}
                   unit={unit}
+                  catalogRevision={revision}
                   zone={data.timezone}
                   actor={actor}
                   allowNew={data.eligible && (!!actor || unit.enabled)}

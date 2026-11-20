@@ -567,14 +567,26 @@ export function createCheckoutStore(pool: Pool) {
                   : "review";
         await c.query(
           "UPDATE paypal_checkout_order SET capture_id=COALESCE(capture_id,$2),captured_at=COALESCE(captured_at,$3),refunded_minor=$4,refund_total_unknown=$5,status=$6,capture_lease_until=NULL,updated_at=now(),version=version+1 WHERE id=$1",
-          [id, value.captureId, value.completedAt, total, refund.refundedMinor === null, status],
+          [
+            id,
+            value.captureId,
+            value.completedAt,
+            total,
+            refund.refundedMinor === null && (o.refundTotalUnknown || total < o.amountMinor),
+            status,
+          ],
         );
         await c.query(
           "UPDATE paypal_promotion_entitlement SET revoked_at=COALESCE(revoked_at,now()),revoke_reason=COALESCE(revoke_reason,$2) WHERE order_id=$1",
           [id, status],
         );
         if (o.quoteId && o.environment === "live")
-          await reconcileProductionSale(c, o.quoteId, o.id);
+          await reconcileProductionSale(
+            c,
+            o.quoteId,
+            o.id,
+            o.captureId === null && o.status !== "review" && !o.refundTotalUnknown,
+          );
         await audit(c, id, "refunded_capture_reconciled", {
           captureId: value.captureId,
           refundedMinor: refund.refundedMinor,
@@ -622,7 +634,7 @@ export function createCheckoutStore(pool: Pool) {
             [id, status],
           );
         if (o.quoteId && o.environment === "live")
-          await reconcileProductionSale(c, o.quoteId, o.id);
+          await reconcileProductionSale(c, o.quoteId, o.id, false);
         await audit(c, id, "refund_reconciled", { refundedMinor: total, status });
         return row(c, id);
       });

@@ -108,6 +108,137 @@ export async function verifyMarketingOnlineQuotes(
   );
 
   await t.test(
+    "a fully corrected unfulfilled payment releases the quote while pending and partial corrections block it",
+    async (t) => {
+      const env = process.env;
+      process.env = {
+        ...env,
+        PAYPAL_CHECKOUT_ENVIRONMENT: "live",
+        PAYPAL_LIVE_CLIENT_ID: "local-fixture",
+        PAYPAL_LIVE_CLIENT_SECRET: "local-fixture",
+        PAYPAL_LIVE_MERCHANT_ID: "FIXTURE_MERCHANT",
+        PAYPAL_LIVE_WEBHOOK_ID: "local-fixture",
+        PAYPAL_CHECKOUT_PUBLIC_ORIGIN: "http://localhost",
+      };
+      t.after(() => {
+        process.env = env;
+      });
+      const baseline = await balance();
+      const id = await quote("credits", 8, 1000);
+      const original = input(id);
+      const attached = await attach(await store.create(user, original));
+      await pool.query(
+        "UPDATE paypal_checkout_order SET expires_at=now()-interval '1 minute' WHERE id=$1",
+        [attached.id],
+      );
+      const late = await capture(attached);
+      const pending = async () =>
+        (await marketing.read(headers(user), "credits", 0)).orders.find((order) => order.id === id)
+          ?.onlinePending;
+      const assertHeld = async () => {
+        assert.equal(await pending(), true);
+        assert.equal((await marketing.offer(headers(user), id)).orderId, late.id);
+        await assert.rejects(store.create(user, input(id)), /QUOTE_PAYMENT_PENDING/);
+        await assert.rejects(
+          command(user, { action: "close", id }),
+          (e) => e.code === "QUOTE_PAYMENT_PENDING",
+        );
+        await assert.rejects(bank(id, 1000), (e) => e.code === "QUOTE_PAYMENT_PENDING");
+      };
+      assert.equal(late.status, "review");
+      assert.equal((await state(id)).online_checkout_id, null);
+      await assertHeld();
+      const facts = {
+        providerOrderId: late.providerOrderId,
+        captureId: late.captureId,
+        merchantId: late.merchantId,
+        amountMinor: late.amountMinor,
+        currency: "EUR",
+        completedAt: late.capturedAt,
+      };
+      await store.settleRefundedCapture(late.id, facts, { refundedMinor: null, reversed: true });
+      await assertHeld();
+      await store.reconcileRefund(late.id, { captureId: late.captureId, refundedMinor: 3 });
+      await assertHeld();
+      assert.equal(await balance(), baseline);
+      const full = { captureId: late.captureId, refundedMinor: late.amountMinor };
+      await store.reconcileRefund(late.id, full);
+      assert.equal(await pending(), false);
+      assert.equal((await marketing.offer(headers(user), id)).orderId, undefined);
+      await assert.rejects(
+        marketing.offer(headers(other), id),
+        (e) => e.code === "OFFER_NOT_FOUND",
+      );
+      assert.equal((await store.create(user, original)).id, late.id);
+      const attempts = await Promise.all([
+        store.create(user, input(id)),
+        store.create(user, input(id)),
+      ]);
+      assert.equal(attempts[0].id, attempts[1].id);
+      assert.notEqual(attempts[0].id, late.id);
+      const stale = await store.settleRefundedCapture(late.id, facts, { refundedMinor: null });
+      assert.equal(stale.refundTotalUnknown, false);
+      assert.equal((await marketing.offer(headers(user), id)).orderId, attempts[0].id);
+      const next = await attach(attempts[0]);
+      await capture(next);
+      await Promise.all([capture(next), store.reconcileRefund(late.id, full)]);
+      assert.equal(await balance(), baseline + 8);
+      assert.equal((await state(id)).online_checkout_id, next.id);
+      assert.equal((await state(id)).revoked_at, null);
+      assert.equal((await marketing.offer(headers(user), id)).orderId, next.id);
+      assert.equal((await store.read(user, late.id)).status, "reversed");
+      await store.reconcileRefund(next.id, {
+        captureId: `CAPTURE${next.providerOrderId}`,
+        refundedMinor: next.amountMinor,
+      });
+      assert.equal((await marketing.offer(headers(user), id)).orderId, next.id);
+      await assert.rejects(store.create(user, input(id)), /QUOTE_NOT_PAYABLE/);
+      assert.equal(await balance(), baseline);
+    },
+  );
+  await t.test(
+    "a confirmed full refund of a late production payment permits closing without inventing a production receipt",
+    async () => {
+      const business = await makeBusiness();
+      for (const correctedFirst of [false, true]) {
+        const id = await quote("photo", 1, 34000, business);
+        const first = await attach(await store.create(user, input(id)));
+        await pool.query(
+          "UPDATE paypal_checkout_order SET expires_at=now()-interval '1 minute' WHERE id=$1",
+          [first.id],
+        );
+        const captureId = `CAPTURE${first.providerOrderId}`;
+        if (correctedFirst) {
+          await store.settleRefundedCapture(
+            first.id,
+            {
+              captureId,
+              providerOrderId: first.providerOrderId,
+              merchantId: first.merchantId,
+              amountMinor: first.amountMinor,
+              currency: "EUR",
+              completedAt: new Date().toISOString(),
+            },
+            { refundedMinor: first.amountMinor },
+          );
+        } else {
+          assert.equal((await capture(first)).status, "review");
+          await store.reconcileRefund(first.id, { captureId, refundedMinor: first.amountMinor });
+        }
+        assert.equal((await store.read(user, first.id)).status, "refunded");
+        assert.equal((await state(id)).status, "quoted");
+        assert.equal((await state(id)).online_checkout_id, null);
+        await command(user, { id, action: "close" });
+        assert.equal((await state(id)).status, "closed");
+        assert.equal(
+          (await pool.query("SELECT id FROM billing_receipt WHERE production_order_id=$1", [id]))
+            .rowCount,
+          0,
+        );
+      }
+    },
+  );
+  await t.test(
     "sandbox capture leaves credits and quote untouched and permits independent bank settlement",
     async () => {
       const baseline = await balance();

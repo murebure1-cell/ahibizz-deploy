@@ -52,14 +52,36 @@ export async function payableQuote(
   };
 }
 
-// Hold alternate settlement while PayPal can still capture, including a capture that started just before expiry.
-export async function pendingQuoteOrder(client: PoolClient, quoteId: string, environment: string) {
-  const result = await client.query<{ id: string; offer_version: string; status: string }>(
-    `SELECT id,offer_version,status FROM paypal_checkout_order WHERE quote_id=$1 AND environment=$2
-      AND (status IN ('captured','review','partially_refunded','refunded','reversed')
-        OR (status IN ('created','provider_created') AND GREATEST(expires_at,capture_lease_until)>clock_timestamp()))
-      ORDER BY created_at DESC LIMIT 1`,
-    [quoteId, environment],
+// A completed correction releases only the attempt that never fulfilled this quote.
+export const holdsQuotePayment = `(
+  p.status IN ('captured','review','partially_refunded')
+  OR (p.status IN ('refunded','reversed') AND
+    (o.online_checkout_id=p.id OR p.capture_id IS NULL OR p.captured_at IS NULL
+      OR p.refund_total_unknown OR p.refunded_minor<>p.amount_minor))
+  OR (p.status IN ('created','provider_created') AND GREATEST(p.expires_at,p.capture_lease_until)>clock_timestamp())
+)`;
+
+export async function pendingQuoteOrder(
+  client: PoolClient,
+  quoteId: string,
+  environment: string,
+  accountId?: string,
+) {
+  const result = await client.query<{
+    id: string;
+    status: string;
+    business_title: string;
+    original_bam_minor: number;
+    amount_minor: number;
+    kind: MarketingOrder["kind"];
+  }>(
+    `SELECT p.id,p.status,p.business_title,p.original_bam_minor,p.amount_minor,o.kind
+      FROM paypal_checkout_order p JOIN marketing_order o ON o.id=p.quote_id
+      WHERE o.id=$1 AND p.environment=$2 AND p.user_id=o.account_id
+        AND ($3::text IS NULL OR o.account_id=$3) AND ${holdsQuotePayment}
+      ORDER BY (o.online_checkout_id IS NOT DISTINCT FROM p.id) DESC,
+        (p.status NOT IN ('created','provider_created')) DESC,p.created_at DESC,p.id LIMIT 1`,
+    [quoteId, environment, accountId ?? null],
   );
   return result.rows[0] ?? null;
 }
@@ -89,15 +111,21 @@ export async function reconcileProductionSale(
   client: PoolClient,
   quoteId: string,
   checkoutId: string,
+  firstCapture: boolean,
 ) {
-  await client.query(
-    `UPDATE marketing_order o SET status='paid',settled_by=o.account_id,online_checkout_id=p.id,
+  if (firstCapture)
+    await client.query(
+      `UPDATE marketing_order o SET status='paid',settled_by=o.account_id,online_checkout_id=p.id,
          paid_at=p.captured_at,revoked_at=COALESCE(o.revoked_at,clock_timestamp())
      FROM paypal_checkout_order p WHERE o.id=$1 AND o.kind IN ('photo','video','photo_video')
        AND o.status='quoted' AND p.id=$2 AND p.quote_id=o.id AND p.user_id=o.account_id
        AND p.environment='live' AND p.capture_id IS NOT NULL AND p.captured_at IS NOT NULL
+       AND p.captured_at<=p.expires_at AND p.expires_at>clock_timestamp()
+       AND EXISTS (SELECT 1 FROM directory_business b JOIN auth_user u ON u.id=b.owner_user_id
+         WHERE b.id=o.business_id AND b.owner_user_id=o.account_id AND b.status<>'archived'
+           AND u.approval='approved' AND u."emailVerified" AND u.role IN ('owner','member'))
        AND p.original_bam_minor=o.amount_minor AND p.status IN ('review','partially_refunded','refunded','reversed')`,
-    [quoteId, checkoutId],
-  );
+      [quoteId, checkoutId],
+    );
   await syncProductionReceipt(client, quoteId);
 }

@@ -65,6 +65,8 @@ export function readAccountNavigation(params: URLSearchParams): {
   }
 }
 
+export const productionRequestPath = "/nalog?odjeljak=oglasi&usluga=produkcija";
+
 /** Only known in-app destinations survive login; never a caller-supplied origin or nested URL. */
 export function accountReturnPath(value: unknown): string {
   if (
@@ -73,6 +75,7 @@ export function accountReturnPath(value: unknown): string {
     [...value].some((c) => c.charCodeAt(0) <= 32 || c.charCodeAt(0) > 126)
   )
     return "/nalog";
+  if (value === productionRequestPath) return value;
   if (
     /^\/naplata(?:\/(?:povratak|odustajanje))?(?:\?narudzba=[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})?$/i.test(
       value,

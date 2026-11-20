@@ -10,7 +10,7 @@ import { AccountAccessError, accountTransaction, createAccountAccess } from "../
 import { type AuthService, getAuthDatabasePool, getAuthService } from "../auth/service";
 import { syncProductionReceipt } from "../billing/service";
 import { checkoutConfiguration } from "../paypal/runtime";
-import { payableQuote, pendingQuoteOrder } from "./online-quote";
+import { holdsQuotePayment, payableQuote, pendingQuoteOrder } from "./online-quote";
 import { creditBalanceSql, packagePromotions, paidPromotions } from "./read";
 
 function fail(status: number, code: string): never {
@@ -117,17 +117,9 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
         const actor = await access.authority(client, scope, false, "read");
         const quote = await payableQuote(client, actor.id, id);
         const environment = checkoutConfiguration()?.environment;
-        const prior = environment
-          ? await client.query(
-              `SELECT p.id,p.business_title,p.original_bam_minor,p.amount_minor,o.kind FROM paypal_checkout_order p
-           JOIN marketing_order o ON o.id=p.quote_id WHERE p.quote_id=$1 AND p.user_id=$2 AND o.account_id=$2 AND p.environment=$3
-             AND (p.status IN ('captured','review','reversed','partially_refunded','refunded') OR
-               (p.status IN ('created','provider_created') AND GREATEST(p.expires_at,p.capture_lease_until)>clock_timestamp()))
-             ORDER BY p.created_at DESC LIMIT 1`,
-              [id, actor.id, environment],
-            )
+        const saved = environment
+          ? await pendingQuoteOrder(client, id, environment, actor.id)
           : null;
-        const saved = prior?.rows[0];
         if (saved)
           return {
             offer: {
@@ -158,8 +150,8 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           await client.query<MarketingOrder>(
             `
           SELECT o.id,o.kind,o.status,o.quantity,o.amount_minor AS "amountMinor",o.credit_price AS "creditPrice",
-            o.revoked_at::text AS "revokedAt",EXISTS (SELECT 1 FROM paypal_checkout_order p WHERE p.quote_id=o.id AND p.environment='live'
-              AND (p.status='review' OR (p.status IN ('created','provider_created') AND GREATEST(p.expires_at,p.capture_lease_until)>clock_timestamp()))) AS "onlinePending",
+            o.revoked_at::text AS "revokedAt",(o.status='quoted' AND EXISTS (SELECT 1 FROM paypal_checkout_order p WHERE p.quote_id=o.id AND p.environment='live'
+              AND ${holdsQuotePayment})) AS "onlinePending",
             o.instructions,b.title AS "businessTitle",u.name AS customer,o.starts_at::text AS "startsAt",
             CASE WHEN o.ends_at IS NOT NULL THEN LEAST(o.ends_at,o.revoked_at)::text END AS "endsAt",o.production_receipt_conflict AS "productionReceiptConflict"
           FROM marketing_order o JOIN auth_user u ON u.id=o.account_id LEFT JOIN directory_business b ON b.id=o.business_id

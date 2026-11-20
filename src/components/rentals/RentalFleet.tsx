@@ -296,7 +296,13 @@ function FleetContent({
     actor,
     revision,
   );
-  const data = state?.data ?? (!actor && !state && revision === 0 ? initialCatalog : undefined);
+  // The actor/business key on RentalRecovery also scopes the last confirmed catalog.
+  // Keep the open calendar mounted while its catalog refreshes after an owner decision.
+  const retained = useRef<RentalCatalog | undefined>(undefined);
+  const latest = state?.data ?? (!actor && !state && revision === 0 ? initialCatalog : undefined);
+  if (state?.error) retained.current = undefined;
+  else if (latest) retained.current = latest;
+  const data = latest ?? retained.current;
   function refresh() {
     setRevision((v) => v + 1);
   }
@@ -478,6 +484,7 @@ function FleetContent({
                   car={car}
                   zone={data.timezone}
                   actor={actor}
+                  catalogRevision={revision}
                   allowNew={data.eligible}
                   onChangedOffer={refresh}
                   onUncertain={onUncertain}

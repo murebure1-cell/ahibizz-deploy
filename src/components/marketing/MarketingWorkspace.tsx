@@ -220,7 +220,8 @@ function MarketingView({ accountId, mode }: { accountId: string; mode: Marketing
       data &&
       !openedProduction.current &&
       mode === "ads" &&
-      window.location.hash === "#produkcija"
+      (window.location.hash === "#produkcija" ||
+        new URLSearchParams(window.location.search).get("usluga") === "produkcija")
     ) {
       openedProduction.current = true;
       document.getElementById("produkcija")?.scrollIntoView({ block: "start" });

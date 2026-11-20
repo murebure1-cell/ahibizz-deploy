@@ -27,6 +27,7 @@ export function StayCalendar({
   unit,
   zone,
   actor,
+  catalogRevision,
   allowNew,
   changedOffer,
   changedBookings,
@@ -34,6 +35,7 @@ export function StayCalendar({
   unit: StayUnit;
   zone: string;
   actor?: string;
+  catalogRevision: number;
   allowNew: boolean;
   changedOffer: () => void;
   changedBookings: () => void;
@@ -77,7 +79,7 @@ export function StayCalendar({
   const calendar = useStayRead<{ entries: (StayBooking | StayInterval)[] }>(
     `${base}/calendar?from=${first}&to=${end}`,
     actor,
-    revision,
+    revision + catalogRevision,
   );
   const entries = calendar?.data?.entries ?? [];
   const active = entries.filter(
@@ -88,7 +90,7 @@ export function StayCalendar({
   const extra = useStayRead<{ available: boolean }>(
     crossesMonth ? `${base}/availability?from=${arrival}&to=${departure}` : null,
     actor,
-    revision,
+    revision + catalogRevision,
   );
   const occupied =
     valid &&

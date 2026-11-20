@@ -2,7 +2,11 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AccountDashboard } from "../../../components/account/AccountDashboard";
-import { accountReturnPath, accountSection } from "../../../lib/account-return";
+import {
+  accountReturnPath,
+  accountSection,
+  productionRequestPath,
+} from "../../../lib/account-return";
 import { type MessageTarget, messageLink, readMessageTarget } from "../../../lib/messaging";
 import {
   AccountAccessError,
@@ -36,9 +40,11 @@ export default async function AccountPage({
     : accountReturnPath(
         messageTarget
           ? messageLink(messageTarget)
-          : typeof query.odjeljak === "string"
-            ? `/nalog?odjeljak=${encodeURIComponent(query.odjeljak)}`
-            : "/nalog",
+          : query.odjeljak === "oglasi" && query.usluga === "produkcija"
+            ? productionRequestPath
+            : typeof query.odjeljak === "string"
+              ? `/nalog?odjeljak=${encodeURIComponent(query.odjeljak)}`
+              : "/nalog",
       );
   let profile: SafeAccountProfile | undefined;
   try {

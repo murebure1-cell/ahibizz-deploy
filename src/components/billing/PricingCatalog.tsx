@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { productionRequestPath } from "../../lib/account-return";
 import { type BillingCatalog, billingPackages } from "../../lib/billing";
 import { type PackageBenefitsCatalog, readPackageBenefits } from "../../lib/package-benefits";
 import styles from "./billing.module.css";
@@ -132,7 +133,7 @@ export function PricingCatalog({
           <h2>Foto i video</h2>
           <p>Produkcija se ugovara zasebno.</p>
         </div>
-        <Link className={styles.secondary} href="/nalog?odjeljak=oglasi#produkcija">
+        <Link className={styles.secondary} href={productionRequestPath}>
           Zatraži ponudu za produkciju
         </Link>
       </section>

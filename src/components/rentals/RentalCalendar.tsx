@@ -35,6 +35,7 @@ export function RentalCalendar({
   car,
   zone,
   actor,
+  catalogRevision,
   allowNew = true,
   onChangedOffer,
   onUncertain,
@@ -42,6 +43,7 @@ export function RentalCalendar({
   car: RentalVehicle;
   zone: string;
   actor?: string;
+  catalogRevision: number;
   allowNew?: boolean;
   onChangedOffer: () => void;
   onUncertain: (intent: RentalIntent) => void;
@@ -66,7 +68,7 @@ export function RentalCalendar({
       ? `${actor ? "owner" : "public"}/${car.businessId}/${car.id}/calendar?${query}`
       : null,
     actor,
-    revision,
+    revision + catalogRevision,
   );
   const entries = state?.data?.entries ?? [];
   const active = entries.filter(
@@ -86,7 +88,7 @@ export function RentalCalendar({
       ? `${actor ? "owner" : "public"}/${car.businessId}/${car.id}/availability?${rangeQuery}`
       : null,
     actor,
-    revision,
+    revision + catalogRevision,
   );
   const rangeReady = Boolean(state?.data && (!beyondMonth || extra?.data));
   const occupied = beyondMonth
@@ -144,6 +146,7 @@ export function RentalCalendar({
       setSelected(dateKey(new Date(from), zone));
       setMonth(dateKey(new Date(from), zone).slice(0, 7));
       setRevision((v) => v + 1);
+      if (actor) onChangedOffer();
       setSuccess(actor ? "Period je označen kao zauzet." : "Zahtjev je poslan vlasniku.");
     } catch (failure) {
       if (failure instanceof RentalRecoveryRequired) {
@@ -243,7 +246,7 @@ export function RentalCalendar({
                     actor={actor}
                     owner
                     entry={entry}
-                    changed={() => setRevision((v) => v + 1)}
+                    changed={onChangedOffer}
                   />
                 ) : (
                   <p key={entry.startsAt}>
