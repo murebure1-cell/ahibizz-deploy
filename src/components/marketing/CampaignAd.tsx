@@ -180,6 +180,7 @@ function Creative({ ad }: { ad: ServedAd }) {
         className={styles.canvas}
         data-revealed={revealed}
         data-multiple={count > 1 || undefined}
+        data-text-response={response && !ad.asset && !image ? true : undefined}
       >
         {(ad.formatId === "slash" || ad.formatId === "reveal") && ad.images.length > 1 && (
           <Image

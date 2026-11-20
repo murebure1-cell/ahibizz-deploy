@@ -199,6 +199,7 @@ export function AdExplorer({ pricing }: { pricing: AdPricing | null }) {
                   <b>{price !== null ? `${km(price)} / 1.000 prikaza` : "Cijena na upit"}</b>
                 </div>
                 <label className={styles.upload}>
+                  <Icon name="download" />
                   Isprobaj svoju sliku
                   <input
                     type="file"

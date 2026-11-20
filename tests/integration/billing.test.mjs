@@ -63,7 +63,7 @@ test("real isolated confirmed-receipt ledger, accounting corrections and current
     pool.on("error", () => {});
     assert.equal((await pool.query("SELECT current_schema() AS name")).rows[0].name, schema);
     const migrations = await loadMigrations();
-    assert.equal(migrations.at(-1).version, "0039_ad_audience_preferences.sql");
+    assert.equal(migrations.at(-1).version, "0040_ad_audience_sample.sql");
     assert.equal((await runMigrations({ pool, migrations })).applied.length, migrations.length);
     assert.deepEqual(await runMigrations({ pool, migrations }), { applied: [] });
     globalThis.fetch = async () => {
@@ -159,6 +159,70 @@ test("real isolated confirmed-receipt ledger, accounting corrections and current
         await verifyCommunityRules({ auth, pool, member, owner, baseURL });
       },
     );
+    await t.test("audience consent, duplicate views, visits and withdrawal", async () => {
+      const { countAudienceNavigation, publicOptInAudience } = await import(
+        "../../src/server/ad-audience-sample.ts"
+      );
+      const { accountTransaction } = await import("../../src/server/auth/accounts.ts");
+      const id = member.user.id,
+        event = randomUUID();
+      const count = (e) =>
+        accountTransaction(pool, (client) => countAudienceNavigation(client, id, e));
+      assert.equal(await count(event), false);
+      await pool.query("INSERT INTO ad_measurement_consent(account_id,region) VALUES($1,'fbih')", [
+        id,
+      ]);
+      assert.equal(await count(event), true);
+      await pool.query(
+        "UPDATE ad_audience_navigation SET seen_at=now()-interval '31 minutes' WHERE account_id=$1",
+        [id],
+      );
+      await count(event);
+      await count(randomUUID());
+      assert.deepEqual(
+        (
+          await pool.query(
+            "SELECT count(*)::int AS views,count(*) FILTER(WHERE starts_visit)::int AS visits FROM ad_audience_navigation WHERE account_id=$1",
+            [id],
+          )
+        ).rows,
+        [{ views: 2, visits: 2 }],
+      );
+      assert.equal(await publicOptInAudience(pool), null);
+      // Nine further fictional members qualify this region for a public aggregate.
+      const ids = Array.from({ length: 9 }, () => randomUUID());
+      for (const uid of ids) {
+        await pool.query(
+          `INSERT INTO auth_user(id,name,email,"emailVerified",role,approval,"createdAt","updatedAt") VALUES($1,'Audience fixture',$2,true,'member','approved',now(),now())`,
+          [uid, uid + "@audience-fixture.invalid"],
+        );
+        await pool.query(
+          "INSERT INTO ad_measurement_consent(account_id,region) VALUES($1,'fbih')",
+          [uid],
+        );
+        await accountTransaction(pool, (client) =>
+          countAudienceNavigation(client, uid, randomUUID()),
+        );
+      }
+      assert.deepEqual(await publicOptInAudience(pool), {
+        users: 10,
+        visits: 11,
+        views: 11,
+        regions: [{ region: "Federacija BiH", users: 10 }],
+      });
+      await pool.query("DELETE FROM ad_measurement_consent WHERE account_id=$1", [id]);
+      assert.equal(
+        (
+          await pool.query(
+            "SELECT count(*)::int AS total FROM ad_audience_navigation WHERE account_id=$1",
+            [id],
+          )
+        ).rows[0].total,
+        0,
+      );
+      assert.equal(await publicOptInAudience(pool), null);
+      await pool.query("DELETE FROM auth_user WHERE id=ANY($1::text[])", [ids]);
+    });
     const { createDirectoryService } = await import("../../src/server/directory/index.ts");
     const directory = createDirectoryService({ accounts, auth, pool });
     const category = await directory.createCategory(owner.headers, {

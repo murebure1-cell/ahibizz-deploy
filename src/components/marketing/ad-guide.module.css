@@ -196,20 +196,65 @@
   color: var(--ui-accent-text);
 }
 .fields .upload {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  min-height: 44px;
+  border: 1px solid var(--ui-border-strong);
+  color: var(--ui-text);
+  background: var(--ui-surface-soft);
+  border-radius: 0.65rem;
   font-size: 0.92rem;
 }
 .upload input {
-  min-width: 0;
-  max-width: 100%;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.upload:focus-within {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+.heroMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.6rem;
+  margin-block: 1.05rem 1.5rem;
+}
+.heroMetrics div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.2rem;
+}
+.heroMetrics dd {
+  font-size: clamp(1.35rem, 3vw, 1.95rem);
+  margin: 0;
+  font-weight: 750;
+  line-height: 1;
+}
+.heroMetrics dt {
+  font-weight: 570;
+  color: #e5edf1;
   font-size: 0.9rem;
 }
-.upload input::file-selector-button {
-  padding: 0.4rem 0.7rem;
-  border: 1px solid var(--ui-border);
-  border-radius: 0.5rem;
-  background: var(--ui-surface-soft);
-  color: var(--ui-text);
-  cursor: pointer;
+@media (max-width: 450px) {
+  .nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .nav a {
+    white-space: nowrap;
+  }
+  .pageChoices {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .textButton {
   color: var(--ui-accent-text);
@@ -705,4 +750,15 @@ fieldset.pageChoices {
 .platforms dd {
   margin: 0;
   font-weight: 680;
+}
+.sample {
+  border-block-start: 1px solid var(--ui-border);
+  margin-block-start: 1.3rem;
+  padding-block-start: 1rem;
+}
+.sample p {
+  margin-block-start: 0.5rem;
+}
+.sample dl + h3 {
+  margin-block-start: 1rem;
 }

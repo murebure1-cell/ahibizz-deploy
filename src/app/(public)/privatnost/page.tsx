@@ -43,6 +43,18 @@ export default function PrivacyPage() {
         )}
       </section>
       <section className={styles.section}>
+        {!IS_PLAY_EDITION && (
+          <>
+            <h2>Oglasi i publika</h2>
+            <p>
+              Za kampanje brojimo vidljive prikaze i klikove. U Postavkama možeš zasebno uključiti
+              izbor publike za oglase i dobrovoljno mjerenje posjeta. Za mjerenje bilježimo vrijeme
+              pregleda i tvoj odabir regije ako ga navedeš. Javno prikazujemo zbir za grupe od
+              najmanje deset učesnika. Isključivanjem mjerenja brišeš svoje zapise iz uzorka. Kada
+              pošalješ upit u oglasu, prima ga djelatnost kojoj se obraćaš.
+            </p>
+          </>
+        )}
         <h2>Prijave i brisanje podataka</h2>
         <p>
           Na profilu, recenziji ili u razgovoru možeš prijaviti zloupotrebu. Za pristup svojim

@@ -5,6 +5,8 @@ import styles from "../../../components/marketing/ad-guide.module.css";
 import { volumeLabels } from "../../../lib/ad-pricing";
 import { IS_PLAY_EDITION } from "../../../lib/distribution";
 import { supportEmail } from "../../../lib/support-requests";
+import { publicOptInAudience } from "../../../server/ad-audience-sample";
+import { publicDirectoryCounts } from "../../../server/directory/read-service";
 import { publicAdAudience } from "../../../server/marketing/ad-delivery";
 import { getPublicAdPricing } from "../../../server/marketing/ad-pricing";
 
@@ -39,7 +41,12 @@ const targeting: { title: string; detail: string; icon: IconName }[] = [
 const formatNumber = (value: number) => new Intl.NumberFormat("bs-BA").format(value);
 
 export default async function PromotionPage() {
-  const [pricing, audience] = await Promise.all([getPublicAdPricing(), publicAdAudience()]);
+  const [pricing, audience, directory, sample] = await Promise.all([
+    getPublicAdPricing(),
+    publicAdAudience(),
+    publicDirectoryCounts(),
+    publicOptInAudience(),
+  ]);
   const contactPhone =
     pricing?.contactPhone && /^\+[1-9]\d{6,14}$/.test(pricing.contactPhone)
       ? pricing.contactPhone
@@ -55,6 +62,18 @@ export default async function PromotionPage() {
             Predstavi svoju djelatnost ljudima koji traže usluge u tvom gradu i širom poslovne
             mreže.
           </p>
+          {directory && (
+            <dl className={styles.heroMetrics}>
+              <div>
+                <dt>Objavljene djelatnosti</dt>
+                <dd>{formatNumber(directory.businesses)}</dd>
+              </div>
+              <div>
+                <dt>Aktivne kategorije</dt>
+                <dd>{formatNumber(directory.categories)}</dd>
+              </div>
+            </dl>
+          )}
           <div className={styles.heroButtons}>
             <a className={styles.primary} href="#pozicije">
               Pregledaj pozicije <Icon name="arrow" />
@@ -132,6 +151,41 @@ export default async function PromotionPage() {
           </>
         ) : (
           <p>Za posljednjih 30 dana još nema dostupne statistike prikazivanja kampanja.</p>
+        )}
+        {sample && (
+          <article className={styles.sample}>
+            <h3>Posjete AhiBizzu</h3>
+            <p>
+              Dobrovoljni uzorak korisnika koji su uključili statistiku tokom posljednjih 30 dana.
+            </p>
+            <dl className={styles.platforms}>
+              <div>
+                <dt>Korisnici</dt>
+                <dd>{formatNumber(sample.users)}</dd>
+              </div>
+              <div>
+                <dt>Posjete</dt>
+                <dd>{formatNumber(sample.visits)}</dd>
+              </div>
+              <div>
+                <dt>Pregledi stranica</dt>
+                <dd>{formatNumber(sample.views)}</dd>
+              </div>
+            </dl>
+            {sample.regions.length > 0 && (
+              <>
+                <h3>Regije koje su korisnici odabrali</h3>
+                <dl className={styles.platforms}>
+                  {sample.regions.map((row) => (
+                    <div key={row.region}>
+                      <dt>{row.region}</dt>
+                      <dd>{formatNumber(row.users)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </>
+            )}
+          </article>
         )}
       </section>
       <section id="uslovi" className={styles.section}>

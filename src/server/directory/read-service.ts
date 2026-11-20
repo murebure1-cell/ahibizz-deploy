@@ -16,6 +16,27 @@ import { businessKeys, object, pageInput, uuid } from "./validation";
 
 export type DirectoryReadDatabase = Pick<Database, "query">;
 
+const publicBusinessWhere =
+  "b.status = 'published' AND package_allows_listing(b) AND u.approval = 'approved' AND u.\"emailVerified\" = true";
+
+export async function publicDirectoryCounts() {
+  const database = getDatabase();
+  try {
+    if (!database.configured()) return null;
+    const { rows } = await database.query(`
+      SELECT count(*)::integer AS businesses, count(DISTINCT b.category_id)::integer AS categories
+      FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id
+      WHERE ${publicBusinessWhere}
+    `);
+    const counts = rows[0];
+    return counts
+      ? { businesses: Number(counts.businesses), categories: Number(counts.categories) }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export const columnMap: Record<keyof BusinessFields, string> = {
   title: "title",
   categoryId: "category_id",
@@ -275,7 +296,7 @@ export function createPublicDirectoryService({
         const result = await listDirectory(
           database,
           input,
-          "b.status = 'published' AND package_allows_listing(b) AND u.approval = 'approved' AND u.\"emailVerified\" = true",
+          publicBusinessWhere,
           [],
           true,
           featuredOnly,
@@ -292,7 +313,7 @@ export function createPublicDirectoryService({
       const key = uuid(id);
       return safeRead(async () => {
         const result = await database.query(
-          `SELECT ${publicColumns} FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id WHERE b.id = $1 AND b.status = 'published' AND package_allows_listing(b) AND u.approval = 'approved' AND u."emailVerified" = true`,
+          `SELECT ${publicColumns} FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id WHERE b.id = $1 AND ${publicBusinessWhere}`,
           [key],
         );
         if (!result.rows[0]) fail(404, "BUSINESS_NOT_FOUND");

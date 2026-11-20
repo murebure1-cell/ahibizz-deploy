@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { businessUuid } from "../../../../lib/business-today";
+import { IS_PLAY_EDITION } from "../../../../lib/distribution";
 import { normalizeMessageBody } from "../../../../lib/messaging";
 import { AccountAccessError } from "../../../../server/auth/accounts";
 import { readAuthConfiguration } from "../../../../server/auth/config";
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
 const reply = (data: unknown, status: number) =>
   Response.json(data, { status, headers: { "Cache-Control": "private, no-store" } });
 export async function POST(request: Request) {
+  if (IS_PLAY_EDITION) return reply({ code: "NOT_FOUND" }, 404);
   try {
     if (
       request.headers.get("origin") !==

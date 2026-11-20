@@ -94,7 +94,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       pool.on("error", () => {});
       assert.equal((await pool.query("SELECT current_schema() AS name")).rows[0].name, schema);
       const migrations = await loadMigrations();
-      assert.equal(migrations.length, 34);
       assert.deepEqual(await runMigrations({ pool, migrations }), {
         applied: migrations.map(({ version }) => version),
       });
@@ -699,6 +698,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0037_ad_rate_card.sql",
           "0038_marketing_ad_asset.sql",
           "0039_ad_audience_preferences.sql",
+          "0040_ad_audience_sample.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {

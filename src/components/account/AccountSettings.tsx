@@ -18,6 +18,7 @@ import { DevicePush } from "../pwa/DevicePush";
 import permissionStyles from "../pwa/permissions.module.css";
 import { AccountPassword } from "./AccountPassword";
 import { AdPreference } from "./AdPreference";
+import { AudienceSettings } from "./AudienceSettings";
 import styles from "./account.module.css";
 
 const choices = [
@@ -198,6 +199,7 @@ function SettingsWorkspace({
         <>
           <AccountPassword accountId={initial.id} email={initial.email} />
           <AdPreference accountId={initial.id} />
+          <AudienceSettings accountId={initial.id} />
         </>
       )}
       <section className={styles.settingsCard} aria-labelledby="appearance-heading">

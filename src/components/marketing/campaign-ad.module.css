@@ -30,6 +30,10 @@
   z-index: -2;
   object-fit: cover;
 }
+.canvas[data-text-response="true"] {
+  aspect-ratio: auto;
+  min-height: 92px;
+}
 .underPhoto {
   z-index: -3;
   object-fit: cover;
