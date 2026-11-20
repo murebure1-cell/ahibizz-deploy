@@ -328,7 +328,11 @@ function BookingWorkspace({
   const moment = (value: string, timezone = configuration?.timezone ?? "UTC") =>
     bookingDate(value, timezone, { time: true });
   return (
-    <section className={styles.booking} aria-label="Zakazivanje termina">
+    <section
+      className={styles.booking}
+      aria-label="Zakazivanje termina"
+      data-design="booking-panel"
+    >
       <header className={styles.heading}>
         <span>
           <Icon name="calendar" />
@@ -418,6 +422,7 @@ function BookingWorkspace({
                   key={slot.startsAt}
                   type="button"
                   aria-pressed={selection === slot.startsAt}
+                  data-design="booking-time"
                   disabled={busy || uncertain}
                   onClick={() => {
                     setSelection(slot.startsAt);

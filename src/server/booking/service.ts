@@ -112,7 +112,7 @@ async function transaction<T>(pool: Pool, body: (client: PoolClient) => Promise<
 async function business(query: Query, id: string): Promise<Business> {
   const row = (
     await query.query<Business>(
-      "SELECT id, owner_user_id, title, status FROM directory_business WHERE id = $1",
+      "SELECT id, owner_user_id, title, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status FROM directory_business b WHERE id = $1",
       [id],
     )
   ).rows[0];
@@ -122,7 +122,7 @@ async function business(query: Query, id: string): Promise<Business> {
 async function publicBusiness(query: Query, id: string): Promise<Business> {
   const row = (
     await query.query<Business>(
-      "SELECT b.id, b.owner_user_id, b.title, b.status FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id WHERE b.id = $1 AND b.status = 'published' AND u.approval = 'approved' AND u.\"emailVerified\" = true AND u.role IN ('member','owner')",
+      "SELECT b.id, b.owner_user_id, b.title, b.status FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id WHERE b.id = $1 AND b.status = 'published' AND package_allows_listing(b) AND u.approval = 'approved' AND u.\"emailVerified\" = true AND u.role IN ('member','owner')",
       [id],
     )
   ).rows[0];
@@ -159,7 +159,7 @@ async function context(
   const { actor, users } = await authority(client, identity, [hint.owner_user_id, ...extra]);
   const locked = (
     await client.query<Business>(
-      "SELECT id, owner_user_id, title, status FROM directory_business WHERE id = $1 FOR UPDATE",
+      "SELECT id, owner_user_id, title, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status FROM directory_business b WHERE id = $1 FOR UPDATE",
       [businessId],
     )
   ).rows[0];

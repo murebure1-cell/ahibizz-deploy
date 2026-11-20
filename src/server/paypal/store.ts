@@ -57,7 +57,7 @@ const columns = `id,user_id AS "userId",request_id AS "requestId",environment,ki
 
 export function promotionSql(alias = "b") {
   if (!/^[a-z][a-z0-9_]*$/i.test(alias)) throw new Error("Invalid SQL alias");
-  return `EXISTS (SELECT 1 FROM paypal_promotion_entitlement pe JOIN paypal_checkout_order po ON po.id=pe.order_id JOIN auth_user pu ON pu.id=pe.user_id WHERE pe.business_id=${alias}.id AND pe.user_id=${alias}.owner_user_id AND pe.category_id=${alias}.category_id AND ${alias}.status='published' AND pu.approval='approved' AND pu."emailVerified"=true AND pu.role IN ('member','owner') AND po.environment='live' AND po.status='captured' AND po.refunded_minor=0 AND po.refund_total_unknown=false AND pe.revoked_at IS NULL AND pe.starts_at<=now() AND pe.ends_at>now())`;
+  return `EXISTS (SELECT 1 FROM paypal_promotion_entitlement pe JOIN paypal_checkout_order po ON po.id=pe.order_id JOIN auth_user pu ON pu.id=pe.user_id WHERE pe.business_id=${alias}.id AND pe.user_id=${alias}.owner_user_id AND pe.category_id=${alias}.category_id AND ${alias}.status='published' AND package_allows_listing(${alias}) AND pu.approval='approved' AND pu."emailVerified"=true AND pu.role IN ('member','owner') AND po.environment='live' AND po.status='captured' AND po.refunded_minor=0 AND po.refund_total_unknown=false AND pe.revoked_at IS NULL AND pe.starts_at<=now() AND pe.ends_at>now())`;
 }
 async function transaction<T>(pool: Pool, action: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
@@ -125,7 +125,7 @@ async function business(c: PoolClient, id: string) {
       title: string;
       status: string;
     }>(
-      "SELECT id,owner_user_id,category_id,title,status FROM directory_business WHERE id=$1 FOR UPDATE",
+      "SELECT id,owner_user_id,category_id,title, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status FROM directory_business b WHERE id=$1 FOR UPDATE",
       [uuid(id)],
     )
   ).rows[0];

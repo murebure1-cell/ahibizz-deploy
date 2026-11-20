@@ -3,6 +3,7 @@ import { bookingReturnPath } from "./booking-return";
 import { type MessageTarget, messageLink, readMessageTarget } from "./messaging";
 
 const accountSections = {
+  pregled: "overview",
   profil: "profile",
   djelatnosti: "businesses",
   termini: "appointments",
@@ -10,12 +11,15 @@ const accountSections = {
   poruke: "messages",
   postavke: "settings",
   paketi: "membership",
+  oglasi: "advertising",
+  krediti: "credits",
   sacuvani: "saved",
 } as const;
 
 export type AccountSection = (typeof accountSections)[keyof typeof accountSections];
 
 const sectionQueries: Record<AccountSection, keyof typeof accountSections> = {
+  overview: "pregled",
   profile: "profil",
   businesses: "djelatnosti",
   appointments: "termini",
@@ -23,6 +27,8 @@ const sectionQueries: Record<AccountSection, keyof typeof accountSections> = {
   messages: "poruke",
   settings: "postavke",
   membership: "paketi",
+  advertising: "oglasi",
+  credits: "krediti",
   saved: "sacuvani",
 };
 
@@ -46,7 +52,8 @@ export function readAccountNavigation(params: URLSearchParams): {
   invalidMessageTarget: boolean;
 } {
   const values = params.getAll("odjeljak");
-  const section = accountSection(values.length === 1 ? values[0] : undefined);
+  const section =
+    params.size === 0 ? "overview" : accountSection(values.length === 1 ? values[0] : undefined);
   if (section !== "messages") return { section, invalidMessageTarget: false };
   try {
     const messageTarget = readMessageTarget(params) ?? undefined;
@@ -76,6 +83,18 @@ export function accountReturnPath(value: unknown): string {
     /^\/dodo-proba(?:\?narudzba=[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})?$/i.test(
       value,
     )
+  )
+    return value;
+  if (
+    /^\/paketi\/placanje(?:\?paket=(?:basic|business|premium)(?:&period=(?:monthly|annual))?(?:&ugovor=[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}(?:&odustao=1)?)?)?$/.test(
+      value,
+    )
+  )
+    return value;
+  if (
+    value === "/administracija/zahtjevi" ||
+    value === "/administracija/izgled" ||
+    value === "/administracija/oglasi"
   )
     return value;
   const administration = adminReturnPath(value);

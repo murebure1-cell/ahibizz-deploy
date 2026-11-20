@@ -1,0 +1,26 @@
+.notice {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 0.9rem;
+  display: flex;
+  align-items: start;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem;
+  margin-block-end: 1rem;
+  color: var(--ui-text);
+}
+.notice details {
+  flex: 1 1 12rem;
+}
+.notice summary {
+  font-weight: 650;
+  cursor: pointer;
+}
+.notice p {
+  margin-block: 0.6rem;
+}
+.notice a {
+  color: var(--ui-accent-text);
+}

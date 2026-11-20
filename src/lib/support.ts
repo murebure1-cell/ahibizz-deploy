@@ -1,4 +1,5 @@
 import { publicSupportSettings } from "../config/support";
+import { IS_PLAY_EDITION } from "./distribution";
 
 export type SupportBankAccount = {
   id: string;
@@ -122,7 +123,7 @@ export function readSupportConfig(value: unknown): SupportConfig | null {
 }
 
 export function getSupportConfig(): SupportConfig | null {
-  return readSupportConfig(publicSupportSettings);
+  return IS_PLAY_EDITION ? null : readSupportConfig(publicSupportSettings);
 }
 
 export function bankTransferText(config: SupportConfig, bankAccountId: string): string {

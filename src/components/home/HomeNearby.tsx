@@ -9,7 +9,9 @@ import type { PublicBusinessView } from "../../lib/public-business";
 import { DirectoryResultCard } from "../directory/DirectoryResultCard";
 import { Icon } from "../Icon";
 import { useDeviceLocation } from "../location/DeviceLocation";
+import { HomeRail } from "./HomeRail";
 import { HomeEmptyState } from "./HomeSurface";
+import homeStyles from "./home.module.css";
 import styles from "./nearby.module.css";
 
 type NearbyProps = {
@@ -246,17 +248,24 @@ function NearbyCards() {
   const combined = expanded
     ? [...new Map([...businesses, ...more.items].map((item) => [item.id, item])).values()]
     : businesses.slice(0, 4);
+  const cards = combined.map((business) => (
+    <DirectoryResultCard key={business.id} business={business} />
+  ));
   return (
     <>
-      {combined.map((business) => (
-        <DirectoryResultCard key={business.id} business={business} />
-      ))}
+      {expanded ? (
+        cards
+      ) : (
+        <HomeRail label="Djelatnosti u blizini" className={homeStyles.businessGrid}>
+          {cards}
+        </HomeRail>
+      )}
       {!useGps && businesses.length > 4 && (
         <Link className={styles.more} href={`/pretraga?mjesto=${encodeURIComponent(place)}`}>
           Sve djelatnosti u ovom mjestu
         </Link>
       )}
-      {useGps && !expanded && businesses.length > 4 && (
+      {useGps && !expanded && (businesses.length > 4 || hasMore) && (
         <button className={styles.more} onClick={() => setExpanded(true)} type="button">
           Sve u blizini
         </button>

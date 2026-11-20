@@ -81,7 +81,7 @@ async function row(c: PoolClient, id: string) {
 async function eligible(c: PoolClient, o: DodoOrder) {
   const b = (
     await c.query<{ owner_user_id: string; category_id: string; status: string }>(
-      "SELECT owner_user_id,category_id,status FROM directory_business WHERE id=$1 FOR UPDATE",
+      "SELECT owner_user_id,category_id, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status FROM directory_business b WHERE id=$1 FOR UPDATE",
       [o.businessId],
     )
   ).rows[0];
@@ -155,7 +155,7 @@ export function createDodoTestStore(pool: Pool) {
         }
         const b = (
           await c.query<{ owner_user_id: string; category_id: string; status: string }>(
-            "SELECT owner_user_id,category_id,status FROM directory_business WHERE id=$1 FOR UPDATE",
+            "SELECT owner_user_id,category_id, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status FROM directory_business b WHERE id=$1 FOR UPDATE",
             [input.businessId],
           )
         ).rows[0];

@@ -1,15 +1,20 @@
 import type { ReactNode } from "react";
-import { FavoritesProvider } from "../../components/favorites/FavoritesProvider";
+import { PublicShell } from "../../components/design/AppProviders";
 import { SiteFooter } from "../../components/SiteFooter";
 import { SiteHeader } from "../../components/SiteHeader";
 import { getSupportConfig } from "../../lib/support";
+import { designCss } from "../../lib/visual-design";
+import { readPublishedDesign } from "../../server/visual-design-store";
 
-export default function PublicLayout({ children }: { children: ReactNode }) {
+export default async function PublicLayout({ children }: { children: ReactNode }) {
+  const design = await readPublishedDesign();
   return (
-    <>
-      <SiteHeader supportAvailable={getSupportConfig() !== null} />
-      <FavoritesProvider>{children}</FavoritesProvider>
-      <SiteFooter />
-    </>
+    <PublicShell
+      header={<SiteHeader supportAvailable={getSupportConfig() !== null} />}
+      footer={<SiteFooter />}
+      stylesheet={<style id="ahibizz-published-design">{designCss(design)}</style>}
+    >
+      {children}
+    </PublicShell>
   );
 }

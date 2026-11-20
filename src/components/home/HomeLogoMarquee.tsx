@@ -1,9 +1,14 @@
 import Image from "next/image";
 import styles from "./home.module.css";
 
-export function HomeLogoMarquee() {
+export function HomeLogoMarquee({ title }: { title?: string }) {
   return (
-    <section className={styles.partners} aria-label="Poslovna mreža">
+    <section
+      className={styles.partners}
+      aria-label={title || "Poslovna mreža"}
+      data-design="home-logos"
+    >
+      {title && <h2 className={`${styles.container} ${styles.partnerTitle}`}>{title}</h2>}
       <div className={styles.logoTrack}>
         {[0, 1].map((copy) => (
           <div className={styles.logoGroup} key={copy} aria-hidden={copy === 1 ? true : undefined}>

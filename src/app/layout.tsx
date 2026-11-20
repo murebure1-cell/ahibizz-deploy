@@ -1,14 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { AppAppearance } from "../components/appearance/AppAppearance";
-import { DeviceLocationProvider } from "../components/location/DeviceLocation";
-import { AppPwaProvider } from "../components/pwa/AppPwa";
+import { AppProviders } from "../components/design/AppProviders";
 import { appearanceBootstrap } from "../lib/appearance";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "AhiBizz — lokalno počinje s ljudima", template: "%s | AhiBizz" },
-  description: "Novi prostor za lokalne djelatnosti, usluge i ljude. AhiBizz je u pripremi.",
+  description: "Pronađi djelatnosti u blizini, dogovori termin i poveži se s ljudima na AhiBizzu.",
   robots: { index: false, follow: false },
   manifest: "/app.webmanifest",
   appleWebApp: { capable: true, title: "AhiBizz", statusBarStyle: "default" },
@@ -34,11 +32,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <a className="skip-link" href="#glavni-sadrzaj">
           Preskoči na sadržaj
         </a>
-        <AppAppearance>
-          <DeviceLocationProvider>
-            <AppPwaProvider>{children}</AppPwaProvider>
-          </DeviceLocationProvider>
-        </AppAppearance>
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

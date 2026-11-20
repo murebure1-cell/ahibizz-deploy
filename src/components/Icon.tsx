@@ -17,6 +17,8 @@ export type IconName =
   | "clock"
   | "home"
   | "user"
+  | "people"
+  | "info"
   | "sliders"
   | "star"
   | "crown"
@@ -31,6 +33,18 @@ export type IconName =
   | "download";
 
 const paths: Record<IconName, ReactNode> = {
+  people: (
+    <>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20v-1.5a6.5 6.5 0 0 1 13 0V20m.5-15a3.5 3.5 0 0 1 0 7m2 2.2a5.5 5.5 0 0 1 3.5 5.1v.7" />
+    </>
+  ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 10.5v6m0-10v.5" />
+    </>
+  ),
   card: (
     <>
       <rect x="2.5" y="4.5" width="19" height="15" rx="3" />

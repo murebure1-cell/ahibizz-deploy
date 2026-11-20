@@ -94,7 +94,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       pool.on("error", () => {});
       assert.equal((await pool.query("SELECT current_schema() AS name")).rows[0].name, schema);
       const migrations = await loadMigrations();
-      assert.equal(migrations.length, 22);
+      assert.equal(migrations.length, 28);
       assert.deepEqual(await runMigrations({ pool, migrations }), {
         applied: migrations.map(({ version }) => version),
       });
@@ -682,6 +682,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0020_push_devices.sql",
           "0021_paypal_checkout.sql",
           "0022_dodo_test_checkout.sql",
+          "0023_sandbox_package_contracts.sql",
+          "0024_sandbox_subscription_settlement_hold.sql",
+          "0025_support_requests.sql",
+          "0026_community_rules.sql",
+          "0027_live_package_contracts.sql",
+          "0028_marketing_offers.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -1119,6 +1125,67 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           assert.equal(await session(first), null);
           await pool.query("UPDATE auth_user SET approval = 'approved' WHERE id = $1", [userId]);
           assert.equal((await accounts.read(headers)).approval, "approved");
+        },
+      );
+      await t.test(
+        "account overview is scoped to the signed actor and counts only current businesses",
+        async () => {
+          const category = (
+            await pool.query(
+              "INSERT INTO directory_category(id,name,slug) VALUES(gen_random_uuid(),'Overview','overview') RETURNING id",
+            )
+          ).rows[0].id;
+          await pool.query(
+            "INSERT INTO directory_business(id,owner_user_id,title,category_id,status,archived_at) VALUES (gen_random_uuid(),$1,'Current',$2,'draft',NULL),(gen_random_uuid(),$1,'Archived',$2,'archived',now())",
+            [userId, category],
+          );
+          const own = await request("GET", "/api/account/overview", {
+            cookies: first,
+            expectedAccountId: userId,
+          });
+          assert.equal(own.response.status, 200);
+          const reader = await pool.connect();
+          try {
+            await reader.query("BEGIN");
+            await reader.query("SELECT id FROM auth_user WHERE id=$1 FOR SHARE", [userId]);
+            await reader.query('SELECT id FROM auth_session WHERE "userId"=$1 FOR SHARE', [userId]);
+            const together = await Promise.all([
+              accounts.read(accountHeaders(first)),
+              accounts.overview(accountHeaders(first)),
+              accounts.placements(accountHeaders(first)),
+            ]);
+            assert.equal(together[0].id, userId);
+            assert.equal(together[1].accountId, userId);
+            assert.deepEqual(together[2], { accountId: userId, items: [] });
+          } finally {
+            await reader.query("ROLLBACK");
+            reader.release();
+          }
+          assert.deepEqual(own.data.overview, {
+            accountId: userId,
+            joinedAt: (
+              await pool.query('SELECT "createdAt" FROM auth_user WHERE id=$1', [userId])
+            ).rows[0].createdAt.toISOString(),
+            businesses: 1,
+            promotedBusinesses: 0,
+            credits: 0,
+            unreadThreads: 0,
+          });
+          assert.equal((await request("GET", "/api/account/overview")).response.status, 401);
+          assert.equal(
+            (
+              await request("GET", "/api/account/overview", {
+                cookies: first,
+                expectedAccountId: "other-fixture",
+              })
+            ).response.status,
+            401,
+          );
+          assert.equal(
+            (await request("GET", "/api/account/overview?userId=other-fixture", { cookies: first }))
+              .response.status,
+            404,
+          );
         },
       );
       await t.test(

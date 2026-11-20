@@ -27,6 +27,7 @@ import {
 import { messageLink } from "../../lib/messaging";
 import { workStatusLabels } from "../../lib/people";
 import type { PersonBusinessesRequest } from "../../lib/person-businesses";
+import { reportUrl } from "../../lib/support-requests";
 import { Icon } from "../Icon";
 import { personalProfileImage } from "../people/PersonalProfileCard";
 import { PlatformBadges } from "../people/PlatformBadges";
@@ -553,6 +554,11 @@ function PersonProfile({
               </section>
             )}
           </div>
+          {!preview && viewerId !== person.id && (
+            <p className={styles.detailRow}>
+              <Link href={reportUrl("person", person.id)}>Prijavi profil</Link>
+            </p>
+          )}
         </article>
       )}
     </section>

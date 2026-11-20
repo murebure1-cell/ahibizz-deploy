@@ -45,6 +45,7 @@ import {
   patchDirectoryBusinessCache,
   uncertainDirectoryMutation,
 } from "../../lib/directory-mutation-recovery";
+import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { DirectoryBusiness } from "../../server/directory/types";
 import { ProfileVerification } from "../admin/ProfileVerification";
 import { BusinessBookingManager } from "../booking/BusinessBookingManager";
@@ -83,7 +84,9 @@ function ReturnedBusinessNote({ business }: { business?: DirectoryBusiness | nul
 }
 function errorMessage(error: unknown) {
   const code = error instanceof RequestError ? error.code : "";
-  if (code === "BUSINESS_LIMIT_REACHED") return "Tvoj nalog je dosegao broj djelatnosti u paketu.";
+  if (code === "BUSINESS_LIMIT_REACHED") return "Već imaš djelatnost koja čeka aktivaciju.";
+  if (code === "PACKAGE_PAYMENT_REQUIRED")
+    return "Nacrt je sačuvan. Za objavu je potreban aktivan paket.";
   if (code === "REVIEW_REQUIRED") return "Prvo pregledaj i odobri ili odbij predložene izmjene.";
   if (code === "VERSION_CONFLICT")
     return "Djelatnost je u međuvremenu izmijenjena. Otvori je ponovo.";
@@ -789,7 +792,11 @@ export function BusinessManager({
             setEditing(undefined);
           } else {
             setEditing(latest.business);
-            setError("Podaci su sačuvani. Objava nije potvrđena.");
+            setError(
+              latest.business.packagePaymentNeeded
+                ? "Nacrt je sačuvan. Za objavu je potreban aktivan paket."
+                : "Podaci su sačuvani. Objava nije potvrđena.",
+            );
           }
         } catch (failure) {
           if (!current(access) || controller.signal.aborted) return;
@@ -1112,11 +1119,9 @@ export function BusinessManager({
           </button>
         )}
       </div>
-      {!all && !locked && editing === undefined && (
+      {!IS_PLAY_EDITION && !all && !locked && editing === undefined && (
         <p className={styles.notice}>
-          Želiš veću vidljivost svoje djelatnosti?{" "}
-          <Link href="/naplata">Pregledaj isticanje i načine plaćanja</Link>. Otvaranje pregleda ne
-          naplaćuje ništa.
+          <Link href="/naplata">Istakni djelatnost</Link>
         </p>
       )}
       {(error || readError) && (
@@ -1567,16 +1572,29 @@ export function BusinessManager({
                             {cars ? "Automobili" : "Booking"}
                           </button>
                         )}
-                        {["draft", "pending"].includes(item.status) && (
-                          <button
-                            type="button"
-                            className={styles.primary}
-                            disabled={locked || loading || (!isOwner && item.status === "pending")}
-                            onClick={() => move(item, "publish")}
-                          >
-                            {isOwner ? "Objavi" : "Pošalji na pregled"}
-                          </button>
-                        )}
+                        {item.packagePaymentNeeded &&
+                          !IS_PLAY_EDITION &&
+                          expectedAccountId === item.ownerId && (
+                            <a
+                              className={styles.primary}
+                              href="/paketi/placanje?paket=basic&period=monthly"
+                            >
+                              Aktiviraj paket
+                            </a>
+                          )}
+                        {!item.packagePaymentNeeded &&
+                          ["draft", "pending"].includes(item.status) && (
+                            <button
+                              type="button"
+                              className={styles.primary}
+                              disabled={
+                                locked || loading || (!isOwner && item.status === "pending")
+                              }
+                              onClick={() => move(item, "publish")}
+                            >
+                              {isOwner ? "Objavi" : "Pošalji na pregled"}
+                            </button>
+                          )}
                         {isOwner && (item.editorialRevision || item.pendingMedia) && (
                           <>
                             <button

@@ -279,7 +279,7 @@ export function createBusinessMediaService({
       return safe(async () => {
         const row = (
           await pool.query<PublicBusinessMediaManifest>(
-            `SELECT b.id AS "businessId",${businessMediaProjection} AS media FROM directory_business b JOIN auth_user u ON u.id=b.owner_user_id WHERE b.id=$1 AND b.status='published' AND ${eligibleOwner}`,
+            `SELECT b.id AS "businessId",${businessMediaProjection} AS media FROM directory_business b JOIN auth_user u ON u.id=b.owner_user_id WHERE b.id=$1 AND b.status='published' AND package_allows_listing(b) AND ${eligibleOwner}`,
             [id],
           )
         ).rows[0] as
@@ -336,7 +336,7 @@ export function createBusinessMediaService({
         async () =>
           (
             await pool.query<Image>(
-              `SELECT image.bytes,image.mime,image.width,image.height,image.version FROM directory_business_image image JOIN directory_business b ON b.id=image.business_id JOIN auth_user u ON u.id=b.owner_user_id WHERE b.id=$1 AND image.kind=$2 AND image.slot=$3 AND image.version=$4 AND b.status='published' AND ${eligibleOwner}`,
+              `SELECT image.bytes,image.mime,image.width,image.height,image.version FROM directory_business_image image JOIN directory_business b ON b.id=image.business_id JOIN auth_user u ON u.id=b.owner_user_id WHERE b.id=$1 AND image.kind=$2 AND image.slot=$3 AND image.version=$4 AND b.status='published' AND package_allows_listing(b) AND ${eligibleOwner}`,
               [id, kind, slot, wanted],
             )
           ).rows[0] ?? null,

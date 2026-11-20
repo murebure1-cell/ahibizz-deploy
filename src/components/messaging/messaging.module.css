@@ -4,6 +4,8 @@
   --line: var(--ui-border);
   min-width: 0;
   width: 100%;
+  container-type: inline-size;
+  container-name: inbox;
   color: var(--ink);
 }
 .workspace :is(h1, h2, p) {
@@ -83,8 +85,7 @@
 .layout {
   display: grid;
   grid-template-columns: minmax(245px, 0.82fr) minmax(0, 1.65fr);
-  height: min(700px, calc(100dvh - 390px));
-  min-height: 400px;
+  height: clamp(320px, 63dvh, 660px);
   border: 1px solid var(--line);
   border-radius: 23px;
   overflow: hidden;
@@ -123,6 +124,8 @@
 .threadList {
   flex: 1;
   overflow: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
   padding: 8px;
 }
 .thread {
@@ -297,6 +300,7 @@
   height: 38px;
   padding: 8px;
   background: var(--ui-surface);
+  color: var(--ink);
 }
 .back svg {
   transform: rotate(180deg);
@@ -310,6 +314,7 @@
   overscroll-behavior: contain;
   padding: 20px 24px;
   scrollbar-width: thin;
+  overflow-anchor: auto;
 }
 .day {
   text-align: center;
@@ -499,7 +504,7 @@
   white-space: nowrap;
   border: 0;
 }
-@media (max-width: 900px) {
+@container inbox (max-width: 900px) {
   .layout {
     grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.3fr);
   }
@@ -518,12 +523,10 @@
     padding: 0;
   }
 }
-@media (max-width: 680px) {
+@container inbox (max-width: 680px) {
   .layout {
     display: block;
-    height: calc(100dvh - 470px);
-    min-height: 360px;
-    max-height: 620px;
+    height: clamp(230px, calc(100dvh - 330px - env(safe-area-inset-bottom)), 520px);
     border-radius: 19px;
   }
   .sidebar,
@@ -546,6 +549,7 @@
     display: grid;
     place-items: center;
     flex-shrink: 0;
+    width: 44px;
   }
   .conversationHeader {
     min-height: 77px;
@@ -565,6 +569,17 @@
   }
   .composer {
     padding: 12px;
+  }
+  .composer textarea {
+    font-size: 16px;
+    min-height: 44px;
+    max-height: 96px;
+    resize: none;
+  }
+  .thread,
+  .back,
+  .block {
+    min-height: 44px;
   }
   .messages {
     padding: 14px;
@@ -587,4 +602,13 @@
     transition: none;
     scroll-behavior: auto;
   }
+}
+.report {
+  display: block;
+  width: fit-content;
+  padding: 0.4rem 0.75rem;
+  margin-inline-start: auto;
+  color: var(--ui-muted);
+  font-size: 0.82rem;
+  text-underline-offset: 0.2em;
 }

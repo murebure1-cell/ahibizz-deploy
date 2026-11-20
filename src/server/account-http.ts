@@ -5,6 +5,7 @@ import {
   getAccountService,
   parseAccountListInput,
 } from "./auth/accounts";
+import { checkContribution } from "./community-rules";
 
 function reply(body: unknown, status = 200) {
   return Response.json(body, {
@@ -60,6 +61,10 @@ export function createAccountHttpHandler({
       if (request.method === "GET") {
         if (pathname === "/api/account")
           return reply({ account: await service.read(request.headers) });
+        if (pathname === "/api/account/overview" && !url.search)
+          return reply({ overview: await service.overview(request.headers) });
+        if (pathname === "/api/account/placements" && !url.search)
+          return reply({ placements: await service.placements(request.headers) });
         if (pathname === "/api/admin/accounts") {
           if (!url.search) return reply(await service.listPending(request.headers));
           if (request.url.length > 8192) throw new AccountAccessError(400, "INVALID_ACCOUNT_QUERY");
@@ -90,6 +95,10 @@ export function createAccountHttpHandler({
       )
         return reply({ code: "INVALID_CONTENT_TYPE" }, 415);
       const value = await readAccountJson(request);
+      if (!target && value && typeof value === "object" && Object.hasOwn(value, "name")) {
+        const denied = await checkContribution(request);
+        if (denied) return denied;
+      }
       return reply({
         account: target
           ? await service.decide(request.headers, target, value)

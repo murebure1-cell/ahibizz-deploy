@@ -15,6 +15,7 @@ import {
   billingPackages,
   billingRequest,
 } from "../../lib/billing";
+import { IS_PLAY_EDITION } from "../../lib/distribution";
 import styles from "./billing.module.css";
 import {
   assertBillingOwner,
@@ -26,6 +27,7 @@ import {
   readBillingReceipt,
   readBillingSummary,
 } from "./model";
+import { PackageSetup } from "./PackageSetup";
 import { type BillingBusinessChoice, ReceiptForm } from "./ReceiptForm";
 
 type Props = {
@@ -482,6 +484,11 @@ function BillingWorkspace({
         {!embedded && <h1>Naplata i razvoj</h1>}
         <span className={styles.badge}>Ručna evidencija</span>
       </header>
+      {authorized &&
+        active &&
+        expectedAccountId &&
+        rawRequest === billingRequest &&
+        !IS_PLAY_EDITION && <PackageSetup accountId={expectedAccountId} />}
       {error && (
         <p role="alert" className={styles.error}>
           {error}

@@ -1,9 +1,11 @@
+import { DirectoryResultCard } from "../../components/directory/DirectoryResultCard";
 import {
   HomeNearbyControl,
   HomeNearbyProvider,
   HomeNearbyResults,
 } from "../../components/home/HomeNearby";
-import { HomeEmptyState, HomeSurface } from "../../components/home/HomeSurface";
+import { HomeSurface } from "../../components/home/HomeSurface";
+import { IS_PLAY_EDITION } from "../../lib/distribution";
 import { homeCategories, homePlace } from "../../lib/home";
 import {
   type DirectoryCategory,
@@ -11,6 +13,8 @@ import {
   type PublicDirectoryBusiness,
 } from "../../server/directory";
 import { publicBusinessView } from "../../server/directory/public-view";
+import { publicMarketingBanner } from "../../server/marketing/read";
+import { readPublishedDesign } from "../../server/visual-design-store";
 
 export const dynamic = "force-dynamic";
 export default async function HomePage({
@@ -18,19 +22,26 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ mjesto?: string | string[] }>;
 }) {
-  const params = await searchParams;
+  const [params, design, banner] = await Promise.all([
+    searchParams,
+    readPublishedDesign(),
+    IS_PLAY_EDITION ? Promise.resolve(null) : publicMarketingBanner(),
+  ]);
   const place = homePlace(params.mjesto);
   let available = false;
   let businesses: PublicDirectoryBusiness[] = [];
+  let featured: PublicDirectoryBusiness[] = [];
   let categories: DirectoryCategory[] = [];
   try {
     const service = getPublicDirectoryService();
     if (service) {
-      const [classification, result] = await Promise.all([
+      const [classification, result, highlights] = await Promise.all([
         service.categories(),
         place ? service.listPublic({ city: place }) : Promise.resolve(null),
+        service.listPublic({}, true),
       ]);
       businesses = result?.items.slice(0, 5) ?? [];
+      featured = highlights.items.slice(0, 6);
       categories = classification.categories;
       available = true;
     }
@@ -46,13 +57,22 @@ export default async function HomePage({
       place={place}
     >
       <HomeSurface
+        design={design}
         searchAction="/pretraga"
         placeField="mjesto"
         place={place}
         categories={homeCategories(categories)}
-        featuredHref="/pretraga"
-        featured={<HomeEmptyState>Isticanje je u pripremi.</HomeEmptyState>}
-        advertisingHref="mailto:info@ahibizz.com?subject=Ogla%C5%A1avanje%20na%20AhiBizzu"
+        featuredHref="/pretraga?istaknute=1"
+        featured={
+          featured.length
+            ? featured.map((b) => (
+                <DirectoryResultCard key={b.id} business={publicBusinessView(b, categories)} />
+              ))
+            : undefined
+        }
+        advertisingHref="/nalog?odjeljak=oglasi"
+        banner={banner}
+        creditsHref="/nalog?odjeljak=krediti"
         nearbyControl={<HomeNearbyControl />}
         nearby={<HomeNearbyResults />}
       />

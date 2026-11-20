@@ -216,7 +216,7 @@ function AppointmentsWorkspace({
     }
   }
   return (
-    <section className={styles.appointments} aria-label="Moji termini">
+    <section className={styles.appointments} aria-label="Moji termini" data-design="booking-panel">
       <div className={styles.listHeading}>
         {heading && <h2>Moji termini</h2>}
         <button
@@ -251,7 +251,9 @@ function AppointmentsWorkspace({
         ))}
       </fieldset>
       {preview && <p className={styles.note}>Proba bez stvarnog zakazivanja.</p>}
-      {credits !== null && credits > 0 && <p className={styles.credit}>Ahi Credits: {credits}</p>}
+      {credits !== null && credits > 0 && (
+        <p className={styles.credit}>Krediti kroz booking: {credits}</p>
+      )}
       {error && (
         <div role="alert" className={styles.error}>
           <p>{error}</p>

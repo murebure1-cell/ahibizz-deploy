@@ -1,11 +1,14 @@
+import { IS_PLAY_EDITION } from "../lib/distribution";
 import { readAuthConfiguration } from "./auth";
 import { AccountAccessError } from "./auth/accounts";
+import { getAuthDatabasePool } from "./auth/service";
 import {
   BillingAccessError,
   type BillingService,
   getBillingCatalog,
   getBillingService,
 } from "./billing";
+import { livePackageConfig } from "./paypal-subscriptions/setup";
 
 function reply(body: unknown, status = 200) {
   return Response.json(body, {
@@ -137,7 +140,13 @@ export function createBillingRequestHandler({
       if (request.method === "GET" && url.pathname === "/api/billing/catalog") {
         if ([...url.searchParams].length || request.url.length > 8192)
           return reply({ code: "INVALID_BILLING_INPUT" }, 400);
-        return reply({ catalog: getBillingCatalog() });
+        const selling =
+          !IS_PLAY_EDITION &&
+          process.env.AHIBIZZ_LIVE_SUBSCRIPTIONS_ENABLED !== "false" &&
+          Boolean(await livePackageConfig(getAuthDatabasePool()));
+        return reply({
+          catalog: { ...getBillingCatalog(), checkoutEnabled: selling, automaticCharging: selling },
+        });
       }
       const settings = configuration(),
         service = privateService();

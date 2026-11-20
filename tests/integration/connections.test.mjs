@@ -102,6 +102,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0020_push_devices.sql",
           "0021_paypal_checkout.sql",
           "0022_dodo_test_checkout.sql",
+          "0023_sandbox_package_contracts.sql",
+          "0024_sandbox_subscription_settlement_hold.sql",
+          "0025_support_requests.sql",
+          "0026_community_rules.sql",
+          "0027_live_package_contracts.sql",
+          "0028_marketing_offers.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {

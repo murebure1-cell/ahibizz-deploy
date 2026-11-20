@@ -27,7 +27,7 @@
 .hero {
   position: relative;
   isolation: isolate;
-  min-height: 435px;
+  min-height: clamp(320px, 31vw, 414px);
   display: flex;
   align-items: center;
   color: #fff;
@@ -53,37 +53,46 @@
   inset: 78% 0 0;
   z-index: -1;
   background: linear-gradient(0deg, var(--home-bg), transparent);
+  pointer-events: none;
+}
+@supports (backdrop-filter: blur(3px)) {
+  .hero::after {
+    backdrop-filter: blur(3px);
+    mask-image: linear-gradient(to top, black 20%, transparent);
+  }
 }
 .heroContent {
   padding-block: 40px 45px;
 }
-.heroLocation {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #d6e0e7;
-  font-size: 12px;
-  letter-spacing: 0.01em;
-}
-.heroLocation svg {
-  width: 15px;
-  height: 15px;
-  color: #e2be76;
-}
 .hero h1 {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
   font-size: clamp(38px, 4.2vw, 58px);
   font-weight: 700;
-  margin: 17px 0 12px;
+  margin: 0 0 25px;
   line-height: 1.08;
   letter-spacing: -0.045em;
 }
+.heroSubtitle {
+  color: #f0f4f7;
+  margin: -8px 0 20px;
+  max-width: 56ch;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.partnerTitle {
+  font-size: 19px;
+  margin-bottom: 12px;
+}
+.sectionHeading h2,
+.ad h2,
+.credits h2,
+.partnerTitle {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
 .hero :where(h1) span {
   color: #e3bc6c;
-}
-.heroContent > p {
-  color: #d5dfe6;
-  font-size: 15px;
-  margin-bottom: 28px;
 }
 .search {
   display: flex;
@@ -149,14 +158,15 @@
   width: 19px;
   height: 19px;
 }
-.categories {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+.categoryNav {
   margin-top: 25px;
+}
+.categories {
+  gap: 10px;
 }
 .categories > a {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 13px;
   min-width: 0;
@@ -169,7 +179,7 @@
   transition:
     border-color 0.16s,
     transform 0.16s;
-  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 .categories > a:hover {
   border-color: var(--ui-border-strong);
@@ -188,6 +198,7 @@
 .categoryLabel {
   min-width: 0;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 .categories svg {
   width: 21px;
@@ -230,9 +241,13 @@
   height: 15px;
 }
 .businessGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 20px;
+  --rail-gap: 18px;
+  gap: var(--rail-gap);
+}
+.businessGrid > * {
+  flex: 0 0 calc((100% - 2 * var(--rail-gap)) / 3);
+  min-width: 0;
+  height: auto;
 }
 .empty {
   grid-column: 1 / -1;
@@ -280,6 +295,24 @@
   font-size: 28px;
   font-weight: 600;
   letter-spacing: -0.04em;
+}
+.sponsorBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: #152539;
+}
+.sponsorBackdrop img {
+  object-fit: cover;
+  opacity: 0.42;
+}
+.adOnPhoto,
+.adOnPhoto h2,
+.adOnPhoto .kicker {
+  color: #fff;
+}
+.categoryNav + .ad {
+  margin-top: clamp(24px, 4vw, 48px);
 }
 .button {
   display: inline-flex;
@@ -363,6 +396,7 @@
   border-block: 1px solid var(--home-line);
   background: var(--ui-surface-soft);
   overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, black 5%, black 95%, transparent);
 }
 .logoTrack {
   display: flex;
@@ -456,9 +490,14 @@
   }
 }
 @media (max-width: 1000px) {
-  .businessGrid,
   .nearbyGrid {
     gap: 14px;
+  }
+  .businessGrid {
+    --rail-gap: 14px;
+  }
+  .businessGrid > * {
+    flex-basis: calc((100% - var(--rail-gap)) / 2);
   }
   .categories > a {
     padding: 12px 13px;
@@ -470,8 +509,7 @@
     width: calc(100% - 40px);
   }
   .hero {
-    min-height: 315px;
-    align-items: start;
+    min-height: 270px;
   }
   .heroPhoto {
     object-position: 66% 42%;
@@ -485,22 +523,9 @@
   .heroContent {
     padding-block: 29px 30px;
   }
-  .heroLocation {
-    font-size: 10px;
-    gap: 6px;
-  }
-  .heroLocation svg {
-    width: 13px;
-    height: 13px;
-  }
   .hero h1 {
     font-size: 37px;
-    margin-block: 17px 10px;
-  }
-  .heroContent > p {
-    font-size: 12px;
-    margin-bottom: 22px;
-    color: #d0dce5;
+    margin-bottom: 20px;
   }
   .search {
     padding: 5px;
@@ -529,43 +554,31 @@
     width: 20px;
     height: 20px;
   }
-  .categories {
-    display: flex;
-    gap: 8px;
+  .categoryNav {
     margin-top: 18px;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scroll-padding-inline: 3px;
-    scrollbar-width: none;
-    padding: 3px 2px 6px;
   }
-  .categories::-webkit-scrollbar {
-    display: none;
+  .categories {
+    gap: 8px;
   }
   .categories > a {
     flex: 0 0 auto;
     gap: 10px;
-    min-height: 62px;
-    padding: 10px 13px;
-    border-radius: 16px;
+    min-height: 50px;
+    padding: 7px 12px 7px 8px;
+    border-radius: 14px;
     background: var(--ui-glass);
     font-size: 13px;
     font-weight: 650;
-    white-space: nowrap;
   }
   .categories > a:focus-visible {
     outline-offset: -3px;
   }
   .categoryIcon {
-    width: 40px;
-    height: 40px;
+    width: 34px;
+    height: 34px;
     border: 1px solid var(--ui-border);
     border-radius: 12px;
     background: var(--ui-surface-soft);
-  }
-  .categoryLabel {
-    white-space: nowrap;
-    overflow-wrap: normal;
   }
   .categories svg {
     width: 21px;
@@ -594,8 +607,16 @@
     align-self: center;
   }
   .businessGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    --rail-gap: 12px;
+  }
+  .businessGrid > * {
+    flex-basis: min(calc(100% - 26px), 352px);
+  }
+  .businessGrid > :only-child {
+    flex-basis: min(100%, 352px);
+  }
+  .section:has(.nearbyGrid) .sectionHeading {
+    flex-wrap: wrap;
   }
   .ad {
     padding: 25px 23px;
@@ -683,7 +704,7 @@
 }
 @media (prefers-reduced-motion: no-preference) {
   .heroContent {
-    animation: hero-appear 260ms ease-out both;
+    animation: hero-appear 220ms ease-out both;
   }
 }
 @keyframes hero-appear {

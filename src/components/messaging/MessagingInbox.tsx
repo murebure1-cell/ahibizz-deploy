@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { messageDay as day } from "../../lib/display-date";
 import {
   type ChatConversation,
   type ChatMessage,
@@ -33,6 +34,7 @@ import {
   type MessagingRecoveryStore,
   MessagingStorageError,
 } from "../../lib/messaging-recovery-storage";
+import { reportUrl } from "../../lib/support-requests";
 import { Icon } from "../Icon";
 import styles from "./messaging.module.css";
 
@@ -47,24 +49,6 @@ function initials(name: string) {
 function time(value: string) {
   const date = new Date(value);
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-}
-const months = [
-  "januar",
-  "februar",
-  "mart",
-  "april",
-  "maj",
-  "juni",
-  "juli",
-  "august",
-  "septembar",
-  "oktobar",
-  "novembar",
-  "decembar",
-];
-function day(value: string) {
-  const date = new Date(value);
-  return `${date.getDate()}. ${months[date.getMonth()]}`;
 }
 function mergeMessages(previous: ChatMessage[], incoming: ChatMessage[]) {
   const messages = new Map(previous.map((message) => [message.sequence, message]));
@@ -804,11 +788,10 @@ export function MessagingInbox({
   }
   const thread = conversation?.thread;
   return (
-    <section className={styles.workspace} aria-label="Poruke">
+    <section className={styles.workspace} aria-label="Poruke" data-design="messages-panel">
       {heading && (
         <header className={styles.heading}>
           <div>
-            <span className={styles.eyebrow}>TVOJ PROSTOR</span>
             <h1>Poruke</h1>
           </div>
           <button
@@ -993,6 +976,11 @@ export function MessagingInbox({
                   </button>
                 )}
               </header>
+              {thread && !preview && (
+                <Link href={reportUrl("conversation", thread.id)} className={styles.report}>
+                  Prijavi razgovor
+                </Link>
+              )}
               <div
                 ref={scroll}
                 className={styles.messages}
@@ -1062,6 +1050,7 @@ export function MessagingInbox({
               )}
               <form
                 className={styles.composer}
+                data-design="message-composer"
                 onSubmit={(event) => {
                   event.preventDefault();
                   send();

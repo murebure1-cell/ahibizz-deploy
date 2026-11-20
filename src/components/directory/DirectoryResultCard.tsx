@@ -15,9 +15,15 @@ import { BusinessLogo } from "./BusinessLogo";
 import { BusinessRating } from "./BusinessRating";
 import styles from "./directory-card.module.css";
 
-export function DirectoryResultCard({ business }: { business: PublicBusinessView }) {
-  const logo = safeBusinessImage(business.logo);
-  const image = safeBusinessImage(business.image);
+export function DirectoryResultCard({
+  business,
+  preview = false,
+}: {
+  business: PublicBusinessView;
+  preview?: boolean;
+}) {
+  const logo = safeBusinessImage(business.logo, preview);
+  const image = safeBusinessImage(business.image, preview);
   const profile = `/djelatnosti/${business.id}`;
   const monogram = business.title
     .trim()
@@ -32,7 +38,7 @@ export function DirectoryResultCard({ business }: { business: PublicBusinessView
   const hasMap = Boolean(publicBusinessPoint(business));
   const category = business.subcategoryName || business.categoryName;
   return (
-    <article className={styles.card}>
+    <article className={styles.card} data-design="directory-card">
       <div className={styles.media}>
         <div className={styles.favorite}>
           <FavoriteButton businessId={business.id} title={business.title} compact />
@@ -46,6 +52,7 @@ export function DirectoryResultCard({ business }: { business: PublicBusinessView
           {image ? (
             <Image
               src={image.src}
+              data-design="directory-photo"
               alt={image.alt}
               fill
               sizes="(max-width: 650px) calc(100vw - 36px), (max-width: 1200px) 46vw, 560px"
@@ -87,7 +94,7 @@ export function DirectoryResultCard({ business }: { business: PublicBusinessView
           )}
         </div>
         <header className={styles.identity}>
-          <h2>
+          <h2 data-design="directory-title">
             <Link href={profile} title={business.title}>
               {business.title}
             </Link>
@@ -118,7 +125,7 @@ export function DirectoryResultCard({ business }: { business: PublicBusinessView
             <span>{category}</span>
           </span>
         )}
-        <div className={styles.actions}>
+        <div className={styles.actions} data-design="directory-actions">
           <Link
             href={messageLink({ kind: "business", targetId: business.id })}
             aria-label={`Pošalji poruku — ${business.title}`}

@@ -20,6 +20,7 @@ type Params = {
   categoryId?: string | string[];
   subcategoryId?: string | string[];
   page?: string | string[];
+  istaknute?: string | string[];
 };
 const text = (value: string | string[] | undefined, max: number) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -31,6 +32,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     subcategoryId = text(params.subcategoryId, 128);
   const rawPage = text(params.page, 10),
     page = rawPage && /^\d{1,3}$/.test(rawPage) ? Number(rawPage) : 1;
+  const featuredOnly = params.istaknute === "1";
   let items: PublicDirectoryBusiness[] = [],
     categories: DirectoryCategory[] = [],
     hasMore = false,
@@ -42,13 +44,16 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     const service = getPublicDirectoryService();
     if (service && !invalidFilters) {
       const [result, classification] = await Promise.all([
-        service.listPublic({
-          q: query,
-          city,
-          ...(categoryId ? { categoryId } : {}),
-          ...(subcategoryId ? { subcategoryId } : {}),
-          page,
-        }),
+        service.listPublic(
+          {
+            q: query,
+            city,
+            ...(categoryId ? { categoryId } : {}),
+            ...(subcategoryId ? { subcategoryId } : {}),
+            page,
+          },
+          featuredOnly,
+        ),
         service.categories(),
       ]);
       items = result.items;
@@ -61,6 +66,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   }
   function pageHref(next: number) {
     const values = new URLSearchParams();
+    if (featuredOnly) values.set("istaknute", "1");
     if (query) values.set("q", query);
     if (city) values.set("mjesto", city);
     if (categoryId) values.set("categoryId", categoryId);
@@ -68,7 +74,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     if (next > 1) values.set("page", String(next));
     return `/pretraga${values.size ? `?${values}` : ""}`;
   }
-  const filtered = Boolean(query || city || categoryId || subcategoryId);
+  const filtered = Boolean(query || city || categoryId || subcategoryId || featuredOnly);
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <header className={styles.intro}>
@@ -76,6 +82,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <h1>Šta tražiš?</h1>
       </header>
       <DirectorySearchForm
+        featuredOnly={featuredOnly}
         key={JSON.stringify([query, city, categoryId, subcategoryId])}
         query={query}
         city={city}
@@ -88,6 +95,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <span>
             {filtered
               ? [
+                  featuredOnly ? "Istaknute djelatnosti" : null,
                   query,
                   city,
                   categories.find((item) => item.id === categoryId)?.name,

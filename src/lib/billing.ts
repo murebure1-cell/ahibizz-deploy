@@ -19,8 +19,8 @@ export type BillingCatalog = {
   developmentBasis: "gross_less_refunds_tax_fees";
   contractStatus: "draft";
   operatorStatus: "unconfirmed";
-  checkoutEnabled: false;
-  automaticCharging: false;
+  checkoutEnabled: boolean;
+  automaticCharging: boolean;
   membershipActivation: false;
 };
 export type BillingReceipt = {

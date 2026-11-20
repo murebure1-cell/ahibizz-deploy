@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { authReturnLinks } from "../../lib/auth-return";
+import { IS_PLAY_EDITION } from "../../lib/distribution";
 import {
   createReviewsApi,
   type OwnReviewState,
@@ -12,6 +13,8 @@ import {
   ReviewsClientError,
   type ReviewVersionInput,
 } from "../../lib/reviews";
+import { reportUrl } from "../../lib/support-requests";
+import { CommunityRulesPrompt } from "../support/CommunityRulesPrompt";
 import styles from "./business-reviews.module.css";
 
 type Pending =
@@ -426,6 +429,7 @@ export function BusinessReviews({
               </span>
             </header>
             <p>{review.text}</p>
+            <Link href={reportUrl("review", review.id)}>Prijavi recenziju</Link>
           </article>
         ))}
       </div>
@@ -448,67 +452,72 @@ export function BusinessReviews({
         </Link>
       )}
       {own && (own.canReview || (own.review && !own.review.withdrawn)) && (
-        <form
-          className={styles.form}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submit(pending?.action ?? "save");
-          }}
-        >
-          <h3>{own.review && !own.review.withdrawn ? "Tvoja recenzija" : "Napiši recenziju"}</h3>
-          {own.review?.hidden ? (
-            <p>Recenziju provjerava administracija.</p>
-          ) : own.canReview ? (
-            <>
-              <fieldset disabled={busy || pending !== null}>
-                <legend>Ocjena</legend>
-                <div className={styles.rating}>
-                  {[1, 2, 3, 4, 5].map((value) => (
-                    <label key={value} data-selected={value <= rating}>
-                      <input
-                        type="radio"
-                        name={`${labelId}-rating`}
-                        value={value}
-                        checked={rating === value}
-                        onChange={() => setRating(value)}
-                      />
-                      <span aria-hidden="true">★</span>
-                      <span className={styles.sr}>{value} od 5</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-              <label className={styles.text}>
-                Tvoje iskustvo
-                <textarea
-                  value={text}
-                  onChange={(event) => setText(event.target.value)}
-                  maxLength={2000}
-                  required
-                  disabled={busy || pending !== null}
-                  rows={4}
-                />
-              </label>
-              <button type="submit" disabled={busy || !text.trim()} className={styles.primary}>
-                {pending
-                  ? "Pokušaj ponovo"
-                  : own.review && !own.review.withdrawn
-                    ? "Sačuvaj izmjene"
-                    : "Objavi recenziju"}
-              </button>
-            </>
-          ) : null}
-          {own.review && !own.review.withdrawn && (
-            <button
-              type="button"
-              disabled={busy || (pending !== null && pending.action !== "withdraw")}
-              onClick={() => void submit("withdraw")}
-              className={styles.secondary}
-            >
-              Povuci recenziju
-            </button>
+        <>
+          {IS_PLAY_EDITION && own.canReview && (
+            <CommunityRulesPrompt key={own.accountId} actor={own.accountId} />
           )}
-        </form>
+          <form
+            className={styles.form}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submit(pending?.action ?? "save");
+            }}
+          >
+            <h3>{own.review && !own.review.withdrawn ? "Tvoja recenzija" : "Napiši recenziju"}</h3>
+            {own.review?.hidden ? (
+              <p>Recenziju provjerava administracija.</p>
+            ) : own.canReview ? (
+              <>
+                <fieldset disabled={busy || pending !== null}>
+                  <legend>Ocjena</legend>
+                  <div className={styles.rating}>
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <label key={value} data-selected={value <= rating}>
+                        <input
+                          type="radio"
+                          name={`${labelId}-rating`}
+                          value={value}
+                          checked={rating === value}
+                          onChange={() => setRating(value)}
+                        />
+                        <span aria-hidden="true">★</span>
+                        <span className={styles.sr}>{value} od 5</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <label className={styles.text}>
+                  Tvoje iskustvo
+                  <textarea
+                    value={text}
+                    onChange={(event) => setText(event.target.value)}
+                    maxLength={2000}
+                    required
+                    disabled={busy || pending !== null}
+                    rows={4}
+                  />
+                </label>
+                <button type="submit" disabled={busy || !text.trim()} className={styles.primary}>
+                  {pending
+                    ? "Pokušaj ponovo"
+                    : own.review && !own.review.withdrawn
+                      ? "Sačuvaj izmjene"
+                      : "Objavi recenziju"}
+                </button>
+              </>
+            ) : null}
+            {own.review && !own.review.withdrawn && (
+              <button
+                type="button"
+                disabled={busy || (pending !== null && pending.action !== "withdraw")}
+                onClick={() => void submit("withdraw")}
+                className={styles.secondary}
+              >
+                Povuci recenziju
+              </button>
+            )}
+          </form>
+        </>
       )}
     </section>
   );

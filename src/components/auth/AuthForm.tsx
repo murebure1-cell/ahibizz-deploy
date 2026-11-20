@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { accountReturnPath } from "../../lib/account-return";
 import { authReturnLinks } from "../../lib/auth-return";
+import { IS_PLAY_EDITION } from "../../lib/distribution";
 import { Icon } from "../Icon";
 import styles from "./auth.module.css";
 
@@ -65,6 +66,8 @@ export function AuthForm({
   returnTo?: string;
 }) {
   const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
   const [error, setError] = useState("");
   const [complete, setComplete] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -172,7 +175,7 @@ export function AuthForm({
   );
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
-      <section className={styles.card} aria-labelledby="auth-heading">
+      <section className={styles.card} aria-labelledby="auth-heading" data-design="auth-form">
         <Link href="/" className={styles.back}>
           <Icon name="chevron" />
           Početna
@@ -208,12 +211,12 @@ export function AuthForm({
                   : "Sada se možeš prijaviti."}
             </p>
             {mode === "sign-up" && verificationFeedback}
-            <Link href={links.login} className={styles.submit}>
+            <Link href={links.login} className={styles.submit} data-design="auth-submit">
               Na prijavu
             </Link>
           </div>
         ) : (
-          <form onSubmit={submit}>
+          <form method="post" action={endpoints[mode]} onSubmit={submit}>
             {mode === "sign-up" && (
               <label>
                 Ime i prezime
@@ -281,9 +284,14 @@ export function AuthForm({
               </div>
             )}
             {verificationFeedback}
+            {mode === "sign-up" && <Link href="/privatnost">Privatnost na AhiBizzu</Link>}
+            {mode === "sign-up" && IS_PLAY_EDITION && (
+              <Link href="/pravila-zajednice">Pravila zajednice</Link>
+            )}
             <button
               className={styles.submit}
-              disabled={!available || busy || (mode === "reset-password" && !token)}
+              data-design="auth-submit"
+              disabled={!ready || !available || busy || (mode === "reset-password" && !token)}
               type="submit"
             >
               {busy ? "Trenutak…" : copy.action}

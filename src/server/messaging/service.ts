@@ -127,7 +127,7 @@ async function context(client: PoolClient, signed: SignedSession, id: string): P
   const business = hint.business_id
     ? ((
         await client.query<BusinessRow>(
-          "SELECT id,owner_user_id,status,title FROM directory_business WHERE id=$1 FOR UPDATE",
+          "SELECT id,owner_user_id, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status,title FROM directory_business b WHERE id=$1 FOR UPDATE",
           [hint.business_id],
         )
       ).rows[0] ?? null)
@@ -151,7 +151,7 @@ const columns = `t.id,t.kind,
  CASE WHEN t.kind='business' THEN CASE WHEN t.left_user_id=$1 THEN b.title ELSE b.title||' · '||left(peer.name,128) END ELSE peer.name END AS title,
  CASE WHEN t.kind='business' THEN t.business_id::text ELSE peer.id END AS "targetId",
  (peer.approval='approved' AND peer."emailVerified"=true AND peer.role IN ('member','owner')
-   AND (t.kind='person' OR b.status='published') AND NOT own.blocked AND NOT theirs.blocked) AS "canSend",
+   AND (t.kind='person' OR b.status='published' AND package_allows_listing(b)) AND NOT own.blocked AND NOT theirs.blocked) AS "canSend",
  own.blocked AS "blockedByMe",(own.blocked OR theirs.blocked) AS blocked,
  t.latest_sequence AS "latestSequence",own.read_sequence AS "readSequence",
  (SELECT count(*)::integer FROM message_message unread WHERE unread.thread_id=t.id AND unread.sequence>own.read_sequence AND unread.sender_user_id<>$1) AS "unreadCount",
@@ -335,7 +335,7 @@ export function createMessagingService({
           value.kind === "business"
             ? (
                 await client.query<BusinessRow>(
-                  "SELECT id,owner_user_id,status,title FROM directory_business WHERE id=$1",
+                  "SELECT id,owner_user_id, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status,title FROM directory_business b WHERE id=$1",
                   [value.targetId],
                 )
               ).rows[0]
@@ -349,7 +349,7 @@ export function createMessagingService({
         const business = hint
           ? ((
               await client.query<BusinessRow>(
-                "SELECT id,owner_user_id,status,title FROM directory_business WHERE id=$1 FOR UPDATE",
+                "SELECT id,owner_user_id, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status,title FROM directory_business b WHERE id=$1 FOR UPDATE",
                 [hint.id],
               )
             ).rows[0] ?? null)

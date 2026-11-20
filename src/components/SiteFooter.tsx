@@ -1,34 +1,31 @@
 import Image from "next/image";
 import Link from "next/link";
+import { IS_PLAY_EDITION } from "../lib/distribution";
 import { getSupportConfig } from "../lib/support";
 
 export function SiteFooter() {
   return (
     <footer className="site-footer">
       <div className="container footer-main">
-        <div>
-          <Link className="brand footer-brand" href="/" aria-label="AhiBizz — početna">
-            <Image
-              src="/brand/ahi-logo-white.svg"
-              alt="AhiBizz"
-              width={156}
-              height={42}
-              unoptimized
-            />
-          </Link>
-          <p>Lokalno počinje s ljudima.</p>
-        </div>
+        <Link className="brand footer-brand" href="/" aria-label="AhiBizz — početna">
+          <Image
+            src="/brand/ahi-logo-white.svg"
+            alt="AhiBizz"
+            width={156}
+            height={42}
+            unoptimized
+          />
+        </Link>
         <nav aria-label="Navigacija podnožja">
-          <Link href="/pretraga">Istraži djelatnosti</Link>
           <Link href="/o-nama">O AhiBizzu</Link>
-          <Link href="/paketi">Paketi</Link>
-          <Link href="/instaliraj">Instaliraj aplikaciju</Link>
-          {getSupportConfig() && <Link href="/podrzi">Podrži AhiBizz</Link>}
+          <Link href="/privatnost">Privatnost</Link>
+          {!IS_PLAY_EDITION && <Link href="/paketi">Paketi</Link>}
+          {!IS_PLAY_EDITION && <Link href="/instaliraj">Instaliraj aplikaciju</Link>}
+          {!IS_PLAY_EDITION && getSupportConfig() && <Link href="/podrzi">Podrži AhiBizz</Link>}
         </nav>
       </div>
       <div className="container footer-bottom">
         <span>© {new Date().getFullYear()} AhiBizz</span>
-        <span>Nova platforma je u pripremi.</span>
       </div>
     </footer>
   );

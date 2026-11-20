@@ -45,6 +45,20 @@ test("nearby pages preserve the fifth result and validate the requested page", (
   assert.equal(readNearbyBusinesses(second, [], 2)[4]?.id, rows[4]?.id);
   assert.throws(() => readNearbyBusinesses(result(rows), [], 2));
 });
+test("GPS and city results carry the same opening hours, amenities and rating onto their cards", () => {
+  const hours = Array.from({ length: 7 }, (_, index) => ({
+    weekday: index + 1,
+    windows: [{ startMinute: 540, endMinute: 1020 }],
+  }));
+  const details = { timezone: "Europe/Sarajevo", hours, amenities: ["wifi", "parking"] };
+  const reviews = { count: 2, sum: 9 };
+  const [business] = readNearbyBusinesses(result([{ ...row, details, reviews }]), []);
+  assert.deepEqual(business?.details, details);
+  assert.deepEqual(business?.reviews, reviews);
+  const [legacy] = readNearbyBusinesses(result([row]), []);
+  assert.equal(legacy?.details, null);
+  assert.equal(legacy?.reviews?.count, 0);
+});
 test("nearby response projects actual public card fields and never accepts hidden authority or malformed geometry", () => {
   const items = readNearbyBusinesses(result(), [
     { id: "category", name: "Services", parentId: null },

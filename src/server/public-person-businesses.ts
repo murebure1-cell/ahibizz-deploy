@@ -66,7 +66,7 @@ export function createPublicPersonBusinessesService(database: ReadDatabase) {
             FROM directory_business b
             JOIN directory_category c ON c.id = b.category_id
             LEFT JOIN directory_category s ON s.id = b.subcategory_id AND s.parent_id = c.id
-            WHERE b.owner_user_id = person.id AND b.status = 'published'
+            WHERE b.owner_user_id = person.id AND b.status = 'published' AND package_allows_listing(b)
             ORDER BY b.created_at DESC, b.id DESC LIMIT $2 OFFSET $3
           ) business ON true`,
           [personId, personBusinessesPageSize + 1, (page - 1) * personBusinessesPageSize],

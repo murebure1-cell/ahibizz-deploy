@@ -267,6 +267,15 @@ function SettingsWorkspace({
           </div>
         </section>
       )}
+      <section className={styles.settingsCard} aria-label="Privatnost naloga">
+        <h2>Privatnost</h2>
+        <p>
+          <Link href="/privatnost">Privatnost i podrška</Link>
+        </p>
+        <p>
+          <Link href="/brisanje-naloga">Zatraži brisanje naloga</Link>
+        </p>
+      </section>
     </div>
   );
 }

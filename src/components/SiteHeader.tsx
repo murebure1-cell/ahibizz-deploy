@@ -4,23 +4,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { IS_PLAY_EDITION } from "../lib/distribution";
 import {
   type HeaderAccess,
   type HeaderAccessRequest,
   headerAccessRequest,
 } from "../lib/header-access";
+import {
+  headerCurrentDestination,
+  headerDestinations,
+  type NavigationDestination,
+} from "../lib/header-navigation";
 import { Icon } from "./Icon";
+import { useOptionalAppPwa } from "./pwa/AppPwa";
 
-const links = [
-  { href: "/", label: "Početna" },
-  { href: "/pretraga", label: "Istraži djelatnosti" },
-  { href: "/ljudi", label: "Ljudi" },
-  { href: "/nalog?odjeljak=poruke", label: "Poruke" },
-  { href: "/nalog", label: "Moj nalog" },
-  { href: "/paketi", label: "Paketi" },
-  { href: "/o-nama", label: "O AhiBizzu" },
-  { href: "/instaliraj", label: "Instaliraj AhiBizz" },
-];
 const accessLinks = [
   { href: "/prijava", label: "Prijava" },
   { href: "/registracija", label: "Napravi nalog" },
@@ -34,6 +31,7 @@ export function SiteHeader({
   supportAvailable?: boolean;
 }) {
   const pathname = usePathname();
+  const installed = useOptionalAppPwa()?.installed ?? true;
   const [open, setOpen] = useState(false);
   const [currentHref, setCurrentHref] = useState<string | null>(null);
   const [access, setAccess] = useState<HeaderAccess>("unknown");
@@ -112,19 +110,40 @@ export function SiteHeader({
         toggle.current?.focus();
       }
     };
-    const onOutside = (event: PointerEvent) => {
+    const onOutside = (event: PointerEvent | FocusEvent) => {
       if (event.target instanceof Node && !header.current?.contains(event.target)) closeMenu();
     };
     window.addEventListener("keydown", onEscape);
     window.addEventListener("pointerdown", onOutside);
+    document.addEventListener("focusin", onOutside);
     return () => {
       window.removeEventListener("keydown", onEscape);
       window.removeEventListener("pointerdown", onOutside);
+      document.removeEventListener("focusin", onOutside);
     };
   }, [open, closeMenu]);
+  const { primary, more } = headerDestinations(access, {
+    installed,
+    playEdition: IS_PLAY_EDITION,
+    supportAvailable,
+  });
+  function destination(link: NavigationDestination) {
+    return (
+      <Link
+        key={link.href}
+        href={link.href}
+        aria-current={currentHref === link.href ? "page" : undefined}
+        data-design="app-menu-item"
+        onClick={closeMenu}
+      >
+        <Icon name={link.icon} />
+        {link.label}
+      </Link>
+    );
+  }
 
   return (
-    <header ref={header} className="site-header">
+    <header ref={header} className="site-header" data-design="app-header">
       <div className="container header-inner">
         <Link className="brand" href="/" aria-label="AhiBizz — početna" onClick={closeMenu}>
           {/* The supplied SVG is a complete wordmark with its own aspect ratio. */}
@@ -139,6 +158,7 @@ export function SiteHeader({
         <button
           ref={toggle}
           className="menu-toggle"
+          data-design="app-toggle"
           type="button"
           aria-label={open ? "Zatvori meni" : "Otvori meni"}
           aria-expanded={open}
@@ -146,13 +166,8 @@ export function SiteHeader({
           onClick={() => {
             clearAccess();
             if (!open) {
-              const query = new URLSearchParams(window.location.search);
               setCurrentHref(
-                pathname === "/nalog" &&
-                  query.getAll("odjeljak").length === 1 &&
-                  query.get("odjeljak") === "poruke"
-                  ? "/nalog?odjeljak=poruke"
-                  : pathname,
+                headerCurrentDestination(pathname, new URLSearchParams(window.location.search)),
               );
             }
             setOpen(!open);
@@ -162,37 +177,21 @@ export function SiteHeader({
         </button>
         <nav
           id="site-navigation"
+          data-design="app-menu"
           className="header-menu"
           aria-label="Glavna navigacija"
           hidden={!open}
         >
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              aria-current={currentHref === link.href ? "page" : undefined}
-              onClick={closeMenu}
-            >
-              {link.label}
-              <Icon name="arrow" />
-            </Link>
-          ))}
-          {supportAvailable && (
-            <Link href="/podrzi" onClick={closeMenu}>
-              Podrži AhiBizz
-              <Icon name="arrow" />
-            </Link>
-          )}
-          {access === "owner" && (
-            <Link
-              href="/administracija"
-              aria-current={currentHref === "/administracija" ? "page" : undefined}
-              onClick={closeMenu}
-            >
-              Administracija
-              <Icon name="arrow" />
-            </Link>
-          )}
+          {primary.map(destination)}
+          {access === "owner" &&
+            destination({ href: "/administracija", label: "Administracija", icon: "shield" })}
+          <details className="header-more" key={open ? "open" : "closed"}>
+            <summary>
+              Više
+              <Icon name="chevron" />
+            </summary>
+            {more.map(destination)}
+          </details>
           {access === "guest" && (
             <div className="header-access">
               {accessLinks.map((link) => (
@@ -200,6 +199,7 @@ export function SiteHeader({
                   key={link.href}
                   href={link.href}
                   aria-current={currentHref === link.href ? "page" : undefined}
+                  data-design="app-menu-item"
                   onClick={closeMenu}
                 >
                   {link.label}

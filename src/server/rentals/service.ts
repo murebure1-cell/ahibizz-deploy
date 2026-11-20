@@ -74,7 +74,7 @@ async function business(
   const locking = lock === "update" ? "FOR UPDATE OF b" : "FOR SHARE OF b";
   const result = await client.query<Business>(
     `SELECT b.id,b.title,b.owner_user_id AS "ownerId",b.status,(c.vehicle_rental OR COALESCE(s.vehicle_rental,false)) AS eligible,
-      (b.status='published' AND u.approval='approved' AND u."emailVerified" AND u.role IN ('member','owner')) AS visible,
+      (b.status='published' AND package_allows_listing(b) AND u.approval='approved' AND u."emailVerified" AND u.role IN ('member','owner')) AS visible,
       COALESCE(d.timezone,bs.timezone,'Europe/Sarajevo') AS timezone
      FROM directory_business b JOIN auth_user u ON u.id=b.owner_user_id JOIN directory_category c ON c.id=b.category_id
      LEFT JOIN directory_category s ON s.id=b.subcategory_id LEFT JOIN directory_business_details d ON d.business_id=b.id

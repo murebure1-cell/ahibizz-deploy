@@ -63,7 +63,7 @@ test("real isolated confirmed-receipt ledger, accounting corrections and current
     pool.on("error", () => {});
     assert.equal((await pool.query("SELECT current_schema() AS name")).rows[0].name, schema);
     const migrations = await loadMigrations();
-    assert.equal(migrations.at(-1).version, "0022_dodo_test_checkout.sql");
+    assert.equal(migrations.at(-1).version, "0028_marketing_offers.sql");
     assert.equal((await runMigrations({ pool, migrations })).applied.length, migrations.length);
     assert.deepEqual(await runMigrations({ pool, migrations }), { applied: [] });
     globalThis.fetch = async () => {
@@ -138,12 +138,40 @@ test("real isolated confirmed-receipt ledger, accounting corrections and current
     }
     const [owner, second, member] = actors,
       accounts = createAccountService({ auth, pool });
+    await t.test(
+      "account deletion requests and content reports use an owner-only inbox",
+      async () => {
+        const { verifySupportRequests } = await import("./support-cases.mjs");
+        await verifySupportRequests({ auth, pool, owner, member });
+      },
+    );
+    await t.test(
+      "appearance drafts are owner-only, survive reload and publish atomically",
+      async () => {
+        const { verifyDesignStore } = await import("./design-cases.mjs");
+        await verifyDesignStore({ auth, pool, owner, second, member });
+      },
+    );
+    await t.test(
+      "community rules require explicit consent from the account contributing content",
+      async () => {
+        const { verifyCommunityRules } = await import("./community-cases.mjs");
+        await verifyCommunityRules({ auth, pool, member, owner, baseURL });
+      },
+    );
     const { createDirectoryService } = await import("../../src/server/directory/index.ts");
     const directory = createDirectoryService({ accounts, auth, pool });
     const category = await directory.createCategory(owner.headers, {
       name: "Billing services",
       slug: "billing-services",
     });
+    await t.test(
+      "marketing offers, receipt claims, credit spend and paid banner visibility",
+      async () => {
+        const { verifyMarketing } = await import("./marketing-cases.mjs");
+        await verifyMarketing({ auth, pool, member, owner, second, category });
+      },
+    );
     const business = await directory.create(
       member.headers,
       { title: "Receipt business", categoryId: category.id },

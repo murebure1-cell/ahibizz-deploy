@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
+import { isAhiBizzAndroidLaunch } from "../../lib/android-association";
 import { AppPermissionPrompt } from "./AppPermissions";
 
 type InstallPrompt = Event & {
@@ -39,12 +40,21 @@ export function AppPwaProvider({ children }: { children: ReactNode }) {
     setPlatform(ios ? "ios" : /Android/.test(agent) ? "android" : "other");
     setEmbedded(/FBAN|FBAV|Instagram|\bLine\/|; wv\)/i.test(agent));
     const media = window.matchMedia("(display-mode: standalone)");
+    const viewport = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+    const browserViewport = viewport?.content;
     const check = () => {
       const standalone =
-        media.matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+        media.matches ||
+        (navigator as Navigator & { standalone?: boolean }).standalone === true ||
+        isAhiBizzAndroidLaunch(document.referrer);
       setInstalled(standalone);
       if (standalone) document.documentElement.dataset.appDisplay = "standalone";
       else delete document.documentElement.dataset.appDisplay;
+      if (viewport && browserViewport) {
+        viewport.content = standalone
+          ? `${browserViewport}, maximum-scale=1, user-scalable=no`
+          : browserViewport;
+      }
     };
     check();
     media.addEventListener("change", check);
@@ -84,6 +94,7 @@ export function AppPwaProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("appinstalled", done);
       document.removeEventListener("visibilitychange", update);
       delete document.documentElement.dataset.appDisplay;
+      if (viewport && browserViewport) viewport.content = browserViewport;
     };
   }, []);
 
@@ -133,7 +144,11 @@ export function AppPwaProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAppPwa() {
-  const context = useContext(PwaContext);
+  const context = useOptionalAppPwa();
   if (!context) throw new Error("PWA provider is missing");
   return context;
+}
+
+export function useOptionalAppPwa() {
+  return useContext(PwaContext);
 }

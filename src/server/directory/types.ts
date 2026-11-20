@@ -27,6 +27,7 @@ export type BusinessFields = {
 export type DirectoryBusiness = BusinessFields & {
   editorialRevision?: { fields?: Partial<BusinessFields>; details?: BusinessDetails } | null;
   pendingMedia?: boolean;
+  packagePaymentNeeded?: boolean;
   revisionDecision?: "approve-changes" | "reject-changes" | null;
   revisionRejection?: string | null;
   hasRentalVehicles?: boolean;
@@ -50,6 +51,7 @@ export type PublicDirectoryBusiness = Omit<
   DirectoryBusiness,
   | "editorialRevision"
   | "pendingMedia"
+  | "packagePaymentNeeded"
   | "revisionDecision"
   | "revisionRejection"
   | "ownerId"

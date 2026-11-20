@@ -6,6 +6,7 @@ import {
 } from "../lib/connections";
 import { readAuthConfiguration } from "./auth";
 import { AccountAccessError } from "./auth/accounts";
+import { checkContribution } from "./community-rules";
 import {
   ConnectionsAccessError,
   type ConnectionsService,
@@ -230,6 +231,10 @@ export function createConnectionsHttpHandler({
       const key = body.idempotencyKey as string;
       if (visibility) {
         if (typeof body.isPublic !== "boolean") invalid();
+        if (body.isPublic) {
+          const denied = await checkContribution(request);
+          if (denied) return denied;
+        }
         return reply({
           visibility: readProfileVisibility(
             await service.setVisibility(

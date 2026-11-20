@@ -1,0 +1,224 @@
+.workspace {
+  display: grid;
+  gap: clamp(14px, 2.2vw, 24px);
+  min-width: 0;
+}
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: clamp(21px, 4vw, 38px);
+  border-radius: 22px;
+  background: linear-gradient(115deg, #132a40, #21445b);
+  color: #fff;
+}
+.masthead h1 {
+  margin: 0;
+  font-size: clamp(1.55rem, 3vw, 2.25rem);
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+}
+.masthead p {
+  margin: 7px 0 0;
+  color: #d6e2ed;
+  font-size: 0.9rem;
+}
+.masthead button,
+.contracts :where(header) button,
+.manage {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 13px;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 650;
+  font-size: 0.84rem;
+  text-decoration: none;
+}
+.masthead button {
+  border: 1px solid #ffffff36;
+  background: #ffffff14;
+  color: #fff;
+}
+.masthead button:hover {
+  background: #ffffff25;
+}
+.masthead svg,
+.contracts :where(header button) svg,
+.manage svg {
+  height: 16px;
+  width: 16px;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.metric {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  justify-items: start;
+  text-align: start;
+  padding: clamp(14px, 2vw, 22px);
+  border: 1px solid var(--ui-border);
+  border-radius: 17px;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  font: inherit;
+}
+button.metric:hover {
+  border-color: var(--ui-accent-border);
+  background: var(--ui-surface-hover);
+}
+.metricIcon,
+.mark {
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  width: 35px;
+  height: 35px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+}
+.metricIcon svg,
+.mark svg {
+  width: 18px;
+  height: 18px;
+}
+.metric strong {
+  margin-top: 7px;
+  font-weight: 720;
+  line-height: 1.15;
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+}
+.metric > span:last-of-type {
+  font-size: 0.8rem;
+  font-weight: 550;
+  color: var(--ui-muted);
+  overflow-wrap: anywhere;
+}
+.metricArrow {
+  position: absolute;
+  inset-inline-end: 12px;
+  top: 20px;
+  width: 14px;
+  height: 14px;
+  color: var(--ui-muted);
+}
+.contracts {
+  margin-bottom: 18px;
+  min-width: 0;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 17px;
+  padding: clamp(16px, 3vw, 26px);
+}
+.contracts > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.contracts h2 {
+  margin: 0;
+  font-size: 1.16rem;
+  font-weight: 680;
+}
+.contracts :where(header) button,
+.manage {
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface-soft);
+}
+.contracts :where(header) button:hover,
+.manage:hover {
+  background: var(--ui-surface-hover);
+}
+.contract {
+  border-top: 1px solid var(--ui-border);
+  margin-top: 16px;
+  padding-top: 16px;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+.contractName {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.mark {
+  flex: none;
+}
+.contract h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+.contract p,
+.empty {
+  margin: 5px 0 0;
+  color: var(--ui-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+.contract dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  margin: 3px 0;
+}
+.contract dt {
+  color: var(--ui-muted);
+  font-size: 0.76rem;
+}
+.contract dd {
+  margin: 2px 0 0;
+  color: var(--ui-text);
+  font-size: 0.85rem;
+}
+.empty {
+  margin-top: 10px;
+}
+.failure {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--ui-muted);
+}
+.failure button {
+  padding: 5px;
+  border: none;
+  color: var(--ui-text);
+  background: none;
+  text-decoration: underline;
+}
+.placeholder {
+  display: block;
+  height: 12px;
+  width: min(240px, 60%);
+  margin-block: 14px;
+  border-radius: 7px;
+  background: var(--ui-surface-soft);
+}
+@media (max-width: 990px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .masthead {
+    padding: 20px 17px;
+    gap: 12px;
+  }
+  .metric {
+    padding: 14px;
+  }
+}

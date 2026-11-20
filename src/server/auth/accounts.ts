@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import { readOwnerOverview, readOwnerPlacements } from "../account-overview";
 import { bootstrapInitialOwnerRecord, InitialOwnerError } from "./initial-owner";
 import {
   type AccountApproval,
@@ -178,15 +179,18 @@ export function createAccountAccess(auth: AuthService) {
     client: PoolClient,
     current: Awaited<ReturnType<typeof session>>,
     owner = false,
+    lock: "read" | "write" = "write",
   ) {
+    // Independent reads share this lock; a suspension, role change or revoked session still fences them.
+    const clause = lock === "read" ? "FOR SHARE" : "FOR UPDATE";
     const result = await client.query<CurrentAuthUser>(
-      'SELECT id, name, email, "emailVerified", role, approval FROM auth_user WHERE id = $1 FOR UPDATE',
+      `SELECT id, name, email, "emailVerified", role, approval FROM auth_user WHERE id = $1 ${clause}`,
       [current.userId],
     );
     const user = result.rows[0];
     eligible(user, owner);
     const signed = await client.query(
-      'WITH locked_session AS MATERIALIZED (SELECT id,"expiresAt" FROM auth_session WHERE id=$1 AND "userId"=$2 AND token=$3 FOR UPDATE) SELECT id FROM locked_session WHERE "expiresAt">clock_timestamp()',
+      `WITH locked_session AS MATERIALIZED (SELECT id,"expiresAt" FROM auth_session WHERE id=$1 AND "userId"=$2 AND token=$3 ${clause}) SELECT id FROM locked_session WHERE "expiresAt">clock_timestamp()`,
       [current.id, current.userId, current.token],
     );
     if (signed.rowCount !== 1) fail(401, "AUTHENTICATION_REQUIRED");
@@ -202,12 +206,26 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
   async function read(headers: Headers): Promise<SafeAccountProfile> {
     const current = await session(headers);
     return accountTransaction(pool, async (client) => {
-      const user = await authority(client, current);
+      const user = await authority(client, current, false, "read");
       return profile(client, user.id);
     });
   }
   return {
     read,
+    async overview(headers: Headers) {
+      const current = await session(headers);
+      return accountTransaction(pool, async (client) => {
+        const actor = await authority(client, current, false, "read");
+        return readOwnerOverview(client, actor.id);
+      });
+    },
+    async placements(headers: Headers) {
+      const current = await session(headers);
+      return accountTransaction(pool, async (client) => {
+        const actor = await authority(client, current, false, "read");
+        return readOwnerPlacements(client, actor.id);
+      });
+    },
     async update(headers: Headers, input: unknown): Promise<SafeAccountProfile> {
       const value = updateInput(input),
         current = await session(headers);

@@ -1,0 +1,104 @@
+.rail {
+  position: relative;
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.viewport {
+  position: relative;
+  isolation: isolate;
+}
+.track {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 3px;
+  scrollbar-width: none;
+  padding: 3px;
+}
+.track::-webkit-scrollbar {
+  display: none;
+}
+.track > * {
+  scroll-snap-align: start;
+}
+.viewport::before,
+.viewport::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset-block: 0;
+  width: 20px;
+  opacity: 0;
+  pointer-events: none;
+  background: var(--rail-surface, var(--paper));
+  mask-image: linear-gradient(to right, #000, transparent);
+}
+.viewport::before {
+  inset-inline-start: 0;
+}
+.viewport::after {
+  inset-inline-end: 0;
+  mask-image: linear-gradient(to left, #000, transparent);
+}
+.viewport[data-before="true"]::before,
+.viewport[data-after="true"]::after {
+  opacity: 1;
+}
+.viewport:has(:focus-visible)::before,
+.viewport:has(:focus-visible)::after {
+  opacity: 0;
+}
+@supports (backdrop-filter: blur(3px)) {
+  .viewport::before,
+  .viewport::after {
+    background: color-mix(in srgb, var(--rail-surface, var(--paper)) 78%, transparent);
+    backdrop-filter: blur(3px);
+  }
+}
+.controls {
+  display: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .controls button {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--ui-border);
+    border-radius: 50%;
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    cursor: pointer;
+  }
+  .controls button:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+  .controls button:hover:enabled {
+    border-color: var(--ui-accent-border);
+    color: var(--ui-accent-text);
+  }
+  .controls svg {
+    width: 18px;
+    height: 18px;
+  }
+  .controls button:first-child svg {
+    transform: rotate(180deg);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .track {
+    scroll-behavior: smooth;
+  }
+  .viewport::before,
+  .viewport::after {
+    transition: opacity 160ms ease-out;
+  }
+}

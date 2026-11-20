@@ -1,0 +1,128 @@
+.workspace,
+.orders,
+.form,
+.form label,
+.instructions {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+}
+.workspace {
+  color: var(--ui-text);
+  gap: 1rem;
+  max-width: 52rem;
+}
+.workspace h2,
+.workspace h3,
+.workspace p,
+.workspace small {
+  margin: 0;
+}
+.workspace h2 {
+  font-size: 1.1rem;
+}
+.workspace h3 {
+  font-size: 1rem;
+}
+.workspace small {
+  color: var(--ui-text-secondary);
+}
+.order,
+.wallet {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 1.1rem;
+  padding: clamp(1rem, 3vw, 1.45rem);
+  display: grid;
+  gap: 0.8rem;
+}
+.wallet {
+  background: linear-gradient(120deg, var(--ui-surface-soft), var(--ui-surface));
+  gap: 0.25rem;
+}
+.wallet strong {
+  font-size: clamp(2.2rem, 7vw, 3.7rem);
+  line-height: 1.08;
+  font-variant-numeric: tabular-nums;
+}
+.order header,
+.orders nav {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+.status {
+  background: var(--ui-surface-soft);
+  border-radius: 2rem;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.76rem;
+  color: var(--ui-text-secondary);
+}
+.amount {
+  font-size: 1.1rem;
+  font-weight: 750;
+}
+.amount small {
+  font-weight: 500;
+}
+.instructions {
+  background: var(--ui-surface-soft);
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.instructions p {
+  white-space: pre-wrap;
+}
+.form label {
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+.form input,
+.form textarea,
+.form select {
+  padding: 0.6rem 0.75rem;
+  min-height: 44px;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.6rem;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  max-width: 100%;
+}
+.workspace button,
+.primaryLink {
+  width: fit-content;
+  min-height: 44px;
+  border: 0;
+  border-radius: 0.7rem;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  padding: 0.65rem 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.workspace button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.workspace .secondary {
+  background: transparent;
+  color: var(--ui-text-secondary);
+  font-size: 0.8rem;
+  padding-inline: 0;
+}
+.skeleton {
+  height: 9rem;
+  background: var(--ui-surface-soft);
+  border-radius: 1rem;
+}
+.workspace h1 {
+  margin: 0;
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  letter-spacing: -0.035em;
+}

@@ -126,6 +126,7 @@ test("known account deep links retain their section through sign-in without expo
 
 test("account pane addresses round-trip for refresh and browser history without old message targets", () => {
   for (const section of [
+    "overview",
     "profile",
     "businesses",
     "appointments",
@@ -133,6 +134,8 @@ test("account pane addresses round-trip for refresh and browser history without 
     "messages",
     "settings",
     "membership",
+    "advertising",
+    "credits",
   ] as const) {
     const href = accountSectionPath(section);
     assert.equal(accountReturnPath(href), href);
@@ -165,7 +168,6 @@ test("browser account navigation takes message intent only from the current exac
     },
   );
   for (const query of [
-    "",
     "odjeljak=profil&osoba=old",
     "odjeljak=unknown&osoba=old",
     "odjeljak=poruke&odjeljak=profil&osoba=old",
@@ -176,6 +178,7 @@ test("browser account navigation takes message intent only from the current exac
     assert.equal(navigation.messageTarget, undefined);
     assert.equal(navigation.invalidMessageTarget, false);
   }
+  assert.equal(readAccountNavigation(new URLSearchParams()).section, "overview");
   assert.deepEqual(readAccountNavigation(new URLSearchParams("odjeljak=postavke&osoba=old")), {
     section: "settings",
     invalidMessageTarget: false,

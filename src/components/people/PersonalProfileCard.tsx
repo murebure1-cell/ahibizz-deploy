@@ -90,7 +90,7 @@ export function PersonalProfileCard({
     tabButtons.current[next]?.focus();
   }
   return (
-    <article className={styles.profile} aria-label="Lični profil">
+    <article className={styles.profile} aria-label="Lični profil" data-design="personal-profile">
       <div className={`${styles.cover} ${!cover ? styles.defaultCover : ""}`}>
         {cover ? (
           <Image
@@ -130,7 +130,7 @@ export function PersonalProfileCard({
           )}
         </div>
         <div className={styles.heading}>
-          <h2>
+          <h2 data-design="personal-name">
             {profile.name}
             {profile.verified && <VerificationBadge kind="person" />}
           </h2>

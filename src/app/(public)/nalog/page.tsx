@@ -62,7 +62,7 @@ export default async function AccountPage({
       initial={profile}
       messageTarget={messageTarget}
       invalidMessageTarget={invalidMessageTarget}
-      initialSection={accountSection(query.odjeljak)}
+      initialSection={Object.keys(query).length === 0 ? "overview" : accountSection(query.odjeljak)}
     />
   );
 }

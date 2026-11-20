@@ -1,6 +1,7 @@
 import { businessMediaProjection } from "../business-media/service";
 import type { Database } from "../db";
 import { getDatabase } from "../db";
+import { paidPlacementSql } from "../marketing/read";
 import { promotionSql } from "../paypal/store";
 import { businessReviewsProjection } from "../reviews/projection";
 import {
@@ -47,6 +48,7 @@ const publicColumns = [
 ].join(", ");
 export const columns = [
   publicColumns,
+  'NOT package_allows_listing(b) AS "packagePaymentNeeded"',
   'b.editorial_revision AS "editorialRevision"',
   `EXISTS (SELECT 1 FROM directory_business_image_proposal ip WHERE ip.business_id=b.id) AS "pendingMedia"`,
   `(SELECT a.action FROM directory_moderation_audit a WHERE a.business_id=b.id AND a.action IN ('approve-changes','reject-changes') AND a.next_version=b.version LIMIT 1) AS "revisionDecision"`,
@@ -93,6 +95,7 @@ export function publicDto(value: DirectoryBusiness): PublicDirectoryBusiness {
     moderationReturn: _moderationReturn,
     hasRentalVehicles: _hasRentalVehicles,
     hasStayUnits: _hasStayUnits,
+    packagePaymentNeeded: _packagePaymentNeeded,
     ...publicValue
   } = value;
   return publicValue;
@@ -126,6 +129,7 @@ export async function listDirectory(
   condition: string,
   parameters: unknown[],
   publicOnly = false,
+  featuredOnly = false,
 ) {
   const { page, pageSize, categoryId, subcategoryId, status, q, city, nearby } = pageInput(
     input,
@@ -168,6 +172,12 @@ export async function listDirectory(
     publicOnly && Boolean(categoryId) && process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY === "true";
   const paid = paidCategory ? promotionSql("b") : null;
   if (paid) order = `(${paid}) DESC, ${order}`;
+  if (publicOnly && (nearby || city)) order = `(${paidPlacementSql("nearby")}) DESC, ${order}`;
+  if (publicOnly && featuredOnly) {
+    filters.push(paidPlacementSql("featured"));
+    // Stable within an hour for scrolling/pagination, then gives other paid profiles the lead.
+    order = "md5(b.id::text || floor(extract(epoch FROM now())/3600)::text), b.id";
+  }
   const selectedColumns =
     publicOnly && paid
       ? publicColumns.replace("b.is_featured AS featured", `(${paid}) AS featured`)
@@ -199,7 +209,7 @@ export function createPublicDirectoryService({ database }: { database: Directory
           )
         ).rows as DirectoryCategory[],
       })),
-    async listPublic(input: unknown = {}) {
+    async listPublic(input: unknown = {}, featuredOnly = false) {
       object(input, [
         "page",
         "pageSize",
@@ -215,9 +225,10 @@ export function createPublicDirectoryService({ database }: { database: Directory
         const result = await listDirectory(
           database,
           input,
-          "b.status = 'published' AND u.approval = 'approved' AND u.\"emailVerified\" = true",
+          "b.status = 'published' AND package_allows_listing(b) AND u.approval = 'approved' AND u.\"emailVerified\" = true",
           [],
           true,
+          featuredOnly,
         );
         return { ...result, items: result.items.map(publicDto) };
       });
@@ -226,7 +237,7 @@ export function createPublicDirectoryService({ database }: { database: Directory
       const key = uuid(id);
       return safeRead(async () => {
         const result = await database.query(
-          `SELECT ${publicColumns} FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id WHERE b.id = $1 AND b.status = 'published' AND u.approval = 'approved' AND u."emailVerified" = true`,
+          `SELECT ${publicColumns} FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id WHERE b.id = $1 AND b.status = 'published' AND package_allows_listing(b) AND u.approval = 'approved' AND u."emailVerified" = true`,
           [key],
         );
         if (!result.rows[0]) fail(404, "BUSINESS_NOT_FOUND");

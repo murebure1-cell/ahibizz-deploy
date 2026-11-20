@@ -12,12 +12,14 @@ export function DirectorySearchForm({
   categoryId,
   subcategoryId,
   categories,
+  featuredOnly = false,
 }: {
   query: string;
   city: string;
   categoryId: string;
   subcategoryId: string;
   categories: CategoryOption[];
+  featuredOnly?: boolean;
 }) {
   const prefix = useId();
   const [category, setCategory] = useState(categoryId);
@@ -26,7 +28,8 @@ export function DirectorySearchForm({
   const appliedFilters = [city, categoryId, subcategoryId].filter(Boolean).length;
   const children = categories.filter((item) => item.parentId === category);
   return (
-    <Form action="/pretraga" className={styles.form}>
+    <Form action="/pretraga" className={styles.form} data-design="search-form">
+      {featuredOnly && <input type="hidden" name="istaknute" value="1" />}
       <label htmlFor={`${prefix}-query`}>
         Naziv ili usluga
         <input

@@ -1,7 +1,9 @@
+import { readBusinessDetails } from "./business-details";
 import { initialLocationPoint, type LocationPoint } from "./business-location";
 import type { BusinessMediaSummary } from "./business-media";
 import { nearbyQueryPoint } from "./device-location";
 import { type PublicBusinessView, publicBusinessImages } from "./public-business";
+import { readReviewSummary } from "./reviews";
 
 export const nearbyRadiusKm = 25;
 export function nearbyDirectoryPath(point: LocationPoint): string {
@@ -65,6 +67,8 @@ export function readNearbyBusinesses(
       latitude: row.latitude as number,
       longitude: row.longitude as number,
       verified: row.verified,
+      details: row.details == null ? null : readBusinessDetails(row.details),
+      reviews: row.reviews == null ? { count: 0, sum: 0 } : readReviewSummary(row.reviews),
       ...publicBusinessImages(row.id, row.media as BusinessMediaSummary | undefined),
     };
   });

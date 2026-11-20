@@ -1,29 +1,79 @@
 "use client";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   type AccountSection,
   accountSectionPath,
   readAccountNavigation,
 } from "../../lib/account-return";
+import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { MessageTarget } from "../../lib/messaging";
 import { clearBrowserMessagingRecovery } from "../../lib/messaging-recovery-storage";
 import { type PersonalProfile, profileImageUrl } from "../../lib/people";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { useAppAppearance } from "../appearance/AppAppearance";
 import { PricingCatalog } from "../billing/PricingCatalog";
-import { CustomerAppointments } from "../booking/CustomerAppointments";
-import { ConnectionsPanel } from "../connections/ConnectionsPanel";
-import { BusinessManager } from "../directory/BusinessManager";
 import { SavedBusinesses } from "../favorites/SavedBusinesses";
-import { Icon } from "../Icon";
-import { MessagingInbox } from "../messaging/MessagingInbox";
+import { Icon, type IconName } from "../Icon";
 import { PersonalProfileWorkspace } from "../people/PersonalProfileWorkspace";
+import { CommunityRulesPrompt } from "../support/CommunityRulesPrompt";
 import { AccountAuthorityBoundary } from "./AccountAuthorityBoundary";
+import { AccountOverview, CurrentPlacements, MembershipOverview } from "./AccountOverview";
 import { AccountSettings } from "./AccountSettings";
 import styles from "./account.module.css";
+
+function paneHeading(label: string) {
+  return (
+    <h2 className={styles.paneHeading} aria-busy="true">
+      {label}
+    </h2>
+  );
+}
+const BusinessManager = dynamic(
+  () => import("../directory/BusinessManager").then((m) => m.BusinessManager),
+  { loading: () => paneHeading("Djelatnosti") },
+);
+const MessagingInbox = dynamic(
+  () => import("../messaging/MessagingInbox").then((m) => m.MessagingInbox),
+  { loading: () => paneHeading("Poruke") },
+);
+const CustomerAppointments = dynamic(
+  () => import("../booking/CustomerAppointments").then((m) => m.CustomerAppointments),
+  { loading: () => paneHeading("Moji termini") },
+);
+const ConnectionsPanel = dynamic(
+  () => import("../connections/ConnectionsPanel").then((m) => m.ConnectionsPanel),
+  { loading: () => paneHeading("Prijatelji") },
+);
+const MarketingWorkspace = dynamic(() =>
+  import("../marketing/MarketingWorkspace").then((m) => m.MarketingWorkspace),
+);
+const accountMenu = [
+  { id: "overview", label: "Pregled", icon: "home", primary: true },
+  { id: "businesses", label: "Djelatnosti", icon: "shop", primary: true },
+  { id: "messages", label: "Poruke", icon: "message", primary: true },
+  { id: "profile", label: "Moj profil", icon: "user" },
+  { id: "appointments", label: "Moji termini", icon: "calendar" },
+  { id: "advertising", label: "Moji oglasi", icon: "star" },
+  { id: "credits", label: "Ahi Credits", icon: "card", digital: true },
+  { id: "membership", label: "Pretplate", icon: "crown" },
+  { id: "connections", label: "Prijatelji", icon: "people" },
+  { id: "saved", label: "Sačuvani", icon: "heart" },
+  { id: "settings", label: "Postavke", icon: "sliders" },
+] as { id: AccountSection; label: string; icon: IconName; primary?: boolean; digital?: boolean }[];
+
+// Mount a workspace on first visit, then keep drafts and pending commands across pane switches.
+function AccountPane({ selected, children }: { selected: boolean; children: ReactNode }) {
+  const [visited, setVisited] = useState(selected);
+  useEffect(() => {
+    if (selected) setVisited(true);
+  }, [selected]);
+  if (!visited && !selected) return null;
+  return <div hidden={!selected}>{children}</div>;
+}
 
 type AccountDashboardProps = {
   initial: SafeAccountProfile;
@@ -36,7 +86,7 @@ export function AccountDashboard(props: AccountDashboardProps) {
 }
 function AccountWorkspace({
   initial,
-  initialSection = "profile",
+  initialSection = "overview",
   messageTarget,
   invalidMessageTarget = false,
 }: AccountDashboardProps) {
@@ -50,7 +100,8 @@ function AccountWorkspace({
     if (initial.id) setAppearance(initial.appearance);
   }, [initial.id, initial.appearance, setAppearance]);
   const query = searchParams?.toString();
-  const navigation = useRef<HTMLElement>(null);
+  const moreControl = useRef<HTMLButtonElement>(null);
+  const [moreMenu, setMoreMenu] = useState(false);
   const view = useMemo(
     () =>
       query === undefined
@@ -58,48 +109,33 @@ function AccountWorkspace({
         : readAccountNavigation(new URLSearchParams(query)),
     [query, initialSection, messageTarget, invalidMessageTarget],
   );
-  const section = view.section;
+  const section = IS_PLAY_EDITION && view.section === "credits" ? "overview" : view.section;
   const photo = personal ? profileImageUrl(personal, "photo") : null;
-  useEffect(() => {
-    const nav = navigation.current;
-    if (!nav) return;
-    const updateEdges = () => {
-      const viewport = nav.parentElement;
-      if (!viewport) return;
-      viewport.dataset.overflowStart = String(nav.scrollLeft > 2);
-      viewport.dataset.overflowEnd = String(nav.scrollWidth - nav.clientWidth - nav.scrollLeft > 2);
-    };
-    const revealControl = (control: HTMLElement | null) => {
-      if (control && nav.scrollWidth > nav.clientWidth) {
-        const left = control.getBoundingClientRect().left - nav.getBoundingClientRect().left;
-        const right = left + control.offsetWidth;
-        const inset = Math.min(26, nav.clientWidth / 8);
-        if (left < inset) nav.scrollLeft += left - inset;
-        else if (right > nav.clientWidth - inset) nav.scrollLeft += right - nav.clientWidth + inset;
-      }
-      updateEdges();
-    };
-    const reveal = () =>
-      revealControl(nav.querySelector<HTMLElement>(`[data-account-section="${section}"]`));
-    const revealFocused = (event: FocusEvent) => {
-      if (event.target instanceof HTMLElement) revealControl(event.target);
-    };
-    reveal();
-    nav.addEventListener("scroll", updateEdges, { passive: true });
-    nav.addEventListener("focusin", revealFocused);
-    const observer = new ResizeObserver(reveal);
-    observer.observe(nav);
-    return () => {
-      observer.disconnect();
-      nav.removeEventListener("scroll", updateEdges);
-      nav.removeEventListener("focusin", revealFocused);
-    };
-  }, [section]);
+  const menu = accountMenu.filter((item) => !IS_PLAY_EDITION || !item.digital);
+  const current = menu.find((item) => item.id === section);
   function changeSection(next: AccountSection) {
     const href = accountSectionPath(next);
     if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== href)
       window.history.pushState(null, "", href);
     setError("");
+    if (moreMenu && moreControl.current?.getClientRects().length)
+      moreControl.current.focus({ preventScroll: true });
+    setMoreMenu(false);
+  }
+  function tab(item: (typeof accountMenu)[number]) {
+    return (
+      <button
+        key={item.id}
+        type="button"
+        data-account-section={item.id}
+        aria-current={section === item.id ? "page" : undefined}
+        aria-controls="account-panel"
+        onClick={() => changeSection(item.id)}
+      >
+        <Icon name={item.icon} />
+        <span>{item.label}</span>
+      </button>
+    );
   }
   async function logout() {
     if (busy) return;
@@ -132,9 +168,9 @@ function AccountWorkspace({
       loginHref={`/prijava?nastavi=${encodeURIComponent(accountSectionPath(section))}`}
       onConfirmed={setProfile}
     >
-      {() => (
+      {(hasAccess) => (
         <main id="glavni-sadrzaj" className={styles.layout}>
-          <aside className={styles.sidebar}>
+          <aside className={styles.sidebar} data-design="account-sidebar">
             <div className={styles.identity}>
               <span aria-hidden="true">
                 {photo ? (
@@ -161,37 +197,34 @@ function AccountWorkspace({
               </div>
             </div>
             <div className={styles.navigationViewport}>
-              <nav ref={navigation} aria-label="Moj nalog">
-                {(
-                  [
-                    { id: "profile", label: "Moj profil", icon: "user" },
-                    { id: "businesses", label: "Djelatnosti", icon: "shop" },
-                    { id: "messages", label: "Poruke", icon: "message" },
-                    { id: "appointments", label: "Moji termini", icon: "calendar" },
-                    { id: "saved", label: "Sačuvani", icon: "heart" },
-                    { id: "connections", label: "Prijatelji", icon: "user" },
-                    { id: "settings", label: "Postavke", icon: "sliders" },
-                    { id: "membership", label: "Paketi", icon: "shop" },
-                  ] as const
-                ).map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    data-account-section={item.id}
-                    aria-current={section === item.id ? "page" : undefined}
-                    aria-controls="account-panel"
-                    onClick={() => changeSection(item.id)}
-                  >
-                    <Icon name={item.icon} />
-                    {item.label}
-                  </button>
-                ))}
-                {profile.role === "owner" && (
-                  <Link href="/administracija" className={styles.adminLink}>
-                    <Icon name="sliders" />
-                    Administracija
-                  </Link>
-                )}
+              <nav aria-label="Moj nalog">
+                {menu.filter((item) => item.primary).map(tab)}
+                <button
+                  ref={moreControl}
+                  type="button"
+                  className={styles.moreControl}
+                  data-current={Boolean(current && !current.primary)}
+                  aria-expanded={moreMenu}
+                  aria-controls="account-other-sections"
+                  aria-label={`Više odjeljaka naloga${current && !current.primary ? `, odabrano: ${current.label}` : ""}`}
+                  onClick={() => setMoreMenu(!moreMenu)}
+                >
+                  <Icon name="menu" />
+                  <span>Više</span>
+                </button>
+                <div
+                  id="account-other-sections"
+                  className={styles.otherSections}
+                  data-expanded={moreMenu}
+                >
+                  {menu.filter((item) => !item.primary).map(tab)}
+                  {profile.role === "owner" && (
+                    <Link href="/administracija" className={styles.adminLink}>
+                      <Icon name="shield" />
+                      Administracija
+                    </Link>
+                  )}
+                </div>
               </nav>
             </div>
             <button
@@ -216,15 +249,32 @@ function AccountWorkspace({
               <span>Odjava</span>
             </button>
           </aside>
-          <section id="account-panel" className={styles.content} data-section={section}>
+          <section
+            id="account-panel"
+            className={styles.content}
+            data-section={section}
+            data-design="account-panel"
+          >
+            {IS_PLAY_EDITION &&
+              hasAccess &&
+              ["profile", "businesses", "messages"].includes(section) && (
+                <CommunityRulesPrompt key={initial.id} actor={initial.id} />
+              )}
             {error && (
               <p role="alert" className={styles.feedback}>
                 {error}
               </p>
             )}
-            <div hidden={section !== "profile"}>
+            <AccountPane selected={section === "overview"}>
+              <AccountOverview
+                accountId={initial.id}
+                active={hasAccess && section === "overview"}
+                onSection={changeSection}
+              />
+            </AccountPane>
+            <AccountPane selected={section === "profile"}>
               <PersonalProfileWorkspace
-                active={section === "profile"}
+                active={hasAccess && section === "profile"}
                 expectedAccountId={initial.id}
                 onAccessDenied={() => setPersonal(null)}
                 onProfileChanged={(next) => {
@@ -233,43 +283,49 @@ function AccountWorkspace({
                 }}
                 onBusinesses={() => changeSection("businesses")}
               />
-            </div>
-            <div hidden={section !== "businesses"}>
+            </AccountPane>
+            <AccountPane selected={section === "businesses"}>
               <BusinessManager
-                active={section === "businesses"}
+                active={hasAccess && section === "businesses"}
                 isOwner={profile.role === "owner"}
                 expectedAccountId={initial.id}
               />
-            </div>
-            <div hidden={section !== "appointments"}>
+            </AccountPane>
+            <AccountPane selected={section === "appointments"}>
               <CustomerAppointments
-                active={section === "appointments"}
+                active={hasAccess && section === "appointments"}
                 expectedAccountId={initial.id}
               />
-            </div>
-            <div hidden={section !== "saved"}>
-              <SavedBusinesses active={section === "saved"} expectedAccountId={initial.id} />
-            </div>
-            <div hidden={section !== "connections"}>
-              <ConnectionsPanel active={section === "connections"} expectedAccountId={initial.id} />
-            </div>
-            <div hidden={section !== "messages"}>
+            </AccountPane>
+            <AccountPane selected={section === "saved"}>
+              <SavedBusinesses
+                active={hasAccess && section === "saved"}
+                expectedAccountId={initial.id}
+              />
+            </AccountPane>
+            <AccountPane selected={section === "connections"}>
+              <ConnectionsPanel
+                active={hasAccess && section === "connections"}
+                expectedAccountId={initial.id}
+              />
+            </AccountPane>
+            <AccountPane selected={section === "messages"}>
               {view.invalidMessageTarget && (
                 <p role="alert" className={styles.feedback}>
                   Link za razgovor nije ispravan.
                 </p>
               )}
               <MessagingInbox
-                active={section === "messages"}
+                active={hasAccess && section === "messages"}
                 initialTarget={view.messageTarget}
                 expectedAccountId={initial.id}
               />
-            </div>
-            <div hidden={section !== "settings"}>
+            </AccountPane>
+            <AccountPane selected={section === "settings"}>
               <AccountSettings
                 key={initial.id}
                 initial={initial}
-                active={section === "settings"}
+                active={hasAccess && section === "settings"}
                 onConfirmed={(next) =>
                   setProfile((current) => ({
                     ...current,
@@ -278,10 +334,25 @@ function AccountWorkspace({
                   }))
                 }
               />
-            </div>
-            <div hidden={section !== "membership"}>
-              <PricingCatalog embedded />
-            </div>
+            </AccountPane>
+            {!IS_PLAY_EDITION &&
+              hasAccess &&
+              (section === "credits" || section === "advertising") && (
+                <MarketingWorkspace
+                  key={section}
+                  accountId={initial.id}
+                  mode={section === "credits" ? "credits" : "ads"}
+                />
+              )}
+            {IS_PLAY_EDITION && section === "advertising" && (
+              <CurrentPlacements accountId={initial.id} active={hasAccess} />
+            )}
+            {section === "membership" && (
+              <>
+                <MembershipOverview accountId={initial.id} active={hasAccess} />
+                {!IS_PLAY_EDITION && <PricingCatalog embedded />}
+              </>
+            )}
           </section>
         </main>
       )}

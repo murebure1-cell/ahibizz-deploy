@@ -1,0 +1,71 @@
+.page {
+  inline-size: min(100% - 2rem, 44rem);
+  margin-inline: auto;
+  padding-block: clamp(2rem, 6vw, 4.5rem);
+  overflow-wrap: anywhere;
+}
+.page h1 {
+  margin: 0 0 1rem;
+  font-size: clamp(1.85rem, 5vw, 2.8rem);
+  line-height: 1.13;
+  letter-spacing: -0.035em;
+}
+.page h2 {
+  font-size: 1.12rem;
+  margin: 0 0 0.5rem;
+}
+.page p {
+  margin: 0.65rem 0;
+  color: var(--ui-text-secondary);
+}
+.page a {
+  color: var(--ui-accent-text);
+  text-underline-offset: 0.2em;
+}
+.page > a:first-child {
+  display: inline-block;
+  margin-block-end: 1rem;
+}
+.section {
+  border-block-start: 1px solid var(--ui-border);
+  padding-block: 1.35rem;
+  margin-block-start: 1rem;
+}
+.form {
+  display: grid;
+  gap: 1rem;
+  padding-block: 1.25rem;
+}
+.form label {
+  font-weight: 600;
+}
+.form textarea {
+  display: block;
+  width: 100%;
+  padding: 0.8rem;
+  margin-top: 0.4rem;
+  font: inherit;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 12px;
+  color: var(--ui-text);
+  background: var(--ui-input);
+}
+.form button {
+  justify-self: start;
+}
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.choice input {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+}
+.page .confirmed {
+  color: var(--ui-success);
+  background: var(--ui-success-soft);
+  padding: 1rem;
+  border-radius: 12px;
+}

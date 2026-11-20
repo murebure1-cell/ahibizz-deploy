@@ -12,6 +12,7 @@ import {
   publicBusinessPoint,
   safeBusinessImage,
 } from "../../lib/public-business";
+import { reportUrl } from "../../lib/support-requests";
 import { FavoriteButton } from "../favorites/FavoriteButton";
 import { Icon } from "../Icon";
 import { BusinessReviews } from "../reviews/BusinessReviews";
@@ -76,6 +77,7 @@ export function PublicBusinessProfile({
     <article
       aria-label="Poslovni profil"
       className={styles.profile}
+      data-design="business-profile"
       data-preview={preview || undefined}
       data-embedded={backHref === null || undefined}
     >
@@ -88,10 +90,11 @@ export function PublicBusinessProfile({
         </nav>
       )}
 
-      <div className={styles.cover} data-photo={Boolean(photo)}>
+      <div className={styles.cover} data-design="business-cover" data-photo={Boolean(photo)}>
         {photo ? (
           <Image
             src={photo.src}
+            data-design="business-photo"
             alt={photo.alt}
             fill
             sizes="(max-width: 700px) 100vw, 1160px"
@@ -393,6 +396,7 @@ export function PublicBusinessProfile({
               <Icon name="arrow" />
             </a>
           )}
+          {!preview && <Link href={reportUrl("business", business.id)}>Prijavi djelatnost</Link>}
         </aside>
       </div>
     </article>

@@ -12,3 +12,4 @@ playwright-report
 *.log
 *.tsbuildinfo
 docs
+mobile/android

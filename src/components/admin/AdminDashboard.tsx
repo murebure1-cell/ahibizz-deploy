@@ -10,6 +10,7 @@ import {
   businessLocationBatchPath,
   readAdminNavigation,
 } from "../../lib/admin-navigation";
+import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { BillingAdmin } from "../billing/BillingAdmin";
 import { BusinessManager } from "../directory/BusinessManager";
@@ -133,15 +134,26 @@ export function AdminDashboard({
             </button>
           ))}
         </nav>
+        <Link className={styles.accountLink} href="/administracija/izgled">
+          <Icon name="sliders" /> Uređivač izgleda
+        </Link>
+        {!IS_PLAY_EDITION && (
+          <Link className={styles.accountLink} href="/administracija/oglasi">
+            <Icon name="shop" /> Oglašavanje i krediti
+          </Link>
+        )}
+        <Link className={styles.accountLink} href="/administracija/zahtjevi">
+          <Icon name="message" /> Zahtjevi i prijave
+        </Link>
         <Link className={styles.accountLink} href="/nalog">
           <Icon name="user" />
           Moj nalog
           <Icon name="arrow" />
         </Link>
       </aside>
-      <section id="admin-content" className={styles.content}>
+      <section id="admin-content" className={styles.content} data-design="admin-panel">
         <header className={styles.pageHeading}>
-          <h1>{current.title}</h1>
+          <h1 data-design="admin-heading">{current.title}</h1>
           {section === "businesses" && (
             <div className={styles.headingActions}>
               <Link href={businessImportPath}>Uvezi prijave</Link>

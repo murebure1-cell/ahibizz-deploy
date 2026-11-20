@@ -16,7 +16,10 @@ export function BusinessCard({
   const state = usePreviewState();
   const saved = state.saved.has(business.id);
   return (
-    <article className={`business-card${compact ? " business-card-compact" : ""}`}>
+    <article
+      data-design="directory-card"
+      className={`business-card${compact ? " business-card-compact" : ""}`}
+    >
       <div className="business-photo">
         <Image
           src={business.image}

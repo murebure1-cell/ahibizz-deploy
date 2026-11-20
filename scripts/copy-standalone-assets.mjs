@@ -1,4 +1,5 @@
-import { cp, lstat, realpath } from "node:fs/promises";
+import { cp, lstat, readdir, realpath } from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -54,4 +55,32 @@ for (const relative of ["public", ".next/static"]) {
   await requireDirectory(destination);
 }
 
-console.log("Prepared standalone public and static assets.");
+// Next traces the native binding, but Windows loads its companion DLLs at runtime.
+const packagedRequire = createRequire(path.join(standalone, "server.js"));
+const packagedSharp = await realpath(packagedRequire.resolve("sharp"));
+requireInside(standalone, packagedSharp);
+if (process.platform === "win32") {
+  const nativePackage = `@img/sharp-win32-${process.arch}/package`;
+  const sourceRequire = createRequire(createRequire(import.meta.url).resolve("sharp"));
+  const nativeSource = path.dirname(await realpath(sourceRequire.resolve(nativePackage)));
+  const nativeTarget = path.dirname(
+    await realpath(createRequire(packagedSharp).resolve(nativePackage)),
+  );
+  requireInside(root, nativeSource);
+  requireInside(standalone, nativeTarget);
+  const sourceLib = path.join(nativeSource, "lib");
+  const targetLib = path.join(nativeTarget, "lib");
+  await requireDirectory(sourceLib);
+  await requireDirectory(targetLib);
+  for (const file of await readdir(sourceLib, { withFileTypes: true })) {
+    if (file.isFile() && file.name.endsWith(".dll")) {
+      await cp(path.join(sourceLib, file.name), path.join(targetLib, file.name));
+    }
+  }
+}
+await packagedRequire("sharp")({
+  create: { width: 1, height: 1, channels: 3, background: "#ffffff" },
+})
+  .png()
+  .toBuffer();
+console.log("Prepared standalone assets and verified image processing.");
