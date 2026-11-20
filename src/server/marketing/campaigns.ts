@@ -163,12 +163,21 @@ export async function saveCampaignBrief(
   const pricing = await readAdPricing(client, true);
   const rate = getAdRate(pricing, b.format, b.page, b.device);
   if (!rate?.available) invalid("CAMPAIGN_POSITION_UNAVAILABLE", 409);
+  if (b.dailyWindow) {
+    try {
+      await client.query("SELECT timezone($1::text,now())", [b.dailyWindow.timeZone]);
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "22023")
+        invalid();
+      throw error;
+    }
+  }
   if (
     b.startsOn &&
     !(
       await client.query(
-        "SELECT 1 WHERE $1::date BETWEEN (now() AT TIME ZONE 'UTC')::date AND (now() AT TIME ZONE 'UTC')::date + 365",
-        [b.startsOn],
+        "SELECT 1 WHERE $1::date BETWEEN (now() AT TIME ZONE $2::text)::date AND (now() AT TIME ZONE $2::text)::date + 365",
+        [b.startsOn, b.dailyWindow?.timeZone ?? "UTC"],
       )
     ).rowCount
   )
@@ -189,15 +198,6 @@ export async function saveCampaignBrief(
     ).rowCount
   )
     invalid("CAMPAIGN_IMAGE_CHANGED", 409);
-  if (b.dailyWindow) {
-    try {
-      await client.query("SELECT timezone($1::text,now())", [b.dailyWindow.timeZone]);
-    } catch (error) {
-      if (error && typeof error === "object" && "code" in error && error.code === "22023")
-        invalid();
-      throw error;
-    }
-  }
   if (
     b.countryCode &&
     !(

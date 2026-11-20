@@ -110,11 +110,25 @@ export async function verifyCampaignBriefs({ pool, store, business, member, seco
   );
   const icon = { ...base, id: randomUUID(), campaign: { ...brief, format: "branded_icon" } };
   await cmd(member, icon);
+  // Three local calendar days around the next Sarajevo DST transition include a 23- or 25-hour day.
+  const transitions = [today.getUTCFullYear(), today.getUTCFullYear() + 1]
+    .flatMap((year) =>
+      [2, 9].map((month) => {
+        const saturday = new Date(Date.UTC(year, month + 1, 0));
+        saturday.setUTCDate(saturday.getUTCDate() - saturday.getUTCDay() - 1);
+        return saturday;
+      }),
+    )
+    .filter((d) => d > today)
+    .sort((a, b) => a - b);
+  const planned = transitions[0].toISOString().slice(0, 10);
   const geo = {
     ...base,
+    quantity: 3,
     id: randomUUID(),
     campaign: {
       ...brief,
+      startsOn: planned,
       city: null,
       targetCities: ["Mostar", "Tuzla"],
       countryCode: "BA",
@@ -134,6 +148,25 @@ export async function verifyCampaignBriefs({ pool, store, business, member, seco
   assert.deepEqual(locationBrief.targetCities, geo.campaign.targetCities);
   assert.equal(locationBrief.countryCode, "BA");
   assert.deepEqual(locationBrief.dailyWindow, geo.campaign.dailyWindow);
+  await cmd(owner, { ...quote, id: geo.id });
+  await cmd(owner, {
+    action: "confirm",
+    id: geo.id,
+    amountMinor: quote.amountMinor,
+    reference: "LOCAL-SCHEDULE-FIXTURE",
+  });
+  const settled = (
+    await pool.query(
+      `SELECT to_char(o.starts_at AT TIME ZONE c.local_time_zone,'YYYY-MM-DD HH24:MI') AS local_start,
+      (o.ends_at AT TIME ZONE c.local_time_zone)=(o.starts_at AT TIME ZONE c.local_time_zone)+o.quantity*interval '1 day' AS full_days,
+      abs(extract(epoch from o.ends_at-o.starts_at)-86400*o.quantity) AS difference
+    FROM marketing_order o JOIN marketing_campaign_brief c ON c.order_id=o.id WHERE o.id=$1`,
+      [geo.id],
+    )
+  ).rows[0];
+  assert.equal(settled.local_start, `${planned} 00:00`);
+  assert.equal(settled.full_days, true);
+  assert.equal(Number(settled.difference), 3600);
   await assert.rejects(
     cmd(owner, { ...quote, id: icon.id, amountMinor: 49999 }),
     (e) => e.code === "CAMPAIGN_MINIMUM",

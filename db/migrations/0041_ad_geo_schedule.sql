@@ -20,6 +20,22 @@ RETURNS boolean LANGUAGE sql STABLE AS $$
     FROM (SELECT stamp AT TIME ZONE zone AS local_at) t) local_clock
 $$;
 
+-- The delivery period and hours follow the same local clock, including DST changes.
+CREATE OR REPLACE FUNCTION apply_campaign_schedule() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE planned date; zone text;
+BEGIN
+  SELECT starts_on,local_time_zone INTO planned,zone FROM marketing_campaign_brief WHERE order_id=NEW.id;
+  IF planned IS NOT NULL THEN
+    NEW.starts_at := GREATEST(NEW.starts_at,planned::timestamp AT TIME ZONE COALESCE(zone,'UTC'));
+  END IF;
+  IF zone IS NOT NULL THEN
+    NEW.ends_at := ((NEW.starts_at AT TIME ZONE zone) + NEW.quantity * interval '1 day') AT TIME ZONE zone;
+  ELSIF planned IS NOT NULL THEN
+    NEW.ends_at := NEW.starts_at + NEW.quantity * interval '1 day';
+  END IF;
+  RETURN NEW;
+END $$;
+
 -- Previously issued view tokens may survive a daily window boundary.
 ALTER FUNCTION record_marketing_ad(uuid,uuid,text,boolean,text,text,text) RENAME TO record_marketing_ad_in_window;
 CREATE FUNCTION record_marketing_ad(render_id uuid, campaign uuid, screen text, is_click boolean,
