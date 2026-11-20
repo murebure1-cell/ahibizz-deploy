@@ -26,9 +26,7 @@ export default function PromotionPage() {
       </section>
       <section className={styles.section}>
         <h2>Na početnoj stranici</h2>
-        <p>
-          Oglas može biti baner ili istaknuta djelatnost koju vide posjetioci iz svih gradova.
-        </p>
+        <p>Oglas može biti baner ili istaknuta djelatnost koju vide posjetioci iz svih gradova.</p>
         <Link href="/nalog?odjeljak=oglasi">Zatraži ponudu za početnu</Link>
       </section>
       <section className={styles.section}>
