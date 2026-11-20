@@ -17,6 +17,7 @@ import { Icon } from "../Icon";
 import { DevicePush } from "../pwa/DevicePush";
 import permissionStyles from "../pwa/permissions.module.css";
 import { AccountPassword } from "./AccountPassword";
+import { AdPreference } from "./AdPreference";
 import styles from "./account.module.css";
 
 const choices = [
@@ -194,7 +195,10 @@ function SettingsWorkspace({
         </span>
       </header>
       {active && !accessLost && request === accountSettingsRequest && (
-        <AccountPassword accountId={initial.id} email={initial.email} />
+        <>
+          <AccountPassword accountId={initial.id} email={initial.email} />
+          <AdPreference accountId={initial.id} />
+        </>
       )}
       <section className={styles.settingsCard} aria-labelledby="appearance-heading">
         <h2 id="appearance-heading">Izgled</h2>

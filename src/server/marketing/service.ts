@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import type { BusinessMediaAsset } from "../../lib/business-media";
 import type {
   MarketingCommand,
   MarketingData,
@@ -13,6 +14,15 @@ import { syncProductionReceipt } from "../billing/service";
 import { checkoutConfiguration } from "../paypal/runtime";
 import { debitWallet, readCreditMovements, readWalletRate, walletBalance } from "../wallet/service";
 import { createCreditTopUp, lockWalletRate, setCreditRate } from "../wallet/topup";
+import { readAdPricing } from "./ad-pricing";
+import {
+  briefFingerprint,
+  campaignKey,
+  campaignProjection,
+  checkCampaignQuote,
+  parseCampaignBrief,
+  saveCampaignBrief,
+} from "./campaigns";
 import { buyCategoryPromotion } from "./category-promotion";
 import { holdsQuotePayment, payableQuote, pendingQuoteOrder } from "./online-quote";
 import { packagePromotions, paidPromotions } from "./read";
@@ -67,7 +77,19 @@ export function parseMarketingCommand(v: unknown): MarketingCommand {
     return { action, id, businessId: row.businessId, expectedCreditMinor: row.expectedCreditMinor };
   }
   if (action === "request") {
-    keys(["action", "id", "kind", "quantity", "businessId"]);
+    keys(["action", "id", "kind", "quantity", "businessId", "campaign"]);
+    if (row.campaign !== undefined) {
+      if (row.kind !== "banner" || !amount(row.quantity, 90) || !uuid(row.businessId))
+        fail(400, "INVALID_CAMPAIGN");
+      return {
+        action,
+        id,
+        kind: "banner",
+        businessId: row.businessId,
+        quantity: row.quantity,
+        campaign: parseCampaignBrief(row.campaign),
+      };
+    }
     if (row.kind === "credits" && amount(row.quantity, 100000) && row.businessId === undefined)
       return { action, id, kind: row.kind, quantity: row.quantity };
     if (isPlacement(row.kind) && amount(row.quantity, 90) && uuid(row.businessId))
@@ -75,9 +97,25 @@ export function parseMarketingCommand(v: unknown): MarketingCommand {
     if (isProductionService(row.kind) && row.quantity === 1 && uuid(row.businessId))
       return { action, id, kind: row.kind, quantity: 1, businessId: row.businessId };
   } else if (action === "quote") {
-    keys(["action", "id", "amountMinor", "instructions", "creditPrice"]);
+    keys([
+      "action",
+      "id",
+      "amountMinor",
+      "instructions",
+      "creditPrice",
+      "campaignBenefit",
+      "offerStandardTargeting",
+      "expectedAssetVersion",
+    ]);
     if (
       amount(row.amountMinor, 100000000) &&
+      (row.expectedAssetVersion === undefined ||
+        row.expectedAssetVersion === 0 ||
+        amount(row.expectedAssetVersion, 2147483647)) &&
+      (row.offerStandardTargeting === undefined || row.offerStandardTargeting === true) &&
+      (row.campaignBenefit === undefined ||
+        row.campaignBenefit === "advance" ||
+        row.campaignBenefit === "welcome") &&
       validText(row.instructions, 600) &&
       (row.creditPrice === undefined ||
         (validCreditBalance(row.creditPrice) && row.creditPrice > 0 && row.creditPrice <= 100000))
@@ -88,6 +126,11 @@ export function parseMarketingCommand(v: unknown): MarketingCommand {
         amountMinor: row.amountMinor,
         instructions: row.instructions.trim(),
         creditPrice: row.creditPrice,
+        ...(row.expectedAssetVersion !== undefined
+          ? { expectedAssetVersion: row.expectedAssetVersion }
+          : {}),
+        ...(row.offerStandardTargeting === true ? { offerStandardTargeting: true as const } : {}),
+        ...(row.campaignBenefit ? { campaignBenefit: row.campaignBenefit } : {}),
       };
   } else if (action === "confirm") {
     keys(["action", "id", "amountMinor", "reference"]);
@@ -120,6 +163,8 @@ type LockedOrder = {
   wallet_payment_id: string | null;
   online_checkout_id: string | null;
   bank_reference: string | null;
+  campaign_key: string | null;
+  request_fingerprint?: string | null;
 };
 async function validBusiness(
   client: PoolClient,
@@ -181,9 +226,12 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           SELECT o.id,o.kind,o.status,o.quantity,o.amount_minor AS "amountMinor",(o.wallet_price_minor::double precision/100) AS "creditPrice",
             o.revoked_at::text AS "revokedAt",(o.status='quoted' AND EXISTS (SELECT 1 FROM paypal_checkout_order p WHERE p.quote_id=o.id AND p.environment='live'
               AND ${holdsQuotePayment})) AS "onlinePending",
-            o.instructions,b.title AS "businessTitle",u.name AS customer,o.starts_at::text AS "startsAt",
+            ${campaignProjection},o.instructions,b.title AS "businessTitle",u.name AS customer,o.starts_at::text AS "startsAt",
             CASE WHEN o.ends_at IS NOT NULL THEN LEAST(o.ends_at,o.revoked_at)::text END AS "endsAt",o.production_receipt_conflict AS "productionReceiptConflict"
           FROM marketing_order o JOIN auth_user u ON u.id=o.account_id LEFT JOIN directory_business b ON b.id=o.business_id
+          LEFT JOIN marketing_campaign_brief c ON c.order_id=o.id
+          LEFT JOIN directory_category dc ON dc.id=c.category_id
+          LEFT JOIN marketing_ad_totals stats ON stats.order_id=o.id
           WHERE ($2::text='admin' OR (o.account_id=$1 AND (o.kind='credits')=($2='credits')))
           ORDER BY CASE o.status WHEN 'requested' THEN 0 WHEN 'quoted' THEN 1 WHEN 'paid' THEN 2 ELSE 3 END,o.created_at DESC,o.id LIMIT 21 OFFSET $3`,
             [actor.id, mode, page * 20],
@@ -192,8 +240,17 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
         const businesses =
           mode === "ads"
             ? (
-                await client.query<{ id: string; title: string; adEligible: boolean }>(
-                  "SELECT id,title,(status='published' AND package_allows_listing(b)) AS \"adEligible\" FROM directory_business b WHERE owner_user_id=$1 AND deleted_at IS NULL AND status<>'archived' ORDER BY title,id",
+                await client.query<{
+                  id: string;
+                  title: string;
+                  adEligible: boolean;
+                  website: boolean;
+                  assets: BusinessMediaAsset[];
+                }>(
+                  `SELECT b.id,b.title,(b.website_url ~ '^https://') IS TRUE AS website,(b.status='published' AND package_allows_listing(b)) AS "adEligible",
+                     COALESCE((SELECT jsonb_agg(jsonb_build_object('kind',i.kind,'slot',i.slot,'version',i.version,'width',i.width,'height',i.height) ORDER BY i.kind,i.slot)
+                               FROM directory_business_image i WHERE i.business_id=b.id),'[]'::jsonb) AS assets
+                   FROM directory_business b WHERE b.owner_user_id=$1 AND deleted_at IS NULL AND status<>'archived' ORDER BY title,id`,
                   [actor.id],
                 )
               ).rows
@@ -207,7 +264,16 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           movements: mode === "credits" ? await readCreditMovements(client, actor.id) : undefined,
           businesses: businesses
             .filter((b) => b.adEligible)
-            .map(({ id, title }) => ({ id, title })),
+            .map(({ id, title, website, assets }) => ({ id, title, website, assets })),
+          adPricing: mode === "ads" ? await readAdPricing(client) : undefined,
+          categories:
+            mode === "ads"
+              ? (
+                  await client.query<{ id: string; name: string }>(
+                    "SELECT id,name FROM directory_category ORDER BY name,id",
+                  )
+                ).rows
+              : undefined,
           productionBusinesses: businesses.map(({ id, title }) => ({ id, title })),
           promotions: mode === "ads" ? await paidPromotions(client, actor.id) : [],
           included: mode === "ads" ? await packagePromotions(client, actor.id) : [],
@@ -234,7 +300,7 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
         if (command.action === "request") {
           const prior = (
             await client.query<LockedOrder>(
-              "SELECT * FROM marketing_order WHERE id=$1 FOR UPDATE",
+              "SELECT o.*,c.request_fingerprint FROM marketing_order o LEFT JOIN marketing_campaign_brief c ON c.order_id=o.id WHERE o.id=$1 FOR UPDATE OF o",
               [command.id],
             )
           ).rows[0];
@@ -243,7 +309,9 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
               prior.account_id !== actor.id ||
               prior.kind !== command.kind ||
               prior.quantity !== command.quantity ||
-              prior.business_id !== (command.businessId ?? null)
+              prior.business_id !== (command.businessId ?? null) ||
+              (prior.request_fingerprint ?? null) !==
+                (command.campaign ? briefFingerprint(command.campaign) : null)
             )
               fail(409, "OFFER_CHANGED");
             return { id: command.id };
@@ -257,17 +325,30 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
             command.businessId &&
             (
               await client.query(
-                "SELECT id FROM marketing_order WHERE business_id=$1 AND kind=$2 AND status='paid' AND revoked_at IS NULL AND ends_at>now()",
-                [command.businessId, command.kind],
+                "SELECT id FROM marketing_order WHERE business_id=$1 AND kind=$2 AND campaign_key IS NOT DISTINCT FROM $3::text AND status='paid' AND revoked_at IS NULL AND ends_at>now()",
+                [
+                  command.businessId,
+                  command.kind,
+                  command.campaign ? campaignKey(command.campaign) : null,
+                ],
               )
             ).rowCount
           )
             fail(409, "ACTIVE_BANNER");
           const result = await client.query(
-            `INSERT INTO marketing_order(id,account_id,kind,business_id,quantity) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING RETURNING id`,
-            [command.id, actor.id, command.kind, command.businessId ?? null, command.quantity],
+            `INSERT INTO marketing_order(id,account_id,kind,business_id,quantity,campaign_key) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING RETURNING id`,
+            [
+              command.id,
+              actor.id,
+              command.kind,
+              command.businessId ?? null,
+              command.quantity,
+              command.campaign ? campaignKey(command.campaign) : null,
+            ],
           );
           if (!result.rowCount) fail(409, "OPEN_OFFER");
+          if (command.campaign && command.businessId)
+            await saveCampaignBrief(client, command.id, command.businessId, command.campaign);
           return { id: command.id };
         }
         // Lock matching listing before the order, as the ownership trigger also locks in this order.
@@ -297,10 +378,24 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           fail(409, "QUOTE_PAYMENT_PENDING");
         if (command.action === "quote") {
           if (includedUntil) fail(409, "INCLUDED_IN_PACKAGE");
+          if (
+            (command.offerStandardTargeting && !order.campaign_key) ||
+            (command.campaignBenefit && (!order.campaign_key || command.creditPrice !== undefined))
+          )
+            fail(400, "INVALID_CAMPAIGN");
+          if (order.campaign_key)
+            await checkCampaignQuote(
+              client,
+              command.id,
+              command.amountMinor,
+              command.campaignBenefit,
+              command.offerStandardTargeting,
+              command.expectedAssetVersion ?? 0,
+            );
           if (order.status !== "requested" || (command.creditPrice && !isPlacement(order.kind)))
             fail(409, "OFFER_CHANGED");
           await client.query(
-            "UPDATE marketing_order SET status='quoted',amount_minor=$2,instructions=$3,credit_price=$4,quoted_at=now(),quoted_by=$5,wallet_price_minor=$6 WHERE id=$1",
+            "UPDATE marketing_order SET status='quoted',amount_minor=$2,instructions=$3,credit_price=$4,quoted_at=now(),quoted_by=$5,wallet_price_minor=$6,campaign_benefit=$7 WHERE id=$1",
             [
               command.id,
               command.amountMinor,
@@ -314,6 +409,7 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
                   : quoteRate === null
                     ? null
                     : creditsForBamMinor(command.amountMinor, quoteRate),
+              command.campaignBenefit ?? null,
             ],
           );
         } else if (command.action === "close") {
@@ -349,8 +445,8 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           if (order.status !== "quoted") fail(409, "OFFER_CHANGED");
           if (isPlacement(order.kind)) {
             const active = await client.query(
-              "SELECT id FROM marketing_order WHERE business_id=$1 AND kind=$2 AND status='paid' AND revoked_at IS NULL AND ends_at>clock_timestamp()",
-              [order.business_id, order.kind],
+              "SELECT id FROM marketing_order WHERE business_id=$1 AND kind=$2 AND campaign_key IS NOT DISTINCT FROM $3::text AND status='paid' AND revoked_at IS NULL AND ends_at>clock_timestamp()",
+              [order.business_id, order.kind, order.campaign_key],
             );
             if (active.rowCount) fail(409, "ACTIVE_BANNER");
           }

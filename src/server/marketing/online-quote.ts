@@ -32,7 +32,7 @@ export async function payableQuote(
            ELSE b.status='published' AND package_allows_listing(b) AND
              (o.kind<>'nearby' OR (b.latitude IS NOT NULL AND b.longitude IS NOT NULL)) END))
        AND NOT EXISTS (SELECT 1 FROM marketing_order other WHERE other.business_id=o.business_id
-         AND other.kind=o.kind AND other.status='paid' AND other.revoked_at IS NULL AND other.ends_at>now())
+         AND other.kind=o.kind AND other.campaign_key IS NOT DISTINCT FROM o.campaign_key AND other.status='paid' AND other.revoked_at IS NULL AND other.ends_at>now())
      ${lock ? "FOR UPDATE OF o" : ""}`,
     [quoteId, accountId],
   );

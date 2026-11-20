@@ -1,3 +1,4 @@
+import { type CampaignSelection, campaignPath, readCampaignSelection } from "./ad-brief";
 import { adminReturnPath } from "./admin-navigation";
 import { bookingReturnPath } from "./booking-return";
 import {
@@ -61,10 +62,13 @@ export function readAccountNavigation(params: URLSearchParams): {
   businessThread?: string;
   calendarTarget?: CalendarTarget;
   placementTarget?: PlacementTarget;
+  campaign?: CampaignSelection;
 } {
   const values = params.getAll("odjeljak");
   const section =
     params.size === 0 ? "overview" : accountSection(values.length === 1 ? values[0] : undefined);
+  const campaign = readCampaignSelection(params);
+  if (campaign) return { section, campaign, invalidMessageTarget: false };
   const placementTarget = readPlacementTarget(params);
   if (placementTarget) return { section, placementTarget, invalidMessageTarget: false };
   const calendarTarget = readCalendarTarget(params);
@@ -95,6 +99,8 @@ export function accountReturnPath(value: unknown): string {
   if (value === productionRequestPath) return value;
   if (value.startsWith("/nalog?")) {
     const params = new URLSearchParams(value.slice(7));
+    const campaign = readCampaignSelection(params);
+    if (campaign && value === campaignPath(campaign)) return value;
     const placement = readPlacementTarget(params);
     if (placement && value === placementOfferPath(placement)) return value;
     const calendar = readCalendarTarget(params),

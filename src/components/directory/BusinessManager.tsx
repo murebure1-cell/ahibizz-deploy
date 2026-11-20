@@ -1734,7 +1734,7 @@ export function BusinessManager({
                         prefetch={false}
                         href={placementOfferPath({ businessId: item.id, placement: "banner" })}
                       >
-                        <span>Baner na početnoj</span>
+                        <span>Reklamna kampanja</span>
                         <Icon name="chevron" />
                       </Link>
                     </nav>

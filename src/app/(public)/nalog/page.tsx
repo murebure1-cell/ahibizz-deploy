@@ -7,6 +7,7 @@ import {
   accountSection,
   productionRequestPath,
 } from "../../../lib/account-return";
+import { campaignPath, readCampaignSelection } from "../../../lib/ad-brief";
 import {
   businessInquiryPath,
   ownerCalendarPath,
@@ -35,6 +36,7 @@ export default async function AccountPage({
   for (const [name, values] of Object.entries(query))
     for (const value of Array.isArray(values) ? values : values === undefined ? [] : [values])
       params.append(name, value);
+  const campaign = readCampaignSelection(params);
   const placement = readPlacementTarget(params);
   const calendar = readCalendarTarget(params),
     inquiry = readBusinessInquiry(params);
@@ -48,19 +50,21 @@ export default async function AccountPage({
   const continuation = invalidMessageTarget
     ? "/nalog"
     : accountReturnPath(
-        placement
-          ? placementOfferPath(placement)
-          : calendar
-            ? ownerCalendarPath(calendar)
-            : inquiry
-              ? businessInquiryPath(inquiry)
-              : messageTarget
-                ? messageLink(messageTarget)
-                : query.odjeljak === "oglasi" && query.usluga === "produkcija"
-                  ? productionRequestPath
-                  : typeof query.odjeljak === "string"
-                    ? `/nalog?odjeljak=${encodeURIComponent(query.odjeljak)}`
-                    : "/nalog",
+        campaign
+          ? campaignPath(campaign)
+          : placement
+            ? placementOfferPath(placement)
+            : calendar
+              ? ownerCalendarPath(calendar)
+              : inquiry
+                ? businessInquiryPath(inquiry)
+                : messageTarget
+                  ? messageLink(messageTarget)
+                  : query.odjeljak === "oglasi" && query.usluga === "produkcija"
+                    ? productionRequestPath
+                    : typeof query.odjeljak === "string"
+                      ? `/nalog?odjeljak=${encodeURIComponent(query.odjeljak)}`
+                      : "/nalog",
       );
   let profile: SafeAccountProfile | undefined;
   try {

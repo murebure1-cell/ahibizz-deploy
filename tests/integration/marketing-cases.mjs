@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { createPublicDirectoryService } from "../../src/server/directory/read-service.ts";
 import { readActiveBanner } from "../../src/server/marketing/read.ts";
 import { createMarketingService } from "../../src/server/marketing/service.ts";
+import { verifyCampaignBriefs } from "./ad-campaign-cases.mjs";
+import { verifyAdDelivery } from "./ad-delivery-cases.mjs";
 export async function packageMarketingProbe({ pool, auth, admin, person }) {
   const service = createMarketingService(auth, pool),
     directory = createPublicDirectoryService({ database: pool });
@@ -145,6 +147,7 @@ export async function verifyMarketing({ auth, pool, owner, member, second, categ
   const listing = (await read(member, "ads")).orders[0];
   assert.ok(listing.endsAt);
   assert.equal(listing.status, "paid");
+  await verifyAdDelivery({ pool, business, banner, member, owner, category });
   await assert.rejects(
     command(member, { ...bannerRequest, id: randomUUID() }),
     (e) => e.code === "ACTIVE_BANNER",
@@ -216,6 +219,7 @@ export async function verifyMarketing({ auth, pool, owner, member, second, categ
     (await directory.listPublic(near)).items.map((b) => b.id),
     [closer, business],
   );
+  await verifyCampaignBriefs({ pool, store, business, member, second, owner });
   // Release the one-listing allowance used by this fixture before the independent billing suite.
   await pool.query("DELETE FROM marketing_order WHERE business_id=$1", [business]);
   await pool.query("DELETE FROM directory_business WHERE id=ANY($1::uuid[])", [[business, closer]]);

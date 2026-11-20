@@ -33,6 +33,7 @@ export function PublicBusinessProfile({
   messageHref,
   rental,
   accommodation,
+  sponsor,
 }: {
   business: PublicBusinessView;
   backHref?: string | null;
@@ -42,6 +43,7 @@ export function PublicBusinessProfile({
   messageHref?: string;
   rental?: ReactNode;
   accommodation?: ReactNode;
+  sponsor?: ReactNode;
 }) {
   const links = businessContactLinks(business);
   const point = publicBusinessPoint(business);
@@ -211,6 +213,7 @@ export function PublicBusinessProfile({
           )}
         </div>
       </header>
+      {sponsor}
 
       <nav className={styles.sectionNavigation} aria-label="Na ovoj stranici">
         {hasAbout && <a href="#business-about">O djelatnosti</a>}

@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Fragment } from "react";
 import { DirectoryResultCard } from "../../../components/directory/DirectoryResultCard";
 import { DirectorySearchForm } from "../../../components/directory/DirectorySearchForm";
 import styles from "../../../components/directory/public-search.module.css";
 import { EmptyDirectory } from "../../../components/EmptyDirectory";
+import { CampaignAd } from "../../../components/marketing/CampaignAd";
+import adStyles from "../../../components/marketing/campaign-ad.module.css";
 import {
   type DirectorySearchParams,
   directorySearchSuffix,
@@ -15,6 +18,7 @@ import {
   type PublicDirectoryBusiness,
 } from "../../../server/directory";
 import { publicBusinessView } from "../../../server/directory/public-view";
+import { publicPageAds } from "../../../server/marketing/ad-delivery";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Istraži djelatnosti" };
@@ -34,6 +38,12 @@ export default async function SearchPage({
     page = rawPage && /^\d{1,3}$/.test(rawPage) ? Number(rawPage) : 1;
   const featuredOnly = params.istaknute === "kategorija" ? "category" : params.istaknute === "1";
   const openNow = params.otvoreno === "1";
+  const campaigns = publicPageAds({
+    page: !query && (categoryId || subcategoryId) ? "category" : "search",
+    city,
+    categoryIds: [categoryId, subcategoryId].filter(Boolean),
+    keyword: query,
+  });
   let checkedAt: string | undefined, total: number | undefined;
   let items: PublicDirectoryBusiness[] = [],
     categories: DirectoryCategory[] = [],
@@ -87,6 +97,8 @@ export default async function SearchPage({
     },
   ] as const;
   const filtered = Boolean(query || city || categoryId || subcategoryId || featuredOnly || openNow);
+  const candidates = (await campaigns).main;
+  const inlineAd = !invalidFilters && <CampaignAd candidates={candidates} region="inline" />;
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <header className={styles.intro}>
@@ -103,80 +115,86 @@ export default async function SearchPage({
         subcategoryId={subcategoryId}
         categories={categories}
       />
-      <section aria-label="Rezultati pretrage">
-        <div className={styles.resultsHeading}>
-          <h2>
-            {filtered ? "Rezultati pretrage" : "Sve djelatnosti"}
-            {total !== undefined && (
-              <span className={styles.count} aria-live="polite">
-                {" "}
-                ({total})
-              </span>
-            )}
-          </h2>
-          {filtered && !invalidFilters && <Link href="/pretraga">Očisti pretragu</Link>}
-        </div>
-        {filtered && available && (
-          <ul className={styles.activeFilters} aria-label="Primijenjeni filteri">
-            {activeFilters.map(({ key, label }) => {
-              if (!label) return null;
-              const remaining = { ...params, page: undefined, [key]: undefined };
-              if (key === "categoryId") remaining.subcategoryId = undefined;
-              return (
-                <li key={key}>
-                  <Link
-                    href={`/pretraga${directorySearchSuffix(remaining)}`}
-                    aria-label={`Ukloni filter: ${label}`}
-                  >
-                    <span>{label}</span>
-                    <span aria-hidden="true">×</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {invalidFilters ? (
-          <div role="alert" className={styles.unavailable}>
-            <h2>Provjeri filtere pretrage.</h2>
-            <Link className="text-link" href="/pretraga">
-              Poništi filtere
-            </Link>
+      <div className={adStyles.withResults}>
+        {!invalidFilters && <CampaignAd candidates={candidates} region="elsewhere" />}
+        <section aria-label="Rezultati pretrage">
+          <div className={styles.resultsHeading}>
+            <h2>
+              {filtered ? "Rezultati pretrage" : "Sve djelatnosti"}
+              {total !== undefined && (
+                <span className={styles.count} aria-live="polite">
+                  {" "}
+                  ({total})
+                </span>
+              )}
+            </h2>
+            {filtered && !invalidFilters && <Link href="/pretraga">Očisti pretragu</Link>}
           </div>
-        ) : !available ? (
-          <div role="status" className={styles.unavailable}>
-            <h2>Imenik trenutno nije dostupan.</h2>
-            <p>Pokušaj ponovo kasnije.</p>
-          </div>
-        ) : items.length ? (
-          <div className={styles.grid}>
-            {items.map((item) => (
-              <DirectoryResultCard
-                key={item.id}
-                business={publicBusinessView(item, categories)}
-                searchSuffix={sourceQuery}
-                checkedAt={checkedAt}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyDirectory
-            filtered={filtered}
-            withoutOpenFilter={
-              openNow && total === 0
-                ? `/pretraga${directorySearchSuffix({ ...params, otvoreno: undefined, page: undefined })}`
-                : undefined
-            }
-          />
-        )}
-        {available && (page > 1 || hasMore) && (
-          <nav className={styles.pagination} aria-label="Stranice rezultata">
-            {page > 1 && <Link href={pageHref(page - 1)}>Prethodna</Link>}
-            <span>Stranica {page}</span>
-            {hasMore && <Link href={pageHref(page + 1)}>Sljedeća</Link>}
-          </nav>
-        )}
-      </section>
+          {filtered && available && (
+            <ul className={styles.activeFilters} aria-label="Primijenjeni filteri">
+              {activeFilters.map(({ key, label }) => {
+                if (!label) return null;
+                const remaining = { ...params, page: undefined, [key]: undefined };
+                if (key === "categoryId") remaining.subcategoryId = undefined;
+                return (
+                  <li key={key}>
+                    <Link
+                      href={`/pretraga${directorySearchSuffix(remaining)}`}
+                      aria-label={`Ukloni filter: ${label}`}
+                    >
+                      <span>{label}</span>
+                      <span aria-hidden="true">×</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {invalidFilters ? (
+            <div role="alert" className={styles.unavailable}>
+              <h2>Provjeri filtere pretrage.</h2>
+              <Link className="text-link" href="/pretraga">
+                Poništi filtere
+              </Link>
+            </div>
+          ) : !available ? (
+            <div role="status" className={styles.unavailable}>
+              <h2>Imenik trenutno nije dostupan.</h2>
+              <p>Pokušaj ponovo kasnije.</p>
+            </div>
+          ) : items.length ? (
+            <div className={styles.grid}>
+              {items.map((item, index) => (
+                <Fragment key={item.id}>
+                  <DirectoryResultCard
+                    business={publicBusinessView(item, categories)}
+                    searchSuffix={sourceQuery}
+                    checkedAt={checkedAt}
+                  />
+                  {index === Math.min(items.length, 2) - 1 && inlineAd}
+                </Fragment>
+              ))}
+            </div>
+          ) : (
+            <EmptyDirectory
+              filtered={filtered}
+              withoutOpenFilter={
+                openNow && total === 0
+                  ? `/pretraga${directorySearchSuffix({ ...params, otvoreno: undefined, page: undefined })}`
+                  : undefined
+              }
+            />
+          )}
+          {available && items.length === 0 && inlineAd}
+          {available && (page > 1 || hasMore) && (
+            <nav className={styles.pagination} aria-label="Stranice rezultata">
+              {page > 1 && <Link href={pageHref(page - 1)}>Prethodna</Link>}
+              <span>Stranica {page}</span>
+              {hasMore && <Link href={pageHref(page + 1)}>Sljedeća</Link>}
+            </nav>
+          )}
+        </section>
+      </div>
     </main>
   );
 }

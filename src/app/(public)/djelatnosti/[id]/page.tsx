@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { PublicBooking } from "../../../../components/booking/PublicBooking";
 import { PublicBusinessProfile } from "../../../../components/directory/PublicBusinessProfile";
 import styles from "../../../../components/directory/public-search.module.css";
+import { CampaignAd } from "../../../../components/marketing/CampaignAd";
+import adStyles from "../../../../components/marketing/campaign-ad.module.css";
 import { RentalFleet } from "../../../../components/rentals/RentalFleet";
 import { StayUnits } from "../../../../components/stays/StayUnits";
 import {
@@ -13,6 +15,7 @@ import {
 import { getBookingService } from "../../../../server/booking";
 import { DirectoryAccessError, getPublicDirectoryService } from "../../../../server/directory";
 import { publicBusinessView } from "../../../../server/directory/public-view";
+import { publicPageAds } from "../../../../server/marketing/ad-delivery";
 import { getRentalService } from "../../../../server/rentals/service";
 import { getStayService } from "../../../../server/stays/service";
 
@@ -50,9 +53,25 @@ export default async function PublicBusinessPage({
       const stayCatalog = stays.status === "fulfilled" ? (stays.value ?? undefined) : undefined;
       const initialCatalog =
         catalog.status === "fulfilled" ? (catalog.value ?? undefined) : undefined;
+      const offerings = [
+        ...(booking.status === "fulfilled" && booking.value?.enabled ? booking.value.services : []),
+        ...(initialCatalog?.vehicles ?? []),
+        ...(stayCatalog?.units ?? []),
+      ];
+      const ads = await publicPageAds({
+        page: "listing",
+        listingId: id,
+        city: business.city ?? "",
+        categoryIds: [business.categoryId, business.subcategoryId].filter((v): v is string =>
+          Boolean(v),
+        ),
+        publishedPrices: [...new Set(offerings.map((s) => s.priceMinor))],
+      });
       return (
-        <main id="glavni-sadrzaj">
+        <main id="glavni-sadrzaj" className={adStyles.withResults}>
+          <CampaignAd candidates={ads.main} region="elsewhere" />
           <PublicBusinessProfile
+            sponsor={<CampaignAd candidates={ads.main} region="inline" />}
             backHref={`/pretraga${directorySearchSuffix(search)}`}
             business={publicBusinessView(business, categories)}
             accommodation={

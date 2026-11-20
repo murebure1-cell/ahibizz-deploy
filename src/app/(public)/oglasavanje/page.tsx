@@ -1,38 +1,254 @@
 import Link from "next/link";
-import styles from "../../../components/support/resources.module.css";
+import { Icon, type IconName } from "../../../components/Icon";
+import { AdExplorer } from "../../../components/marketing/AdExplorer";
+import styles from "../../../components/marketing/ad-guide.module.css";
+import { volumeLabels } from "../../../lib/ad-pricing";
+import { IS_PLAY_EDITION } from "../../../lib/distribution";
+import { supportEmail } from "../../../lib/support-requests";
+import { publicAdAudience } from "../../../server/marketing/ad-delivery";
+import { getPublicAdPricing } from "../../../server/marketing/ad-pricing";
 
-export const metadata = { title: "Isticanje djelatnosti" };
+export const metadata = {
+  title: "Oglašavanje na AhiBizzu",
+  description:
+    "Pregledaj pozicije oglasa na telefonu i računaru, izračunaj cijenu kampanje i zatraži ponudu za svoju djelatnost.",
+};
+export const dynamic = "force-dynamic";
 
-export default function PromotionPage() {
+const targeting: { title: string; detail: string; icon: IconName }[] = [
+  {
+    title: "Lokacija",
+    detail: "Grad koji posjetilac traži ili grad djelatnosti koju gleda.",
+    icon: "pin",
+  },
+  { title: "Vrijeme", detail: "Datum početka i trajanje prikazivanja kampanje.", icon: "calendar" },
+  { title: "Kategorija", detail: "Djelatnosti u odabranoj poslovnoj kategoriji.", icon: "shop" },
+  { title: "Ključna riječ", detail: "Upit koji posjetilac unese u pretragu.", icon: "search" },
+  {
+    title: "Raspon cijena",
+    detail: "Poslovni profili s objavljenom uslugom ili ponudom u odabranom rasponu cijena.",
+    icon: "card",
+  },
+  {
+    title: "Spol",
+    detail:
+      "Na poslovnim profilima, za posjetioce koji su sami uključili ovu postavku oglasa. Izuzete su kreditne ponude.",
+    icon: "people",
+  },
+];
+const formatNumber = (value: number) => new Intl.NumberFormat("bs-BA").format(value);
+
+export default async function PromotionPage() {
+  const [pricing, audience] = await Promise.all([getPublicAdPricing(), publicAdAudience()]);
+  const contactPhone =
+    pricing?.contactPhone && /^\+[1-9]\d{6,14}$/.test(pricing.contactPhone)
+      ? pricing.contactPhone
+      : null;
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
-      <Link href="/">Početna</Link>
-      <h1>Isticanje djelatnosti</h1>
-      <section className={styles.section}>
-        <h2>U kategoriji</h2>
-        <p>
-          Tvoja objavljena djelatnost ima prednost u svojoj kategoriji i ulazi u izbor istaknutih na
-          početnoj. Isticanje traje 7 dana i košta 10 KM.
-        </p>
-        <Link href="/naplata">Odaberi djelatnost</Link>
+      <header className={styles.hero}>
+        <div className={styles.heroContent}>
+          <h1>
+            Oglašavanje na <em>AhiBizzu.</em>
+          </h1>
+          <p>
+            Predstavi svoju djelatnost ljudima koji traže usluge u tvom gradu i širom poslovne
+            mreže.
+          </p>
+          <div className={styles.heroButtons}>
+            <a className={styles.primary} href="#pozicije">
+              Pregledaj pozicije <Icon name="arrow" />
+            </a>
+            <a href={`mailto:${supportEmail}?subject=Upit%20za%20ogla%C5%A1avanje`}>
+              <Icon name="mail" /> Piši nam
+            </a>
+            {contactPhone && (
+              <a href={`tel:${contactPhone}`}>
+                <Icon name="phone" /> Pozovi
+              </a>
+            )}
+          </div>
+        </div>
+      </header>
+      <nav className={styles.nav} aria-label="Dijelovi vodiča za oglašavanje">
+        <a href="#pozicije">Pozicije</a>
+        <a href="#cjenovnik">Cjenovnik</a>
+        <a href="#ciljanje">Ciljanje</a>
+        <a href="#publika">Publika</a>
+        <a href="#uslovi">Uslovi</a>
+      </nav>
+      <AdExplorer pricing={pricing} />
+      <section className={styles.section} id="ciljanje">
+        <h2>Kome se kampanja prikazuje?</h2>
+        <div className={`${styles.tiles} ${styles.targetTiles}`}>
+          {targeting.map((t) => (
+            <article key={t.title}>
+              <Icon name={t.icon} />
+              <h3>{t.title}</h3>
+              <p>{t.detail}</p>
+            </article>
+          ))}
+        </div>
       </section>
-      <section className={styles.section}>
-        <h2>Na lokaciji</h2>
-        <p>
-          Posjetioci koji su u blizini ili pretražuju tvoj grad vide te među lokalno istaknutim
-          djelatnostima. U Mojim oglasima odaberi „Isticanje u blizini“ i broj dana.
-        </p>
-        <Link href="/nalog?odjeljak=oglasi">Otvori moje oglase</Link>
+      <section className={styles.section} id="publika">
+        <h2>Publika AhiBizza</h2>
+        {audience && audience.impressions > 0 ? (
+          <>
+            <p className={styles.note}>
+              Izmjereni rezultati kampanja u posljednjih 30 dana. Jedna osoba može ostvariti više
+              prikaza.
+            </p>
+            <dl className={styles.metrics}>
+              {(
+                [
+                  ["Prikazi", audience.impressions],
+                  ["Klikovi", audience.clicks],
+                  ["Prikazi na telefonu", audience.mobile],
+                  ["Prikazi na računaru", audience.desktop],
+                ] as const
+              ).map(([label, total]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{formatNumber(total)}</dd>
+                </div>
+              ))}
+            </dl>
+            <h3>Prikazi prema platformi</h3>
+            <dl className={styles.platforms}>
+              {(
+                [
+                  ["Android", audience.platforms.android],
+                  ["iOS", audience.platforms.ios],
+                  ["Desktop", audience.platforms.desktop],
+                  ["Ostalo", audience.platforms.other],
+                ] as const
+              ).map(([label, total]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{formatNumber(total)}</dd>
+                </div>
+              ))}
+            </dl>
+          </>
+        ) : (
+          <p>Za posljednjih 30 dana još nema dostupne statistike prikazivanja kampanja.</p>
+        )}
       </section>
-      <section className={styles.section}>
-        <h2>Na početnoj stranici</h2>
-        <p>Oglas može biti baner ili istaknuta djelatnost koju vide posjetioci iz svih gradova.</p>
-        <Link href="/nalog?odjeljak=oglasi">Zatraži ponudu za početnu</Link>
+      <section id="uslovi" className={styles.section}>
+        <h2>Uslovi oglašavanja</h2>
+        <div className={styles.panels}>
+          <article>
+            <h3>Popusti na kampanje</h3>
+            {pricing ? (
+              <>
+                <dl className={styles.discountList}>
+                  {volumeLabels.map((label, i) => (
+                    <div key={label}>
+                      <dt>{label} prikaza</dt>
+                      <dd>{pricing.terms.volumePercent[i]}%</dd>
+                    </div>
+                  ))}
+                  <div>
+                    <dt>Avansni popust</dt>
+                    <dd>{pricing.terms.advancePercent}%</dd>
+                  </div>
+                  <div>
+                    <dt>Popust dobrodošlice</dt>
+                    <dd>{pricing.terms.welcomePercent}%</dd>
+                  </div>
+                </dl>
+                <p>
+                  Primjenjuje se najveći odobreni popust. Minimalni zakup banera iznosi{" "}
+                  {formatNumber(pricing.terms.minimumMinor / 100)} KM.
+                </p>
+              </>
+            ) : (
+              <p>Za uslove zakupa zatraži ponudu.</p>
+            )}
+          </article>
+          <article>
+            <h3>Priprema oglasa</h3>
+            <ul className={styles.specs}>
+              <li>
+                Pripremi sliku u dimenzijama odabranog formata. U pregledu možeš isprobati JPG, PNG,
+                WebP ili GIF do 1.000 KB.
+              </li>
+              <li>
+                Za objavu odaberi fotografiju svoje djelatnosti ili priloži pripremljeni JPG, PNG,
+                WebP, GIF, MP4 ili HTML5 do 1.000 KB. Tim pregleda materijal prije slanja ponude.
+              </li>
+              <li>
+                HTML5 baner pripremi u jednoj datoteci s ugrađenim slikama i stilovima, bez vanjskih
+                skripti i praćenja posjetilaca.
+              </li>
+              <li>
+                U ponudi vidiš cijenu i uslove prije plaćanja karticom, PayPalom ili Ahi kreditima.
+              </li>
+            </ul>
+          </article>
+        </div>
       </section>
-      <section className={styles.section}>
-        <h2>Isticanje uz paket</h2>
-        <p>Poslovni i Premium paket uključuju dane isticanja za tvoju djelatnost.</p>
-        <Link href="/paketi">Uporedi pakete</Link>
+      {!IS_PLAY_EDITION && (
+        <section className={styles.section}>
+          <h2>Isticanje djelatnosti</h2>
+          <div className={styles.tiles}>
+            <article>
+              <Icon name="shop" />
+              <h3>U kategoriji</h3>
+              <p>Istakni objavljenu djelatnost na 7 dana za 10 KM.</p>
+              <Link href="/naplata">
+                Odaberi djelatnost <Icon name="chevron" />
+              </Link>
+            </article>
+            <article>
+              <Icon name="pin" />
+              <h3>U blizini</h3>
+              <p>Istakni se među djelatnostima na svojoj lokaciji.</p>
+              <Link href="/nalog?odjeljak=oglasi">
+                Moji oglasi <Icon name="chevron" />
+              </Link>
+            </article>
+            <article>
+              <Icon name="home" />
+              <h3>Na početnoj</h3>
+              <p>Predstavi se posjetiocima iz svih gradova.</p>
+              <Link href="/nalog?odjeljak=oglasi">
+                Zatraži isticanje <Icon name="chevron" />
+              </Link>
+            </article>
+            <article>
+              <Icon name="star" />
+              <h3>Uz paket</h3>
+              <p>Provjeri dane isticanja u Poslovnom ili Premium paketu.</p>
+              <Link href="/paketi">
+                Uporedi pakete <Icon name="chevron" />
+              </Link>
+            </article>
+          </div>
+        </section>
+      )}
+      <section className={styles.contact}>
+        <div>
+          <h2>Razgovarajmo o tvojoj kampanji</h2>
+          <p>Pošalji nam cilj, termin i budžet.</p>
+        </div>
+        <a href={`mailto:${supportEmail}?subject=Upit%20za%20kampanju`}>
+          <Icon name="mail" />
+          {supportEmail}
+        </a>
+        {contactPhone && (
+          <a href={`tel:${contactPhone}`}>
+            <Icon name="phone" />
+            {contactPhone}
+          </a>
+        )}
+      </section>
+      <section className={styles.publish}>
+        <h2>Dodaj svoju djelatnost</h2>
+        <p>Otvori poslovni profil kako bi te kupci mogli pronaći i kontaktirati.</p>
+        <Link className={styles.primary} href="/nalog?odjeljak=djelatnosti">
+          Moje djelatnosti <Icon name="arrow" />
+        </Link>
       </section>
     </main>
   );

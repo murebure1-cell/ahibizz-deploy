@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type CampaignSelection, campaignPath } from "../../lib/ad-brief";
 import { billingMoney } from "../../lib/billing";
 import {
   adPlacements,
@@ -17,11 +18,27 @@ import {
   productionServices,
 } from "../../lib/marketing";
 import { ahiCreditTopUps } from "../../lib/wallet";
+import { AdCampaignForm, CampaignDetails } from "./AdCampaignForm";
+import { AdCreativeManager } from "./AdCreativeManager";
+import { AdRateEditor } from "./AdRateEditor";
 import styles from "./marketing.module.css";
 
 const messages: Record<string, string> = {
   OFFER_CHANGED: "Ponuda je promijenjena. Osvježi pregled.",
   QUOTE_PAYMENT_PENDING: "Online uplata za ovu ponudu je otvorena. Provjeri njeno stanje.",
+  CAMPAIGN_ASSET_CHANGED:
+    "Datoteka oglasa se promijenila. Pregledaj noviju verziju prije slanja ponude.",
+  INVALID_CAMPAIGN: "Provjeri postavke kampanje.",
+  CAMPAIGN_POSITION_UNAVAILABLE: "Pozicija trenutno nije dostupna.",
+  CAMPAIGN_IMAGE_CHANGED: "Odabrana fotografija se promijenila. Odaberi je ponovo.",
+  CAMPAIGN_SITE_CHANGED: "Web stranica djelatnosti više nije dostupna za oglas.",
+  CAMPAIGN_CATEGORY_CHANGED: "Odabrana kategorija više nije dostupna.",
+  CAMPAIGN_DATE_CHANGED: "Odaberi početak u narednih 12 mjeseci.",
+  CAMPAIGN_BUDGET_EXCEEDED: "Ponuda prelazi budžet koji je oglašivač prihvatio.",
+  CAMPAIGN_MINIMUM: "Ponuda je ispod minimalnog zakupa ove kampanje.",
+  CAMPAIGN_BENEFIT_CHANGED: "Cijena više ne odgovara odabranom popustu.",
+  CAMPAIGN_WELCOME_USED: "Oglašivač je već koristio popust dobrodošlice ili imao plaćenu kampanju.",
+  CAMPAIGN_MANUAL_ONLY: "Posebni uslovi ciljanja zahtijevaju pojedinačni dogovor.",
   OPEN_OFFER: "Već postoji otvoren zahtjev. Pogledaj ga ispod.",
   INSUFFICIENT_CREDITS: "Nemaš dovoljno kredita za ovu ponudu.",
   CREDIT_RATE_CHANGED: "Vrijednost kredita je promijenjena. Provjeri novi iznos.",
@@ -48,20 +65,32 @@ function price(value: FormDataEntryValue | null) {
 }
 
 function OfferCard({
+  accountId,
   order,
   admin,
   checkoutAvailable,
   balance,
   submit,
   busy,
+  refresh,
 }: {
+  accountId: string;
   order: MarketingOrder;
   admin: boolean;
   checkoutAvailable: boolean;
   balance: number;
   submit: (command: MarketingCommand) => void;
   busy: boolean;
+  refresh: () => void;
 }) {
+  const [benefit, setBenefit] = useState<"" | "advance" | "welcome">("");
+  const suggested = order.campaign
+    ? benefit === "advance"
+      ? order.campaign.advanceMinor
+      : benefit === "welcome"
+        ? order.campaign.welcomeMinor
+        : order.campaign.estimateMinor
+    : null;
   const title =
     order.kind === "credits"
       ? `${credits(order.quantity)} Ahi Credits`
@@ -76,6 +105,11 @@ function OfferCard({
       amountMinor: price(fields.get("price")),
       instructions: String(fields.get("instructions") ?? ""),
       ...(alternative > 0 ? { creditPrice: alternative } : {}),
+      ...(order.campaign ? { expectedAssetVersion: order.campaign.assetVersion } : {}),
+      ...(benefit ? { campaignBenefit: benefit } : {}),
+      ...(fields.get("standardTargeting") === "yes"
+        ? { offerStandardTargeting: true as const }
+        : {}),
     });
   }
   function confirm(event: FormEvent<HTMLFormElement>) {
@@ -110,6 +144,16 @@ function OfferCard({
             : marketingLabels[order.status]}
         </span>
       </header>
+      {order.campaign && <CampaignDetails campaign={order.campaign} />}
+      {order.campaign && ["requested", "quoted", "paid"].includes(order.status) && (
+        <AdCreativeManager
+          accountId={accountId}
+          orderId={order.id}
+          assetVersion={order.campaign.assetVersion}
+          onChange={refresh}
+          editable={order.status === "requested" && !admin}
+        />
+      )}
       {order.amountMinor !== null && (
         <p className={styles.amount}>
           {billingMoney(order.amountMinor)}
@@ -144,11 +188,47 @@ function OfferCard({
       )}
       {admin && order.status === "requested" && (
         <form onSubmit={quote} className={styles.form}>
+          {order.campaign?.targetingNote && (
+            <label>
+              Alternativna ponuda
+              <select name="standardTargeting" required defaultValue="">
+                <option value="" disabled>
+                  Odaberi postupak
+                </option>
+                <option value="yes">Ponudi standardno ciljanje bez posebnog zahtjeva</option>
+              </select>
+            </label>
+          )}
+          {order.campaign?.estimateMinor != null && (
+            <label>
+              Obračun ponude
+              <select
+                value={benefit}
+                onChange={(e) => setBenefit(e.target.value as typeof benefit)}
+              >
+                <option value="">Količinski popust ili dogovorena cijena</option>
+                <option value="advance">Avansni popust</option>
+                <option value="welcome">Popust dobrodošlice</option>
+              </select>
+            </label>
+          )}
           <label>
             Cijena (KM)
-            <input name="price" inputMode="decimal" required maxLength={10} />
+            <input
+              name="price"
+              inputMode="decimal"
+              required
+              maxLength={10}
+              key={benefit}
+              readOnly={Boolean(benefit)}
+              defaultValue={
+                suggested != null
+                  ? (Math.max(suggested, order.campaign?.minimumMinor ?? 0) / 100).toFixed(2)
+                  : undefined
+              }
+            />
           </label>
-          {isPlacement(order.kind) && (
+          {isPlacement(order.kind) && !benefit && (
             <label>
               Posebna cijena u kreditima (opcionalno)
               <input name="credits" type="number" min="1" step="1" max="100000" />
@@ -211,18 +291,24 @@ function OfferCard({
     </article>
   );
 }
-export function MarketingWorkspace({ accountId, mode, target }: MarketingProps) {
+export function MarketingWorkspace({ accountId, mode, target, campaign }: MarketingProps) {
   return (
     <MarketingView
-      key={`${accountId}:${mode}:${target?.businessId ?? ""}:${target?.placement ?? ""}`}
+      key={`${accountId}:${mode}:${target?.businessId ?? ""}:${target?.placement ?? ""}:${campaign ? campaignPath(campaign) : ""}`}
       accountId={accountId}
       mode={mode}
       target={target}
+      campaign={campaign}
     />
   );
 }
-type MarketingProps = { accountId: string; mode: MarketingMode; target?: PlacementTarget };
-function MarketingView({ accountId, mode, target }: MarketingProps) {
+type MarketingProps = {
+  accountId: string;
+  mode: MarketingMode;
+  target?: PlacementTarget;
+  campaign?: CampaignSelection;
+};
+function MarketingView({ accountId, mode, target, campaign }: MarketingProps) {
   const router = useRouter();
   const [selectedQuantity, setSelectedQuantity] = useState<number>(ahiCreditTopUps[0].quantity);
   const [rateInput, setRateInput] = useState("");
@@ -240,11 +326,11 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
   const placementForm = useRef<HTMLFormElement>(null);
   const openedPlacement = useRef(false);
   useEffect(() => {
-    if (data && target && !openedPlacement.current) {
+    if (data && (target || campaign) && !openedPlacement.current) {
       openedPlacement.current = true;
       placementForm.current?.scrollIntoView({ block: "center" });
     }
-  }, [data, target]);
+  }, [data, target, campaign]);
   const openedProduction = useRef(false);
   useEffect(() => {
     if (
@@ -289,7 +375,7 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
     return () => abort.abort();
   }, [accountId, mode, page, refresh]);
   async function submit(command: MarketingCommand) {
-    if (running.current) return;
+    if (running.current) return false;
     running.current = true;
     setBusy(true);
     setMessage("");
@@ -323,12 +409,14 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
           );
         }
       }
+      return true;
     } catch (error) {
       if (mounted.current)
         setMessage(
           (error instanceof Error ? messages[error.message] : null) ??
             "Rezultat nije potvrđen. Provjeri pregled zahtjeva.",
         );
+      return false;
     } finally {
       running.current = false;
       if (mounted.current) {
@@ -382,9 +470,6 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
         <div className={styles.skeleton} />
       </div>
     );
-  const initialBusiness = target
-    ? (data.businesses.find((business) => business.id === target.businessId)?.id ?? "")
-    : undefined;
   const unitPrice = data.creditUnitBamMinor ?? null;
   return (
     <section className={styles.workspace}>
@@ -398,6 +483,7 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
           )}
         </header>
       )}
+      {mode === "admin" && <AdRateEditor accountId={accountId} />}
       {mode === "admin" && (
         <details className={styles.order}>
           <summary>Vrijednost kredita pri plaćanju</summary>
@@ -510,47 +596,14 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
         </article>
       )}
       {mode === "ads" && data.businesses.length > 0 && (
-        <article className={styles.order}>
-          <h2>Novi oglas</h2>
-          <form ref={placementForm} onSubmit={request} className={styles.form}>
-            {mode === "ads" && (
-              <label>
-                Mjesto prikaza
-                <select name="placement" defaultValue={target?.placement}>
-                  {Object.entries(adPlacements).map(([id, label]) => (
-                    <option key={id} value={id}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {mode === "ads" && (
-              <label>
-                Djelatnost
-                <select name="business" required defaultValue={initialBusiness}>
-                  {initialBusiness === "" && (
-                    <option value="" disabled>
-                      Odaberi objavljenu djelatnost
-                    </option>
-                  )}
-                  {data.businesses.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <label>
-              Broj dana
-              <input name="quantity" type="number" inputMode="numeric" required min={1} max={90} />
-            </label>
-            <button type="submit" disabled={busy}>
-              Zatraži ponudu
-            </button>
-          </form>
-        </article>
+        <AdCampaignForm
+          data={data}
+          target={target}
+          selection={campaign}
+          submit={submit}
+          busy={busy}
+          formRef={placementForm}
+        />
       )}
       {mode === "ads" && (
         <article id="produkcija" className={styles.order}>
@@ -619,7 +672,9 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
         {data.orders.map((order) => (
           <OfferCard
             key={order.id}
+            accountId={accountId}
             order={order}
+            refresh={() => setRefresh((v) => v + 1)}
             checkoutAvailable={data.checkoutAvailable}
             balance={data.balance}
             admin={mode === "admin"}

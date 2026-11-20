@@ -2,6 +2,7 @@ import Form from "next/form";
 import Image from "next/image";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
+import type { PageAds } from "../../lib/ad-render";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { HomeCategory } from "../../lib/home";
 import {
@@ -11,6 +12,7 @@ import {
   type VisualDesign,
 } from "../../lib/visual-design";
 import { Icon, type IconName } from "../Icon";
+import { CampaignAd } from "../marketing/CampaignAd";
 import { HomeCategories } from "./HomeCategories";
 import { HomeLogoMarquee } from "./HomeLogoMarquee";
 import { HomeRail } from "./HomeRail";
@@ -88,6 +90,7 @@ export function HomeSurface({
   nearbyBefore,
   advertisingHref,
   banner,
+  campaigns,
   creditsHref,
   after,
 }: {
@@ -105,6 +108,7 @@ export function HomeSurface({
   nearbyBefore?: ReactNode;
   advertisingHref: string;
   banner?: { id: string; title: string; city: string; image: string | null } | null;
+  campaigns?: PageAds;
   creditsHref?: string;
   after?: ReactNode;
 }) {
@@ -323,12 +327,26 @@ export function HomeSurface({
       </section>
       <HomeCategories
         categories={categories}
+        sponsor={
+          campaigns && (campaigns.icon.mobile || campaigns.icon.desktop) ? (
+            <CampaignAd candidates={campaigns.icon} />
+          ) : null
+        }
         searchAction={
           place ? `${searchAction}?${new URLSearchParams({ [placeField]: place })}` : searchAction
         }
       />
+      {campaigns && design.homeOrder.includes("ad") && (
+        <CampaignAd candidates={campaigns.main} region="elsewhere" />
+      )}
       {design.homeOrder.map((id) => (
-        <Fragment key={id}>{sections[id]}</Fragment>
+        <Fragment key={id}>
+          {id === "ad" && campaigns && (campaigns.main.mobile || campaigns.main.desktop) ? (
+            <CampaignAd candidates={campaigns.main} fallback={sections.ad} region="inline" />
+          ) : (
+            sections[id]
+          )}
+        </Fragment>
       ))}
       {after}
     </main>

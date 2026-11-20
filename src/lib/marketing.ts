@@ -1,8 +1,11 @@
+import type { CampaignBrief, CampaignSummary } from "./ad-brief";
+import type { AdPricing } from "./ad-pricing";
+import type { BusinessMediaAsset } from "./business-media";
 import { businessUuid } from "./business-today";
 
 export type MarketingMode = "ads" | "credits" | "admin";
 export const adPlacements = {
-  banner: "Baner na početnoj",
+  banner: "Reklamna kampanja",
   featured: "Istaknute djelatnosti na početnoj",
   nearby: "Isticanje u blizini",
 } as const;
@@ -43,6 +46,7 @@ export type MarketingOrder = {
   onlinePending?: boolean;
   revokedAt?: string | null;
   productionReceiptConflict?: boolean;
+  campaign?: CampaignSummary | null;
   businessTitle: string | null;
   customer: string;
   startsAt: string | null;
@@ -55,7 +59,9 @@ export type MarketingData = {
   orders: MarketingOrder[];
   more: boolean;
   balance: number;
-  businesses: { id: string; title: string }[];
+  businesses: { id: string; title: string; website?: boolean; assets?: BusinessMediaAsset[] }[];
+  adPricing?: AdPricing;
+  categories?: { id: string; name: string }[];
   productionBusinesses?: { id: string; title: string }[];
   promotions: { id: string; title: string; endsAt: string }[];
   included: { id: string; title: string; kind: "featured" | "nearby"; endsAt: string }[];
@@ -76,8 +82,18 @@ export type MarketingCommand =
       kind: Placement | ProductionService | "credits";
       quantity: number;
       businessId?: string;
+      campaign?: CampaignBrief;
     }
-  | { action: "quote"; id: string; amountMinor: number; instructions: string; creditPrice?: number }
+  | {
+      action: "quote";
+      id: string;
+      amountMinor: number;
+      instructions: string;
+      creditPrice?: number;
+      campaignBenefit?: "advance" | "welcome";
+      offerStandardTargeting?: true;
+      expectedAssetVersion?: number;
+    }
   | { action: "confirm"; id: string; amountMinor: number; reference: string }
   | { action: "useCredits" | "close"; id: string };
 export const marketingLabels: Record<MarketingOrder["status"], string> = {

@@ -63,6 +63,7 @@ export async function readActiveBanner(
         JOIN auth_user u ON u.id=o.account_id
         LEFT JOIN directory_business_image i ON i.business_id=b.id AND i.kind='cover' AND i.slot=0
         WHERE o.kind='banner' AND o.status='paid' AND o.revoked_at IS NULL AND o.starts_at<=now() AND o.ends_at>now()
+          AND NOT EXISTS (SELECT 1 FROM marketing_campaign_brief brief WHERE brief.order_id=o.id)
           AND b.status='published' AND package_allows_listing(b) AND u.approval='approved' AND u."emailVerified" AND u.role IN ('member','owner')
       )
       SELECT id,title,city,version FROM active WHERE pos=mod(floor(extract(epoch FROM now())/60)::bigint, total) LIMIT 1`);

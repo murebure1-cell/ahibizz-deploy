@@ -5,7 +5,6 @@ import {
   HomeNearbyResults,
 } from "../../components/home/HomeNearby";
 import { HomeSurface } from "../../components/home/HomeSurface";
-import { IS_PLAY_EDITION } from "../../lib/distribution";
 import { homeCategories, homePlace } from "../../lib/home";
 import {
   type DirectoryCategory,
@@ -13,7 +12,7 @@ import {
   type PublicDirectoryBusiness,
 } from "../../server/directory";
 import { publicBusinessView } from "../../server/directory/public-view";
-import { publicMarketingBanner } from "../../server/marketing/read";
+import { publicPageAds } from "../../server/marketing/ad-delivery";
 import { readPublishedDesign } from "../../server/visual-design-store";
 
 export const dynamic = "force-dynamic";
@@ -22,12 +21,9 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ mjesto?: string | string[] }>;
 }) {
-  const [params, design, banner] = await Promise.all([
-    searchParams,
-    readPublishedDesign(),
-    IS_PLAY_EDITION ? Promise.resolve(null) : publicMarketingBanner(),
-  ]);
+  const [params, design] = await Promise.all([searchParams, readPublishedDesign()]);
   const place = homePlace(params.mjesto);
+  const campaigns = publicPageAds({ page: "home", city: place });
   let available = false;
   let businesses: PublicDirectoryBusiness[] = [];
   let featured: PublicDirectoryBusiness[] = [];
@@ -81,7 +77,7 @@ export default async function HomePage({
           />
         ))}
         categoryAvailable={available}
-        banner={banner}
+        campaigns={await campaigns}
         creditsHref="/nalog?odjeljak=krediti"
         nearbyControl={<HomeNearbyControl />}
         nearby={<HomeNearbyResults />}
