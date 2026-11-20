@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type AdminSection,
+  adminMailPath,
   adminSectionPath,
   businessImportPath,
   businessLocationBatchPath,
@@ -187,6 +188,9 @@ export function AdminDashboard({
             )}
             <Link href="/administracija/izgled">
               <Icon name="sliders" /> Uređivač izgleda
+            </Link>
+            <Link href={adminMailPath}>
+              <Icon name="mail" /> Email poruke
             </Link>
           </section>
         </nav>

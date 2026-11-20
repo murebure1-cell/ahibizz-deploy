@@ -1,4 +1,7 @@
+import path from "node:path";
 import nodemailer from "nodemailer";
+import { supportEmail } from "../../lib/support-requests";
+import { emailLogoCid, renderAhiEmail } from "../mail/layout";
 import type { SmtpConfiguration } from "./config";
 
 export type AuthEmail = Readonly<{
@@ -144,7 +147,17 @@ export function createSmtpSender(config: SmtpConfiguration) {
         });
       const content = emailContent(message);
       await transport.sendMail({
-        from: config.from,
+        from: { name: "AhiBizz", address: config.from },
+        replyTo: { name: "AhiBizz podrška", address: supportEmail },
+        attachments: [
+          {
+            filename: "ahibizz.png",
+            path: path.join(process.cwd(), "public", "brand", "email-wordmark.png"),
+            cid: emailLogoCid,
+            contentType: "image/png",
+            contentDisposition: "inline",
+          },
+        ],
         to: { name: "", address: to },
         ...(message.kind === "account-approved"
           ? { messageId: `<approval-${message.decisionId}@${config.from.split("@")[1]}>` }
@@ -160,19 +173,30 @@ export function createSmtpSender(config: SmtpConfiguration) {
 export function emailContent(message: AuthEmail | ApprovalEmail) {
   switch (message.kind) {
     case "account-approved":
-      return {
+      return renderAhiEmail({
         subject: "Nalog je odobren — AhiBizz",
-        text: `Tvoj AhiBizz nalog je odobren. Možeš se prijaviti ovdje:\n\n${message.url}`,
-      };
+        title: "Nalog je odobren",
+        intro: "Tvoj AhiBizz nalog je odobren. Možeš se prijaviti ovdje:",
+        actionLabel: "Prijavi se",
+        url: message.url,
+      });
     case "verification":
-      return {
+      return renderAhiEmail({
         subject: "Potvrdite email — AhiBizz",
-        text: `Za potvrdu email adrese otvorite link:\n\n${message.url}\n\nAko niste tražili nalog, zanemarite ovu poruku.`,
-      };
+        title: "Potvrda email adrese",
+        intro: "Za potvrdu email adrese otvorite link:",
+        actionLabel: "Potvrdite email",
+        url: message.url,
+        note: "Ako niste tražili nalog, zanemarite ovu poruku.",
+      });
     case "password-reset":
-      return {
+      return renderAhiEmail({
         subject: "Promjena lozinke — AhiBizz",
-        text: `Za promjenu lozinke otvorite link:\n\n${message.url}\n\nAko niste tražili promjenu, zanemarite ovu poruku.`,
-      };
+        title: "Promjena lozinke",
+        intro: "Za promjenu lozinke otvorite link:",
+        actionLabel: "Promijenite lozinku",
+        url: message.url,
+        note: "Ako niste tražili promjenu, zanemarite ovu poruku.",
+      });
   }
 }

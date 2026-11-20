@@ -1,0 +1,175 @@
+.page {
+  width: min(920px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: clamp(24px, 4vw, 48px) 0 64px;
+  color: var(--ui-text);
+}
+.back {
+  color: var(--ui-text-secondary);
+  text-decoration: none;
+  font-weight: 600;
+}
+.back:hover {
+  text-decoration: underline;
+}
+.page h1 {
+  margin: 16px 0 24px;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  line-height: 1.15;
+}
+.picker {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 24px;
+  font-weight: 700;
+}
+.controls {
+  display: flex;
+  gap: 8px;
+}
+.controls select,
+.controls button {
+  min-height: 44px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 10px;
+  padding: 0 14px;
+  font: inherit;
+}
+.controls select {
+  flex: 1;
+  min-width: 0;
+  background: var(--ui-input);
+  color: var(--ui-text);
+  text-overflow: ellipsis;
+}
+.controls button {
+  background: var(--ui-accent);
+  border-color: var(--ui-accent-border);
+  color: var(--ui-on-accent);
+  cursor: pointer;
+}
+.preview {
+  min-width: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  background: var(--ui-surface-raised);
+  overflow: hidden;
+}
+.subject {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin: 20px;
+}
+.subject h2 {
+  margin: 4px 0 0;
+  font-size: clamp(1.15rem, 2.5vw, 1.4rem);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.label {
+  font-size: 0.85rem;
+  color: var(--ui-text-secondary);
+}
+.active,
+.draft {
+  display: inline-block;
+  border-radius: 99px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.active {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+.draft {
+  background: var(--ui-surface-soft);
+  color: var(--ui-text-secondary);
+}
+.devices {
+  display: flex;
+  gap: 4px;
+  width: fit-content;
+  margin: 0 20px 16px;
+  padding: 3px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+}
+.hidden,
+.devices input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.devices label {
+  cursor: pointer;
+}
+.devices span {
+  display: block;
+  padding: 7px 12px;
+  border-radius: 7px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+.devices input:checked + span {
+  background: var(--ui-surface-soft);
+  color: var(--ui-text);
+}
+.devices input:focus-visible + span,
+.controls :focus-visible,
+.back:focus-visible,
+.plain summary:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+.canvas {
+  display: grid;
+  justify-items: center;
+  background: var(--ui-surface-soft);
+  border-block: 1px solid var(--ui-border);
+}
+.canvas iframe {
+  width: 100%;
+  min-width: 0;
+  height: clamp(535px, 72vh, 800px);
+  border: 0;
+  background: var(--ui-surface);
+}
+.preview:has(input[value="phone"]:checked) iframe {
+  max-width: 390px;
+  outline: 1px solid var(--ui-border);
+}
+.plain {
+  padding: 16px 20px;
+}
+.plain summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 600;
+}
+.plain pre {
+  margin: 12px 0 0;
+  color: var(--ui-text-secondary);
+  font: inherit;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 440px) {
+  .devices {
+    display: none;
+  }
+  .subject {
+    margin: 16px;
+  }
+  .plain {
+    padding: 14px 16px;
+  }
+}

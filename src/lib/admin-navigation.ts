@@ -47,6 +47,7 @@ export function readAdminNavigation(params: URLSearchParams): AdminSection {
 /** This closed return destination never grants access; the server still requires an owner. */
 export const businessImportPath = "/administracija/uvoz-prijava";
 export const businessLocationBatchPath = "/administracija/lokacije";
+export const adminMailPath = "/administracija/emailovi";
 export function adminReturnPath(value: unknown): string | null {
   if (
     value === "/administracija" ||
@@ -54,7 +55,8 @@ export function adminReturnPath(value: unknown): string | null {
     value === "/administracija/zahtjevi" ||
     value === "/administracija/oglasi" ||
     value === businessImportPath ||
-    value === businessLocationBatchPath
+    value === businessLocationBatchPath ||
+    value === adminMailPath
   )
     return value;
   if (typeof value !== "string") return null;

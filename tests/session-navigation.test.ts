@@ -37,6 +37,7 @@ test("eligible sign-in shortcuts use only closed paths and preserve owner admin 
     "/administracija",
     "/administracija/uvoz-prijava",
     "/administracija/lokacije",
+    "/administracija/emailovi",
     "/administracija/zahtjevi",
     "/administracija/oglasi",
     "/administracija/izgled",

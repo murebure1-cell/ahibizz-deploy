@@ -35,6 +35,7 @@ test("known administrative panes round-trip through browser and server query par
   assert.equal(adminReturnPath("/administracija"), "/administracija");
   assert.equal(adminReturnPath("/administracija/uvoz-prijava"), "/administracija/uvoz-prijava");
   assert.equal(adminReturnPath("/administracija/lokacije"), "/administracija/lokacije");
+  assert.equal(adminReturnPath("/administracija/emailovi"), "/administracija/emailovi");
 });
 
 test("unknown, duplicate and prototype query values cannot select another administrative pane", () => {
@@ -83,6 +84,8 @@ test("login destinations accept only the exact closed administrative paths", () 
     "/administracija/lokacije/",
     "/administracija/lokacije#other",
     "/administracija/lokacije?next=/nalog",
+    "/administracija/emailovi?primjer=vanjski",
+    "/administracija/emailovi/",
     "/administracija?odjeljak=unknown",
     "/administracija?odjeljak=constructor",
     "/administracija?odjeljak=__proto__",
