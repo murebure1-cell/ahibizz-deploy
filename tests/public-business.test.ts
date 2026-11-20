@@ -259,19 +259,21 @@ test("directory projection exposes only public fields and resolves the supplied 
       subcategoryName: "Stvarna potkategorija",
       latitude: 0,
       longitude: 0,
+      localFeatured: false,
       details: null,
       reviews: { count: 0, sum: 0 },
     }),
   );
   // Missing taxonomy and contacts stay unknown; verification comes from the actual row only.
   assert.deepEqual(
-    publicBusinessView({ ...row, verified: true }, []),
+    publicBusinessView({ ...row, verified: true, localFeatured: true }, []),
     business({
       id: row.id,
       title: row.title,
       latitude: 0,
       longitude: 0,
       verified: true,
+      localFeatured: true,
       details: null,
       reviews: { count: 0, sum: 0 },
     }),

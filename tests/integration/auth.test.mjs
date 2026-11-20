@@ -1774,6 +1774,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       await t.test(
         "settings changes one credential atomically and keeps only the requesting device",
         async () => {
+          // Start a fresh limiter window after the preceding sign-in and recovery scenarios.
+          await pool.query('UPDATE auth_rate_limit SET "lastRequest"=0');
           const otherDevice = new Cookies();
           const login = (candidate, cookies) =>
             request("POST", "/api/auth/sign-in/email", {
