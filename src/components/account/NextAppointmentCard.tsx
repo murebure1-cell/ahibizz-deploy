@@ -1,18 +1,16 @@
 "use client";
 
-import { appointmentCalendar, type NextAppointment } from "../../lib/next-appointment";
+import {
+  appointmentCalendar,
+  appointmentWhen,
+  type NextAppointment,
+} from "../../lib/next-appointment";
 import { Icon } from "../Icon";
 import styles from "./overview.module.css";
 
 export function NextAppointmentCard({ row, open }: { row: NextAppointment; open: () => void }) {
   const stay = row.kind === "stay";
-  const format = new Intl.DateTimeFormat("bs", {
-    timeZone: stay ? "UTC" : row.timezone,
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    ...(stay ? {} : { hour: "2-digit", minute: "2-digit", timeZoneName: "short" }),
-  });
+
   function download() {
     const url = URL.createObjectURL(
       new Blob([appointmentCalendar(row)], { type: "text/calendar;charset=utf-8" }),
@@ -49,7 +47,7 @@ export function NextAppointmentCard({ row, open }: { row: NextAppointment; open:
                   ? "Preuzimanje i vraćanje"
                   : "Vrijeme termina"}
             </dt>
-            <dd>{format.formatRange(new Date(row.startsAt), new Date(row.endsAt))}</dd>
+            <dd>{appointmentWhen(row)}</dd>
           </div>
           <div>
             <dt>Status</dt>

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   appointmentCalendar,
+  appointmentWhen,
   isNextAppointment,
   type NextAppointment,
 } from "../src/lib/next-appointment";
@@ -38,6 +39,8 @@ test("nightly stay uses local dates and the departure is the exclusive end", () 
     appointmentCalendar(row),
     /DTSTART;VALUE=DATE:20270327\r\nDTEND;VALUE=DATE:20270330/,
   );
+  assert.equal(appointmentWhen(row), "27. marta 2027. – 30. marta 2027.");
+  assert.equal(appointmentWhen(event), "2. aprila 2027. · 12:30–13:15 (GMT+2)");
   assert.throws(() => appointmentCalendar({ ...row, status: "requested" }));
   assert.equal(isNextAppointment({ ...row, timezone: "Nije/Grad" }), false);
   assert.equal(isNextAppointment({ ...row, endsAt: row.startsAt }), false);

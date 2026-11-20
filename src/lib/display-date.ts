@@ -18,9 +18,18 @@ const months = [
   "novembra",
   "decembra",
 ];
-export function accountDate(iso: string) {
+export function accountDate(iso: string, timeZone = "Europe/Sarajevo") {
+  const formatter =
+    timeZone === "Europe/Sarajevo"
+      ? dateFormatter
+      : new Intl.DateTimeFormat("en-GB", {
+          timeZone,
+          day: "numeric",
+          month: "numeric",
+          year: "numeric",
+        });
   const parts = Object.fromEntries(
-    dateFormatter.formatToParts(new Date(iso)).map((part) => [part.type, part.value]),
+    formatter.formatToParts(new Date(iso)).map((part) => [part.type, part.value]),
   );
   return `${Number(parts.day)}. ${months[Number(parts.month) - 1]} ${parts.year}.`;
 }

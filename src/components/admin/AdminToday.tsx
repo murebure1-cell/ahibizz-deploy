@@ -2,26 +2,25 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { type AdminTodayRow, adminQueues, readAdminToday } from "../../lib/admin-today";
+import { accountDate } from "../../lib/display-date";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
 import { Icon } from "../Icon";
 import styles from "./admin.module.css";
 import { adminActorRequest, errorMessage, responseData } from "./responses";
 
-const dateFormat = new Intl.DateTimeFormat("bs-BA", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
+const timeFormat = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
   minute: "2-digit",
   timeZone: "Europe/Sarajevo",
 });
-const relativeTime = new Intl.RelativeTimeFormat("bs-BA", { numeric: "always" });
+
 function waitingSince(iso: string) {
   const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 60_000));
   if (!minutes) return "upravo";
-  if (minutes < 60) return relativeTime.format(-minutes, "minute");
-  if (minutes < 1440) return relativeTime.format(-Math.floor(minutes / 60), "hour");
-  return relativeTime.format(-Math.floor(minutes / 1440), "day");
+  if (minutes < 60) return `prije ${minutes} min`;
+  if (minutes < 1440) return `prije ${Math.floor(minutes / 60)} h`;
+  const days = Math.floor(minutes / 1440);
+  return `prije ${days} ${days % 10 === 1 && days % 100 !== 11 ? "dan" : "dana"}`;
 }
 
 export function AdminToday({ accountId }: { accountId: string }) {
@@ -78,7 +77,7 @@ export function AdminToday({ accountId }: { accountId: string }) {
                         {item.id === "businesses" ? "Najstarija izmjena" : "Najstariji zapis"} ·{" "}
                         <time
                           dateTime={row.oldestAt}
-                          title={dateFormat.format(new Date(row.oldestAt))}
+                          title={`${accountDate(row.oldestAt)} ${timeFormat.format(new Date(row.oldestAt))}`}
                         >
                           {waitingSince(row.oldestAt)}
                         </time>

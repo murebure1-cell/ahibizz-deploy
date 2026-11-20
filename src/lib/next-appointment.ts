@@ -1,3 +1,5 @@
+import { accountDate } from "./display-date";
+
 export type NextAppointment = {
   id: string;
   kind: "service" | "rental" | "stay";
@@ -38,6 +40,31 @@ export function isNextAppointment(value: unknown): value is NextAppointment {
   } catch {
     return false;
   }
+}
+
+export function appointmentWhen(row: NextAppointment): string {
+  const timezone = row.kind === "stay" ? "UTC" : row.timezone;
+  const firstDay = accountDate(row.startsAt, timezone);
+  const lastDay = accountDate(row.endsAt, timezone);
+  if (row.kind === "stay") return `${firstDay} – ${lastDay}`;
+  const clock = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZoneName: "shortOffset",
+  });
+  function time(iso: string) {
+    const parts = Object.fromEntries(
+      clock.formatToParts(new Date(iso)).map((p) => [p.type, p.value]),
+    );
+    return { time: `${parts.hour}:${parts.minute}`, zone: parts.timeZoneName };
+  }
+  const first = time(row.startsAt),
+    last = time(row.endsAt);
+  if (firstDay === lastDay && first.zone === last.zone)
+    return `${firstDay} · ${first.time}–${last.time} (${last.zone})`;
+  return `${firstDay} · ${first.time} (${first.zone}) – ${lastDay} · ${last.time} (${last.zone})`;
 }
 
 function foldLine(line: string): string {
