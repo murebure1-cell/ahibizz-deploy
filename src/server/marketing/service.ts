@@ -266,6 +266,16 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
             .filter((b) => b.adEligible)
             .map(({ id, title, website, assets }) => ({ id, title, website, assets })),
           adPricing: mode === "ads" ? await readAdPricing(client) : undefined,
+          locations:
+            mode === "ads"
+              ? (
+                  await client.query<{ cities: string[]; countries: string[] }>(`SELECT
+            COALESCE(array_agg(DISTINCT b.city ORDER BY b.city) FILTER(WHERE b.city IS NOT NULL AND b.city<>''),'{}') AS cities,
+            COALESCE(array_agg(DISTINCT b.country_code ORDER BY b.country_code) FILTER(WHERE b.country_code IS NOT NULL),'{}') AS countries
+            FROM directory_business b JOIN auth_user u ON u.id=b.owner_user_id WHERE b.status='published'
+            AND package_allows_listing(b) AND u.approval='approved' AND u."emailVerified" AND u.role IN ('member','owner')`)
+                ).rows[0]
+              : undefined,
           categories:
             mode === "ads"
               ? (

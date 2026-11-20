@@ -267,7 +267,9 @@ export function AdExplorer({ pricing }: { pricing: AdPricing | null }) {
                     </label>
                     <div aria-live="polite">
                       <span>Procjena kampanje</span>
-                      <strong>{estimate ? km(estimate.netMinor) : "—"}</strong>
+                      <strong>
+                        {estimate ? km(Math.max(estimate.netMinor, estimate.minimumMinor)) : "—"}
+                      </strong>
                       {estimate && estimate.discountPercent > 0 && (
                         <small>Uključen popust od {estimate.discountPercent}%</small>
                       )}

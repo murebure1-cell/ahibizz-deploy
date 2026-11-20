@@ -59,23 +59,77 @@ export async function verifyAdDelivery({ pool, business, banner, member, owner, 
     { ...context, keyword: "Hotel" },
   ])
     assert.notEqual((await read(wrong)).main.desktop?.campaignId, id);
+  await pool.query(
+    "UPDATE marketing_campaign_brief SET city=NULL,target_cities=ARRAY['Tuzla','Mostar'] WHERE order_id=$1",
+    [id],
+  );
+  for (const city of ["TUZLA", "mostar"])
+    assert.equal((await read({ ...context, city })).main.desktop?.campaignId, id);
+  for (const city of [undefined, "Bihać"])
+    assert.equal((await read({ ...context, city })).main.desktop, undefined);
+  await pool.query(
+    "UPDATE marketing_campaign_brief SET city='Tuzla',target_cities='{}' WHERE order_id=$1",
+    [id],
+  );
+  for (const [stamp, start, end, expected] of [
+    ["2026-01-05T17:00:00Z", 1080, 1320, true],
+    ["2026-07-05T16:00:00Z", 1080, 1320, true],
+    ["2026-07-05T20:00:00Z", 1080, 1320, false],
+    ["2026-07-05T21:00:00Z", 1380, 120, true],
+    ["2026-07-05T23:59:59Z", 1380, 120, true],
+    ["2026-07-06T00:00:00Z", 1380, 120, false],
+    ["2026-10-25T00:30:00Z", 120, 180, true],
+    ["2026-10-25T01:30:00Z", 120, 180, true],
+  ]) {
+    const test = await pool.query(
+      "SELECT campaign_window_open($1::timestamptz,$2,$3,'Europe/Sarajevo') AS is_open",
+      [stamp, start, end],
+    );
+    assert.equal(test.rows[0].is_open, expected, stamp);
+  }
+  const setClock = (startOffset, endOffset) =>
+    pool.query(
+      `WITH local_clock AS (SELECT EXTRACT(HOUR FROM utc)::int*60+EXTRACT(MINUTE FROM utc)::int AS minute FROM (SELECT now() AT TIME ZONE 'UTC' AS utc) t)
+    UPDATE marketing_campaign_brief SET local_start_minute=(minute+$2::int+1440)%1440,local_end_minute=(minute+$3::int+1440)%1440,local_time_zone='UTC' FROM local_clock WHERE order_id=$1`,
+      [id, startOffset, endOffset],
+    );
+  await setClock(60, 75);
+  assert.equal((await read(context)).main.desktop, undefined);
+  assert.equal(
+    (
+      await pool.query("SELECT record_marketing_ad($1,$2,'desktop',false) AS accepted", [
+        randomUUID(),
+        id,
+      ])
+    ).rows[0].accepted,
+    false,
+  );
+  await setClock(-10, 10);
+  assert.equal((await read(context)).main.desktop?.campaignId, id);
+  await pool.query(
+    "UPDATE marketing_campaign_brief SET local_start_minute=NULL,local_end_minute=NULL,local_time_zone=NULL WHERE order_id=$1",
+    [id],
+  );
   const served = await read(context);
   assert.equal(served.main.desktop?.campaignId, id);
   assert.equal(served.main.desktop?.position, "side");
   assert.equal(served.main.mobile, undefined);
   await pool.query(
-    "UPDATE marketing_campaign_brief SET page='listing',keyword=NULL,target_gender='women',min_price_minor=1000,max_price_minor=2000 WHERE order_id=$1",
+    "UPDATE marketing_campaign_brief SET page='listing',country_code='BA',keyword=NULL,target_gender='women',min_price_minor=1000,max_price_minor=2000 WHERE order_id=$1",
     [id],
   );
   const listed = {
     ...context,
     page: "listing",
+    countryCode: "BA",
     listingId: business,
     gender: "women",
     publishedPrices: [200, 1500],
   };
   assert.equal((await read(listed)).main.desktop?.campaignId, id);
   for (const mismatch of [
+    { ...listed, countryCode: "DE" },
+    { ...listed, countryCode: undefined },
     { ...listed, gender: null },
     { ...listed, gender: "men" },
     { ...listed, listingId: undefined },
@@ -84,7 +138,7 @@ export async function verifyAdDelivery({ pool, business, banner, member, owner, 
   ])
     assert.equal((await read(mismatch)).main.desktop, undefined);
   await pool.query(
-    "UPDATE marketing_campaign_brief SET page='search',keyword='servis',target_gender=NULL,min_price_minor=NULL,max_price_minor=NULL WHERE order_id=$1",
+    "UPDATE marketing_campaign_brief SET page='search',country_code=NULL,keyword='servis',target_gender=NULL,min_price_minor=NULL,max_price_minor=NULL WHERE order_id=$1",
     [id],
   );
   const decoded = readAdToken(served.main.desktop.token, secret);

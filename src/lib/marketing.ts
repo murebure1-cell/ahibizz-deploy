@@ -61,6 +61,7 @@ export type MarketingData = {
   balance: number;
   businesses: { id: string; title: string; website?: boolean; assets?: BusinessMediaAsset[] }[];
   adPricing?: AdPricing;
+  locations?: { cities: string[]; countries: string[] };
   categories?: { id: string; name: string }[];
   productionBusinesses?: { id: string; title: string }[];
   promotions: { id: string; title: string; endsAt: string }[];

@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { test } from "node:test";
 import { accountReturnPath } from "../src/lib/account-return";
 import { campaignPath, readCampaignSelection } from "../src/lib/ad-brief";
+import { minuteTime, timeMinute } from "../src/lib/ad-geo-schedule";
 import { briefFingerprint, parseCampaignBrief } from "../src/server/marketing/campaigns";
 
 const brief = {
@@ -28,6 +30,55 @@ test("a real ad position and impression goal survive login", () => {
   assert.equal(accountReturnPath(path), path);
   assert.equal(accountReturnPath(`${path}&format=takeover`), "/nalog");
   assert.equal(accountReturnPath(path.replace("mobile_leaderboard", "takeover")), "/nalog");
+});
+test("regional city groups, published country and daily window are validated before reserving an ad", () => {
+  const listing = { ...brief, page: "listing", format: "rectangle" };
+  const dailyWindow = { startMinute: 1380, endMinute: 120, timeZone: "Europe/Sarajevo" };
+  const parsed = parseCampaignBrief({
+    ...listing,
+    targetCities: [" Tuzla ", "MOSTAR", "mostar"],
+    countryCode: "ba",
+    dailyWindow,
+  });
+  assert.deepEqual(parsed.targetCities, ["Tuzla", "MOSTAR"]);
+  assert.equal(parsed.countryCode, "BA");
+  assert.deepEqual(parsed.dailyWindow, dailyWindow);
+  assert.equal(timeMinute("24:00"), null);
+  assert.equal(timeMinute("23:00"), 1380);
+  assert.equal(minuteTime(1380), "23:00");
+  for (const invalid of [
+    { ...brief, countryCode: "BA" },
+    { ...listing, countryCode: "B1" },
+    { ...listing, city: "Tuzla", targetCities: ["Mostar"] },
+    { ...listing, targetCities: Array(13).fill("Bihać") },
+    { ...listing, targetCities: ["Tu\nzla"] },
+    { ...brief, dailyWindow: { ...dailyWindow, timeZone: "Tomorrow/City" } },
+    { ...brief, dailyWindow: { ...dailyWindow, endMinute: 1380 } },
+    { ...brief, dailyWindow: { ...dailyWindow, startMinute: -3 } },
+    { ...brief, dailyWindow: { timeZone: "UTC" } },
+  ])
+    assert.throws(() => parseCampaignBrief(invalid), { code: "INVALID_CAMPAIGN" });
+  const previous = {
+    device: "mobile",
+    page: "home",
+    format: "mobile_leaderboard",
+    impressionGoal: 50000,
+    budgetMinor: null,
+    startsOn: null,
+    city: null,
+    categoryId: null,
+    keyword: null,
+    creative: null,
+    destinationWebsite: false,
+    targetingNote: null,
+    targetGender: null,
+    minPriceMinor: null,
+    maxPriceMinor: null,
+  };
+  assert.equal(
+    briefFingerprint(parseCampaignBrief(brief)),
+    createHash("sha256").update(JSON.stringify(previous)).digest("hex"),
+  );
 });
 test("campaign briefs reject invented positions, invalid calendars, goals and media keys", () => {
   for (const change of [

@@ -63,7 +63,7 @@ test("real isolated confirmed-receipt ledger, accounting corrections and current
     pool.on("error", () => {});
     assert.equal((await pool.query("SELECT current_schema() AS name")).rows[0].name, schema);
     const migrations = await loadMigrations();
-    assert.equal(migrations.at(-1).version, "0040_ad_audience_sample.sql");
+    assert.equal(migrations.at(-1).version, "0042_ad_sample_devices.sql");
     assert.equal((await runMigrations({ pool, migrations })).applied.length, migrations.length);
     assert.deepEqual(await runMigrations({ pool, migrations }), { applied: [] });
     globalThis.fetch = async () => {
@@ -166,8 +166,8 @@ test("real isolated confirmed-receipt ledger, accounting corrections and current
       const { accountTransaction } = await import("../../src/server/auth/accounts.ts");
       const id = member.user.id,
         event = randomUUID();
-      const count = (e) =>
-        accountTransaction(pool, (client) => countAudienceNavigation(client, id, e));
+      const count = (e, platform = null) =>
+        accountTransaction(pool, (client) => countAudienceNavigation(client, id, e, platform));
       assert.equal(await count(event), false);
       await pool.query("INSERT INTO ad_measurement_consent(account_id,region) VALUES($1,'fbih')", [
         id,
@@ -177,8 +177,17 @@ test("real isolated confirmed-receipt ledger, accounting corrections and current
         "UPDATE ad_audience_navigation SET seen_at=now()-interval '31 minutes' WHERE account_id=$1",
         [id],
       );
-      await count(event);
-      await count(randomUUID());
+      await count(event, "ios");
+      assert.equal(
+        (
+          await pool.query(
+            "SELECT platform FROM ad_audience_navigation WHERE account_id=$1 AND event_id=$2",
+            [id, event],
+          )
+        ).rows[0].platform,
+        null,
+      );
+      await count(randomUUID(), "android");
       assert.deepEqual(
         (
           await pool.query(
@@ -201,7 +210,7 @@ test("real isolated confirmed-receipt ledger, accounting corrections and current
           [uid],
         );
         await accountTransaction(pool, (client) =>
-          countAudienceNavigation(client, uid, randomUUID()),
+          countAudienceNavigation(client, uid, randomUUID(), uid === ids[0] ? "ios" : "android"),
         );
       }
       assert.deepEqual(await publicOptInAudience(pool), {
@@ -209,6 +218,23 @@ test("real isolated confirmed-receipt ledger, accounting corrections and current
         visits: 11,
         views: 11,
         regions: [{ region: "Federacija BiH", users: 10 }],
+        platforms: [],
+      });
+      // Ten users are needed per platform. A change of device starts a platform session
+      // while an existing site visit continues.
+      await pool.query(
+        "UPDATE ad_audience_navigation SET seen_at=now()-interval '2 minutes' WHERE account_id=$1",
+        [ids[0]],
+      );
+      await accountTransaction(pool, (client) =>
+        countAudienceNavigation(client, ids[0], randomUUID(), "android"),
+      );
+      assert.deepEqual(await publicOptInAudience(pool), {
+        users: 10,
+        visits: 11,
+        views: 12,
+        regions: [{ region: "Federacija BiH", users: 10 }],
+        platforms: [{ platform: "android", users: 10, visits: 10, views: 10 }],
       });
       await pool.query("DELETE FROM ad_measurement_consent WHERE account_id=$1", [id]);
       assert.equal(

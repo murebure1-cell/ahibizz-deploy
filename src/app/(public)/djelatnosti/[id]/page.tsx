@@ -62,6 +62,7 @@ export default async function PublicBusinessPage({
         page: "listing",
         listingId: id,
         city: business.city ?? "",
+        countryCode: business.countryCode,
         categoryIds: [business.categoryId, business.subcategoryId].filter((v): v is string =>
           Boolean(v),
         ),

@@ -7,7 +7,7 @@ export async function verifyCampaignBriefs({ pool, store, business, member, seco
   today.setUTCDate(today.getUTCDate() + 2);
   const date = today.toISOString().slice(0, 10);
   await pool.query(
-    "UPDATE directory_business SET website_url='https://business.fixture.invalid/' WHERE id=$1",
+    "UPDATE directory_business SET country_code='BA', website_url='https://business.fixture.invalid/' WHERE id=$1",
     [business],
   );
   const brief = {
@@ -108,7 +108,37 @@ export async function verifyCampaignBriefs({ pool, store, business, member, seco
     cmd(owner, { ...quote, id: next.id, campaignBenefit: "welcome" }),
     (e) => e.code === "CAMPAIGN_WELCOME_USED",
   );
+  const icon = { ...base, id: randomUUID(), campaign: { ...brief, format: "branded_icon" } };
+  await cmd(member, icon);
+  const geo = {
+    ...base,
+    id: randomUUID(),
+    campaign: {
+      ...brief,
+      city: null,
+      targetCities: ["Mostar", "Tuzla"],
+      countryCode: "BA",
+      dailyWindow: { startMinute: 1380, endMinute: 120, timeZone: "Europe/Sarajevo" },
+      page: "listing",
+      format: "rectangle",
+    },
+  };
+  await assert.rejects(
+    cmd(member, { ...geo, campaign: { ...geo.campaign, countryCode: "DE" } }),
+    (e) => e.code === "CAMPAIGN_COUNTRY_CHANGED",
+  );
+  await cmd(member, geo);
+  const region = await store.read(member.headers, "ads", 0);
+  assert.ok(region.locations.countries.includes("BA"));
+  const locationBrief = region.orders.find((o) => o.id === geo.id).campaign;
+  assert.deepEqual(locationBrief.targetCities, geo.campaign.targetCities);
+  assert.equal(locationBrief.countryCode, "BA");
+  assert.deepEqual(locationBrief.dailyWindow, geo.campaign.dailyWindow);
+  await assert.rejects(
+    cmd(owner, { ...quote, id: icon.id, amountMinor: 49999 }),
+    (e) => e.code === "CAMPAIGN_MINIMUM",
+  );
   await pool.query("DELETE FROM marketing_campaign_brief WHERE order_id=ANY($1::uuid[])", [
-    [base.id, custom.id, next.id],
+    [base.id, custom.id, next.id, icon.id, geo.id],
   ]);
 }

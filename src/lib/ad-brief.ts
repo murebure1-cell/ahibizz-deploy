@@ -1,5 +1,6 @@
 import { type AdDevice, type AdFormatId, type AdPage, getAdPlacement } from "./ad-catalog";
 
+import type { DailyAdWindow } from "./ad-geo-schedule";
 export type CampaignSelection = {
   device: AdDevice;
   page: AdPage;
@@ -11,6 +12,9 @@ export type CampaignBrief = CampaignSelection & {
   budgetMinor: number | null;
   startsOn: string | null;
   city: string | null;
+  countryCode: string | null;
+  targetCities: string[];
+  dailyWindow: DailyAdWindow | null;
   categoryId: string | null;
   keyword: string | null;
   creative: { kind: "logo" | "cover" | "gallery"; slot: number; version: number } | null;

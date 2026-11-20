@@ -14,6 +14,7 @@ import {
   adPages,
   getAdPlacement,
 } from "../../lib/ad-catalog";
+import { campaignCities, minuteTime, timeMinute } from "../../lib/ad-geo-schedule";
 import { estimateAdCampaign, getAdRate } from "../../lib/ad-pricing";
 import { billingMoney } from "../../lib/billing";
 import { type BusinessMediaAsset, businessMediaUrl } from "../../lib/business-media";
@@ -24,6 +25,7 @@ import {
   type Placement,
   type PlacementTarget,
 } from "../../lib/marketing";
+import { CampaignGeoTime, countryLabel } from "./CampaignGeoTime";
 import styles from "./marketing.module.css";
 
 const assetName = (a: BusinessMediaAsset) =>
@@ -53,6 +55,7 @@ export function AdCampaignForm({
   const [assetId, setAssetId] = useState("");
   const [impressions, setImpressions] = useState(String(selection?.impressionGoal ?? 10000));
   const [manual, setManual] = useState(false);
+  const [validationError, setValidationError] = useState("");
   const pending = useRef<{ key: string; id: string } | null>(null);
   const business = data.businesses.find((b) => b.id === businessId);
   const formats = adFormats.filter(
@@ -70,12 +73,33 @@ export function AdCampaignForm({
   async function request(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!business) return;
+    setValidationError("");
     const f = new FormData(e.currentTarget);
     const value = (k: string) => String(f.get(k) ?? "").trim() || null;
     const quantity = Number(value("quantity"));
     let campaign: CampaignBrief | undefined;
     if (placement === "banner") {
       if (!chosen || !slot) return;
+      const cityDraft = value("targetCityDraft");
+      const targetCities = campaignCities([
+        ...f.getAll("targetCity"),
+        ...(cityDraft ? [cityDraft] : []),
+      ]);
+      if (!targetCities) {
+        setValidationError("Provjeri nazive gradova. Možeš odabrati do 12 gradova.");
+        return;
+      }
+      const timeZone = value("timeZone");
+      let dailyWindow: CampaignBrief["dailyWindow"] = null;
+      if (timeZone) {
+        const startMinute = timeMinute(String(f.get("adFrom"))),
+          endMinute = timeMinute(String(f.get("adUntil")));
+        if (startMinute === null || endMinute === null || startMinute === endMinute) {
+          setValidationError("Odaberi različito početno i završno vrijeme.");
+          return;
+        }
+        dailyWindow = { startMinute, endMinute, timeZone };
+      }
       campaign = {
         device,
         page,
@@ -83,7 +107,10 @@ export function AdCampaignForm({
         impressionGoal: Number(impressions),
         budgetMinor: value("budget") ? Math.round(Number(value("budget")) * 100) : null,
         startsOn: value("startsOn"),
-        city: value("city"),
+        city: null,
+        targetCities,
+        countryCode: value("countryCode"),
+        dailyWindow,
         categoryId: value("category"),
         keyword: value("keyword"),
         creative: creative
@@ -202,7 +229,10 @@ export function AdCampaignForm({
             </label>
             {estimate && (
               <div className={styles.instructions}>
-                <strong>Procjena zakupa · {billingMoney(estimate.netMinor)}</strong>
+                <strong>
+                  Procjena zakupa ·{" "}
+                  {billingMoney(Math.max(estimate.netMinor, estimate.minimumMinor))}
+                </strong>
                 {estimate.discountPercent > 0 && (
                   <span>Popust na prikaze {estimate.discountPercent}%</span>
                 )}
@@ -229,10 +259,7 @@ export function AdCampaignForm({
                     max="1000000"
                   />
                 </label>
-                <label>
-                  Grad
-                  <input name="city" maxLength={100} placeholder="Svi gradovi" />
-                </label>
+                <CampaignGeoTime locations={data.locations} listing={page === "listing"} />
                 {page !== "home" && (
                   <label>
                     Kategorija
@@ -366,6 +393,7 @@ export function AdCampaignForm({
             defaultValue={7}
           />
         </label>
+        {validationError && <p role="alert">{validationError}</p>}
         <button type="submit" disabled={busy || !business || (placement === "banner" && !chosen)}>
           Zatraži ponudu
         </button>
@@ -389,14 +417,24 @@ export function CampaignDetails({
         {formatNumber(c.clicks)} klikova
       </span>
       {c.startsOn && <span>Planirani početak {c.startsOn}</span>}
+      {c.dailyWindow && (
+        <span>
+          Svaki dan {minuteTime(c.dailyWindow.startMinute)}–{minuteTime(c.dailyWindow.endMinute)} ·{" "}
+          {c.dailyWindow.timeZone}
+        </span>
+      )}
+      {(c.countryCode || c.targetCities?.length > 0) && (
+        <span>
+          {[c.countryCode ? countryLabel(c.countryCode) : null, ...(c.targetCities ?? [])]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
+      )}
       {[c.city, c.categoryName, c.keyword].some(Boolean) && (
         <span>{[c.city, c.categoryName, c.keyword].filter(Boolean).join(" · ")}</span>
       )}
       {c.estimateMinor != null && (
-        <span>
-          Procijenjeni zakup {billingMoney(c.estimateMinor)}
-          {c.minimumMinor > c.estimateMinor ? ` · minimum ${billingMoney(c.minimumMinor)}` : ""}
-        </span>
+        <span>Procijenjeni zakup {billingMoney(Math.max(c.estimateMinor, c.minimumMinor))}</span>
       )}
       {c.benefit && (
         <span>{c.benefit === "advance" ? "Avansni popust" : "Popust dobrodošlice"}</span>

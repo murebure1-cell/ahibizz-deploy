@@ -2,7 +2,7 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import type { AdDevice } from "../../lib/ad-catalog";
 
 const validity = 2 * 60 * 60_000;
-export function adPlatform(userAgent: string) {
+export function adPlatform(userAgent: string): "android" | "ios" | "desktop" | "other" {
   if (/android/i.test(userAgent)) return "android";
   if (/iphone|ipad|ipod/i.test(userAgent) || /macintosh.+mobile\//i.test(userAgent)) return "ios";
   if (/windows nt|macintosh|x11|cros/i.test(userAgent)) return "desktop";

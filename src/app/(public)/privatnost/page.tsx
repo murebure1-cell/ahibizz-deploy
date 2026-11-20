@@ -49,7 +49,7 @@ export default function PrivacyPage() {
             <p>
               Za kampanje brojimo vidljive prikaze i klikove. U Postavkama možeš zasebno uključiti
               izbor publike za oglase i dobrovoljno mjerenje posjeta. Za mjerenje bilježimo vrijeme
-              pregleda i tvoj odabir regije ako ga navedeš. Javno prikazujemo zbir za grupe od
+              pregleda, vrstu uređaja i regiju ako je odabereš. Javno prikazujemo zbir za grupe od
               najmanje deset učesnika. Isključivanjem mjerenja brišeš svoje zapise iz uzorka. Kada
               pošalješ upit u oglasu, prima ga djelatnost kojoj se obraćaš.
             </p>

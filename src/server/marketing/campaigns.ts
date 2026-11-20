@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { PoolClient } from "pg";
 import type { CampaignBrief } from "../../lib/ad-brief";
 import { getAdPlacement } from "../../lib/ad-catalog";
+import { campaignCities, campaignTimeZones, type DailyAdWindow } from "../../lib/ad-geo-schedule";
 import { estimateAdCampaign, getAdRate } from "../../lib/ad-pricing";
 import { AccountAccessError } from "../auth/accounts";
 import { readAdPricing } from "./ad-pricing";
@@ -28,6 +29,9 @@ export function parseCampaignBrief(input: unknown): CampaignBrief {
     "budgetMinor",
     "startsOn",
     "city",
+    "targetCities",
+    "countryCode",
+    "dailyWindow",
     "categoryId",
     "keyword",
     "creative",
@@ -60,6 +64,25 @@ export function parseCampaignBrief(input: unknown): CampaignBrief {
     (!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(categoryId) || b.page === "home")
   )
     invalid();
+  const targetCities = campaignCities(b.targetCities ?? []);
+  if (!targetCities || (city && targetCities.length)) invalid();
+  const countryCode = bounded(b.countryCode, 2)?.toUpperCase() ?? null;
+  if (countryCode && (b.page !== "listing" || !/^[A-Z]{2}$/.test(countryCode))) invalid();
+  let dailyWindow: DailyAdWindow | null = null;
+  if (b.dailyWindow != null) {
+    if (typeof b.dailyWindow !== "object" || Array.isArray(b.dailyWindow)) invalid();
+    const t = b.dailyWindow as Record<string, unknown>;
+    if (
+      Object.keys(t).length !== 3 ||
+      !positive(t.startMinute, 0, 1439) ||
+      !positive(t.endMinute, 0, 1439) ||
+      t.startMinute === t.endMinute ||
+      typeof t.timeZone !== "string" ||
+      !campaignTimeZones.includes(t.timeZone)
+    )
+      invalid();
+    dailyWindow = { startMinute: t.startMinute, endMinute: t.endMinute, timeZone: t.timeZone };
+  }
   if (keyword && b.page !== "search") invalid();
   if (
     b.targetGender != null &&
@@ -102,6 +125,9 @@ export function parseCampaignBrief(input: unknown): CampaignBrief {
     budgetMinor: b.budgetMinor ?? null,
     startsOn,
     city,
+    targetCities,
+    countryCode,
+    dailyWindow,
     categoryId: categoryId?.toLowerCase() ?? null,
     keyword,
     creative,
@@ -113,8 +139,20 @@ export function parseCampaignBrief(input: unknown): CampaignBrief {
   };
 }
 export const campaignKey = (b: CampaignBrief) => [b.device, b.page, b.format].join(":");
-export const briefFingerprint = (b: CampaignBrief) =>
-  createHash("sha256").update(JSON.stringify(b)).digest("hex");
+export function briefFingerprint(b: CampaignBrief) {
+  // Preserve the fingerprint of requests saved before daily and geographic targeting.
+  const { targetCities, countryCode, dailyWindow, ...existing } = b;
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        ...existing,
+        ...(targetCities.length ? { targetCities } : {}),
+        ...(countryCode ? { countryCode } : {}),
+        ...(dailyWindow ? { dailyWindow } : {}),
+      }),
+    )
+    .digest("hex");
+}
 
 export async function saveCampaignBrief(
   client: PoolClient,
@@ -151,6 +189,23 @@ export async function saveCampaignBrief(
     ).rowCount
   )
     invalid("CAMPAIGN_IMAGE_CHANGED", 409);
+  if (
+    b.dailyWindow &&
+    !(await client.query("SELECT 1 FROM pg_timezone_names WHERE name=$1", [b.dailyWindow.timeZone]))
+      .rowCount
+  )
+    invalid();
+  if (
+    b.countryCode &&
+    !(
+      await client.query(
+        `SELECT 1 FROM directory_business b JOIN auth_user u ON u.id=b.owner_user_id
+    WHERE b.country_code=$1 AND b.status='published' AND package_allows_listing(b) AND u.approval='approved' AND u."emailVerified" AND u.role IN ('member','owner') LIMIT 1`,
+        [b.countryCode],
+      )
+    ).rowCount
+  )
+    invalid("CAMPAIGN_COUNTRY_CHANGED", 409);
   let destinationUrl: string | null = null;
   if (b.destinationWebsite) {
     const row = (
@@ -172,14 +227,15 @@ export async function saveCampaignBrief(
   const snapshot = {
     version: pricing.version,
     cpmMinor: rate.cpmMinor,
+    minimumMinor: pricing.terms.minimumMinor,
     estimate,
     advance: estimateAdCampaign(pricing, b.format, b.page, b.device, b.impressionGoal, "advance"),
     welcome: estimateAdCampaign(pricing, b.format, b.page, b.device, b.impressionGoal, "welcome"),
   };
   await client.query(
     `INSERT INTO marketing_campaign_brief
-    (order_id,device,page,format,impression_goal,budget_minor,starts_on,city,category_id,keyword,creative_kind,creative_slot,creative_version,destination_url,targeting_note,rate_snapshot,request_fingerprint,target_gender,min_price_minor,max_price_minor)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
+    (order_id,device,page,format,impression_goal,budget_minor,starts_on,city,category_id,keyword,creative_kind,creative_slot,creative_version,destination_url,targeting_note,rate_snapshot,request_fingerprint,target_gender,min_price_minor,max_price_minor,country_code,target_cities,local_start_minute,local_end_minute,local_time_zone)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)`,
     [
       id,
       b.device,
@@ -201,6 +257,11 @@ export async function saveCampaignBrief(
       b.targetGender,
       b.minPriceMinor,
       b.maxPriceMinor,
+      b.countryCode,
+      b.targetCities,
+      b.dailyWindow?.startMinute ?? null,
+      b.dailyWindow?.endMinute ?? null,
+      b.dailyWindow?.timeZone ?? null,
     ],
   );
 }
@@ -248,18 +309,22 @@ export async function checkCampaignQuote(
   } else if (offerStandardTargeting) invalid();
   if (row.budget_minor != null && amountMinor > row.budget_minor)
     invalid("CAMPAIGN_BUDGET_EXCEEDED", 409);
-  if (amountMinor < (row.rate_snapshot.estimate?.minimumMinor ?? 0))
+  if (
+    amountMinor < (row.rate_snapshot.minimumMinor ?? row.rate_snapshot.estimate?.minimumMinor ?? 0)
+  )
     invalid("CAMPAIGN_MINIMUM", 409);
 }
 export const campaignProjection = `CASE WHEN c.order_id IS NOT NULL THEN jsonb_build_object(
   'assetVersion',coalesce((SELECT aa.version FROM marketing_ad_asset aa WHERE aa.order_id=o.id),0),
   'device',c.device,'page',c.page,'format',c.format,'impressionGoal',c.impression_goal,
   'budgetMinor',c.budget_minor,'startsOn',to_char(c.starts_on,'YYYY-MM-DD'),'city',c.city,
+  'countryCode',c.country_code,'targetCities',c.target_cities,'dailyWindow',CASE WHEN c.local_start_minute IS NOT NULL THEN
+    jsonb_build_object('startMinute',c.local_start_minute,'endMinute',c.local_end_minute,'timeZone',c.local_time_zone) END,
   'targetGender',c.target_gender,'minPriceMinor',c.min_price_minor,'maxPriceMinor',c.max_price_minor,
   'categoryId',c.category_id,'categoryName',dc.name,'keyword',c.keyword,
   'creative',CASE WHEN c.creative_kind IS NULL THEN NULL ELSE jsonb_build_object('kind',c.creative_kind,'slot',c.creative_slot,'version',c.creative_version) END,
   'destinationWebsite',c.destination_url IS NOT NULL,'destinationUrl',c.destination_url,'targetingNote',c.targeting_note,'replacedTargetingNote',c.replaced_targeting_note,
   'impressions',coalesce(stats.impressions,0),'clicks',coalesce(stats.clicks,0),
   'benefit',o.campaign_benefit,'advanceMinor',c.rate_snapshot #> '{advance,netMinor}','welcomeMinor',c.rate_snapshot #> '{welcome,netMinor}',
-  'estimateMinor',c.rate_snapshot #> '{estimate,netMinor}', 'minimumMinor',coalesce((c.rate_snapshot #>> '{estimate,minimumMinor}')::int,0))
+  'estimateMinor',c.rate_snapshot #> '{estimate,netMinor}', 'minimumMinor',coalesce((c.rate_snapshot->>'minimumMinor')::int,(c.rate_snapshot #>> '{estimate,minimumMinor}')::int,0))
   END AS campaign`;

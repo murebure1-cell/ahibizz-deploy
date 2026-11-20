@@ -9,6 +9,7 @@ import { signAdToken } from "./ad-token";
 type PageContext = {
   page: AdPage;
   city?: string;
+  countryCode?: string | null;
   categoryIds?: string[];
   keyword?: string;
   listingId?: string;
@@ -27,6 +28,9 @@ const eligibility = `
     AND u.approval='approved' AND u."emailVerified" AND u.role IN ('member','owner')
     AND (c.order_id IS NULL AND $1='home' OR c.page=$1 AND c.device=screens.device)
     AND (c.city IS NULL OR lower(c.city)=lower($2))
+    AND (c.order_id IS NULL OR cardinality(c.target_cities)=0 OR EXISTS(SELECT 1 FROM unnest(c.target_cities) place WHERE lower(place)=lower($2)))
+    AND (c.country_code IS NULL OR ($1='listing' AND c.country_code=$8))
+    AND campaign_window_open(now(),c.local_start_minute,c.local_end_minute,c.local_time_zone)
     AND (c.category_id IS NULL OR c.category_id::text=ANY($3::text[]))
     AND (c.keyword IS NULL OR position(lower(c.keyword) in lower($4))>0)
     AND (c.target_gender IS NULL OR c.target_gender=$5)
@@ -75,6 +79,7 @@ export async function readPageAds(
       ctx.gender ?? null,
       ctx.listingId ?? null,
       ctx.publishedPrices ?? [],
+      ctx.countryCode ?? null,
     ],
   );
   for (const row of rows) {

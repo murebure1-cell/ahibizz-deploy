@@ -20,10 +20,16 @@ export const dynamic = "force-dynamic";
 const targeting: { title: string; detail: string; icon: IconName }[] = [
   {
     title: "Lokacija",
-    detail: "Grad koji posjetilac traži ili grad djelatnosti koju gleda.",
+    detail:
+      "Odabrani gradovi pretrage ili poslovnog profila. Na profilu se može birati i država djelatnosti.",
     icon: "pin",
   },
-  { title: "Vrijeme", detail: "Datum početka i trajanje prikazivanja kampanje.", icon: "calendar" },
+  {
+    title: "Vrijeme",
+    detail:
+      "Odaberi početak, broj dana i sate emitiranja u svojoj vremenskoj zoni, uključujući termine preko ponoći.",
+    icon: "calendar",
+  },
   { title: "Kategorija", detail: "Djelatnosti u odabranoj poslovnoj kategoriji.", icon: "shop" },
   { title: "Ključna riječ", detail: "Upit koji posjetilac unese u pretragu.", icon: "search" },
   {
@@ -39,6 +45,7 @@ const targeting: { title: string; detail: string; icon: IconName }[] = [
   },
 ];
 const formatNumber = (value: number) => new Intl.NumberFormat("bs-BA").format(value);
+const platformNames = { android: "Android", ios: "iOS", desktop: "Računar", other: "Ostalo" };
 
 export default async function PromotionPage() {
   const [pricing, audience, directory, sample] = await Promise.all([
@@ -172,6 +179,34 @@ export default async function PromotionPage() {
                 <dd>{formatNumber(sample.views)}</dd>
               </div>
             </dl>
+            {sample.platforms.length > 0 && (
+              <div className={styles.tableWrap}>
+                <table>
+                  <caption>
+                    Podaci po platformama iz dobrovoljnog uzorka. Jedna osoba može koristiti više
+                    uređaja.
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Platforma</th>
+                      <th scope="col">Korisnici</th>
+                      <th scope="col">Posjete</th>
+                      <th scope="col">Pregledi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sample.platforms.map((row) => (
+                      <tr key={row.platform}>
+                        <th scope="row">{platformNames[row.platform]}</th>
+                        <td>{formatNumber(row.users)}</td>
+                        <td>{formatNumber(row.visits)}</td>
+                        <td>{formatNumber(row.views)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             {sample.regions.length > 0 && (
               <>
                 <h3>Regije koje su korisnici odabrali</h3>

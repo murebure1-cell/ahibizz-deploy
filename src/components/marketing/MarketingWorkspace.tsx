@@ -32,6 +32,7 @@ const messages: Record<string, string> = {
   CAMPAIGN_POSITION_UNAVAILABLE: "Pozicija trenutno nije dostupna.",
   CAMPAIGN_IMAGE_CHANGED: "Odabrana fotografija se promijenila. Odaberi je ponovo.",
   CAMPAIGN_SITE_CHANGED: "Web stranica djelatnosti više nije dostupna za oglas.",
+  CAMPAIGN_COUNTRY_CHANGED: "Nema objavljene djelatnosti za odabranu državu. Osvježi izbor.",
   CAMPAIGN_CATEGORY_CHANGED: "Odabrana kategorija više nije dostupna.",
   CAMPAIGN_DATE_CHANGED: "Odaberi početak u narednih 12 mjeseci.",
   CAMPAIGN_BUDGET_EXCEEDED: "Ponuda prelazi budžet koji je oglašivač prihvatio.",
