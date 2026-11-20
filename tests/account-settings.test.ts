@@ -165,10 +165,13 @@ test("account identity is checked under authority locks before a same-value pref
     pool: { connect: async () => client } as never,
   });
   const headers = new Headers({ "X-AhiBizz-Account-ID": account.id });
-  for (const action of [
-    () => service.read(headers),
-    () => service.update(headers, { appearance: "dark", expectedAppearance: "light" }),
-  ]) {
+  for (const [lock, action] of [
+    ["FOR SHARE", () => service.read(headers)],
+    [
+      "FOR UPDATE",
+      () => service.update(headers, { appearance: "dark", expectedAppearance: "light" }),
+    ],
+  ] as const) {
     statements.length = 0;
     await assert.rejects(
       action,
@@ -177,10 +180,12 @@ test("account identity is checked under authority locks before a same-value pref
         error.status === 401 &&
         error.code === "ACCOUNT_IDENTITY_CHANGED",
     );
-    assert.ok(
-      statements.some((sql) => sql.includes("auth_user WHERE") && sql.includes("FOR UPDATE")),
+    assert.ok(statements.some((sql) => sql.includes("auth_user WHERE") && sql.includes(lock)));
+    assert.ok(statements.some((sql) => sql.includes("locked_session") && sql.includes(lock)));
+    assert.equal(
+      statements.some((sql) => sql.includes("LEFT JOIN auth_account_preferences")),
+      false,
     );
-    assert.ok(statements.some((sql) => sql.includes("locked_session")));
     assert.equal(
       statements.some((sql) => /^(INSERT|UPDATE|DELETE)/.test(sql)),
       false,
