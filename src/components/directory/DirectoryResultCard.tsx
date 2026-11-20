@@ -73,11 +73,23 @@ export function DirectoryResultCard({
               {monogram || "A"}
             </span>
           )}
-          {!business.reviews?.count && (
-            <span className={styles.brand} aria-hidden="true">
-              <Image src="/brand/ahi-logo-white.svg" alt="" width={88} height={24} unoptimized />
-            </span>
-          )}
+          <span
+            className={styles.brand}
+            data-symbol={Boolean(business.reviews?.count)}
+            aria-hidden="true"
+          >
+            <Image
+              src={
+                business.reviews?.count
+                  ? "/preview-app/icons/source-mark.svg"
+                  : "/brand/ahi-logo-white.svg"
+              }
+              alt=""
+              width={business.reviews?.count ? 22 : 88}
+              height={24}
+              unoptimized
+            />
+          </span>
         </Link>
         <span className={styles.openStatus}>
           <BusinessOpenStatus details={business.details} />

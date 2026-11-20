@@ -109,6 +109,15 @@
   width: 74px;
   height: auto;
 }
+.brand[data-symbol="true"] {
+  top: 61px;
+  bottom: auto;
+  left: 23px;
+}
+.brand[data-symbol="true"] img {
+  width: 22px;
+  filter: drop-shadow(0 1px 2px #0b1b2d80);
+}
 .body {
   position: relative;
   z-index: 1;
