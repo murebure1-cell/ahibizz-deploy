@@ -144,7 +144,7 @@ export function pageInput(input: unknown = {}, publicOnly = false) {
     "subcategoryId",
     "status",
     "q",
-    ...(publicOnly ? ["city", "latitude", "longitude", "radiusKm"] : []),
+    ...(publicOnly ? ["city", "latitude", "longitude", "radiusKm", "openNow"] : []),
   ]);
   const page = value.page ?? 1,
     pageSize = value.pageSize ?? 20;
@@ -168,6 +168,8 @@ export function pageInput(input: unknown = {}, publicOnly = false) {
     value.city === undefined || (typeof value.city === "string" && value.city.trim() === "")
       ? null
       : text(value.city, 100);
+  if (value.openNow !== undefined && typeof value.openNow !== "boolean")
+    fail(400, "INVALID_DIRECTORY_INPUT");
   let nearby: { latitude: number; longitude: number; radiusKm: number } | null = null;
   if (["latitude", "longitude", "radiusKm"].some((key) => Object.hasOwn(value, key))) {
     if (
@@ -195,6 +197,7 @@ export function pageInput(input: unknown = {}, publicOnly = false) {
     status: value.status as string | undefined,
     q,
     city,
+    openNow: value.openNow === true,
     nearby,
   };
 }

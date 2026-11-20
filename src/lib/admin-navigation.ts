@@ -1,4 +1,9 @@
 const adminSections = {
+  danas: "today",
+  odobrenja: "approvalQueue",
+  pregled: "businessQueue",
+  obracuni: "receiptQueue",
+  transakcije: "settlementQueue",
   nalozi: "accounts",
   kategorije: "categories",
   djelatnosti: "businesses",
@@ -9,6 +14,11 @@ const adminSections = {
 export type AdminSection = (typeof adminSections)[keyof typeof adminSections];
 
 const sectionQueries: Record<AdminSection, keyof typeof adminSections> = {
+  today: "danas",
+  approvalQueue: "odobrenja",
+  businessQueue: "pregled",
+  receiptQueue: "obracuni",
+  settlementQueue: "transakcije",
   accounts: "nalozi",
   categories: "kategorije",
   businesses: "djelatnosti",
@@ -20,12 +30,12 @@ const sectionQueries: Record<AdminSection, keyof typeof adminSections> = {
 export function adminSection(value: unknown): AdminSection {
   return typeof value === "string" && Object.hasOwn(adminSections, value)
     ? adminSections[value as keyof typeof adminSections]
-    : "accounts";
+    : "today";
 }
 
 /** Pane changes discard unrelated query values and stale anchors, as account navigation does. */
 export function adminSectionPath(section: AdminSection): string {
-  const query = Object.hasOwn(sectionQueries, section) ? sectionQueries[section] : "nalozi";
+  const query = Object.hasOwn(sectionQueries, section) ? sectionQueries[section] : "danas";
   return `/administracija?odjeljak=${query}`;
 }
 

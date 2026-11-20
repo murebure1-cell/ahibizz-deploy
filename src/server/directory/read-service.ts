@@ -130,8 +130,9 @@ export async function listDirectory(
   parameters: unknown[],
   publicOnly = false,
   featuredOnly: boolean | "category" = false,
+  checkedAt?: Date,
 ) {
-  const { page, pageSize, categoryId, subcategoryId, status, q, city, nearby } = pageInput(
+  const { page, pageSize, categoryId, subcategoryId, status, q, city, nearby, openNow } = pageInput(
     input,
     publicOnly,
   );
@@ -157,6 +158,20 @@ export async function listDirectory(
   if (city) {
     const index = values.push(searchPattern(city));
     filters.push(`${foldedSearch("b.city")} ILIKE $${index}`);
+  }
+  if (openNow) {
+    const instant = values.push(checkedAt ?? new Date());
+    // The stored week starts on Monday. Midnight-spanning hours are split across both days.
+    filters.push(`EXISTS (
+      SELECT 1 FROM directory_business_details d
+      CROSS JOIN LATERAL (SELECT $${instant}::timestamptz AT TIME ZONE d.timezone AS local_time) clock
+      CROSS JOIN LATERAL jsonb_array_elements(
+        d.hours -> (EXTRACT(ISODOW FROM clock.local_time)::int - 1) -> 'windows'
+      ) win
+      WHERE d.business_id = b.id
+        AND (win->>'startMinute')::int <= EXTRACT(HOUR FROM clock.local_time) * 60 + EXTRACT(MINUTE FROM clock.local_time)
+        AND (win->>'endMinute')::int > EXTRACT(HOUR FROM clock.local_time) * 60 + EXTRACT(MINUTE FROM clock.local_time)
+    )`);
   }
   if (nearby) {
     const latitude = values.push(nearby.latitude),
@@ -191,18 +206,45 @@ export async function listDirectory(
         ? publicColumns
         : columns;
   if (localPlacement) selectedColumns += `, ${localPlacement} AS "localFeatured"`;
+  const fromWhere = `FROM directory_business b ${publicOnly ? "JOIN auth_user u ON u.id = b.owner_user_id" : ""} WHERE ${filters.join(" AND ")}`;
+  if (openNow) selectedColumns += ', COUNT(*) OVER()::int AS "openCount"';
   const limitIndex = values.push(pageSize + 1),
     offsetIndex = values.push((page - 1) * pageSize);
   const result = await database.query(
-    `SELECT ${selectedColumns} FROM directory_business b ${publicOnly ? "JOIN auth_user u ON u.id = b.owner_user_id" : ""} WHERE ${filters.join(" AND ")} ORDER BY ${order} LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
+    `SELECT ${selectedColumns} ${fromWhere} ORDER BY ${order} LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
     values,
   );
-  const items = (result.rows as Row[]).slice(0, pageSize).map(dto);
-  return { items, page, pageSize, hasMore: result.rows.length > pageSize };
+  const items = (result.rows as (Row & { openCount?: number })[])
+    .slice(0, pageSize)
+    .map(({ openCount: _count, ...row }) => dto(row));
+  let total: number | undefined;
+  if (openNow) {
+    total = Number(result.rows[0]?.openCount ?? 0);
+    if (page > 1 && !result.rows.length) {
+      const count = await database.query(
+        `SELECT COUNT(*)::int AS total ${fromWhere}`,
+        values.slice(0, -2),
+      );
+      total = Number(count.rows[0]?.total ?? 0);
+    }
+  }
+  return {
+    items,
+    page,
+    pageSize,
+    hasMore: result.rows.length > pageSize,
+    ...(total !== undefined ? { total } : {}),
+  };
 }
 
 /** Public queries require only the configured database, never an auth or mail service. */
-export function createPublicDirectoryService({ database }: { database: DirectoryReadDatabase }) {
+export function createPublicDirectoryService({
+  database,
+  now = () => new Date(),
+}: {
+  database: DirectoryReadDatabase;
+  now?: () => Date;
+}) {
   return {
     categories: () =>
       safeRead(async () => ({
@@ -227,8 +269,10 @@ export function createPublicDirectoryService({ database }: { database: Directory
         "latitude",
         "longitude",
         "radiusKm",
+        "openNow",
       ]);
       return safeRead(async () => {
+        const checkedAt = now();
         const result = await listDirectory(
           database,
           input,
@@ -236,8 +280,13 @@ export function createPublicDirectoryService({ database }: { database: Directory
           [],
           true,
           featuredOnly,
+          checkedAt,
         );
-        return { ...result, items: result.items.map(publicDto) };
+        return {
+          ...result,
+          checkedAt: checkedAt.toISOString(),
+          items: result.items.map(publicDto),
+        };
       });
     },
     async readPublic(id: string): Promise<PublicDirectoryBusiness> {

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { readNextAppointment } from "../../src/server/customer-next-appointment.ts";
 import { createRentalService } from "../../src/server/rentals/service.ts";
 import { createRentalHttpHandler } from "../../src/server/rentals-http.ts";
 
@@ -266,6 +267,14 @@ export async function testVehicleRentals(
       );
       const approved = (await decide(winner, owner, "approve")).data.entry;
       assert.equal(approved.status, "confirmed");
+      const nextPickup = await readNextAppointment(
+        pool,
+        winnerActor.user.id,
+        new Date(approved.startsAt),
+      );
+      assert.equal(nextPickup.id, approved.id);
+      assert.equal(nextPickup.kind, "rental");
+      assert.equal(nextPickup.status, "confirmed");
       assert.equal((await decide(winner, owner, "approve")).data.entry.version, approved.version);
       assert.equal((await request(first, loserActor, ask(first))).data.code, "RENTAL_OVERLAP");
       assert.equal(

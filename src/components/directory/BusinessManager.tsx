@@ -164,6 +164,7 @@ export function BusinessManager({
   active,
   isOwner,
   initialAll = false,
+  initialReview = false,
   embedded = false,
   expectedAccountId,
   request: directoryApi = directoryRequest,
@@ -177,6 +178,7 @@ export function BusinessManager({
   active: boolean;
   isOwner: boolean;
   initialAll?: boolean;
+  initialReview?: boolean;
   embedded?: boolean;
   expectedAccountId?: string;
   request?: DirectoryRequest;
@@ -205,7 +207,9 @@ export function BusinessManager({
   const [refresh, setRefresh] = useState(0);
   const [searchText, setSearchText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<DirectoryListFilter>("active");
+  const [filter, setFilter] = useState<DirectoryListFilter>(
+    initialReview && isOwner ? "review" : "active",
+  );
   const reviewOnly = filter === "review";
   const archived = filter === "archived";
   const missingMap = filter === "missingMap";
@@ -338,13 +342,22 @@ export function BusinessManager({
     ) {
       boundary.current = { expectedAccountId, directoryApi, bookingApi, mediaApi, isOwner };
       clearPrivate();
-      setFilter("active");
+      setFilter(initialReview && isOwner ? "review" : "active");
       setAll(initialAll && isOwner);
       setPage(1);
       setError("");
       setLoginRequired(false);
     }
-  }, [expectedAccountId, directoryApi, bookingApi, mediaApi, isOwner, initialAll, clearPrivate]);
+  }, [
+    expectedAccountId,
+    directoryApi,
+    bookingApi,
+    mediaApi,
+    isOwner,
+    initialAll,
+    initialReview,
+    clearPrivate,
+  ]);
   const editingId = editing?.id;
   const commandLocked = busy || pendingCreate !== null || pendingMutation !== null;
   const locked = commandLocked || returning !== null;

@@ -11,8 +11,14 @@ import {
 import { Icon } from "../Icon";
 import styles from "./business-details.module.css";
 
-export function BusinessOpenStatus({ details }: { details?: BusinessDetails | null }) {
-  const [now, setNow] = useState<Date | null>(null);
+export function BusinessOpenStatus({
+  details,
+  checkedAt,
+}: {
+  details?: BusinessDetails | null;
+  checkedAt?: string;
+}) {
+  const [now, setNow] = useState<Date | null>(() => (checkedAt ? new Date(checkedAt) : null));
   useEffect(() => {
     if (!details?.hours) return;
     const update = () => setNow(new Date());

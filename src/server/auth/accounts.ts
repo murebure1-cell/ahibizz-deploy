@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { readOwnerOverview, readOwnerPlacements } from "../account-overview";
+import { readAdminTodayQueues } from "../admin-today";
+import { readBusinessToday } from "../business-today";
 import { bootstrapInitialOwnerRecord, InitialOwnerError } from "./initial-owner";
 import {
   type AccountApproval,
@@ -282,6 +284,15 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
         return readOwnerOverview(client, actor.id);
       });
     },
+    async businessToday(headers: Headers, selected: string | null) {
+      const current = await session(headers);
+      return accountTransaction(pool, async (client) => {
+        const actor = await authority(client, current, false, "read");
+        const value = await readBusinessToday(client, actor.id, selected);
+        if (!value) fail(404, "BUSINESS_NOT_FOUND");
+        return value;
+      });
+    },
     async placements(headers: Headers) {
       const current = await session(headers);
       return accountTransaction(pool, async (client) => {
@@ -319,6 +330,14 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
         return profile(client, user.id);
       });
     },
+    async adminToday(headers: Headers) {
+      const current = await session(headers);
+      if (!current.expectedAccountId) fail(401, "ACCOUNT_IDENTITY_CHANGED");
+      return accountTransaction(pool, async (client) => {
+        await authority(client, current, true, "read");
+        return readAdminTodayQueues(client);
+      });
+    },
     async listPending(headers: Headers) {
       const current = await session(headers);
       return accountTransaction(pool, async (client) => {
@@ -333,15 +352,19 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
         };
       });
     },
-    async listAccounts(headers: Headers, input: unknown): Promise<AccountListPage> {
+    async listAccounts(
+      headers: Headers,
+      input: unknown,
+      readyOnly = false,
+    ): Promise<AccountListPage> {
       const value = parseAccountListInput(input);
       const current = await session(headers);
       return accountTransaction(pool, async (client) => {
         await authority(client, current, true);
         const pattern = value.q ? `%${value.q.replace(/[!%_]/g, "!$&")}%` : null;
         const result = await client.query<SafeAccountProfile>(
-          `SELECT ${profileColumns} FROM ${profileJoin} WHERE u.approval=$1 AND ($2::text IS NULL OR u.name ILIKE $2 ESCAPE '!' OR u.email ILIKE $2 ESCAPE '!') ORDER BY u."createdAt",u.id LIMIT 31 OFFSET $3`,
-          [value.approval, pattern, (value.page - 1) * 30],
+          `SELECT ${profileColumns} FROM ${profileJoin} WHERE u.approval=$1 AND (NOT $4::boolean OR (u.role='member' AND u."emailVerified" AND u.approval='pending')) AND ($2::text IS NULL OR u.name ILIKE $2 ESCAPE '!' OR u.email ILIKE $2 ESCAPE '!') ORDER BY u."createdAt",u.id LIMIT 31 OFFSET $3`,
+          [value.approval, pattern, (value.page - 1) * 30, readyOnly],
         );
         return {
           accounts: result.rows.slice(0, 30),

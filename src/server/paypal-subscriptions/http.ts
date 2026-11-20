@@ -100,7 +100,7 @@ export async function handlePackageSubscriptions(
     }
     const settlements =
       environment === "live" && request.method === "GET"
-        ? /^admin\/settlements\/([1-9]\d{0,3})$/.exec(path)
+        ? /^admin\/settlements\/(review\/)?([1-9]\d{0,3})$/.exec(path)
         : null;
     if (
       !settlements &&
@@ -118,7 +118,9 @@ export async function handlePackageSubscriptions(
       provider: config ? createSubscriptionProvider(environment, config) : null,
     });
     if (settlements)
-      return reply(await service.settlements(request.headers, Number(settlements[1])));
+      return reply(
+        await service.settlements(request.headers, Number(settlements[2]), Boolean(settlements[1])),
+      );
     if (request.method === "GET" && path === "contracts")
       return reply(await service.list(request.headers));
     if (!config) return reply({ code: "SUBSCRIPTIONS_UNAVAILABLE" }, 503);

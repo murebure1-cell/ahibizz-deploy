@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { readNextAppointment } from "../../src/server/customer-next-appointment.ts";
 import { createStayService } from "../../src/server/stays/service.ts";
 import { createStayHttpHandler } from "../../src/server/stays-http.ts";
 
@@ -186,6 +187,15 @@ export async function testAccommodation(
       assert.equal(results[1 - i].data.code, "STAY_OVERLAP");
       assert.equal(winning.totalMinor, 15100);
       assert.equal(winning.status, "requested");
+      const onArrival = await readNextAppointment(
+        pool,
+        winner.user.id,
+        new Date(`${arrival}T12:00:00+02:00`),
+      );
+      assert.equal(onArrival.id, winning.id);
+      assert.equal(onArrival.startsAt, arrival);
+      assert.equal(onArrival.endsAt, departure);
+      assert.equal(onArrival.kind, "stay");
       assert.equal((await request(room, winner, inputs[i])).data.entry.id, winning.id);
       assert.equal(
         (await request(room, winner, { ...inputs[i], checkOut: day(2) })).data.code,

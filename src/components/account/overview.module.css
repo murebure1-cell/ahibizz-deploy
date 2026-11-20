@@ -1,3 +1,8 @@
+.appointmentActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .workspace {
   display: grid;
   gap: clamp(14px, 2.2vw, 24px);

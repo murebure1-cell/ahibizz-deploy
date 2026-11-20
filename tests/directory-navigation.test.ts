@@ -9,6 +9,7 @@ test("a public profile can return to the same results, city, placement and page"
     categoryId: "zdravlje",
     subcategoryId: "terapija",
     istaknute: "kategorija",
+    otvoreno: "1",
     page: "2",
   };
   const url = new URL(`/pretraga${directorySearchSuffix(values)}`, "https://ahibizz.example");
@@ -17,6 +18,12 @@ test("a public profile can return to the same results, city, placement and page"
 
 test("an unfiltered profile returns to the directory; unrelated URL data is discarded", () => {
   assert.equal(directorySearchSuffix({}), "");
-  const values = { q: ["two", "values"], page: "777", istaknute: "x", next: "//example.org" };
+  const values = {
+    q: ["two", "values"],
+    page: "777",
+    istaknute: "x",
+    otvoreno: "x",
+    next: "//example.org",
+  };
   assert.equal(directorySearchSuffix(values), "");
 });

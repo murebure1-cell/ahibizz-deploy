@@ -13,6 +13,8 @@ import { accountDate } from "../../lib/display-date";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { PackageContract } from "../../lib/sandbox-subscriptions";
 import { Icon, type IconName } from "../Icon";
+import { BusinessToday } from "./BusinessToday";
+import { NextAppointmentCard } from "./NextAppointmentCard";
 import styles from "./overview.module.css";
 
 type MemberContract = PackageContract & { contractualEndsAt: string | null };
@@ -223,6 +225,9 @@ export function AccountOverview({
       onSection={onSection}
       error={error ? <ReadError retry={retry} /> : null}
     >
+      {result && result.businesses > 0 && (
+        <BusinessToday key={accountId} accountId={accountId} active={active} />
+      )}
       <MembershipOverview
         accountId={accountId}
         active={active}
@@ -280,6 +285,9 @@ export function AccountSummary({
         </button>
       </header>
       {error}
+      {result?.nextAppointment && (
+        <NextAppointmentCard row={result.nextAppointment} open={() => onSection("appointments")} />
+      )}
       <div className={styles.metrics}>
         {entries.map(({ label, icon, count, pane }) => {
           const content = (

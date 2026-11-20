@@ -69,6 +69,7 @@ export function MessagingInbox({
   preview = false,
   request = messagingRequest,
   initialTarget,
+  initialBusinessThread,
   heading = true,
   onSimulateReply,
   expectedAccountId,
@@ -78,6 +79,7 @@ export function MessagingInbox({
   preview?: boolean;
   request?: MessagingRequest;
   initialTarget?: MessageTarget;
+  initialBusinessThread?: string;
   heading?: boolean;
   onSimulateReply?: (threadId: string) => void | Promise<void>;
   expectedAccountId?: string;
@@ -274,7 +276,12 @@ export function MessagingInbox({
   );
 
   const loadConversation = useCallback(
-    async (id: string, before?: number, acknowledge = true): Promise<ChatConversation | null> => {
+    async (
+      id: string,
+      before?: number,
+      acknowledge = true,
+      expectedInbox?: MessageInbox,
+    ): Promise<ChatConversation | null> => {
       if (!usable) return null;
       const generation = scope.current,
         ticket = ++conversationRevision.current;
@@ -291,6 +298,7 @@ export function MessagingInbox({
         const readThrough = conversationReadThrough(value, before);
         if (
           value.thread.id !== id ||
+          (expectedInbox !== undefined && value.thread.inbox !== expectedInbox) ||
           (before !== undefined && value.items.some((message) => message.sequence >= before))
         )
           throw new Error("invalid_message_conversation");
@@ -589,7 +597,7 @@ export function MessagingInbox({
         view.current = { inbox: saved.inbox, page: 1 };
       } else {
         const last = store?.readSelection();
-        if (last && !initialTarget) {
+        if (last && !initialTarget && !initialBusinessThread) {
           setInbox(last.inbox);
           view.current = { inbox: last.inbox, page: 1 };
           selection.current = last.threadId;
@@ -603,7 +611,7 @@ export function MessagingInbox({
         "Nacrt se ne može sačuvati na uređaju. Oslobodi prostor pa osvježi stranicu.",
       );
     }
-  }, [active, authorityVerified, store, initialTarget, loadConversation]);
+  }, [active, authorityVerified, store, initialTarget, initialBusinessThread, loadConversation]);
   useEffect(() => {
     if (!store) return;
     const onStorage = (event: StorageEvent) => {
@@ -644,6 +652,49 @@ export function MessagingInbox({
       for (const controller of controllers.current) controller.abort();
     };
   }, [active, inbox, loadList, page]);
+  const handledInquiry = useRef("");
+  useEffect(() => {
+    if (!active || !initialBusinessThread) {
+      handledInquiry.current = "";
+      return;
+    }
+    if (
+      !authorityVerified ||
+      (store && !recoveryReady) ||
+      busy ||
+      pending ||
+      handledInquiry.current === initialBusinessThread
+    )
+      return;
+    if (inbox !== "business") {
+      selection.current = null;
+      setSelected(null);
+      setConversation(null);
+      setDraft("");
+      setThreads([]);
+      setListReady(false);
+      setInbox("business");
+      setPage(1);
+      return;
+    }
+    handledInquiry.current = initialBusinessThread;
+    selection.current = initialBusinessThread;
+    setSelected(initialBusinessThread);
+    setConversation(null);
+    setDraft("");
+    setError("");
+    void loadConversation(initialBusinessThread, undefined, true, "business");
+  }, [
+    active,
+    initialBusinessThread,
+    authorityVerified,
+    store,
+    recoveryReady,
+    busy,
+    pending,
+    inbox,
+    loadConversation,
+  ]);
   const targetKey = initialTarget ? `${initialTarget.kind}:${initialTarget.targetId}` : "";
   useEffect(() => {
     if (!targetKey) {

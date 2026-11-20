@@ -19,10 +19,12 @@ export function DirectoryResultCard({
   business,
   preview = false,
   searchSuffix = "",
+  checkedAt,
 }: {
   business: PublicBusinessView;
   preview?: boolean;
   searchSuffix?: string;
+  checkedAt?: string;
 }) {
   const logo = safeBusinessImage(business.logo, preview);
   const cover = safeBusinessImage(business.image, preview);
@@ -94,7 +96,7 @@ export function DirectoryResultCard({
           </span>
         </Link>
         <span className={styles.openStatus}>
-          <BusinessOpenStatus details={business.details} />
+          <BusinessOpenStatus details={business.details} checkedAt={checkedAt} />
         </span>
         {Boolean(business.reviews?.count) && (
           <span className={styles.rating}>

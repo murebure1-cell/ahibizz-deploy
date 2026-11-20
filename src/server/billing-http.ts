@@ -80,7 +80,10 @@ export function createBillingHttpHandler({
             throw new BillingAccessError(400, "INVALID_BILLING_INPUT");
           return reply({ catalog: service.catalog() });
         }
-        if (path === "admin") return reply(await service.listAdmin(request.headers, query(url)));
+        if (path === "admin" || path === "admin/pending")
+          return reply(
+            await service.listAdmin(request.headers, query(url), path === "admin/pending"),
+          );
         if (path === "admin/businesses")
           return reply(await service.listBusinesses(request.headers, query(url, true)));
         if (path === "admin/development")

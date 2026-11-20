@@ -344,6 +344,93 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
       await t.test(
+        "open-now uses each public schedule before counting and paging, including midnight and daylight saving",
+        async () => {
+          const client = await pool.connect();
+          try {
+            await client.query("BEGIN");
+            let instant = "2026-11-22T23:00:00Z"; // Monday 00:00 in Sarajevo, Sunday 18:00 in New York.
+            const service = createPublicDirectoryService({
+              database: client,
+              now: () => new Date(instant),
+            });
+            const schedule = (windows) =>
+              Array.from({ length: 7 }, (_, index) => ({
+                weekday: index + 1,
+                windows: (windows[index + 1] ?? []).map(([startMinute, endMinute]) => ({
+                  startMinute,
+                  endMinute,
+                })),
+              }));
+            const weekendNight = schedule({ 7: [[1320, 1440]], 1: [[0, 120]] });
+            async function seed(label, timezone, hours, status = "published") {
+              const id = randomUUID();
+              await client.query(
+                `INSERT INTO directory_business(id,owner_user_id,title,category_id,city,status,version,published_at)
+              VALUES ($1,$2,$3,$4,'Tuzla',$5,2,CASE WHEN $5='published' THEN now() END)`,
+                [id, owner.user.id, `hoursqa ${label}`, category.id, status],
+              );
+              if (timezone)
+                await client.query(
+                  `INSERT INTO directory_business_details (business_id,timezone,hours,business_version)
+              VALUES($1,$2,$3::jsonb,2)`,
+                  [id, timezone, JSON.stringify(hours)],
+                );
+              return id;
+            }
+            const ids = [];
+            for (let i = 0; i < 21; i++)
+              ids.push(await seed("night", "Europe/Sarajevo", weekendNight));
+            await seed("night", "America/New_York", weekendNight);
+            await seed("closed", "Europe/Sarajevo", schedule({}));
+            await seed("unknown", null, null);
+            await seed("private", "Europe/Sarajevo", weekendNight, "draft");
+            const read = (extra = {}) =>
+              service.listPublic({
+                city: "Tuzla",
+                q: "hoursqa",
+                categoryId: category.id,
+                openNow: true,
+                ...extra,
+              });
+            const first = await read(),
+              second = await read({ page: 2 }),
+              absent = await read({ page: 3 });
+            assert.equal(first.items.length, 20);
+            assert.equal(first.hasMore, true);
+            assert.equal(second.items.length, 1);
+            assert.equal(second.hasMore, false);
+            assert.deepEqual(absent.items, []);
+            for (const page of [first, second, absent]) assert.equal(page.total, 21);
+            assert.deepEqual(
+              [...first.items, ...second.items].map((item) => item.id).sort(),
+              ids.sort(),
+            );
+            assert.equal(first.checkedAt, new Date(instant).toISOString());
+            assert.ok(first.items.every((item) => !("openCount" in item) && !("ownerId" in item)));
+            assert.equal(
+              (await read({ q: "hoursqa unknown", openNow: false })).items[0].details,
+              null,
+            );
+            instant = "2026-11-23T01:00:00Z"; // 02:00 is the exclusive upper boundary.
+            assert.equal((await read()).total, 0);
+            const folded = await seed("fold", "Europe/Sarajevo", schedule({ 7: [[120, 150]] }));
+            for (instant of ["2026-10-25T00:00:00Z", "2026-10-25T01:00:00Z"]) {
+              assert.deepEqual(
+                (await read({ q: "hoursqa fold" })).items.map((item) => item.id),
+                [folded],
+              );
+            }
+            for (instant of ["2026-10-25T01:30:00Z", "2026-03-29T01:00:00Z"]) {
+              assert.equal((await read({ q: "hoursqa fold" })).total, 0);
+            }
+          } finally {
+            await client.query("ROLLBACK");
+            client.release();
+          }
+        },
+      );
+      await t.test(
         "unrelated user, changed actor, suspended owner and revoked session cannot access details",
         async () => {
           await denied(() => directory.readDetails(other.headers, business.id), 404);

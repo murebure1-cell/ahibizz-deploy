@@ -532,6 +532,15 @@ test("real isolated confirmed-receipt ledger, accounting corrections and current
           );
         const first = await billing.listAdmin(owner.headers, { page: 1 }),
           secondPage = await billing.listAdmin(owner.headers, { page: 2 });
+        const reviewPage = await billing.listAdmin(owner.headers, { page: 1 }, true);
+        const expectedRows = [...first.receipts, ...secondPage.receipts].filter(
+          (r) => r.allocationStatus === "pending",
+        );
+        assert.deepEqual(
+          reviewPage.receipts.map((r) => r.id),
+          expectedRows.slice(0, 30).map((r) => r.id),
+        );
+        assert.deepEqual(reviewPage.summary, first.summary);
         assert.equal(first.receipts.length, 30);
         assert.equal(first.hasMore, true);
         assert.equal(secondPage.receipts.length, 3);

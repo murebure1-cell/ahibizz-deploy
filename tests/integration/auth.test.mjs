@@ -1170,6 +1170,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             ).rows[0].createdAt.toISOString(),
             businesses: 1,
             promotedBusinesses: 0,
+            nextAppointment: null,
             credits: 0,
             unreadThreads: 0,
           });
@@ -1548,6 +1549,82 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             ).response.status,
             200,
           );
+          const today = "/api/admin/today";
+          assert.equal((await request("GET", today)).response.status, 401);
+          assert.equal(
+            (await request("GET", today, { cookies: member, expectedAccountId: targetId })).response
+              .status,
+            403,
+          );
+          assert.equal(
+            (await request("GET", today, { cookies: first, expectedAccountId: targetId })).response
+              .status,
+            401,
+          );
+          const readQueues = async () => {
+            const result = await request("GET", today, {
+              cookies: first,
+              expectedAccountId: owner.id,
+            });
+            assert.equal(result.response.status, 200);
+            assert.deepEqual(result.data.queues.map((row) => row.id).sort(), [
+              "accounts",
+              "businesses",
+              "receipts",
+              "reports",
+              "settlements",
+            ]);
+            for (const row of result.data.queues)
+              assert.deepEqual(Object.keys(row).sort(), ["count", "id", "oldestAt"]);
+            return Object.fromEntries(result.data.queues.map((row) => [row.id, row]));
+          };
+          const baseline = await readQueues();
+          const eligible = await pool.query(
+            `SELECT count(*)::int n, min("createdAt") AS oldest FROM auth_user WHERE role='member' AND "emailVerified" AND approval='pending'`,
+          );
+          assert.equal(baseline.accounts.count, eligible.rows[0].n);
+          assert.equal(baseline.accounts.oldestAt, eligible.rows[0].oldest.toISOString());
+          await pool.query(
+            `INSERT INTO auth_user(id,name,email,"emailVerified",role,approval) VALUES ('queue-unconfirmed','Queue incomplete','queue@auth-fixture.invalid',false,'member','pending')`,
+          );
+          const ready = await request(
+            "GET",
+            "/api/admin/accounts/ready?approval=pending&page=1&q=Queue",
+            { cookies: first, expectedAccountId: owner.id },
+          );
+          assert.equal(ready.response.status, 200);
+          assert.deepEqual(ready.data.accounts, []);
+          const business = (
+            await pool.query(
+              `INSERT INTO directory_business(id,owner_user_id,title,category_id,status,editorial_revision,published_at,updated_at)
+            SELECT gen_random_uuid(),$1,'Summary revision',id,'published','{"title":"changed"}',now(),now() FROM directory_category WHERE slug='overview' RETURNING id`,
+              [targetId],
+            )
+          ).rows[0].id;
+          await pool.query(
+            `INSERT INTO directory_business_image_proposal(business_id,kind,slot,version,updated_at) VALUES ($1,'logo',0,1,'2001-01-01T00:00:00Z'),($1,'cover',0,1,now())`,
+            [business],
+          );
+          const report = (
+            await pool.query(
+              `INSERT INTO support_request(id,actor_id,subject,reference,details,created_at)
+            VALUES(gen_random_uuid(),$1,'business',$2,'Fixture','2000-01-02T00:00:00Z') RETURNING id`,
+              [targetId, business],
+            )
+          ).rows[0].id;
+          const queued = await readQueues();
+          assert.equal(queued.accounts.count, baseline.accounts.count);
+          assert.equal(queued.businesses.count, baseline.businesses.count + 1);
+          assert.equal(queued.businesses.oldestAt, "2001-01-01T00:00:00.000Z");
+          assert.equal(queued.reports.count, baseline.reports.count + 1);
+          assert.equal(queued.reports.oldestAt, "2000-01-02T00:00:00.000Z");
+          await pool.query(
+            "UPDATE support_request SET resolved_at=now(),resolved_by=$1 WHERE id=$2",
+            [owner.id, report],
+          );
+          await pool.query("DELETE FROM directory_business WHERE id=$1", [business]);
+          await pool.query("DELETE FROM auth_user WHERE id='queue-unconfirmed'");
+          assert.deepEqual(await readQueues(), baseline);
           const privatePath = "/api/admin/accounts?approval=approved&page=1";
           const nonowner = await request("GET", privatePath, { cookies: member });
           assert.equal(nonowner.response.status, 403);

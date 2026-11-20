@@ -1,3 +1,5 @@
+import { isNextAppointment, type NextAppointment } from "./next-appointment";
+
 export type AccountOverviewFacts = {
   accountId: string;
   joinedAt: string;
@@ -5,6 +7,7 @@ export type AccountOverviewFacts = {
   unreadThreads: number;
   promotedBusinesses: number;
   credits: number;
+  nextAppointment?: NextAppointment | null;
 };
 
 export type PlacementKind = "category" | "featured" | "nearby" | "banner";
@@ -41,6 +44,7 @@ export function readOverview(value: unknown, expectedId: string): AccountOvervie
   if (
     !overview ||
     overview.accountId !== expectedId ||
+    (overview.nextAppointment != null && !isNextAppointment(overview.nextAppointment)) ||
     typeof overview.joinedAt !== "string" ||
     !Number.isFinite(Date.parse(overview.joinedAt)) ||
     [

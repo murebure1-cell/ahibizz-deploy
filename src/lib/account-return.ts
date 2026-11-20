@@ -1,5 +1,12 @@
 import { adminReturnPath } from "./admin-navigation";
 import { bookingReturnPath } from "./booking-return";
+import {
+  businessInquiryPath,
+  type CalendarTarget,
+  ownerCalendarPath,
+  readBusinessInquiry,
+  readCalendarTarget,
+} from "./business-today";
 import { type MessageTarget, messageLink, readMessageTarget } from "./messaging";
 
 const accountSections = {
@@ -50,10 +57,16 @@ export function readAccountNavigation(params: URLSearchParams): {
   section: AccountSection;
   messageTarget?: MessageTarget;
   invalidMessageTarget: boolean;
+  businessThread?: string;
+  calendarTarget?: CalendarTarget;
 } {
   const values = params.getAll("odjeljak");
   const section =
     params.size === 0 ? "overview" : accountSection(values.length === 1 ? values[0] : undefined);
+  const calendarTarget = readCalendarTarget(params);
+  if (calendarTarget) return { section, calendarTarget, invalidMessageTarget: false };
+  const businessThread = readBusinessInquiry(params);
+  if (businessThread) return { section, businessThread, invalidMessageTarget: false };
   if (section !== "messages") return { section, invalidMessageTarget: false };
   try {
     const messageTarget = readMessageTarget(params) ?? undefined;
@@ -76,6 +89,16 @@ export function accountReturnPath(value: unknown): string {
   )
     return "/nalog";
   if (value === productionRequestPath) return value;
+  if (value.startsWith("/nalog?")) {
+    const params = new URLSearchParams(value.slice(7));
+    const calendar = readCalendarTarget(params),
+      thread = readBusinessInquiry(params);
+    if (
+      (calendar && value === ownerCalendarPath(calendar)) ||
+      (thread && value === businessInquiryPath(thread))
+    )
+      return value;
+  }
   if (
     /^\/naplata(?:\/(?:povratak|odustajanje))?(?:\?narudzba=[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})?$/i.test(
       value,

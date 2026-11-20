@@ -37,6 +37,7 @@ type Props = {
   request?: AdminAccountRequest;
   expectedAccountId?: string;
   embedded?: boolean;
+  readyOnly?: boolean;
   active?: boolean;
 };
 export function AccountApprovals(props: Props) {
@@ -46,6 +47,7 @@ function ApprovalWorkspace({
   request = browserAdminRequest,
   expectedAccountId,
   embedded = false,
+  readyOnly = false,
   active = true,
 }: Props) {
   const scopedRequest = useMemo(
@@ -128,7 +130,8 @@ function ApprovalWorkspace({
       reading.current = true;
       setRead({ key: nextKey, data: cached, loading: true, error: "" });
       try {
-        const response = await transport(nextKey, {
+        const path = readyOnly ? nextKey.replace("/accounts?", "/accounts/ready?") : nextKey;
+        const response = await transport(path, {
           signal: controller.signal,
           cache: "no-store",
           credentials: "same-origin",
@@ -187,7 +190,7 @@ function ApprovalWorkspace({
           reading.current = false;
       }
     },
-    [scopedRequest, clearPrivate],
+    [scopedRequest, clearPrivate, readyOnly],
   );
 
   useEffect(() => {
@@ -358,20 +361,22 @@ function ApprovalWorkspace({
           Osvježi
         </button>
       </div>
-      <fieldset className={styles.accountFilters}>
-        <legend>Status naloga</legend>
-        {filters.map((item) => (
-          <button
-            key={item.approval}
-            type="button"
-            aria-pressed={view.approval === item.approval}
-            disabled={pending !== null}
-            onClick={() => changeView(adminAccountQuery(item.approval, 1, view.q))}
-          >
-            {item.label}
-          </button>
-        ))}
-      </fieldset>
+      {!readyOnly && (
+        <fieldset className={styles.accountFilters}>
+          <legend>Status naloga</legend>
+          {filters.map((item) => (
+            <button
+              key={item.approval}
+              type="button"
+              aria-pressed={view.approval === item.approval}
+              disabled={pending !== null}
+              onClick={() => changeView(adminAccountQuery(item.approval, 1, view.q))}
+            >
+              {item.label}
+            </button>
+          ))}
+        </fieldset>
+      )}
       <form className={styles.accountSearch} onSubmit={searchAccounts}>
         <label htmlFor={searchId}>Pretraži naloge</label>
         <div>

@@ -35,6 +35,7 @@ type Props = {
   request?: BillingRequest;
   active?: boolean;
   embedded?: boolean;
+  pendingOnly?: boolean;
 };
 type Pending = { kind: "create"; key: string } | { kind: "adjust"; id: string; version: number };
 const kindLabels = { subscription: "Pretplata", photo_video: "Foto i video" };
@@ -62,6 +63,7 @@ function BillingWorkspace({
   request: rawRequest = billingRequest,
   active = true,
   embedded = false,
+  pendingOnly = false,
 }: Props) {
   const request = useMemo(
     () => billingActorRequest(expectedAccountId, rawRequest),
@@ -146,7 +148,9 @@ function BillingWorkspace({
     readController.current = controller;
     setLoading(true);
     void request(
-      tab === "receipts" ? `admin?page=${page}` : `admin/development?page=${developmentPage}`,
+      tab === "receipts"
+        ? `admin${pendingOnly ? "/pending" : ""}?page=${page}`
+        : `admin/development?page=${developmentPage}`,
       { signal: controller.signal },
     )
       .then((reply) => {
@@ -191,6 +195,7 @@ function BillingWorkspace({
     tab,
     page,
     developmentPage,
+    pendingOnly,
     refresh,
     request,
     expectedAccountId,
@@ -488,6 +493,7 @@ function BillingWorkspace({
         active &&
         expectedAccountId &&
         rawRequest === billingRequest &&
+        !pendingOnly &&
         !IS_PLAY_EDITION && <PackageSetup accountId={expectedAccountId} />}
       {error && (
         <p role="alert" className={styles.error}>
@@ -512,42 +518,46 @@ function BillingWorkspace({
           </button>
         </div>
       )}
-      <dl className={styles.summary}>
-        {counts.map(([label, value, note]) => (
-          <div key={label} className={styles.metric}>
-            <dt>{label}</dt>
-            <dd>{value}</dd>
-            {note && <small>{note}</small>}
-          </div>
-        ))}
-      </dl>
+      {!pendingOnly && (
+        <dl className={styles.summary}>
+          {counts.map(([label, value, note]) => (
+            <div key={label} className={styles.metric}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+              {note && <small>{note}</small>}
+            </div>
+          ))}
+        </dl>
+      )}
       <div className={styles.toolbar}>
-        <div className={styles.actions} style={{ marginTop: 0 }}>
-          <button
-            type="button"
-            className={styles.secondary}
-            aria-pressed={tab === "receipts"}
-            disabled={locked || !!form || !authorized}
-            onClick={() => {
-              setTab("receipts");
-              setError("");
-            }}
-          >
-            Uplate
-          </button>
-          <button
-            type="button"
-            className={styles.secondary}
-            aria-pressed={tab === "development"}
-            disabled={locked || !!form || !authorized}
-            onClick={() => {
-              setTab("development");
-              setError("");
-            }}
-          >
-            Obračunska izdvajanja
-          </button>
-        </div>
+        {!pendingOnly && (
+          <div className={styles.actions} style={{ marginTop: 0 }}>
+            <button
+              type="button"
+              className={styles.secondary}
+              aria-pressed={tab === "receipts"}
+              disabled={locked || !!form || !authorized}
+              onClick={() => {
+                setTab("receipts");
+                setError("");
+              }}
+            >
+              Uplate
+            </button>
+            <button
+              type="button"
+              className={styles.secondary}
+              aria-pressed={tab === "development"}
+              disabled={locked || !!form || !authorized}
+              onClick={() => {
+                setTab("development");
+                setError("");
+              }}
+            >
+              Obračunska izdvajanja
+            </button>
+          </div>
+        )}
         <div className={styles.actions} style={{ marginTop: 0 }}>
           <button
             type="button"
@@ -560,20 +570,22 @@ function BillingWorkspace({
           >
             Osvježi evidenciju
           </button>
-          <button
-            type="button"
-            className={styles.primary}
-            disabled={locked || !!form || !authorized || !active}
-            onClick={() => {
-              setTab("receipts");
-              setForm("new");
-              setError("");
-              setNotice("");
-              void findBusiness("", 1);
-            }}
-          >
-            Nova uplata
-          </button>
+          {!pendingOnly && (
+            <button
+              type="button"
+              className={styles.primary}
+              disabled={locked || !!form || !authorized || !active}
+              onClick={() => {
+                setTab("receipts");
+                setForm("new");
+                setError("");
+                setNotice("");
+                void findBusiness("", 1);
+              }}
+            >
+              Nova uplata
+            </button>
+          )}
         </div>
       </div>
       {form && (
@@ -607,7 +619,11 @@ function BillingWorkspace({
       )}
       {tab === "receipts" ? (
         <>
-          {visibleRows?.length === 0 && <p className={styles.empty}>Nema evidentiranih uplata.</p>}
+          {visibleRows?.length === 0 && (
+            <p className={styles.empty}>
+              {pendingOnly ? "Nema obračuna na čekanju." : "Nema evidentiranih uplata."}
+            </p>
+          )}
           <div className={styles.list}>
             {visibleRows?.map((receipt) => (
               <article className={styles.receipt} key={receipt.id}>

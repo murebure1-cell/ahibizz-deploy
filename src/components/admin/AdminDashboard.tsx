@@ -13,14 +13,17 @@ import {
 import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { BillingAdmin } from "../billing/BillingAdmin";
+import { PackageSettlements } from "../billing/PackageSettlements";
 import { BusinessManager } from "../directory/BusinessManager";
 import { Icon, type IconName } from "../Icon";
 import { ReviewsAdmin } from "../reviews/ReviewsAdmin";
 import { AccountApprovals } from "./AccountApprovals";
+import { AdminToday } from "./AdminToday";
 import styles from "./admin.module.css";
 import { CategoryManager } from "./CategoryManager";
 
 const sections = [
+  { id: "today", label: "Danas", icon: "calendar", title: "Danas" },
   {
     id: "accounts",
     label: "Nalozi",
@@ -61,20 +64,47 @@ const sections = [
 /** The server page authorizes access; each endpoint independently checks the current owner. */
 export function AdminDashboard({
   initial,
-  initialSection = "accounts",
+  initialSection = "today",
 }: {
   initial: SafeAccountProfile;
   initialSection?: AdminSection;
 }) {
   const searchParams = useSearchParams();
   const query = searchParams?.toString();
-  const section = useMemo(
-    () => (query === undefined ? initialSection : readAdminNavigation(new URLSearchParams(query))),
-    [query, initialSection],
-  );
+  const section = useMemo(() => {
+    const target =
+      query === undefined ? initialSection : readAdminNavigation(new URLSearchParams(query));
+    return IS_PLAY_EDITION && target === "settlementQueue" ? "today" : target;
+  }, [query, initialSection]);
+  // Preserve mounted workspaces on unrelated tab changes; a focused queue explicitly starts a new filtered view.
+  const [lastQueue, setLastQueue] = useState({
+    accounts: false,
+    businesses: false,
+    billing: false,
+  });
+  const accountsActive = section === "accounts" || section === "approvalQueue";
+  const businessesActive = section === "businesses" || section === "businessQueue";
+  const billingActive = section === "billing" || section === "receiptQueue";
+  const accountsQueue = accountsActive ? section === "approvalQueue" : lastQueue.accounts;
+  const businessesQueue = businessesActive ? section === "businessQueue" : lastQueue.businesses;
+  const receiptsQueue = billingActive ? section === "receiptQueue" : lastQueue.billing;
+  useEffect(() => {
+    setLastQueue((last) =>
+      last.accounts === accountsQueue &&
+      last.businesses === businessesQueue &&
+      last.billing === receiptsQueue
+        ? last
+        : { accounts: accountsQueue, businesses: businessesQueue, billing: receiptsQueue },
+    );
+  }, [accountsQueue, businessesQueue, receiptsQueue]);
   const navigationToggle = useRef<HTMLButtonElement>(null);
   const [navigationOpen, setNavigationOpen] = useState(false);
   const [visited, setVisited] = useState({
+    today: section === "today",
+    approvalQueue: section === "approvalQueue",
+    businessQueue: section === "businessQueue",
+    receiptQueue: section === "receiptQueue",
+    settlementQueue: section === "settlementQueue",
     accounts: section === "accounts",
     categories: section === "categories",
     businesses: section === "businesses",
@@ -94,7 +124,14 @@ export function AdminDashboard({
     }
     setNavigationOpen(false);
   }
-  const current = sections.find((item) => item.id === section) ?? sections[0];
+  const queues = {
+    approvalQueue: { parent: "accounts", title: "Nalozi za odobrenje" },
+    businessQueue: { parent: "businesses", title: "Djelatnosti i izmjene za pregled" },
+    receiptQueue: { parent: "billing", title: "Obračuni na čekanju" },
+    settlementQueue: { parent: "billing", title: "PayPal uplate za provjeru" },
+  } as const;
+  const queue = Object.hasOwn(queues, section) ? queues[section as keyof typeof queues] : null;
+  const current = sections.find((item) => item.id === (queue?.parent ?? section)) ?? sections[0];
   return (
     <main id="glavni-sadrzaj" className={styles.layout}>
       <aside className={styles.sidebar}>
@@ -127,7 +164,7 @@ export function AdminDashboard({
               key={item.id}
               type="button"
               data-admin-section={item.id}
-              aria-current={section === item.id ? "page" : undefined}
+              aria-current={current.id === item.id ? "page" : undefined}
               aria-controls="admin-content"
               onClick={() => changeSection(item.id)}
             >
@@ -161,7 +198,7 @@ export function AdminDashboard({
       </aside>
       <section id="admin-content" className={styles.content} data-design="admin-panel">
         <header className={styles.pageHeading}>
-          <h1 data-design="admin-heading">{current.title}</h1>
+          <h1 data-design="admin-heading">{queue?.title ?? current.title}</h1>
           {section === "businesses" && (
             <div className={styles.headingActions}>
               <Link href={businessImportPath}>Uvezi prijave</Link>
@@ -169,12 +206,17 @@ export function AdminDashboard({
             </div>
           )}
         </header>
-        <div hidden={section !== "accounts"}>
-          {(visited.accounts || section === "accounts") && (
+        {section === "today" && <AdminToday key={initial.id} accountId={initial.id} />}
+        {section === "settlementQueue" && !IS_PLAY_EDITION && (
+          <PackageSettlements key={initial.id} accountId={initial.id} reviewOnly />
+        )}
+        <div hidden={!accountsActive}>
+          {(visited.accounts || visited.approvalQueue || accountsActive) && (
             <AccountApprovals
-              key={initial.id}
+              key={`${initial.id}:${accountsQueue}`}
               expectedAccountId={initial.id}
-              active={section === "accounts"}
+              readyOnly={accountsQueue}
+              active={accountsActive}
               embedded
             />
           )}
@@ -184,12 +226,13 @@ export function AdminDashboard({
             <CategoryManager key={initial.id} expectedAccountId={initial.id} />
           )}
         </div>
-        <div hidden={section !== "businesses"}>
-          {(visited.businesses || section === "businesses") && (
+        <div hidden={!businessesActive}>
+          {(visited.businesses || visited.businessQueue || businessesActive) && (
             <BusinessManager
-              key={initial.id}
+              key={`${initial.id}:${businessesQueue}`}
               expectedAccountId={initial.id}
-              active={section === "businesses"}
+              initialReview={businessesQueue}
+              active={businessesActive}
               isOwner
               initialAll
               adminVerification
@@ -206,12 +249,13 @@ export function AdminDashboard({
             />
           )}
         </div>
-        <div hidden={section !== "billing"}>
-          {(visited.billing || section === "billing") && (
+        <div hidden={!billingActive}>
+          {(visited.billing || visited.receiptQueue || billingActive) && (
             <BillingAdmin
-              key={initial.id}
+              key={`${initial.id}:${receiptsQueue}`}
               expectedAccountId={initial.id}
-              active={section === "billing"}
+              pendingOnly={receiptsQueue}
+              active={billingActive}
               embedded
             />
           )}

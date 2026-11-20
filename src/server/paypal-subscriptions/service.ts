@@ -292,7 +292,7 @@ export function createPackageSubscriptions({
     return { contract: dto(after) };
   }
   return {
-    async settlements(h: Headers, page: number) {
+    async settlements(h: Headers, page: number, reviewOnly = false) {
       if (environment !== "live") return fail(404, "NOT_FOUND");
       if (!Number.isInteger(page) || page < 1 || page > 9999) return fail(400, "INVALID_REQUEST");
       if (!h.get("X-AhiBizz-Account-ID")) return fail(401, "ACCOUNT_IDENTITY_CHANGED");
@@ -304,8 +304,9 @@ export function createPackageSubscriptions({
           p.paid_at AS "paidAt",p.status,p.needs_review AS "needsReview",r.id IS NOT NULL AS recorded
           FROM live_package_payment p JOIN live_package_contract c ON c.id=p.contract_id
           LEFT JOIN billing_receipt r ON r.source='paypal' AND r.external_reference=p.id
+          WHERE NOT $2::boolean OR p.needs_review
           ORDER BY p.paid_at DESC,p.id DESC LIMIT 21 OFFSET $1`,
-          [(page - 1) * 20],
+          [(page - 1) * 20, reviewOnly],
         );
         return { page, more: rows.length > 20, items: rows.slice(0, 20) };
       });

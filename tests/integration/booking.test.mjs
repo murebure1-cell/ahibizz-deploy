@@ -5,6 +5,8 @@ import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { loadMigrations, runMigrations } from "../../scripts/migrate.mjs";
+import { readNextAppointment } from "../../src/server/customer-next-appointment.ts";
+import { testBusinessToday } from "./business-today-cases.mjs";
 import { integrationConfiguration } from "./postgres.test.mjs";
 import { testVehicleRentals } from "./rental-cases.mjs";
 import { testAccommodation } from "./stay-cases.mjs";
@@ -628,6 +630,18 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           winnerBody = bodies[index];
           assert.equal(winner.status, "requested");
           assert.equal(winner.kind, "customer");
+          const nextAppointment = await readNextAppointment(
+            pool,
+            winnerActor.user.id,
+            new Date(winner.startsAt),
+          );
+          assert.equal(nextAppointment.id, winner.id);
+          assert.equal(nextAppointment.kind, "service");
+          assert.equal(nextAppointment.status, "requested");
+          assert.equal(
+            await readNextAppointment(pool, professional.user.id, new Date(winner.startsAt)),
+            null,
+          );
           assert.equal(winner.timezone, "Europe/Sarajevo");
           assert.equal(await count("booking_entry"), 1);
           assert.equal(await count("booking_create_commands"), 1);
@@ -903,6 +917,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           const cancelled = await action(winnerActor, winner, "cancel");
           assert.equal(cancelled.status, 200);
           assert.equal(cancelled.data.entry.status, "cancelled");
+          assert.equal(
+            await readNextAppointment(pool, winnerActor.user.id, new Date(winner.startsAt)),
+            null,
+          );
           assert.deepEqual((await events(winner.id)).at(-1), {
             actor_user_id: winnerActor.user.id,
             action: "cancel",
@@ -1601,6 +1619,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
 
+      await testBusinessToday(t, { pool, accounts, operator, customer, business, baseURL });
       await testAccommodation(t, {
         pool,
         auth,

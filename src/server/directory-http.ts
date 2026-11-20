@@ -22,6 +22,10 @@ function query(url: URL, allowed: string[]) {
     if (["page", "pageSize"].includes(key)) {
       if (!/^\d{1,3}$/.test(value)) throw new DirectoryAccessError(400, "INVALID_DIRECTORY_INPUT");
       result[key] = Number(value);
+    } else if (key === "openNow") {
+      if (value !== "1" && value !== "0")
+        throw new DirectoryAccessError(400, "INVALID_DIRECTORY_INPUT");
+      result[key] = value === "1";
     } else if (["latitude", "longitude", "radiusKm"].includes(key)) {
       if (!/^-?(?:0|[1-9]\d{0,2})(?:\.\d{1,6})?$/.test(value))
         throw new DirectoryAccessError(400, "INVALID_DIRECTORY_INPUT");
@@ -95,6 +99,7 @@ export function createPublicDirectoryHttpHandler(service: PublicDirectoryService
               "latitude",
               "longitude",
               "radiusKm",
+              "openNow",
             ]),
           ),
         );

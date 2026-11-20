@@ -1,3 +1,4 @@
+import { businessUuid } from "../lib/business-today";
 import { readAuthConfiguration } from "./auth";
 import {
   AccountAccessError,
@@ -63,10 +64,19 @@ export function createAccountHttpHandler({
           return reply({ account: await service.read(request.headers) });
         if (pathname === "/api/account/overview" && !url.search)
           return reply({ overview: await service.overview(request.headers) });
+        if (pathname === "/api/account/business-today") {
+          const id = url.searchParams.get("djelatnost");
+          if (url.searchParams.size && (url.searchParams.size !== 1 || !businessUuid(id)))
+            throw new AccountAccessError(400, "INVALID_ACCOUNT_QUERY");
+          return reply(await service.businessToday(request.headers, id));
+        }
         if (pathname === "/api/account/placements" && !url.search)
           return reply({ placements: await service.placements(request.headers) });
-        if (pathname === "/api/admin/accounts") {
-          if (!url.search) return reply(await service.listPending(request.headers));
+        if (pathname === "/api/admin/today" && !url.search)
+          return reply({ queues: await service.adminToday(request.headers) });
+        if (pathname === "/api/admin/accounts" || pathname === "/api/admin/accounts/ready") {
+          const readyOnly = pathname.endsWith("/ready");
+          if (!url.search && !readyOnly) return reply(await service.listPending(request.headers));
           if (request.url.length > 8192) throw new AccountAccessError(400, "INVALID_ACCOUNT_QUERY");
           const seen = new Set<string>();
           for (const key of url.searchParams.keys()) {
@@ -82,7 +92,9 @@ export function createAccountHttpHandler({
             page: Number(page),
             ...(url.searchParams.has("q") ? { q: url.searchParams.get("q") } : {}),
           });
-          return reply(await service.listAccounts(request.headers, query));
+          if (readyOnly && query.approval !== "pending")
+            throw new AccountAccessError(400, "INVALID_ACCOUNT_QUERY");
+          return reply(await service.listAccounts(request.headers, query, readyOnly));
         }
       }
       const passwordChange = pathname === "/api/account/password" && !url.search;

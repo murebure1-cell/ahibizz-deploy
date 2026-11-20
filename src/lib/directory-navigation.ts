@@ -1,5 +1,8 @@
 export type DirectorySearchParams = Partial<
-  Record<"q" | "mjesto" | "categoryId" | "subcategoryId" | "istaknute" | "page", string | string[]>
+  Record<
+    "q" | "mjesto" | "categoryId" | "subcategoryId" | "istaknute" | "otvoreno" | "page",
+    string | string[]
+  >
 >;
 
 /** Carry only directory filters between results and public profiles. */
@@ -17,6 +20,7 @@ export function directorySearchSuffix(params: DirectorySearchParams): string {
   }
   if (params.istaknute === "kategorija" || params.istaknute === "1")
     values.set("istaknute", params.istaknute);
+  if (params.otvoreno === "1") values.set("otvoreno", "1");
   if (typeof params.page === "string" && /^\d{1,3}$/.test(params.page)) {
     const page = Number(params.page);
     if (page > 1 && page <= 500) values.set("page", String(page));

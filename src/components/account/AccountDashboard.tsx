@@ -32,6 +32,9 @@ function paneHeading(label: string) {
     </h2>
   );
 }
+const OwnerCalendarPanel = dynamic(() =>
+  import("./OwnerCalendarPanel").then((m) => m.OwnerCalendarPanel),
+);
 const BusinessManager = dynamic(
   () => import("../directory/BusinessManager").then((m) => m.BusinessManager),
   { loading: () => paneHeading("Djelatnosti") },
@@ -109,7 +112,7 @@ function AccountWorkspace({
   const query = searchParams?.toString();
   const moreControl = useRef<HTMLButtonElement>(null);
   const [moreMenu, setMoreMenu] = useState(false);
-  const view = useMemo(
+  const view = useMemo<ReturnType<typeof readAccountNavigation>>(
     () =>
       query === undefined
         ? { section: initialSection, messageTarget, invalidMessageTarget }
@@ -299,11 +302,21 @@ function AccountWorkspace({
               />
             </AccountPane>
             <AccountPane selected={section === "businesses"}>
-              <BusinessManager
-                active={hasAccess && section === "businesses"}
-                isOwner={profile.role === "owner"}
-                expectedAccountId={initial.id}
-              />
+              <div hidden={Boolean(view.calendarTarget)}>
+                <BusinessManager
+                  active={hasAccess && section === "businesses" && !view.calendarTarget}
+                  isOwner={profile.role === "owner"}
+                  expectedAccountId={initial.id}
+                />
+              </div>
+              {hasAccess && section === "businesses" && view.calendarTarget && (
+                <OwnerCalendarPanel
+                  key={`${view.calendarTarget.businessId}:${view.calendarTarget.kind}:${view.calendarTarget.day ?? ""}`}
+                  target={view.calendarTarget}
+                  accountId={initial.id}
+                  onBack={() => changeSection("businesses")}
+                />
+              )}
             </AccountPane>
             <AccountPane selected={section === "appointments"}>
               <CustomerAppointments
@@ -332,6 +345,7 @@ function AccountWorkspace({
               <MessagingInbox
                 active={hasAccess && section === "messages"}
                 initialTarget={view.messageTarget}
+                initialBusinessThread={view.businessThread}
                 expectedAccountId={initial.id}
               />
             </AccountPane>

@@ -18,8 +18,14 @@ type Sale = {
   needsReview: boolean;
   recorded: boolean;
 };
-export function PackageSettlements({ accountId }: { accountId: string }) {
-  const [open, setOpen] = useState(false),
+export function PackageSettlements({
+  accountId,
+  reviewOnly = false,
+}: {
+  accountId: string;
+  reviewOnly?: boolean;
+}) {
+  const [open, setOpen] = useState(reviewOnly),
     [page, setPage] = useState(1),
     [data, setData] = useState<{ page: number; more: boolean; items: Sale[] } | null>(null),
     [error, setError] = useState(false);
@@ -27,7 +33,8 @@ export function PackageSettlements({ accountId }: { accountId: string }) {
     if (!open) return;
     const controller = new AbortController();
     setError(false);
-    fetch(`/api/paketi/admin/settlements/${page}`, {
+    setData(null);
+    fetch(`/api/paketi/admin/settlements/${reviewOnly ? "review/" : ""}${page}`, {
       credentials: "same-origin",
       cache: "no-store",
       signal: controller.signal,
@@ -44,24 +51,29 @@ export function PackageSettlements({ accountId }: { accountId: string }) {
         if (!controller.signal.aborted) setError(true);
       });
     return () => controller.abort();
-  }, [open, page, accountId]);
+  }, [open, page, accountId, reviewOnly]);
   return (
     <section className={styles.production} aria-label="PayPal transakcije">
       <div>
-        <button
-          type="button"
-          className={styles.secondary}
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-        >
-          PayPal transakcije paketa
-        </button>
+        {!reviewOnly && (
+          <button
+            type="button"
+            className={styles.secondary}
+            aria-expanded={open}
+            onClick={() => setOpen((value) => !value)}
+          >
+            PayPal transakcije paketa
+          </button>
+        )}
         {open && (
           <>
             {error && <p className={styles.error}>Transakcije trenutno nisu dostupne.</p>}
+            {!error && !data && <p role="status">Dohvaćanje transakcija…</p>}
             {data?.page === page && (
               <>
-                {data.items.length === 0 && <p>Nema transakcija.</p>}
+                {data.items.length === 0 && (
+                  <p>{reviewOnly ? "Nema uplata za provjeru." : "Nema transakcija."}</p>
+                )}
                 {data.items.map((sale) => (
                   <article className={styles.receipt} key={sale.id}>
                     <h3>{sale.businessTitle}</h3>

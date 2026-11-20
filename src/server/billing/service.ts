@@ -349,15 +349,15 @@ export function createBillingService({
   };
   return {
     catalog: () => getBillingCatalog(developmentRateBps),
-    async listAdmin(headers: Headers, input: unknown = {}) {
+    async listAdmin(headers: Headers, input: unknown = {}, pendingOnly = false) {
       const page = pageInput(input),
         signed = await identity(headers);
       return transaction(pool, async (client) => {
         const user = await lockedActor(client, signed);
         const result = (
           await client.query(
-            `WITH selected AS (SELECT ${columns} FROM billing_receipt r ORDER BY r.created_at DESC,r.id DESC LIMIT $1 OFFSET $2), totals AS (SELECT count(*)::text AS "receiptCount",COALESCE(sum(gross_minor),0)::text AS "grossMinor",COALESCE(sum(refunded_minor),0)::text AS "refundedMinor",COALESCE(sum(net_base_minor),0)::text AS "knownNetBaseMinor",count(*) FILTER(WHERE net_base_minor IS NULL)::text AS "unknownNetCount",COALESCE(sum(gross_minor-refunded_minor) FILTER(WHERE net_base_minor IS NULL),0)::text AS "unknownNetCashMinor",count(*) FILTER(WHERE allocation_status='pending')::text AS "allocationPendingCount",COALESCE(sum(gross_minor) FILTER(WHERE kind='photo_video'),0)::text AS "photoVideoGrossMinor",(SELECT COALESCE(sum(delta_minor),0)::text FROM billing_development_ledger) AS "developmentPostedMinor" FROM billing_receipt) SELECT COALESCE((SELECT jsonb_agg(selected ORDER BY selected."createdAt" DESC,selected.id DESC) FROM selected),'[]'::jsonb) AS items,(SELECT row_to_json(totals) FROM totals) AS summary`,
-            [pageSize + 1, (page - 1) * pageSize],
+            `WITH selected AS (SELECT ${columns} FROM billing_receipt r WHERE NOT $3::boolean OR r.allocation_status='pending' ORDER BY r.created_at DESC,r.id DESC LIMIT $1 OFFSET $2), totals AS (SELECT count(*)::text AS "receiptCount",COALESCE(sum(gross_minor),0)::text AS "grossMinor",COALESCE(sum(refunded_minor),0)::text AS "refundedMinor",COALESCE(sum(net_base_minor),0)::text AS "knownNetBaseMinor",count(*) FILTER(WHERE net_base_minor IS NULL)::text AS "unknownNetCount",COALESCE(sum(gross_minor-refunded_minor) FILTER(WHERE net_base_minor IS NULL),0)::text AS "unknownNetCashMinor",count(*) FILTER(WHERE allocation_status='pending')::text AS "allocationPendingCount",COALESCE(sum(gross_minor) FILTER(WHERE kind='photo_video'),0)::text AS "photoVideoGrossMinor",(SELECT COALESCE(sum(delta_minor),0)::text FROM billing_development_ledger) AS "developmentPostedMinor" FROM billing_receipt) SELECT COALESCE((SELECT jsonb_agg(selected ORDER BY selected."createdAt" DESC,selected.id DESC) FROM selected),'[]'::jsonb) AS items,(SELECT row_to_json(totals) FROM totals) AS summary`,
+            [pageSize + 1, (page - 1) * pageSize, pendingOnly],
           )
         ).rows[0];
         return {

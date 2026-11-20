@@ -211,6 +211,8 @@ test("public UUID, query and URL validation rejects malformed requests before SQ
   for (const route of [
     "/api/directory/categories?unknown=1",
     "/api/directory/businesses?status=draft",
+    "/api/directory/businesses?openNow=yesterday",
+    "/api/directory/businesses?openNow=1&openNow=0",
     "/api/directory/businesses?page=1&page=2",
     "/api/directory/businesses?page=0",
     "/api/directory/businesses?page=501",

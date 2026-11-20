@@ -33,12 +33,15 @@ export default async function SearchPage({
   const rawPage = text(params.page, 10),
     page = rawPage && /^\d{1,3}$/.test(rawPage) ? Number(rawPage) : 1;
   const featuredOnly = params.istaknute === "kategorija" ? "category" : params.istaknute === "1";
+  const openNow = params.otvoreno === "1";
+  let checkedAt: string | undefined, total: number | undefined;
   let items: PublicDirectoryBusiness[] = [],
     categories: DirectoryCategory[] = [],
     hasMore = false,
     available = false;
   let invalidFilters =
     Object.values(params).some(Array.isArray) ||
+    (params.otvoreno !== undefined && !openNow) ||
     Boolean(rawPage && (!/^\d{1,3}$/.test(rawPage) || page < 1 || page > 500));
   try {
     const service = getPublicDirectoryService();
@@ -48,6 +51,7 @@ export default async function SearchPage({
           {
             q: query,
             city,
+            openNow,
             ...(categoryId ? { categoryId } : {}),
             ...(subcategoryId ? { subcategoryId } : {}),
             page,
@@ -57,6 +61,8 @@ export default async function SearchPage({
         service.categories(),
       ]);
       items = result.items;
+      checkedAt = result.checkedAt;
+      total = result.total;
       hasMore = result.hasMore;
       categories = classification.categories;
       available = true;
@@ -73,13 +79,14 @@ export default async function SearchPage({
     { key: "mjesto", label: city },
     { key: "categoryId", label: categories.find((item) => item.id === categoryId)?.name },
     { key: "subcategoryId", label: categories.find((item) => item.id === subcategoryId)?.name },
+    { key: "otvoreno", label: openNow ? "Otvoreno sada" : "" },
     {
       key: "istaknute",
       label:
         featuredOnly === "category" ? "Istaknuto u kategoriji" : featuredOnly ? "Istaknuto" : "",
     },
   ] as const;
-  const filtered = Boolean(query || city || categoryId || subcategoryId || featuredOnly);
+  const filtered = Boolean(query || city || categoryId || subcategoryId || featuredOnly || openNow);
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <header className={styles.intro}>
@@ -87,7 +94,9 @@ export default async function SearchPage({
       </header>
       <DirectorySearchForm
         featuredOnly={featuredOnly}
-        key={JSON.stringify([query, city, categoryId, subcategoryId])}
+        openNow={openNow}
+        checkedAt={checkedAt}
+        key={JSON.stringify([query, city, categoryId, subcategoryId, openNow])}
         query={query}
         city={city}
         categoryId={categoryId}
@@ -96,7 +105,15 @@ export default async function SearchPage({
       />
       <section aria-label="Rezultati pretrage">
         <div className={styles.resultsHeading}>
-          <h2>{filtered ? "Rezultati pretrage" : "Sve djelatnosti"}</h2>
+          <h2>
+            {filtered ? "Rezultati pretrage" : "Sve djelatnosti"}
+            {total !== undefined && (
+              <span className={styles.count} aria-live="polite">
+                {" "}
+                ({total})
+              </span>
+            )}
+          </h2>
           {filtered && !invalidFilters && <Link href="/pretraga">Očisti pretragu</Link>}
         </div>
         {filtered && available && (
@@ -138,11 +155,19 @@ export default async function SearchPage({
                 key={item.id}
                 business={publicBusinessView(item, categories)}
                 searchSuffix={sourceQuery}
+                checkedAt={checkedAt}
               />
             ))}
           </div>
         ) : (
-          <EmptyDirectory filtered={filtered} />
+          <EmptyDirectory
+            filtered={filtered}
+            withoutOpenFilter={
+              openNow && total === 0
+                ? `/pretraga${directorySearchSuffix({ ...params, otvoreno: undefined, page: undefined })}`
+                : undefined
+            }
+          />
         )}
         {available && (page > 1 || hasMore) && (
           <nav className={styles.pagination} aria-label="Stranice rezultata">

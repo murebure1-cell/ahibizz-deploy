@@ -9,6 +9,11 @@ import {
 } from "../src/lib/admin-navigation";
 
 const sections = [
+  ["danas", "today"],
+  ["odobrenja", "approvalQueue"],
+  ["pregled", "businessQueue"],
+  ["obracuni", "receiptQueue"],
+  ["transakcije", "settlementQueue"],
   ["nalozi", "accounts"],
   ["kategorije", "categories"],
   ["djelatnosti", "businesses"],
@@ -48,7 +53,7 @@ test("unknown, duplicate and prototype query values cannot select another admini
     "naplata&next=elsewhere",
     "https://evil.invalid",
   ])
-    assert.equal(adminSection(value), "accounts");
+    assert.equal(adminSection(value), "today");
   for (const query of [
     "",
     "odjeljak=unknown",
@@ -58,7 +63,7 @@ test("unknown, duplicate and prototype query values cannot select another admini
     "odjeljak=__proto__",
     "odjeljak=naplata%26odjeljak%3Dkategorije",
   ])
-    assert.equal(readAdminNavigation(new URLSearchParams(query)), "accounts");
+    assert.equal(readAdminNavigation(new URLSearchParams(query)), "today");
 });
 
 test("login destinations accept only the exact closed administrative paths", () => {
@@ -102,5 +107,5 @@ test("a pane selection produces a canonical address without old query values or 
   const next = adminSectionPath(readAdminNavigation(previous.searchParams));
   assert.equal(next, "/administracija?odjeljak=kategorije");
   for (const value of ["constructor", "__proto__", "//evil.invalid", "billing&role=owner"])
-    assert.equal(adminSectionPath(value as AdminSection), "/administracija?odjeljak=nalozi");
+    assert.equal(adminSectionPath(value as AdminSection), "/administracija?odjeljak=danas");
 });

@@ -73,6 +73,36 @@
 .filters {
   display: contents;
 }
+.form .hoursFilter {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  width: fit-content;
+  min-height: 44px;
+  cursor: pointer;
+  color: var(--ui-text);
+}
+.hoursFilter input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  padding: 0;
+  accent-color: var(--ui-accent);
+}
+@media (min-width: 1101px) {
+  .form .hoursFilter {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+  .form button[type="submit"] {
+    grid-row: 1;
+    grid-column: -2 / -1;
+  }
+}
+.count {
+  color: var(--ui-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
 .form svg {
   width: 17px;
 }

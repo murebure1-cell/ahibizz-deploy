@@ -26,6 +26,7 @@ import { Icon } from "../Icon";
 import styles from "./booking.module.css";
 
 type Props = {
+  initialDay?: string;
   businessId: string;
   businessTitle: string;
   preview?: boolean;
@@ -298,6 +299,7 @@ export function BusinessBookingManager(props: Props) {
 }
 
 function BookingWorkspace({
+  initialDay,
   businessId,
   businessTitle,
   preview = false,
@@ -432,8 +434,9 @@ function BookingWorkspace({
           setSettingsError("");
         }
         const today = dateKey(new Date(), value.timezone);
-        setMonth((current) => current || `${today.slice(0, 7)}-01`);
-        setDay((current) => current || today);
+        const selected = initialDay ?? today;
+        setMonth((current) => current || `${selected.slice(0, 7)}-01`);
+        setDay((current) => current || selected);
       } catch (failure) {
         if (!live.current || generation !== authority.current) return;
         if (bookingAccessDenied(failure)) {
@@ -447,7 +450,7 @@ function BookingWorkspace({
           setSettingsLoading(false);
       }
     },
-    [api, path, clearPrivate],
+    [api, path, clearPrivate, initialDay],
   );
 
   const loadCalendar = useCallback(

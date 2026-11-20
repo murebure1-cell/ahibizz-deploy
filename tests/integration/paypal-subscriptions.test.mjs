@@ -657,6 +657,16 @@ test("sandbox package lifecycle reconciles processor evidence without activating
         });
         await assert.rejects(live.settlements(person.headers, 1), { status: 403 });
         const adminLedger = await live.settlements(admin.headers, 1);
+        await assert.rejects(live.settlements(person.headers, 1, true), { status: 403 });
+        await pool.query(
+          "UPDATE live_package_payment SET needs_review=true WHERE id='ENTITLEMENTFIX01'",
+        );
+        const flagged = await live.settlements(admin.headers, 1, true);
+        assert.ok(flagged.items.every((row) => row.needsReview));
+        assert.ok(flagged.items.some((row) => row.id === "ENTITLEMENTFIX01"));
+        await pool.query(
+          "UPDATE live_package_payment SET needs_review=false WHERE id='ENTITLEMENTFIX01'",
+        );
         assert.ok(
           adminLedger.items.some(
             (row) => row.id === "ENTITLEMENTFIX01" && row.status === "REFUNDED" && !row.recorded,
