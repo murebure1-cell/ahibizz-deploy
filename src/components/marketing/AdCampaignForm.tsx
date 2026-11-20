@@ -246,7 +246,7 @@ export function AdCampaignForm({
               <div className={styles.campaignGrid}>
                 <label>
                   Početak (opcionalno)
-                  <input name="startsOn" type="date" min={new Date().toISOString().slice(0, 10)} />
+                  <input name="startsOn" type="date" />
                 </label>
                 <label>
                   Najveći budžet (KM)
