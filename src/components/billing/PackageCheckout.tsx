@@ -15,7 +15,9 @@ import {
   type SandboxContractStatus,
   type SandboxPackageContract,
   type SandboxPackageQuote,
+  walletPackageStatus,
 } from "../../lib/sandbox-subscriptions";
+import { creditsForBamMinor } from "../../lib/wallet";
 import styles from "./billing.module.css";
 import { SubscriptionCardButton } from "./SubscriptionCardButton";
 
@@ -29,6 +31,7 @@ type Business = {
 };
 type Catalog = PackageBenefitsCatalog & {
   available: boolean;
+  walletRate?: number | null;
   packages: SandboxPackageQuote[];
   sellable: BillingPackageId[];
   paypalClientId?: string | null;
@@ -48,6 +51,18 @@ const statusLabels: Record<SandboxContractStatus, string> = {
   CANCELLED: "Otkazana",
   EXPIRED: "Raspored naplate završen",
 };
+
+function creditAmount(minor: number) {
+  return `${new Intl.NumberFormat("bs-BA", { maximumFractionDigits: 2 }).format(minor / 100)} kredita`;
+}
+function dueDate(value: string) {
+  return new Intl.DateTimeFormat(["bs-BA", "hr-HR"], {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    timeZone: "Europe/Sarajevo",
+  }).format(new Date(value));
+}
 
 async function request<T>(
   path: string,
@@ -69,8 +84,16 @@ async function request<T>(
   if (!response.ok) {
     if (response.status === 401 || response.status === 403)
       throw new Error("Pristup nije dostupan. Provjeri svoj nalog.");
-    if (response.status === 409) {
+    if (response.status === 409 || response.status === 402) {
       const detail = await response.json().catch(() => null);
+      if (detail?.code === "INSUFFICIENT_CREDITS")
+        throw new Error("Nemaš dovoljno Ahi kredita za ovu uplatu.");
+      if (detail?.code === "WALLET_PAYMENT_CHANGED")
+        throw new Error("Cijena u kreditima se promijenila. Učitaj ponudu ponovo.");
+      if (detail?.code === "PACKAGE_PERIOD_ALREADY_PAID")
+        throw new Error("Za ovaj period već je evidentirana uplata paketa.");
+      if (detail?.code === "PACKAGE_CYCLE_NOT_DUE")
+        throw new Error("Ova rata još nije dospjela. Provjeri plaćene rate.");
       if (detail?.code === "PACKAGE_BENEFITS_CHANGED")
         throw new Error("Ponuda je izmijenjena. Učitaj novi uslov prije plaćanja.");
       if (detail?.code === "PACKAGE_LOCATION_REQUIRED")
@@ -130,8 +153,12 @@ export function PackageCheckout({
   const [returnChecked, setReturnChecked] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [confirmation, setConfirmation] = useState("");
   const [confirmCancel, setConfirmCancel] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "paypal">("paypal");
+  const [requestedMethod, setPaymentMethod] = useState<"card" | "paypal" | "credits">(
+    sandbox ? "paypal" : "credits",
+  );
   const [cardResume, setCardResume] = useState("");
   const cardReturnPath = useRef("");
   const cardAttempt = useRef(0);
@@ -149,10 +176,22 @@ export function PackageCheckout({
       ((!benefit?.nearbyDays || (b.latitude != null && b.longitude != null)) &&
         (Boolean(benefit?.nearbyDays || benefit?.featuredDays) || b.packagePaymentNeeded)),
   );
-  const ready = catalog?.available && catalog.sellable.includes(packageId);
+  const creditPrice = catalog?.walletRate
+    ? creditsForBamMinor(monthly ? selected.monthlyMinor : selected.annualMinor, catalog.walletRate)
+    : null;
+  const hasPayment = Boolean(catalog?.available || creditPrice);
+  const ready = hasPayment && Boolean(catalog?.sellable.includes(packageId));
+  const methods: ("card" | "paypal" | "credits")[] = [];
+  if (creditPrice !== null) methods.push("credits");
+  if (catalog?.available) methods.push("card", "paypal");
+  const paymentMethod = methods.includes(requestedMethod)
+    ? requestedMethod
+    : (methods[0] ?? requestedMethod);
   const chosenBusiness =
     eligibleBusinesses.find((b) => b.id === businessId)?.id ?? eligibleBusinesses[0]?.id ?? "";
-  const canSubmit = Boolean(ready && chosenBusiness && quote && accepted);
+  const canSubmit = Boolean(
+    ready && chosenBusiness && quote && accepted && methods.includes(paymentMethod),
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -167,17 +206,26 @@ export function PackageCheckout({
         const [pricing, mine, history] = await Promise.all([
           request<Catalog>(`${api}/catalog`, userId, signal),
           ownedBusinesses(userId, signal, sandbox),
-          request<{ contracts: SandboxPackageContract[] }>(contractsPath, userId, signal),
+          request<{ contracts: SandboxPackageContract[]; walletBalance?: number }>(
+            contractsPath,
+            userId,
+            signal,
+          ),
         ]);
         if (signal.aborted) return;
         setCatalog(pricing);
+        if (!pricing.walletRate) setPaymentMethod("paypal");
         setBusinesses(mine);
         chooseBusiness((id) => mine.find((b) => b.id === id)?.id ?? mine[0]?.id ?? "");
         setContracts(history.contracts);
+        setBalance(history.walletBalance ?? null);
         if (
           initialContract &&
           !abandoned &&
-          history.contracts.some((c) => c.id === initialContract && c.status !== "CREATING")
+          history.contracts.some(
+            (c) =>
+              c.id === initialContract && c.status !== "CREATING" && c.paymentMethod !== "credits",
+          )
         ) {
           const updated = await request<{ contract: SandboxPackageContract }>(
             `${contractsPath}/${initialContract}/refresh`,
@@ -256,18 +304,24 @@ export function PackageCheckout({
     setContracts((values) => [contract, ...values.filter((c) => c.id !== contract.id)]);
   }
 
-  function prepare(existing?: SandboxPackageContract) {
-    const selection = `${chosenBusiness}:${packageId}:${period}:${catalog?.version ?? ""}`;
+  function prepare(existing?: SandboxPackageContract, wallet = false) {
+    const selection = `${chosenBusiness}:${packageId}:${period}:${catalog?.version ?? ""}:${wallet ? creditPrice : "paypal"}`;
     if (!existing && pendingKey.current?.selection !== selection)
       pendingKey.current = { selection, id: crypto.randomUUID() };
-    return request<ContractApproval>(contractsPath, userId, undefined, {
-      requestId: existing?.requestId ?? pendingKey.current?.id,
-      businessId: existing?.businessId ?? chosenBusiness,
-      packageId: existing?.packageId ?? packageId,
-      period: existing?.period ?? period,
-      accepted: true,
-      ...(!sandbox ? { benefitsVersion: existing?.benefitsVersion ?? catalog?.version } : {}),
-    });
+    return request<ContractApproval>(
+      wallet ? `${contractsPath}/credits` : contractsPath,
+      userId,
+      undefined,
+      {
+        requestId: existing?.requestId ?? pendingKey.current?.id,
+        businessId: existing?.businessId ?? chosenBusiness,
+        packageId: existing?.packageId ?? packageId,
+        period: existing?.period ?? period,
+        accepted: true,
+        ...(wallet ? { expectedCreditMinor: creditPrice } : {}),
+        ...(!sandbox ? { benefitsVersion: existing?.benefitsVersion ?? catalog?.version } : {}),
+      },
+    );
   }
 
   async function startCard(existing?: SandboxPackageContract) {
@@ -326,7 +380,7 @@ export function PackageCheckout({
   }
 
   async function perform(
-    action: "create" | "resume" | "refresh" | "cancel",
+    action: "create" | "resume" | "refresh" | "cancel" | "pay-credits",
     existing?: SandboxPackageContract,
   ) {
     if (eventLock.current || (action === "create" && !canSubmit)) return;
@@ -334,15 +388,34 @@ export function PackageCheckout({
     eventLock.current = true;
     setBusy(true);
     setError("");
+    setConfirmation("");
     try {
       let result: ContractApproval;
       if (action === "create" || action === "resume") {
-        result = await prepare(existing);
+        result = await prepare(existing, action === "create" && paymentMethod === "credits");
       } else {
         if (!existing) return;
-        result = await request(`${contractsPath}/${existing.id}/${action}`, userId, undefined, {});
+        result = await request(
+          `${contractsPath}/${existing.id}/${action}`,
+          userId,
+          undefined,
+          action === "pay-credits"
+            ? { cycle: existing.paidCycles + 1, expectedCreditMinor: existing.cycleCreditMinor }
+            : {},
+        );
       }
       remember(result.contract);
+      if (result.contract.paymentMethod === "credits" && result.contract.endsAt) {
+        setConfirmation(
+          `Paket za ${result.contract.businessTitle} je plaćen do ${dueDate(result.contract.endsAt)}.`,
+        );
+        accept(false);
+        const history = await request<{
+          contracts: SandboxPackageContract[];
+          walletBalance?: number;
+        }>(contractsPath, userId).catch(() => null);
+        setBalance(history?.walletBalance ?? null);
+      }
       if (action === "refresh" && result.contract.id === initialContract)
         setReturnChecked(result.contract.id);
       setConfirmCancel("");
@@ -393,6 +466,11 @@ export function PackageCheckout({
           Odobravanje je prekinuto. Status pretplate možeš provjeriti ispod.
         </p>
       )}
+      {confirmation && (
+        <p role="status" className={styles.notice}>
+          {confirmation}
+        </p>
+      )}
       {error && (
         <div className={styles.error} role="alert">
           {error}{" "}
@@ -406,14 +484,14 @@ export function PackageCheckout({
           </button>
         </div>
       )}
-      {catalog && !catalog.available && (
+      {catalog && !hasPayment && (
         <p className={styles.notice}>
           {sandbox
             ? "Probna naplata trenutno nije dostupna."
             : "Online plaćanje paketa još nije uključeno."}
         </p>
       )}
-      {catalog?.available && !ready && (
+      {hasPayment && !ready && (
         <p className={styles.notice}>Prodaja ovog paketa još nije otvorena.</p>
       )}
       {ready && !eligibleBusinesses.length && (
@@ -426,12 +504,12 @@ export function PackageCheckout({
           <a href="/nalog?odjeljak=djelatnosti">Moje djelatnosti</a>
         </p>
       )}
-      {ready && eligibleBusinesses.length > 0 && (
+      {catalog && ready && eligibleBusinesses.length > 0 && (
         <form
           className={styles.form}
           onSubmit={(e) => {
             e.preventDefault();
-            if (paymentMethod === "paypal") void perform("create");
+            if (paymentMethod !== "card") void perform("create");
           }}
         >
           <fieldset disabled={busy}>
@@ -484,9 +562,13 @@ export function PackageCheckout({
             </div>
             {quote && (
               <p className={styles.notice}>
-                {monthly
-                  ? `${billingMoney(quote.monthlyMinor)} mjesečno. PayPal naplaćuje 12 rata po ${checkoutEuro(quote.monthlyEurMinor)}.`
-                  : `${billingMoney(quote.annualMinor)} godišnje. PayPal naplaćuje ${checkoutEuro(quote.annualEurMinor)} jednom za 12 mjeseci.`}
+                {paymentMethod === "credits" && creditPrice !== null
+                  ? monthly
+                    ? `${creditAmount(creditPrice)} po rati. Svaku dospjelu ratu plaćaš u svom nalogu.`
+                    : `${creditAmount(creditPrice)} za 12 mjeseci.`
+                  : monthly
+                    ? `${billingMoney(quote.monthlyMinor)} mjesečno. PayPal naplaćuje 12 rata po ${checkoutEuro(quote.monthlyEurMinor)}.`
+                    : `${billingMoney(quote.annualMinor)} godišnje. PayPal naplaćuje ${checkoutEuro(quote.annualEurMinor)} jednom za 12 mjeseci.`}
               </p>
             )}
             <label>
@@ -503,7 +585,7 @@ export function PackageCheckout({
             </label>
             <fieldset className={styles.methodPicker}>
               <legend>Način plaćanja</legend>
-              {(["card", "paypal"] as const).map((method) => (
+              {methods.map((method) => (
                 <label key={method}>
                   <input
                     type="radio"
@@ -512,21 +594,34 @@ export function PackageCheckout({
                     checked={paymentMethod === method}
                     onChange={() => {
                       setPaymentMethod(method);
+                      accept(false);
                       setCardResume("");
                       setError("");
                     }}
                   />
-                  {method === "card" ? "Kartica" : "PayPal"}
+                  {method === "card" ? "Kartica" : method === "credits" ? "Ahi krediti" : "PayPal"}
                 </label>
               ))}
             </fieldset>
             {paymentMethod === "card" && !cardResume
               ? cardButton()
-              : paymentMethod === "paypal" && (
+              : paymentMethod !== "card" && (
                   <div className={styles.actions}>
                     <button type="submit" disabled={!canSubmit} className={styles.primary}>
-                      {sandbox ? "Odobri u PayPal Sandboxu" : "Nastavi na PayPal"}
+                      {paymentMethod === "credits" && creditPrice
+                        ? `Plati ${creditAmount(creditPrice)}`
+                        : sandbox
+                          ? "Odobri u PayPal Sandboxu"
+                          : "Nastavi na PayPal"}
                     </button>
+                    {paymentMethod === "credits" && balance !== null && (
+                      <p>Stanje · {creditAmount(Math.round(balance * 100))}</p>
+                    )}
+                    {paymentMethod === "credits" && (
+                      <a className={styles.secondary} href="/nalog?odjeljak=krediti">
+                        Dopuni kredite
+                      </a>
+                    )}
                   </div>
                 )}
           </fieldset>
@@ -546,9 +641,12 @@ export function PackageCheckout({
                   <p>
                     {billingPackages.find((p) => p.id === c.packageId)?.name} ·{" "}
                     {c.period === "monthly" ? "Mjesečno" : "Godišnje"}
+                    {c.paymentMethod === "credits" ? " · Ahi krediti" : ""}
                   </p>
                 </div>
-                <span className={styles.badge}>{statusLabels[c.status]}</span>
+                <span className={styles.badge}>
+                  {walletPackageStatus(c) ?? statusLabels[c.status]}
+                </span>
               </div>
               <dl className={styles.details}>
                 <div>
@@ -559,7 +657,11 @@ export function PackageCheckout({
                 </div>
                 <div>
                   <dt>Uplaćeno</dt>
-                  <dd>{checkoutEuro(c.paidEurMinor)}</dd>
+                  <dd>
+                    {c.paymentMethod === "credits" && c.cycleCreditMinor
+                      ? creditAmount(c.paidCycles * c.cycleCreditMinor)
+                      : checkoutEuro(c.paidEurMinor)}
+                  </dd>
                 </div>
                 {c.endsAt && (
                   <div>
@@ -618,7 +720,26 @@ export function PackageCheckout({
                     )}
                   </>
                 )}
-                {c.status !== "CREATING" && (
+                {c.paymentMethod === "credits" &&
+                  c.status === "ACTIVE" &&
+                  c.period === "monthly" &&
+                  c.paidCycles < c.totalCycles &&
+                  c.endsAt &&
+                  c.cycleCreditMinor &&
+                  (Date.parse(c.endsAt) <= Date.now() ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      className={styles.primary}
+                      onClick={() => void perform("pay-credits", c)}
+                    >
+                      Plati {c.paidCycles + 1}. ratu od {dueDate(c.endsAt)} ·{" "}
+                      {creditAmount(c.cycleCreditMinor)}
+                    </button>
+                  ) : (
+                    <p>Sljedeća rata · {dueDate(c.endsAt)}</p>
+                  ))}
+                {c.paymentMethod !== "credits" && c.status !== "CREATING" && (
                   <button
                     type="button"
                     className={styles.secondary}
@@ -628,9 +749,10 @@ export function PackageCheckout({
                     Provjeri status
                   </button>
                 )}
-                {(["ACTIVE", "SUSPENDED", "APPROVED"] as SandboxContractStatus[]).includes(
-                  c.status,
-                ) &&
+                {c.paymentMethod !== "credits" &&
+                  (["ACTIVE", "SUSPENDED", "APPROVED"] as SandboxContractStatus[]).includes(
+                    c.status,
+                  ) &&
                   (confirmCancel === c.id ? (
                     <>
                       <button

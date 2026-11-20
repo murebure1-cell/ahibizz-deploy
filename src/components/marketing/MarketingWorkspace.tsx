@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { billingMoney } from "../../lib/billing";
 import {
@@ -15,6 +16,7 @@ import {
   type PlacementTarget,
   productionServices,
 } from "../../lib/marketing";
+import { ahiCreditTopUps } from "../../lib/wallet";
 import styles from "./marketing.module.css";
 
 const messages: Record<string, string> = {
@@ -22,6 +24,10 @@ const messages: Record<string, string> = {
   QUOTE_PAYMENT_PENDING: "Online uplata za ovu ponudu je otvorena. Provjeri njeno stanje.",
   OPEN_OFFER: "Već postoji otvoren zahtjev. Pogledaj ga ispod.",
   INSUFFICIENT_CREDITS: "Nemaš dovoljno kredita za ovu ponudu.",
+  CREDIT_RATE_CHANGED: "Vrijednost kredita je promijenjena. Provjeri novi iznos.",
+  CREDIT_RATE_REQUIRED: "Vrijednost kredita još nije postavljena.",
+  CREDIT_BUNDLE_CHANGED: "Cijena dopune je promijenjena. Osvježi prikaz.",
+  INVALID_CREDIT_BUNDLE: "Odaberi jednu od ponuđenih dopuna.",
   ACTIVE_BANNER: "Oglas na ovom mjestu već traje.",
   LOCATION_REQUIRED: "Prvo označi lokaciju djelatnosti na mapi.",
   INCLUDED_IN_PACKAGE: "Ovo isticanje već je aktivno kroz tvoj paket.",
@@ -45,12 +51,14 @@ function OfferCard({
   order,
   admin,
   checkoutAvailable,
+  balance,
   submit,
   busy,
 }: {
   order: MarketingOrder;
   admin: boolean;
   checkoutAvailable: boolean;
+  balance: number;
   submit: (command: MarketingCommand) => void;
   busy: boolean;
 }) {
@@ -142,8 +150,8 @@ function OfferCard({
           </label>
           {isPlacement(order.kind) && (
             <label>
-              Alternativa u kreditima (opcionalno)
-              <input name="credits" type="number" min="1" max="100000" />
+              Posebna cijena u kreditima (opcionalno)
+              <input name="credits" type="number" min="1" step="1" max="100000" />
             </label>
           )}
           <label>
@@ -175,15 +183,21 @@ function OfferCard({
       {!admin &&
         order.status === "quoted" &&
         !order.onlinePending &&
-        order.creditPrice !== null && (
+        isPlacement(order.kind) &&
+        order.creditPrice !== null &&
+        (balance >= order.creditPrice ? (
           <button
             type="button"
             disabled={busy}
             onClick={() => submit({ action: "useCredits", id: order.id })}
           >
-            Plati {credits(order.creditPrice)} kredita
+            Plati kreditima · {credits(order.creditPrice)}
           </button>
-        )}
+        ) : (
+          <Link className={styles.primaryLink} href="/nalog?odjeljak=krediti">
+            Dopuni kredite · nedostaje {credits(order.creditPrice - balance)}
+          </Link>
+        ))}
       {["requested", "quoted"].includes(order.status) && !order.onlinePending && (
         <button
           type="button"
@@ -209,6 +223,12 @@ export function MarketingWorkspace({ accountId, mode, target }: MarketingProps) 
 }
 type MarketingProps = { accountId: string; mode: MarketingMode; target?: PlacementTarget };
 function MarketingView({ accountId, mode, target }: MarketingProps) {
+  const router = useRouter();
+  const [selectedQuantity, setSelectedQuantity] = useState<number>(ahiCreditTopUps[0].quantity);
+  const [rateInput, setRateInput] = useState("");
+  const pendingTopUp = useRef<{ quantity: number; id: string } | null>(null);
+  const bundle =
+    ahiCreditTopUps.find((option) => option.quantity === selectedQuantity) ?? ahiCreditTopUps[0];
   const [data, setData] = useState<MarketingData | null>(null),
     [page, setPage] = useState(0),
     [refresh, setRefresh] = useState(0),
@@ -285,7 +305,23 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
       if (!response.ok) throw new Error(result.code);
       if (mounted.current) {
         setPage(0);
-        setMessage(command.action === "request" ? "Zahtjev je poslan." : "Izmjena je sačuvana.");
+        if (command.action === "topUp") {
+          if (typeof result.id !== "string" || !/^[a-f0-9-]{36}$/i.test(result.id))
+            throw new Error("INVALID_OFFER");
+          pendingTopUp.current = null;
+          router.push(`/naplata?ponuda=${result.id}`);
+        } else if (command.action === "setCreditRate") {
+          setRateInput("");
+          setMessage("Vrijednost kredita je sačuvana.");
+        } else {
+          setMessage(
+            command.action === "request"
+              ? "Zahtjev je poslan."
+              : command.action === "useCredits"
+                ? "Plaćeno Ahi kreditima."
+                : "Izmjena je sačuvana.",
+          );
+        }
       }
     } catch (error) {
       if (mounted.current)
@@ -305,13 +341,25 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const placement = form.get("placement");
-    if (mode === "ads" && !isPlacement(placement) && !isProductionService(placement)) return;
+    if (!isPlacement(placement) && !isProductionService(placement)) return;
     void submit({
       action: "request",
       id: crypto.randomUUID(),
-      kind: isPlacement(placement) || isProductionService(placement) ? placement : "credits",
+      kind: placement,
       quantity: isProductionService(placement) ? 1 : Number(form.get("quantity")),
-      ...(mode === "ads" ? { businessId: String(form.get("business")) } : {}),
+      businessId: String(form.get("business")),
+    });
+  }
+  function topUp(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pendingTopUp.current?.quantity !== bundle.quantity) {
+      pendingTopUp.current = { quantity: bundle.quantity, id: crypto.randomUUID() };
+    }
+    void submit({
+      action: "topUp",
+      id: pendingTopUp.current.id,
+      quantity: bundle.quantity,
+      expectedAmountMinor: bundle.amountMinor,
     });
   }
   if (failed)
@@ -337,15 +385,87 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
   const initialBusiness = target
     ? (data.businesses.find((business) => business.id === target.businessId)?.id ?? "")
     : undefined;
+  const unitPrice = data.creditUnitBamMinor ?? null;
   return (
     <section className={styles.workspace}>
       {mode !== "admin" && <h1>{mode === "ads" ? "Moji oglasi" : "Ahi Credits"}</h1>}
       {mode === "credits" && (
         <header className={styles.wallet}>
-          <small>Raspoloživo</small>
+          <span>Raspoloživi krediti</span>
           <strong>{credits(data.balance)}</strong>
-          <span>Ahi Credits</span>
+          {unitPrice !== null && (
+            <span>Pri plaćanju: {credits(100 / unitPrice)} kredita za 1 KM</span>
+          )}
         </header>
+      )}
+      {mode === "admin" && (
+        <details className={styles.order}>
+          <summary>Vrijednost kredita pri plaćanju</summary>
+          <form
+            className={styles.form}
+            onSubmit={(event) => {
+              event.preventDefault();
+              const unitBamMinor = Number(rateInput);
+              if (unitBamMinor > 0)
+                void submit({
+                  action: "setCreditRate",
+                  id: crypto.randomUUID(),
+                  unitBamMinor,
+                  expectedUnitBamMinor: unitPrice,
+                });
+            }}
+          >
+            <label>
+              Vrijednost jednog kredita (KM)
+              <select
+                value={rateInput || (unitPrice === null ? "" : String(unitPrice))}
+                onChange={(event) => setRateInput(event.target.value)}
+                required
+              >
+                <option value="" disabled>
+                  Odaberi vrijednost
+                </option>
+                {[1, 2, 4, 5, 10, 20, 25, 50, 100].map((amount) => (
+                  <option key={amount} value={amount}>
+                    {billingMoney(amount)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" disabled={busy || !rateInput || Number(rateInput) === unitPrice}>
+              Sačuvaj vrijednost
+            </button>
+          </form>
+        </details>
+      )}
+      {mode === "credits" && (
+        <article className={styles.order}>
+          <h2>Dopuni kredite</h2>
+          <form className={styles.form} onSubmit={topUp}>
+            <fieldset className={styles.bundles} aria-label="Odaberi dopunu">
+              {ahiCreditTopUps.map((option) => (
+                <label className={styles.bundle} key={option.quantity}>
+                  <span className={styles.bundlePrice}>{billingMoney(option.amountMinor)}</span>
+                  <input
+                    type="radio"
+                    name="dopuna"
+                    value={option.quantity}
+                    checked={bundle.quantity === option.quantity}
+                    onChange={() => setSelectedQuantity(option.quantity)}
+                  />
+                  <strong>{credits(option.quantity)} kredita</strong>
+                  <small>
+                    {credits(option.base)} + {credits(option.bonus)} bonus
+                  </small>
+                </label>
+              ))}
+            </fieldset>
+            <button type="submit" disabled={busy || !data.checkoutAvailable}>
+              Dopuni za {billingMoney(bundle.amountMinor)}
+            </button>
+            {!data.checkoutAvailable && <p>Online dopuna trenutno nije dostupna.</p>}
+          </form>
+        </article>
       )}
       {mode === "ads" && data.included.length > 0 && (
         <article className={styles.order}>
@@ -376,7 +496,7 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
               {new Date(item.endsAt).toLocaleDateString("bs-BA")}
             </p>
           ))}
-          {data.checkoutAvailable && data.businesses.length > 0 ? (
+          {(data.checkoutAvailable || unitPrice !== null) && data.businesses.length > 0 ? (
             <Link className={styles.primaryLink} href="/naplata">
               Istakni djelatnost
             </Link>
@@ -389,10 +509,9 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
           )}
         </article>
       )}
-      {mode !== "admin" && (mode === "credits" || data.businesses.length > 0) && (
+      {mode === "ads" && data.businesses.length > 0 && (
         <article className={styles.order}>
-          <h2>{mode === "credits" ? "Kupi kredite" : "Novi oglas"}</h2>
-          {mode === "credits" && <small>Zatraži cijenu za željeni broj kredita.</small>}
+          <h2>Novi oglas</h2>
           <form ref={placementForm} onSubmit={request} className={styles.form}>
             {mode === "ads" && (
               <label>
@@ -424,15 +543,8 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
               </label>
             )}
             <label>
-              {mode === "credits" ? "Broj kredita" : "Broj dana"}
-              <input
-                name="quantity"
-                type="number"
-                inputMode="numeric"
-                required
-                min={1}
-                max={mode === "credits" ? 100000 : 90}
-              />
+              Broj dana
+              <input name="quantity" type="number" inputMode="numeric" required min={1} max={90} />
             </label>
             <button type="submit" disabled={busy}>
               Zatraži ponudu
@@ -478,6 +590,27 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
         </article>
       )}
       {message && <p role="status">{message}</p>}
+      {mode === "credits" && Boolean(data.movements?.length) && (
+        <article className={styles.order}>
+          <h2>Promet kredita</h2>
+          <ul className={styles.movements}>
+            {data.movements?.map((item) => (
+              <li key={item.id}>
+                <div>
+                  {item.label}
+                  <time dateTime={item.createdAt}>
+                    {new Date(item.createdAt).toLocaleDateString("bs-BA")}
+                  </time>
+                </div>
+                <strong>
+                  {item.amount > 0 ? "+" : ""}
+                  {credits(item.amount)}
+                </strong>
+              </li>
+            ))}
+          </ul>
+        </article>
+      )}
       <div className={styles.orders}>
         <h2>{mode === "admin" ? "Zahtjevi i uplate" : "Moji zahtjevi"}</h2>
         {!data.orders.length && (
@@ -488,6 +621,7 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
             key={order.id}
             order={order}
             checkoutAvailable={data.checkoutAvailable}
+            balance={data.balance}
             admin={mode === "admin"}
             busy={busy}
             submit={submit}

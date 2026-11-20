@@ -615,6 +615,8 @@ export function createDirectoryService({
             (EXISTS (SELECT 1 FROM marketing_order WHERE business_id=$1 AND
                  (production_receipt_conflict OR
                    (status='paid' AND revoked_at IS NULL AND ends_at>now())))
+              OR EXISTS (SELECT 1 FROM wallet_category_promotion w
+                 WHERE w.business_id=$1 AND w.revoked_at IS NULL AND w.ends_at>now())
               OR EXISTS (SELECT 1 FROM paypal_promotion_entitlement e
                  JOIN paypal_checkout_order p ON p.id=e.order_id AND p.environment='live'
                  WHERE e.business_id=$1 AND e.revoked_at IS NULL AND e.ends_at>now())

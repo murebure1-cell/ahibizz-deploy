@@ -48,7 +48,10 @@ export type MarketingOrder = {
   startsAt: string | null;
   endsAt: string | null;
 };
+export type CreditMovement = { id: string; label: string; amount: number; createdAt: string };
 export type MarketingData = {
+  creditUnitBamMinor?: number | null;
+  movements?: CreditMovement[];
   orders: MarketingOrder[];
   more: boolean;
   balance: number;
@@ -59,6 +62,14 @@ export type MarketingData = {
   checkoutAvailable: boolean;
 };
 export type MarketingCommand =
+  | { action: "topUp"; id: string; quantity: number; expectedAmountMinor: number }
+  | {
+      action: "setCreditRate";
+      id: string;
+      unitBamMinor: number;
+      expectedUnitBamMinor: number | null;
+    }
+  | { action: "promoteCategory"; id: string; businessId: string; expectedCreditMinor: number }
   | {
       action: "request";
       id: string;

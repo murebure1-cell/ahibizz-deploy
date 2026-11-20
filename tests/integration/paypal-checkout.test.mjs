@@ -7,6 +7,7 @@ import { createPublicDirectoryService } from "../../src/server/directory/read-se
 import { createCheckoutStore, promotionSql } from "../../src/server/paypal/store.ts";
 import { verifyMarketingOnlineQuotes } from "./marketing-online-cases.mjs";
 import { integrationConfiguration } from "./postgres.test.mjs";
+import { verifyWalletCategoryPromotion } from "./wallet-promotion-cases.mjs";
 
 test("durable checkout isolated PostgreSQL authority, replay, rights and refunds", {
   timeout: 90000,
@@ -693,6 +694,16 @@ test("durable checkout isolated PostgreSQL authority, replay, rights and refunds
       makeBusiness,
       attach,
       capture,
+    });
+    await verifyWalletCategoryPromotion(t, {
+      pool,
+      store,
+      user,
+      owner,
+      other,
+      makeBusiness,
+      visible,
+      category2,
     });
   } finally {
     if (pool) await pool.end();

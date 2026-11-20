@@ -6,9 +6,7 @@ import { promotionSql } from "../paypal/store";
 export function creditBalanceSql(account: string) {
   if (!/^(?:\$[1-9]\d*|[a-z_]\w*\.[a-z_]\w*)$/i.test(account))
     throw new Error("Invalid account expression");
-  return `GREATEST(0,COALESCE((SELECT sum(amount) FROM booking_completion_credit WHERE recipient_user_id=${account}),0)
-    + COALESCE((SELECT sum(CASE WHEN kind='credits' THEN quantity ELSE -credit_price END)
-        FROM marketing_order WHERE account_id=${account} AND status='paid' AND ((kind='credits' AND revoked_at IS NULL) OR (kind<>'credits' AND bank_reference IS NULL AND online_checkout_id IS NULL))),0))`;
+  return `(ahi_wallet_available_minor(${account})::numeric/100)`;
 }
 // Directory callers have already constrained the business to its eligible public owner.
 export function paidPlacementSql(kind: "featured" | "nearby") {
@@ -37,13 +35,18 @@ export async function paidPromotions(client: PoolClient, accountId: string) {
   return (
     await client.query<{ id: string; title: string; endsAt: string }>(
       `
-    SELECT b.id,b.title,max(pe.ends_at)::text AS "endsAt"
-    FROM directory_business b JOIN paypal_promotion_entitlement pe ON pe.business_id=b.id
-    JOIN paypal_checkout_order po ON po.id=pe.order_id
-    WHERE b.owner_user_id=$1 AND pe.user_id=$1 AND pe.category_id=b.category_id AND pe.revoked_at IS NULL
-      AND pe.starts_at<=now() AND pe.ends_at>now() AND po.environment='live' AND po.status='captured'
-      AND po.refunded_minor=0 AND NOT po.refund_total_unknown AND ${promotionSql("b")}
-    GROUP BY b.id,b.title ORDER BY max(pe.ends_at),b.id LIMIT 200`,
+    SELECT b.id,b.title,max(p.ends_at)::text AS "endsAt" FROM directory_business b
+    JOIN (
+      SELECT pe.business_id,pe.category_id,pe.ends_at FROM paypal_promotion_entitlement pe
+        JOIN paypal_checkout_order po ON po.id=pe.order_id
+        WHERE pe.user_id=$1 AND pe.revoked_at IS NULL AND pe.starts_at<=now() AND pe.ends_at>now()
+          AND po.environment='live' AND po.status='captured' AND po.refunded_minor=0 AND NOT po.refund_total_unknown
+      UNION ALL
+      SELECT w.business_id,w.category_id,w.ends_at FROM wallet_category_promotion w
+        WHERE w.account_id=$1 AND w.revoked_at IS NULL AND w.starts_at<=now() AND w.ends_at>now()
+    ) p ON p.business_id=b.id AND p.category_id=b.category_id
+    WHERE b.owner_user_id=$1 AND ${promotionSql("b")}
+    GROUP BY b.id,b.title ORDER BY max(p.ends_at),b.id LIMIT 200`,
       [accountId],
     )
   ).rows;

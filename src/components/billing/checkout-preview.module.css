@@ -215,7 +215,8 @@
   margin: 0;
   min-width: 0;
   border: 0;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
   gap: 6px;
   padding: 6px;
 }
@@ -255,6 +256,15 @@
 }
 .methodPicker + div:not([hidden]) {
   border-top: 1px solid var(--ui-border);
+}
+.walletPanel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  color: var(--ui-text);
+}
+.walletPanel :is(p, button) {
+  margin: 0;
 }
 .methodFooter {
   display: flex;

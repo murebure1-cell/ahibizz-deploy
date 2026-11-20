@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { readCheckoutOrder } from "../../lib/checkout-order-read";
+import { promotionTrialOffer } from "../../lib/checkout-preview";
 import {
   canOfferPayPalCard,
   checkoutEuro as money,
   type CardOrder as Order,
 } from "../../lib/paypal-card-flow";
+import { creditsForBamMinor } from "../../lib/wallet";
 import { Icon } from "../Icon";
 import styles from "./checkout-preview.module.css";
 import { PayPalCardButton } from "./PayPalCardButton";
@@ -38,6 +40,9 @@ const messages: Record<string, string> = {
   ORDER_NOT_FOUND: "Narudžba nije pronađena na ovom nalogu.",
   QUOTE_NOT_PAYABLE: "Ova ponuda više nije dostupna za plaćanje. Provjeri je u svom nalogu.",
   QUOTE_PAYMENT_PENDING: "Za ovu ponudu već postoji uplata. Provjeri njen status u svom nalogu.",
+  INSUFFICIENT_CREDITS: "Nemaš dovoljno Ahi kredita za isticanje.",
+  WALLET_PAYMENT_CHANGED: "Cijena se promijenila. Ponovo otvori izbor plaćanja.",
+  WALLET_PRICE_UNAVAILABLE: "Plaćanje kreditima trenutno nije dostupno.",
 };
 type PayableOffer = { id: string; title: string; amountMinor: number; originalBamMinor: number };
 function cents(value: string) {
@@ -81,7 +86,11 @@ export function Checkout({
   const [orderLoading, setOrderLoading] = useState(false);
   const [orderError, setOrderError] = useState("");
   const [review, setReview] = useState(false);
-  const [cardOpen, setCardOpen] = useState(false);
+  const [method, setMethod] = useState<"card" | "paypal" | "credits">("paypal");
+  const cardOpen = method === "card";
+  const setCardOpen = (open: boolean) => setMethod(open ? "card" : "paypal");
+  const [wallet, setWallet] = useState<{ balance: number; priceMinor: number } | null>(null);
+  const [paidWithCreditsUntil, setPaidWithCreditsUntil] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(
     cancelled
@@ -114,9 +123,11 @@ export function Checkout({
     key.current = null;
     setBusy(false);
     setReview(false);
-    setCardOpen(false);
+    setMethod("paypal");
     setBusinessId(undefined);
     setBusinesses([]);
+    setWallet(null);
+    setPaidWithCreditsUntil(null);
     fetch("/api/checkout/catalog", { cache: "no-store" })
       .then((r) => r.json())
       .then((value) => {
@@ -126,6 +137,24 @@ export function Checkout({
         if (active) setError("Naplata trenutno nije dostupna.");
       });
     const controller = new AbortController();
+    if (userId && !initialQuoteId && !initialOrderId) {
+      void fetch("/api/marketing?mode=credits&page=0", {
+        headers: { "X-AhiBizz-Account-ID": userId },
+        cache: "no-store",
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok) return;
+          const value = await response.json();
+          const priceMinor = creditsForBamMinor(
+            promotionTrialOffer.amountMinor,
+            value.creditUnitBamMinor,
+          );
+          if (active && priceMinor !== null && Number.isFinite(value.balance))
+            setWallet({ balance: value.balance, priceMinor });
+        })
+        .catch(() => {});
+    }
     async function loadBusinesses(account: string) {
       const mine: { id: string; title: string }[] = [];
       for (let page = 1; ; page++) {
@@ -197,7 +226,7 @@ export function Checkout({
         throw new Error("Podaci za plaćanje ove ponude nisu dostupni.");
       setOffer(next);
       setReview(true);
-      setCardOpen(true);
+      setMethod("card");
     }
     void loadOffer().catch((cause) => {
       if (!controller.signal.aborted)
@@ -316,6 +345,38 @@ export function Checkout({
       setBusy(false);
     }
   }
+  async function payWithCredits() {
+    if (!userId || !wallet || !businessId || locked.current || order || initialOrderId) return;
+    locked.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      key.current ??= crypto.randomUUID();
+      const response = await fetch("/api/marketing", {
+        method: "POST",
+        headers,
+        cache: "no-store",
+        body: JSON.stringify({
+          action: "promoteCategory",
+          id: key.current,
+          businessId,
+          expectedCreditMinor: wallet.priceMinor,
+        }),
+      });
+      const value = await response.json();
+      if (!response.ok || value.id !== key.current || !Number.isFinite(Date.parse(value.endsAt)))
+        throw new Error(
+          messages[value.code] ?? "Plaćanje nije potvrđeno. Provjeri status isticanja u nalogu.",
+        );
+      setPaidWithCreditsUntil(value.endsAt);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Plaćanje nije potvrđeno.");
+    } finally {
+      locked.current = false;
+      setBusy(false);
+    }
+  }
+  const walletAvailable = kind === "promotion" && wallet !== null && !initialOrderId && !order;
   const selectedAmount =
     order?.amountMinor ??
     (kind === "quote"
@@ -343,7 +404,7 @@ export function Checkout({
       </a>
       <header>
         {catalog?.environment === "sandbox" && (
-          <span className={styles.label}>Testno plaćanje · bez stvarnog novca</span>
+          <span className={styles.label}>PayPal · testni način</span>
         )}
         <h1>
           {kind === "quote"
@@ -353,7 +414,7 @@ export function Checkout({
               : "Podrži razvoj AhiBizza"}
         </h1>
       </header>
-      {catalog?.available === false && (
+      {catalog?.available === false && !walletAvailable && (
         <p role="status" className={styles.notice}>
           Naplata trenutno nije dostupna.
         </p>
@@ -398,7 +459,17 @@ export function Checkout({
           )}
         </section>
       )}
-      {!order && !initialOrderId && (!initialQuoteId || offer) && (
+      {paidWithCreditsUntil && (
+        <section className={styles.card} role="status">
+          <h2>Isticanje je aktivno</h2>
+          <p>
+            {businesses.find((b) => b.id === businessId)?.title} · do{" "}
+            {new Date(paidWithCreditsUntil).toLocaleDateString("bs-BA")}
+          </p>
+          <a href="/nalog?odjeljak=oglasi">Moji oglasi</a>
+        </section>
+      )}
+      {!paidWithCreditsUntil && !order && !initialOrderId && (!initialQuoteId || offer) && (
         <>
           {!initialQuoteId && catalog?.environment === "sandbox" && (
             <section className={styles.choices} aria-label="Namjena uplate">
@@ -450,8 +521,16 @@ export function Checkout({
                     <p>{catalog?.promotion.days ?? 7} dana · jednokratno</p>
                   </div>
                   <div className={styles.orderPrice}>
-                    <strong>{money(selectedAmount)}</strong>
-                    {selectedAmount === 511 && <small>≈ 10 KM</small>}
+                    <strong>
+                      {walletAvailable && wallet && (!review || method === "credits")
+                        ? `${(wallet.priceMinor / 100).toLocaleString("bs-BA")} Ahi kredita`
+                        : money(selectedAmount)}
+                    </strong>
+                    {selectedAmount === 511 && (
+                      <small>
+                        {walletAvailable && (!review || method === "credits") ? "10 KM" : "≈ 10 KM"}
+                      </small>
+                    )}
                   </div>
                 </div>
                 {review ? (
@@ -513,10 +592,11 @@ export function Checkout({
               <button
                 type="button"
                 className={styles.primary}
-                disabled={!userId || !canReview || !catalog?.available}
+                disabled={!userId || !canReview || (!catalog?.available && !walletAvailable)}
                 onClick={() => {
                   key.current ??= crypto.randomUUID();
-                  setCardOpen(kind !== "support" && Boolean(catalog?.paypalClientId));
+                  if (walletAvailable) setMethod("credits");
+                  else setCardOpen(kind !== "support" && Boolean(catalog?.paypalClientId));
                   setReview(true);
                 }}
               >
@@ -599,17 +679,26 @@ export function Checkout({
           </button>
         </section>
       )}
-      {(review && !order && !initialOrderId) ||
+      {(review && !order && !initialOrderId && !paidWithCreditsUntil) ||
       (order && canOfferPayPalCard(order, review, kind)) ? (
         <section className={styles.methodPanel} aria-label="Način plaćanja">
-          {userId &&
-            catalog?.available &&
-            catalog.paypalClientId &&
-            catalog.environment &&
-            canOfferPayPalCard(order, review, kind) && (
-              <div className={styles.cardMethod}>
-                {!order && (
-                  <fieldset className={styles.methodPicker} aria-label="Odaberi način plaćanja">
+          <div className={styles.cardMethod}>
+            {!order &&
+              (walletAvailable ||
+                (catalog?.available && catalog.paypalClientId && kind !== "support")) && (
+                <fieldset className={styles.methodPicker} aria-label="Odaberi način plaćanja">
+                  {walletAvailable && (
+                    <button
+                      type="button"
+                      aria-controls="ahi-novcanik"
+                      aria-pressed={method === "credits"}
+                      disabled={busy}
+                      onClick={() => setMethod("credits")}
+                    >
+                      Ahi krediti
+                    </button>
+                  )}
+                  {catalog?.available && catalog.paypalClientId && (
                     <button
                       type="button"
                       className={styles.payCard}
@@ -621,17 +710,50 @@ export function Checkout({
                       <Icon name="card" width={20} height={20} />
                       Plati karticom
                     </button>
+                  )}
+                  {catalog?.available && (
                     <button
                       type="button"
                       aria-controls="paypal-novcanik"
-                      aria-pressed={!cardOpen}
+                      aria-pressed={method === "paypal"}
                       disabled={busy}
                       onClick={() => setCardOpen(false)}
                     >
                       PayPal
                     </button>
-                  </fieldset>
+                  )}
+                </fieldset>
+              )}
+            {walletAvailable && method === "credits" && wallet && (
+              <div id="ahi-novcanik" className={styles.walletPanel}>
+                <p>
+                  Stanje: <strong>{wallet.balance.toLocaleString("bs-BA")} Ahi kredita</strong>
+                </p>
+                {Math.round(wallet.balance * 100) >= wallet.priceMinor ? (
+                  <button
+                    type="button"
+                    className={styles.payCard}
+                    disabled={busy}
+                    onClick={payWithCredits}
+                  >
+                    Plati {(wallet.priceMinor / 100).toLocaleString("bs-BA")} Ahi kredita
+                  </button>
+                ) : (
+                  <>
+                    <p>
+                      Za isticanje je potrebno {(wallet.priceMinor / 100).toLocaleString("bs-BA")}{" "}
+                      kredita.
+                    </p>
+                    <a href="/nalog?odjeljak=krediti">Dopuni Ahi kredite</a>
+                  </>
                 )}
+              </div>
+            )}
+            {userId &&
+              catalog?.available &&
+              catalog.paypalClientId &&
+              catalog.environment &&
+              canOfferPayPalCard(order, review, kind) && (
                 <div id="karticni-obrazac" hidden={!cardOpen && !order}>
                   {(cardOpen || order) && (
                     <PayPalCardButton
@@ -674,11 +796,11 @@ export function Checkout({
                     />
                   )}
                 </div>
-              </div>
-            )}
+              )}
+          </div>
           {!order && (
             <div className={styles.methodFooter}>
-              {(!cardOpen || !catalog?.paypalClientId) && (
+              {method !== "credits" && (!cardOpen || !catalog?.paypalClientId) && (
                 <button
                   type="button"
                   id="paypal-novcanik"

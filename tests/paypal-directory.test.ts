@@ -15,7 +15,9 @@ test("paid category ranking is release gated, public only and live-only", async 
   try {
     delete process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY;
     await listDirectory(db, input, "true", [], true);
-    assert.doesNotMatch(statements.pop() ?? "", /paypal_promotion_entitlement/);
+    const walletOnly = statements.pop() ?? "";
+    assert.doesNotMatch(walletOnly, /paypal_promotion_entitlement/);
+    assert.match(walletOnly, /ORDER BY \(EXISTS \(SELECT 1 FROM wallet_category_promotion/);
     process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY = "true";
     await listDirectory(db, {}, "true", [], true);
     assert.doesNotMatch(statements.pop() ?? "", /paypal_promotion_entitlement/);
@@ -28,7 +30,8 @@ test("paid category ranking is release gated, public only and live-only", async 
     assert.match(sql, /pe.ends_at>now\(\)/);
     assert.match(sql, /pe.revoked_at IS NULL/);
     assert.match(sql, /po.refunded_minor=0/);
-    assert.match(sql, /ORDER BY \(EXISTS/);
+    assert.match(sql, /ORDER BY \(\(EXISTS/);
+    assert.match(sql, /OR EXISTS \(SELECT 1 FROM wallet_category_promotion/);
   } finally {
     if (before === undefined) delete process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY;
     else process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY = before;

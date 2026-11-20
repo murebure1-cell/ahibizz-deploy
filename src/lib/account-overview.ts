@@ -1,4 +1,5 @@
 import { isNextAppointment, type NextAppointment } from "./next-appointment";
+import { validCreditBalance } from "./wallet";
 
 export type AccountOverviewFacts = {
   accountId: string;
@@ -47,12 +48,10 @@ export function readOverview(value: unknown, expectedId: string): AccountOvervie
     (overview.nextAppointment != null && !isNextAppointment(overview.nextAppointment)) ||
     typeof overview.joinedAt !== "string" ||
     !Number.isFinite(Date.parse(overview.joinedAt)) ||
-    [
-      overview.businesses,
-      overview.unreadThreads,
-      overview.promotedBusinesses,
-      overview.credits,
-    ].some((value) => typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)
+    !validCreditBalance(overview.credits) ||
+    [overview.businesses, overview.unreadThreads, overview.promotedBusinesses].some(
+      (value) => typeof value !== "number" || !Number.isSafeInteger(value) || value < 0,
+    )
   )
     throw new Error("Invalid account overview");
   return overview as AccountOverviewFacts;

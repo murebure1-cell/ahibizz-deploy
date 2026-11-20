@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import type { BillingPackageId, BillingPeriod } from "../../lib/billing";
+import { creditsForBamMinor } from "../../lib/wallet";
 import { AccountAccessError, accountTransaction, createAccountAccess } from "../auth/accounts";
 import type { AuthService } from "../auth/service";
+import { debitWallet, readWalletRate, walletBalance } from "../wallet/service";
 import { getPackageBenefits } from "./benefits";
 import { type PlanReferences, packageQuote, type SubscriptionEnvironment } from "./config";
 import {
@@ -32,6 +34,8 @@ export type SandboxRecord = {
   endsAt: string | null;
   paidCycles: number;
   paidEurMinor: number;
+  paymentMethod?: "paypal" | "credits";
+  cycleCreditMinor?: number | null;
   reportedCycles?: number;
   benefitsVersion?: number;
   nearbyDays?: number;
@@ -90,6 +94,9 @@ function dto(r: SandboxRecord) {
           featuredDays: r.featuredDays,
         }
       : {}),
+    ...(r.paymentMethod === "credits"
+      ? { paymentMethod: "credits" as const, cycleCreditMinor: Number(r.cycleCreditMinor) }
+      : {}),
     id,
     requestId,
     businessId,
@@ -113,6 +120,7 @@ export type StartInput = {
   packageId: BillingPackageId;
   period: BillingPeriod;
   accepted: boolean;
+  expectedCreditMinor?: number;
   benefitsVersion?: number;
 };
 function approval(record: SandboxRecord) {
@@ -123,22 +131,33 @@ function approval(record: SandboxRecord) {
     subscriptionId: pending ? record.providerId : null,
   };
 }
-function validateStart(value: unknown): StartInput {
+function validateStart(value: unknown, wallet: boolean): StartInput {
   if (
     !value ||
     typeof value !== "object" ||
     Array.isArray(value) ||
     Object.keys(value).some(
       (k) =>
-        !["businessId", "requestId", "packageId", "period", "accepted", "benefitsVersion"].includes(
-          k,
-        ),
+        ![
+          "businessId",
+          "requestId",
+          "packageId",
+          "period",
+          "accepted",
+          "benefitsVersion",
+          ...(wallet ? ["expectedCreditMinor"] : []),
+        ].includes(k),
     )
   )
     return fail(400, "INVALID_SUBSCRIPTION_INPUT");
   const v = value as StartInput;
   const offer = packageQuote(v.packageId, v.period);
-  if (!offer || v.accepted !== true) return fail(400, "INVALID_SUBSCRIPTION_INPUT");
+  if (
+    !offer ||
+    v.accepted !== true ||
+    (wallet && (!Number.isSafeInteger(v.expectedCreditMinor) || Number(v.expectedCreditMinor) < 1))
+  )
+    return fail(400, "INVALID_SUBSCRIPTION_INPUT");
   return { ...v, businessId: uuid(v.businessId), requestId: uuid(v.requestId) };
 }
 export function createPackageSubscriptions({
@@ -157,7 +176,7 @@ export function createPackageSubscriptions({
   const columns =
     commonColumns +
     (environment === "live"
-      ? ',benefits_version AS "benefitsVersion",nearby_days AS "nearbyDays",featured_days AS "featuredDays"'
+      ? ',benefits_version AS "benefitsVersion",nearby_days AS "nearbyDays",featured_days AS "featuredDays",payment_method AS "paymentMethod",cycle_credit_minor AS "cycleCreditMinor"'
       : "");
   const contracts = environment === "live" ? "live_package_contract" : "sandbox_package_contract";
   const payments = environment === "live" ? "live_package_payment" : "sandbox_package_payment";
@@ -203,6 +222,40 @@ export function createPackageSubscriptions({
     )
       return fail(403, "BUSINESS_NOT_ELIGIBLE");
     return b;
+  }
+  async function chargeWalletPeriod(c: PoolClient, contract: SandboxRecord, cycle: number) {
+    const creditMinor = Number(contract.cycleCreditMinor);
+    const debitId = randomUUID();
+    const covered = await c.query(
+      `SELECT 1 FROM live_package_contract c JOIN billing_receipt r
+      ON r.business_id=c.business_id AND r.kind='subscription' AND r.gross_minor>r.refunded_minor
+      WHERE c.id=$1 AND r.service_ends_on >= ((coalesce(c.ends_at,now()) AT TIME ZONE 'Europe/Sarajevo')::date)
+        AND r.service_starts_on < ((((coalesce(c.starts_at,now()) AT TIME ZONE 'UTC')+
+          make_interval(months=>CASE WHEN c.period='annual' THEN 12 ELSE $2::int END)) AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Sarajevo')::date
+      LIMIT 1`,
+      [contract.id, cycle],
+    );
+    if (covered.rowCount) return fail(409, "PACKAGE_PERIOD_ALREADY_PAID");
+    const updated = await c.query(
+      `UPDATE live_package_contract SET starts_at=coalesce(starts_at,now()),
+        ends_at=((coalesce(starts_at,now()) AT TIME ZONE 'UTC')+make_interval(months=>
+          CASE WHEN period='annual' THEN 12 ELSE $2::int END)) AT TIME ZONE 'UTC',
+        status=CASE WHEN total_cycles=$2 THEN 'EXPIRED' ELSE 'ACTIVE' END,paid_cycles=$2
+        WHERE id=$1 AND payment_method='credits' AND paid_cycles=$2::int-1 AND (ends_at IS NULL OR ends_at<=now())`,
+      [contract.id, cycle],
+    );
+    if (updated.rowCount !== 1) return fail(409, "PACKAGE_CYCLE_NOT_DUE");
+    await debitWallet(c, {
+      accountId: contract.userId,
+      purchaseId: debitId,
+      kind: "package",
+      creditMinor,
+    });
+    await c.query(
+      `INSERT INTO wallet_package_period(contract_id,account_id,cycle_number,credit_minor,debit_id)
+       VALUES($1,$2,$3,$4,$5)`,
+      [contract.id, contract.userId, cycle, creditMinor, debitId],
+    );
   }
   async function snapshot(c: PoolClient, r: SandboxRecord, s: Snapshot) {
     if (!remoteStatuses.some((x) => x === s.status) || !Number.isFinite(Date.parse(s.updatedAt)))
@@ -316,6 +369,7 @@ export function createPackageSubscriptions({
         h,
         async (c, id) => ({
           actor: { id },
+          ...(environment === "live" ? { walletBalance: await walletBalance(c, id) } : {}),
           contracts: (
             await c.query<SandboxRecord>(
               `SELECT ${columns} FROM ${contracts} WHERE user_id=$1 ORDER BY created_at DESC,id DESC LIMIT 100`,
@@ -326,12 +380,13 @@ export function createPackageSubscriptions({
         "read",
       );
     },
-    async create(h: Headers, raw: unknown) {
-      if (!provider) return fail(503, "SUBSCRIPTIONS_UNAVAILABLE");
-      const v = validateStart(raw),
+    async create(h: Headers, raw: unknown, wallet = false) {
+      if (wallet && environment !== "live") return fail(404, "NOT_FOUND");
+      if (!wallet && !provider) return fail(503, "SUBSCRIPTIONS_UNAVAILABLE");
+      const v = validateStart(raw, wallet),
         quote = packageQuote(v.packageId, v.period),
         plan = plans[`${v.packageId}:${v.period}`];
-      if (!quote || !plan) return fail(503, "SANDBOX_SUBSCRIPTIONS_UNAVAILABLE");
+      if (!quote || (!wallet && !plan)) return fail(503, "SANDBOX_SUBSCRIPTIONS_UNAVAILABLE");
       const r = await owner(h, async (c, uid) => {
         const b = await ownBusiness(c, v.businessId, uid);
         const byKey = (
@@ -342,6 +397,8 @@ export function createPackageSubscriptions({
         ).rows[0];
         if (byKey) {
           if (
+            (byKey.paymentMethod === "credits") !== wallet ||
+            (wallet && Number(byKey.cycleCreditMinor) !== v.expectedCreditMinor) ||
             byKey.businessId !== v.businessId ||
             byKey.packageId !== v.packageId ||
             byKey.period !== v.period ||
@@ -358,6 +415,8 @@ export function createPackageSubscriptions({
         ).rows[0];
         if (open) {
           if (
+            !wallet &&
+            open.paymentMethod !== "credits" &&
             open.userId === uid &&
             open.packageId === v.packageId &&
             open.period === v.period &&
@@ -382,9 +441,13 @@ export function createPackageSubscriptions({
           b.alreadyCovered
         )
           return fail(409, "BUSINESS_ALREADY_COVERED");
+        const rate = wallet ? await readWalletRate(c) : null;
+        const cycleCreditMinor = rate ? creditsForBamMinor(quote.amountBamMinor, rate) : null;
+        if (wallet && (!cycleCreditMinor || cycleCreditMinor !== v.expectedCreditMinor))
+          return fail(409, "WALLET_PAYMENT_CHANGED");
         const inserted = (
           await c.query<SandboxRecord>(
-            `INSERT INTO ${contracts}(id,user_id,business_id,business_title,request_id,package_id,period,amount_bam_minor,amount_eur_minor,total_cycles,plan_id,status${schedule ? ",benefits_version,nearby_days,featured_days" : ""}) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'CREATING'${schedule ? ",$12,$13,$14" : ""}) RETURNING ${columns}`,
+            `INSERT INTO ${contracts}(id,user_id,business_id,business_title,request_id,package_id,period,amount_bam_minor,amount_eur_minor,total_cycles,plan_id,status${schedule ? ",benefits_version,nearby_days,featured_days,payment_method,cycle_credit_minor" : ""}) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'CREATING'${schedule ? ",$12,$13,$14,$15,$16" : ""}) RETURNING ${columns}`,
             [
               randomUUID(),
               uid,
@@ -396,17 +459,28 @@ export function createPackageSubscriptions({
               quote.amountBamMinor,
               quote.amountEurMinor,
               quote.totalCycles,
-              plan,
+              wallet ? null : plan,
               ...(schedule && benefits
-                ? [schedule.version, benefits.nearbyDays, benefits.featuredDays]
+                ? [
+                    schedule.version,
+                    benefits.nearbyDays,
+                    benefits.featuredDays,
+                    wallet ? "credits" : "paypal",
+                    cycleCreditMinor,
+                  ]
                 : []),
             ],
           )
         ).rows[0];
         if (!inserted) return fail(503, "SANDBOX_SUBSCRIPTIONS_UNAVAILABLE");
+        if (wallet) {
+          await chargeWalletPeriod(c, inserted, 1);
+          return read(c, inserted.id, uid);
+        }
         return normalized(inserted);
       });
-      if (r.status !== "CREATING") return approval(r);
+      if (wallet || r.status !== "CREATING") return approval(r);
+      if (!provider) return fail(503, "SUBSCRIPTIONS_UNAVAILABLE");
       // PayPal stores the subscription create request key for 72 hours.
       // Allow time for the final network call before its deduplication window ends.
       if (Date.now() - Date.parse(r.createdAt) >= (72 * 60 - 1) * 60000)
@@ -439,6 +513,48 @@ export function createPackageSubscriptions({
         return terminalSnapshot ? snapshot(c, bound, terminalSnapshot) : bound;
       });
       return approval(result);
+    },
+    async payCreditCycle(h: Headers, id: string, input: unknown) {
+      if (environment !== "live") return fail(404, "NOT_FOUND");
+      if (
+        !input ||
+        typeof input !== "object" ||
+        Array.isArray(input) ||
+        Object.keys(input).length !== 2 ||
+        !("cycle" in input) ||
+        !("expectedCreditMinor" in input) ||
+        typeof input.cycle !== "number" ||
+        !Number.isInteger(input.cycle) ||
+        input.cycle < 1 ||
+        input.cycle > 12
+      )
+        return fail(400, "INVALID_SUBSCRIPTION_INPUT");
+      const cycle = input.cycle;
+      return owner(h, async (c, uid) => {
+        const target = (
+          await c.query<{ business_id: string }>(
+            "SELECT business_id FROM live_package_contract WHERE id=$1 AND user_id=$2",
+            [uuid(id), uid],
+          )
+        ).rows[0];
+        if (!target) return fail(404, "SUBSCRIPTION_NOT_FOUND");
+        await ownBusiness(c, target.business_id, uid);
+        const contract = await read(c, id, uid);
+        if (
+          contract.paymentMethod !== "credits" ||
+          Number(contract.cycleCreditMinor) !== input.expectedCreditMinor
+        )
+          return fail(409, "WALLET_PAYMENT_CHANGED");
+        if (cycle <= contract.paidCycles) return { contract: dto(contract) };
+        if (
+          contract.status !== "ACTIVE" ||
+          contract.period !== "monthly" ||
+          cycle !== contract.paidCycles + 1
+        )
+          return fail(409, "PACKAGE_CYCLE_NOT_DUE");
+        await chargeWalletPeriod(c, contract, cycle);
+        return { contract: dto(await read(c, id, uid)) };
+      });
     },
     refresh,
     async cancel(h: Headers, id: string) {

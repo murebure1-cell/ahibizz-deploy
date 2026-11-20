@@ -19,6 +19,8 @@ export type SandboxPackageContract = {
   status: SandboxContractStatus;
   amountBamMinor: number;
   amountEurMinor: number;
+  paymentMethod?: "paypal" | "credits";
+  cycleCreditMinor?: number;
   totalCycles: number;
   paidCycles: number;
   paidEurMinor: number;
@@ -89,3 +91,9 @@ export async function followSandboxFirstPayment(
 }
 
 export type PackageContract = SandboxPackageContract;
+
+export function walletPackageStatus(contract: SandboxPackageContract, now = Date.now()) {
+  if (contract.paymentMethod !== "credits" || !contract.endsAt) return null;
+  if (Date.parse(contract.endsAt) > now) return "Plaćeno";
+  return contract.paidCycles < contract.totalCycles ? "Rata dospjela" : "Istekao";
+}

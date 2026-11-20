@@ -48,6 +48,43 @@
   line-height: 1.08;
   font-variant-numeric: tabular-nums;
 }
+.bundles {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+.order > summary {
+  cursor: pointer;
+  font-weight: 650;
+  padding-block: 0.45rem;
+}
+.movements {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.movements li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.7rem;
+}
+.movements li + li {
+  border-top: 1px solid var(--ui-border);
+}
+.movements time {
+  display: block;
+  color: var(--ui-text-secondary);
+  font-size: 0.875rem;
+}
+.movements strong {
+  font-variant-numeric: tabular-nums;
+}
 .order header,
 .orders nav {
   display: flex;
@@ -133,6 +170,55 @@
 .workspace button:disabled {
   opacity: 0.55;
   cursor: wait;
+}
+.form .bundle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  padding: clamp(0.65rem, 2vw, 1rem);
+  color: var(--ui-text);
+  background: var(--ui-surface-soft);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.bundle:has(input:checked) {
+  border-color: var(--ui-accent);
+  box-shadow: inset 0 0 0 1px var(--ui-accent);
+}
+.bundle:focus-within {
+  outline: 2px solid var(--ui-text);
+  outline-offset: 2px;
+}
+.form .bundle input {
+  margin: 0;
+  padding: 0;
+  width: 1rem;
+  height: 1rem;
+  min-height: 0;
+  accent-color: var(--ui-accent);
+}
+.bundlePrice {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.bundle strong,
+.bundle small {
+  grid-column: 1 / -1;
+}
+.bundle strong {
+  font-size: clamp(0.95rem, 3vw, 1.2rem);
+}
+.bundle small {
+  font-size: 0.8rem;
+  font-weight: 450;
+}
+@media (min-width: 720px) {
+  .bundles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 .workspace .secondary {
   background: transparent;

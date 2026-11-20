@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { readActiveBanner } from "../../src/server/marketing/read.ts";
 import { createMarketingService } from "../../src/server/marketing/service.ts";
+import { verifyWallet } from "./wallet-core-cases.mjs";
 
 export async function verifyMarketingOnlineQuotes(
   t,
@@ -467,4 +468,19 @@ export async function verifyMarketingOnlineQuotes(
       }
     },
   );
+  await verifyWallet(t, {
+    marketing,
+    command,
+    headers,
+    user,
+    owner,
+    other,
+    makeBusiness,
+    quote,
+    input,
+    attach,
+    capture,
+    store,
+    pool,
+  });
 }

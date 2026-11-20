@@ -3,6 +3,7 @@ import { AccountAccessError } from "../auth/accounts";
 import { getAuthDatabasePool, getAuthService } from "../auth/service";
 import { readFlatJson } from "../flat-json";
 import { CheckoutHttpError, readCheckoutJsonBody } from "../paypal/http";
+import { readWalletRate } from "../wallet/service";
 import { adminPackageBenefits, getPackageBenefits } from "./benefits";
 import { type SubscriptionEnvironment, sandboxPackageCatalog, subscriptionConfig } from "./config";
 import { createSubscriptionProvider } from "./provider";
@@ -89,6 +90,12 @@ export async function handlePackageSubscriptions(
       return reply({
         ...schedule,
         available: acceptingOrders,
+        walletRate:
+          environment === "live" &&
+          pool &&
+          process.env.AHIBIZZ_LIVE_SUBSCRIPTIONS_ENABLED !== "false"
+            ? await readWalletRate(pool)
+            : null,
         paypalClientId: acceptingOrders ? (config?.clientId ?? null) : null,
         packages: sandboxPackageCatalog,
         sellable: sandboxPackageCatalog
@@ -102,7 +109,12 @@ export async function handlePackageSubscriptions(
       environment === "live" && request.method === "GET"
         ? /^admin\/settlements\/(review\/)?([1-9]\d{0,3})$/.exec(path)
         : null;
+    const walletCreate = environment === "live" && path === "contracts/credits";
+    const walletCycle =
+      environment === "live" ? /^contracts\/([a-f0-9-]{36})\/pay-credits$/i.exec(path) : null;
+    const walletAction = request.method === "POST" && (walletCreate || !!walletCycle);
     if (
+      !walletAction &&
       !settlements &&
       !config &&
       !(environment === "live" && request.method === "GET" && path === "contracts")
@@ -123,7 +135,7 @@ export async function handlePackageSubscriptions(
       );
     if (request.method === "GET" && path === "contracts")
       return reply(await service.list(request.headers));
-    if (!config) return reply({ code: "SUBSCRIPTIONS_UNAVAILABLE" }, 503);
+    if (!config && !walletAction) return reply({ code: "SUBSCRIPTIONS_UNAVAILABLE" }, 503);
     if (request.method !== "POST") return reply({ code: "NOT_FOUND" }, 404);
     if (
       request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() !==
@@ -134,15 +146,26 @@ export async function handlePackageSubscriptions(
       const { input, rawJson } = await readCheckoutJsonBody(request, 131072);
       return reply(await service.webhook(request.headers, input, rawJson));
     }
-    if (request.headers.get("origin") !== config.origin)
+    if (
+      !request.headers.get("origin") ||
+      request.headers.get("origin") !==
+        (walletAction ? process.env.BETTER_AUTH_URL : config?.origin)
+    )
       return reply({ code: "INVALID_ORIGIN" }, 403);
     const action = /^contracts\/([a-f0-9-]{36})\/(refresh|cancel)$/i.exec(path);
-    if (path !== "contracts" && !action) return reply({ code: "NOT_FOUND" }, 404);
+    if (path !== "contracts" && !action && !walletAction) return reply({ code: "NOT_FOUND" }, 404);
     const data = await readFlatJson(
       request,
       () => fail(400, "INVALID_SUBSCRIPTION_INPUT"),
       () => fail(413, "REQUEST_TOO_LARGE"),
     );
+    if (walletCreate) {
+      if (process.env.AHIBIZZ_LIVE_SUBSCRIPTIONS_ENABLED === "false")
+        return reply({ code: "PACKAGE_NOT_AVAILABLE" }, 409);
+      return reply(await service.create(request.headers, data, true), 201);
+    }
+    if (walletCycle?.[1])
+      return reply(await service.payCreditCycle(request.headers, walletCycle[1], data));
     if (path === "contracts") {
       if (!acceptingOrders) return reply({ code: "SUBSCRIPTIONS_UNAVAILABLE" }, 503);
       return reply(await service.create(request.headers, data), 201);

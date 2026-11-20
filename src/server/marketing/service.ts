@@ -6,12 +6,16 @@ import type {
   MarketingOrder,
 } from "../../lib/marketing";
 import { isPlacement, isProductionService } from "../../lib/marketing";
+import { creditsForBamMinor, validCreditBalance } from "../../lib/wallet";
 import { AccountAccessError, accountTransaction, createAccountAccess } from "../auth/accounts";
 import { type AuthService, getAuthDatabasePool, getAuthService } from "../auth/service";
 import { syncProductionReceipt } from "../billing/service";
 import { checkoutConfiguration } from "../paypal/runtime";
+import { debitWallet, readCreditMovements, readWalletRate, walletBalance } from "../wallet/service";
+import { createCreditTopUp, lockWalletRate, setCreditRate } from "../wallet/topup";
+import { buyCategoryPromotion } from "./category-promotion";
 import { holdsQuotePayment, payableQuote, pendingQuoteOrder } from "./online-quote";
-import { creditBalanceSql, packagePromotions, paidPromotions } from "./read";
+import { packagePromotions, paidPromotions } from "./read";
 
 function fail(status: number, code: string): never {
   throw new AccountAccessError(status, code);
@@ -34,6 +38,34 @@ export function parseMarketingCommand(v: unknown): MarketingCommand {
   const keys = (allowed: string[]) => {
     if (Object.keys(row).some((key) => !allowed.includes(key))) fail(400, "INVALID_OFFER");
   };
+  if (action === "topUp") {
+    keys(["action", "id", "quantity", "expectedAmountMinor"]);
+    if (amount(row.quantity, 100000) && amount(row.expectedAmountMinor, 100000000))
+      return { action, id, quantity: row.quantity, expectedAmountMinor: row.expectedAmountMinor };
+    return fail(400, "INVALID_OFFER");
+  }
+  if (action === "setCreditRate") {
+    keys(["action", "id", "unitBamMinor", "expectedUnitBamMinor"]);
+    if (!amount(row.unitBamMinor, 100) || 100 % row.unitBamMinor !== 0)
+      fail(400, "INVALID_CREDIT_RATE");
+    if (
+      amount(row.unitBamMinor, 1000000) &&
+      (row.expectedUnitBamMinor === null || amount(row.expectedUnitBamMinor, 1000000))
+    )
+      return {
+        action,
+        id,
+        unitBamMinor: row.unitBamMinor,
+        expectedUnitBamMinor: row.expectedUnitBamMinor,
+      };
+    return fail(400, "INVALID_OFFER");
+  }
+  if (action === "promoteCategory") {
+    keys(["action", "id", "businessId", "expectedCreditMinor"]);
+    if (!uuid(row.businessId) || !amount(row.expectedCreditMinor, 100000000))
+      fail(400, "INVALID_OFFER");
+    return { action, id, businessId: row.businessId, expectedCreditMinor: row.expectedCreditMinor };
+  }
   if (action === "request") {
     keys(["action", "id", "kind", "quantity", "businessId"]);
     if (row.kind === "credits" && amount(row.quantity, 100000) && row.businessId === undefined)
@@ -47,7 +79,8 @@ export function parseMarketingCommand(v: unknown): MarketingCommand {
     if (
       amount(row.amountMinor, 100000000) &&
       validText(row.instructions, 600) &&
-      (row.creditPrice === undefined || amount(row.creditPrice, 100000))
+      (row.creditPrice === undefined ||
+        (validCreditBalance(row.creditPrice) && row.creditPrice > 0 && row.creditPrice <= 100000))
     )
       return {
         action,
@@ -83,6 +116,9 @@ type LockedOrder = {
   quantity: number;
   amount_minor: number | null;
   credit_price: number | null;
+  wallet_price_minor: string | null;
+  wallet_payment_id: string | null;
+  online_checkout_id: string | null;
   bank_reference: string | null;
 };
 async function validBusiness(
@@ -99,13 +135,6 @@ async function validBusiness(
   if (kind === "nearby" && (found.rows[0].latitude === null || found.rows[0].longitude === null))
     fail(409, "LOCATION_REQUIRED");
   return found.rows[0].included_until as string | null;
-}
-async function wallet(client: PoolClient, user: string) {
-  const value = Number(
-    (await client.query(`SELECT ${creditBalanceSql("$1")} AS balance`, [user])).rows[0]?.balance,
-  );
-  if (!Number.isSafeInteger(value) || value < 0) fail(503, "MARKETING_UNAVAILABLE");
-  return value;
 }
 export function createMarketingService(auth: AuthService, pool: Pool) {
   const access = createAccountAccess(auth);
@@ -149,7 +178,7 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
         const orders = (
           await client.query<MarketingOrder>(
             `
-          SELECT o.id,o.kind,o.status,o.quantity,o.amount_minor AS "amountMinor",o.credit_price AS "creditPrice",
+          SELECT o.id,o.kind,o.status,o.quantity,o.amount_minor AS "amountMinor",(o.wallet_price_minor::double precision/100) AS "creditPrice",
             o.revoked_at::text AS "revokedAt",(o.status='quoted' AND EXISTS (SELECT 1 FROM paypal_checkout_order p WHERE p.quote_id=o.id AND p.environment='live'
               AND ${holdsQuotePayment})) AS "onlinePending",
             o.instructions,b.title AS "businessTitle",u.name AS customer,o.starts_at::text AS "startsAt",
@@ -173,7 +202,9 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
         return {
           orders: orders.slice(0, 20),
           more: orders.length > 20,
-          balance: await wallet(client, actor.id),
+          balance: await walletBalance(client, actor.id),
+          creditUnitBamMinor: await readWalletRate(client),
+          movements: mode === "credits" ? await readCreditMovements(client, actor.id) : undefined,
           businesses: businesses
             .filter((b) => b.adEligible)
             .map(({ id, title }) => ({ id, title })),
@@ -191,8 +222,15 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
         const actor = await access.authority(
           client,
           current,
-          command.action === "quote" || command.action === "confirm",
+          command.action === "quote" ||
+            command.action === "confirm" ||
+            command.action === "setCreditRate",
         );
+        if (command.action === "setCreditRate") return setCreditRate(client, actor.id, command);
+        if (command.action === "topUp") return createCreditTopUp(client, actor.id, command);
+        if (command.action === "promoteCategory")
+          return buyCategoryPromotion(client, actor.id, command);
+        const quoteRate = command.action === "quote" ? await lockWalletRate(client) : null;
         if (command.action === "request") {
           const prior = (
             await client.query<LockedOrder>(
@@ -262,13 +300,20 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           if (order.status !== "requested" || (command.creditPrice && !isPlacement(order.kind)))
             fail(409, "OFFER_CHANGED");
           await client.query(
-            "UPDATE marketing_order SET status='quoted',amount_minor=$2,instructions=$3,credit_price=$4,quoted_at=now(),quoted_by=$5 WHERE id=$1",
+            "UPDATE marketing_order SET status='quoted',amount_minor=$2,instructions=$3,credit_price=$4,quoted_at=now(),quoted_by=$5,wallet_price_minor=$6 WHERE id=$1",
             [
               command.id,
               command.amountMinor,
               command.instructions,
-              command.creditPrice ?? null,
+              Number.isInteger(command.creditPrice) ? command.creditPrice : null,
               actor.id,
+              !isPlacement(order.kind)
+                ? null
+                : command.creditPrice !== undefined
+                  ? Math.round(command.creditPrice * 100)
+                  : quoteRate === null
+                    ? null
+                    : creditsForBamMinor(command.amountMinor, quoteRate),
             ],
           );
         } else if (command.action === "close") {
@@ -287,17 +332,21 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
             command.action === "useCredits" &&
             (actor.id !== order.account_id ||
               !isPlacement(order.kind) ||
-              order.credit_price === null)
+              order.wallet_price_minor === null)
           )
             fail(403, "OFFER_FORBIDDEN");
           const reference = command.action === "confirm" ? command.reference : null;
           if (command.action === "confirm" && command.amountMinor !== order.amount_minor)
             fail(409, "AMOUNT_MISMATCH");
-          if (order.status === "paid" && order.bank_reference === reference)
+          if (
+            order.status === "paid" &&
+            (command.action === "confirm"
+              ? order.bank_reference === reference
+              : order.wallet_payment_id === command.id ||
+                (!order.online_checkout_id && !order.bank_reference && order.credit_price !== null))
+          )
             return { id: command.id };
           if (order.status !== "quoted") fail(409, "OFFER_CHANGED");
-          if (reference === null && (await wallet(client, actor.id)) < (order.credit_price ?? 0))
-            fail(409, "INSUFFICIENT_CREDITS");
           if (isPlacement(order.kind)) {
             const active = await client.query(
               "SELECT id FROM marketing_order WHERE business_id=$1 AND kind=$2 AND status='paid' AND revoked_at IS NULL AND ends_at>clock_timestamp()",
@@ -306,11 +355,24 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
             if (active.rowCount) fail(409, "ACTIVE_BANNER");
           }
           try {
+            if (command.action === "useCredits")
+              await debitWallet(client, {
+                accountId: actor.id,
+                purchaseId: command.id,
+                kind: "marketing",
+                creditMinor: Number(order.wallet_price_minor),
+              });
             await client.query(
-              `UPDATE marketing_order SET status='paid',settled_by=$2,bank_reference=$3,paid_at=now(),
+              `UPDATE marketing_order SET status='paid',settled_by=$2,bank_reference=$3,wallet_payment_id=$5,paid_at=now(),
               starts_at=CASE WHEN kind IN ('banner','featured','nearby') THEN GREATEST(now(),$4::timestamptz) END,
               ends_at=CASE WHEN kind IN ('banner','featured','nearby') THEN GREATEST(now(),$4::timestamptz)+quantity*interval '1 day' END WHERE id=$1`,
-              [command.id, actor.id, reference, includedUntil],
+              [
+                command.id,
+                actor.id,
+                reference,
+                includedUntil,
+                command.action === "useCredits" ? command.id : null,
+              ],
             );
             if (isProductionService(order.kind)) await syncProductionReceipt(client, command.id);
           } catch (error) {

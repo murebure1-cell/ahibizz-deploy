@@ -183,11 +183,10 @@ export async function listDirectory(
     filters.push(`(${distance}) <= $${radius}::double precision`);
     order = `(${distance}) ASC, b.id ASC`;
   }
-  const paidCategory =
-    publicOnly &&
-    (Boolean(categoryId) || featuredOnly === "category") &&
-    process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY === "true";
-  const paid = paidCategory ? promotionSql("b") : null;
+  const paidCategory = publicOnly && (Boolean(categoryId) || featuredOnly === "category");
+  const paid = paidCategory
+    ? promotionSql("b", process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY === "true")
+    : null;
   if (paid) order = `(${paid}) DESC, ${order}`;
   const localPlacement =
     publicOnly && (nearby || city)

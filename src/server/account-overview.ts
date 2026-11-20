@@ -1,5 +1,6 @@
 import type { PoolClient } from "pg";
 import type { AccountOverviewFacts, ActivePlacement } from "../lib/account-overview";
+import { validCreditBalance } from "../lib/wallet";
 import { readNextAppointment } from "./customer-next-appointment";
 import {
   creditBalanceSql,
@@ -67,7 +68,7 @@ export async function readOwnerOverview(
   );
   if (!result.rows[0]) throw new Error("Account overview unavailable");
   const credits = Number(result.rows[0].credits);
-  if (!Number.isSafeInteger(credits) || credits < 0) throw new Error("Invalid credit balance");
+  if (!validCreditBalance(credits)) throw new Error("Invalid credit balance");
   return {
     ...result.rows[0],
     credits,

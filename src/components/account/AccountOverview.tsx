@@ -11,7 +11,7 @@ import type { AccountSection } from "../../lib/account-return";
 import { billingPackages } from "../../lib/billing";
 import { accountDate } from "../../lib/display-date";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
-import type { PackageContract } from "../../lib/sandbox-subscriptions";
+import { type PackageContract, walletPackageStatus } from "../../lib/sandbox-subscriptions";
 import { Icon, type IconName } from "../Icon";
 import { BusinessToday } from "./BusinessToday";
 import { NextAppointmentCard } from "./NextAppointmentCard";
@@ -150,7 +150,7 @@ export function MembershipOverview({
                   {item.period === "annual" ? "Godišnja uplata" : "Mjesečne uplate"} ·{" "}
                   {item.status === "ACTIVE" && !item.paidCycles
                     ? "Čeka uplatu"
-                    : statuses[item.status]}
+                    : (walletPackageStatus(item) ?? statuses[item.status])}
                 </p>
               </div>
             </div>

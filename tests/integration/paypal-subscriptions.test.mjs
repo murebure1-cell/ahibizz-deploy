@@ -11,6 +11,7 @@ import {
 } from "../../src/server/paypal-subscriptions/service.ts";
 import { configureLivePackages } from "../../src/server/paypal-subscriptions/setup.ts";
 import { integrationConfiguration } from "./postgres.test.mjs";
+import { verifyWalletPackages } from "./wallet-package-cases.mjs";
 
 test("sandbox package lifecycle reconciles processor evidence without activating live billing", async (t) => {
   const config = integrationConfiguration(process.env);
@@ -754,6 +755,12 @@ test("sandbox package lifecycle reconciles processor evidence without activating
         await live.refresh(person.headers, contract.id);
         await assertWindow(person.businessId, "featured", false);
         await marketingProbe.reversed();
+      },
+    );
+    await t.test(
+      "credit packages settle only the accepted cycle and share live entitlements",
+      async () => {
+        await verifyWalletPackages({ pool, auth, customer, plans, provider });
       },
     );
     await t.test(

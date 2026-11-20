@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { paypalOrderFlow } from "../../lib/paypal-order-flow";
+import { hasActiveWalletPromotion } from "../marketing/category-promotion";
 import {
   payableQuote,
   pendingQuoteOrder,
@@ -62,9 +63,14 @@ const uuid = (v: string) => {
 };
 const columns = `id,user_id AS "userId",request_id AS "requestId",environment,kind,quote_id AS "quoteId",business_id AS "businessId",category_id AS "categoryId",business_title AS "businessTitle",offer_version AS "offerVersion",original_bam_minor AS "originalBamMinor",amount_minor AS "amountMinor",currency,merchant_id AS "merchantId",status,provider_order_id AS "providerOrderId",approval_url AS "approvalUrl",capture_id AS "captureId",create_request_id AS "createRequestId",capture_request_id AS "captureRequestId",refunded_minor AS "refundedMinor",refund_total_unknown AS "refundTotalUnknown",starts_at::text AS "startsAt",ends_at::text AS "endsAt",expires_at::text AS "expiresAt",captured_at::text AS "capturedAt",version`;
 
-export function promotionSql(alias = "b") {
+export function promotionSql(alias = "b", includePayPal = true) {
   if (!/^[a-z][a-z0-9_]*$/i.test(alias)) throw new Error("Invalid SQL alias");
-  return `EXISTS (SELECT 1 FROM paypal_promotion_entitlement pe JOIN paypal_checkout_order po ON po.id=pe.order_id JOIN auth_user pu ON pu.id=pe.user_id WHERE pe.business_id=${alias}.id AND pe.user_id=${alias}.owner_user_id AND pe.category_id=${alias}.category_id AND ${alias}.status='published' AND package_allows_listing(${alias}) AND pu.approval='approved' AND pu."emailVerified"=true AND pu.role IN ('member','owner') AND po.environment='live' AND po.status='captured' AND po.refunded_minor=0 AND po.refund_total_unknown=false AND pe.revoked_at IS NULL AND pe.starts_at<=now() AND pe.ends_at>now())`;
+  const wallet = `EXISTS (SELECT 1 FROM wallet_category_promotion w JOIN auth_user u ON u.id=w.account_id
+      WHERE w.business_id=${alias}.id AND w.account_id=${alias}.owner_user_id AND w.category_id=${alias}.category_id
+        AND ${alias}.status='published' AND package_allows_listing(${alias}) AND u.approval='approved'
+        AND u."emailVerified" AND u.role IN ('member','owner') AND w.revoked_at IS NULL AND w.starts_at<=now() AND w.ends_at>now())`;
+  if (!includePayPal) return wallet;
+  return `(EXISTS (SELECT 1 FROM paypal_promotion_entitlement pe JOIN paypal_checkout_order po ON po.id=pe.order_id JOIN auth_user pu ON pu.id=pe.user_id WHERE pe.business_id=${alias}.id AND pe.user_id=${alias}.owner_user_id AND pe.category_id=${alias}.category_id AND ${alias}.status='published' AND package_allows_listing(${alias}) AND pu.approval='approved' AND pu."emailVerified"=true AND pu.role IN ('member','owner') AND po.environment='live' AND po.status='captured' AND po.refunded_minor=0 AND po.refund_total_unknown=false AND pe.revoked_at IS NULL AND pe.starts_at<=now() AND pe.ends_at>now()) OR ${wallet})`;
 }
 async function transaction<T>(pool: Pool, action: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
@@ -268,6 +274,8 @@ export function createCheckoutStore(pool: Pool) {
           b = await business(c, input.businessId);
           if (!b || b.owner_user_id !== actor.userId || b.status !== "published")
             fail(403, "BUSINESS_NOT_ELIGIBLE");
+          if (input.environment === "live" && (await hasActiveWalletPromotion(c, b.id)))
+            fail(409, "PROMOTION_ALREADY_RESERVED");
           const active = await c.query<CheckoutOrder & { fingerprint: string }>(
             `SELECT ${columns},fingerprint FROM paypal_checkout_order WHERE business_id=$1 AND environment=$2 AND ((status IN ('created','provider_created') AND expires_at>clock_timestamp()) OR (status='captured' AND ends_at>clock_timestamp()) OR status='review') ORDER BY id LIMIT 2`,
             [b.id, input.environment],
@@ -483,7 +491,8 @@ export function createCheckoutStore(pool: Pool) {
               b &&
                 b.owner_user_id === o.userId &&
                 b.category_id === o.categoryId &&
-                b.status === "published",
+                b.status === "published" &&
+                (o.environment !== "live" || !(await hasActiveWalletPromotion(c, b.id))),
             );
         }
         if (o.quoteId) {
