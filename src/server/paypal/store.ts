@@ -1,7 +1,12 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { paypalOrderFlow } from "../../lib/paypal-order-flow";
-import { payableQuote, pendingQuoteOrder, settleOnlineQuote } from "../marketing/online-quote";
+import {
+  payableQuote,
+  pendingQuoteOrder,
+  reconcileProductionSale,
+  settleOnlineQuote,
+} from "../marketing/online-quote";
 
 export type CheckoutActor = {
   userId: string;
@@ -568,6 +573,8 @@ export function createCheckoutStore(pool: Pool) {
           "UPDATE paypal_promotion_entitlement SET revoked_at=COALESCE(revoked_at,now()),revoke_reason=COALESCE(revoke_reason,$2) WHERE order_id=$1",
           [id, status],
         );
+        if (o.quoteId && o.environment === "live")
+          await reconcileProductionSale(c, o.quoteId, o.id);
         await audit(c, id, "refunded_capture_reconciled", {
           captureId: value.captureId,
           refundedMinor: refund.refundedMinor,
@@ -614,6 +621,8 @@ export function createCheckoutStore(pool: Pool) {
             "UPDATE paypal_promotion_entitlement SET revoked_at=COALESCE(revoked_at,now()),revoke_reason=COALESCE(revoke_reason,$2) WHERE order_id=$1",
             [id, status],
           );
+        if (o.quoteId && o.environment === "live")
+          await reconcileProductionSale(c, o.quoteId, o.id);
         await audit(c, id, "refund_reconciled", { refundedMinor: total, status });
         return row(c, id);
       });

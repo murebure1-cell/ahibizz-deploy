@@ -5,9 +5,10 @@ import type {
   MarketingMode,
   MarketingOrder,
 } from "../../lib/marketing";
-import { isPlacement } from "../../lib/marketing";
+import { isPlacement, isProductionService } from "../../lib/marketing";
 import { AccountAccessError, accountTransaction, createAccountAccess } from "../auth/accounts";
 import { type AuthService, getAuthDatabasePool, getAuthService } from "../auth/service";
+import { syncProductionReceipt } from "../billing/service";
 import { checkoutConfiguration } from "../paypal/runtime";
 import { payableQuote, pendingQuoteOrder } from "./online-quote";
 import { creditBalanceSql, packagePromotions, paidPromotions } from "./read";
@@ -39,6 +40,8 @@ export function parseMarketingCommand(v: unknown): MarketingCommand {
       return { action, id, kind: row.kind, quantity: row.quantity };
     if (isPlacement(row.kind) && amount(row.quantity, 90) && uuid(row.businessId))
       return { action, id, kind: row.kind, quantity: row.quantity, businessId: row.businessId };
+    if (isProductionService(row.kind) && row.quantity === 1 && uuid(row.businessId))
+      return { action, id, kind: row.kind, quantity: 1, businessId: row.businessId };
   } else if (action === "quote") {
     keys(["action", "id", "amountMinor", "instructions", "creditPrice"]);
     if (
@@ -89,7 +92,7 @@ async function validBusiness(
   kind: MarketingOrder["kind"],
 ) {
   const found = await client.query(
-    "SELECT id,latitude,longitude,CASE WHEN $3::text IN ('featured','nearby') THEN paid_package_placement_until(b,$3)::text END AS included_until FROM directory_business b WHERE id=$1 AND owner_user_id=$2 AND status='published' AND package_allows_listing(b) FOR UPDATE",
+    "SELECT id,latitude,longitude,CASE WHEN $3::text IN ('featured','nearby') THEN paid_package_placement_until(b,$3)::text END AS included_until FROM directory_business b WHERE id=$1 AND owner_user_id=$2 AND CASE WHEN $3::text IN ('photo','video','photo_video') THEN status<>'archived' ELSE status='published' AND package_allows_listing(b) END FOR UPDATE",
     [id, user, kind],
   );
   if (!found.rowCount) fail(409, "BUSINESS_CHANGED");
@@ -157,7 +160,8 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           SELECT o.id,o.kind,o.status,o.quantity,o.amount_minor AS "amountMinor",o.credit_price AS "creditPrice",
             o.revoked_at::text AS "revokedAt",EXISTS (SELECT 1 FROM paypal_checkout_order p WHERE p.quote_id=o.id AND p.environment='live'
               AND (p.status='review' OR (p.status IN ('created','provider_created') AND GREATEST(p.expires_at,p.capture_lease_until)>clock_timestamp()))) AS "onlinePending",
-            o.instructions,b.title AS "businessTitle",u.name AS customer,o.starts_at::text AS "startsAt",LEAST(o.ends_at,o.revoked_at)::text AS "endsAt"
+            o.instructions,b.title AS "businessTitle",u.name AS customer,o.starts_at::text AS "startsAt",
+            CASE WHEN o.ends_at IS NOT NULL THEN LEAST(o.ends_at,o.revoked_at)::text END AS "endsAt",o.production_receipt_conflict AS "productionReceiptConflict"
           FROM marketing_order o JOIN auth_user u ON u.id=o.account_id LEFT JOIN directory_business b ON b.id=o.business_id
           WHERE ($2::text='admin' OR (o.account_id=$1 AND (o.kind='credits')=($2='credits')))
           ORDER BY CASE o.status WHEN 'requested' THEN 0 WHEN 'quoted' THEN 1 WHEN 'paid' THEN 2 ELSE 3 END,o.created_at DESC,o.id LIMIT 21 OFFSET $3`,
@@ -167,8 +171,8 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
         const businesses =
           mode === "ads"
             ? (
-                await client.query<{ id: string; title: string }>(
-                  "SELECT id,title FROM directory_business b WHERE owner_user_id=$1 AND status='published' AND package_allows_listing(b) ORDER BY title,id",
+                await client.query<{ id: string; title: string; adEligible: boolean }>(
+                  "SELECT id,title,(status='published' AND package_allows_listing(b)) AS \"adEligible\" FROM directory_business b WHERE owner_user_id=$1 AND status<>'archived' ORDER BY title,id",
                   [actor.id],
                 )
               ).rows
@@ -178,7 +182,10 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           orders: orders.slice(0, 20),
           more: orders.length > 20,
           balance: await wallet(client, actor.id),
-          businesses,
+          businesses: businesses
+            .filter((b) => b.adEligible)
+            .map(({ id, title }) => ({ id, title })),
+          productionBusinesses: businesses.map(({ id, title }) => ({ id, title })),
           promotions: mode === "ads" ? await paidPromotions(client, actor.id) : [],
           included: mode === "ads" ? await packagePromotions(client, actor.id) : [],
           checkoutAvailable: config?.chargingApproved === true && config.environment === "live",
@@ -260,7 +267,7 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           fail(409, "QUOTE_PAYMENT_PENDING");
         if (command.action === "quote") {
           if (includedUntil) fail(409, "INCLUDED_IN_PACKAGE");
-          if (order.status !== "requested" || (command.creditPrice && order.kind === "credits"))
+          if (order.status !== "requested" || (command.creditPrice && !isPlacement(order.kind)))
             fail(409, "OFFER_CHANGED");
           await client.query(
             "UPDATE marketing_order SET status='quoted',amount_minor=$2,instructions=$3,credit_price=$4,quoted_at=now(),quoted_by=$5 WHERE id=$1",
@@ -287,7 +294,7 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           if (
             command.action === "useCredits" &&
             (actor.id !== order.account_id ||
-              order.kind === "credits" ||
+              !isPlacement(order.kind) ||
               order.credit_price === null)
           )
             fail(403, "OFFER_FORBIDDEN");
@@ -299,7 +306,7 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           if (order.status !== "quoted") fail(409, "OFFER_CHANGED");
           if (reference === null && (await wallet(client, actor.id)) < (order.credit_price ?? 0))
             fail(409, "INSUFFICIENT_CREDITS");
-          if (order.kind !== "credits") {
+          if (isPlacement(order.kind)) {
             const active = await client.query(
               "SELECT id FROM marketing_order WHERE business_id=$1 AND kind=$2 AND status='paid' AND revoked_at IS NULL AND ends_at>clock_timestamp()",
               [order.business_id, order.kind],
@@ -309,10 +316,11 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           try {
             await client.query(
               `UPDATE marketing_order SET status='paid',settled_by=$2,bank_reference=$3,paid_at=now(),
-              starts_at=CASE WHEN kind<>'credits' THEN GREATEST(now(),$4::timestamptz) END,
-              ends_at=CASE WHEN kind<>'credits' THEN GREATEST(now(),$4::timestamptz)+quantity*interval '1 day' END WHERE id=$1`,
+              starts_at=CASE WHEN kind IN ('banner','featured','nearby') THEN GREATEST(now(),$4::timestamptz) END,
+              ends_at=CASE WHEN kind IN ('banner','featured','nearby') THEN GREATEST(now(),$4::timestamptz)+quantity*interval '1 day' END WHERE id=$1`,
               [command.id, actor.id, reference, includedUntil],
             );
+            if (isProductionService(order.kind)) await syncProductionReceipt(client, command.id);
           } catch (error) {
             if ((error as { code?: string }).code === "23505") fail(409, "REFERENCE_USED");
             throw error;

@@ -635,6 +635,9 @@ function BillingWorkspace({
                     Ispravka evidencije
                   </button>
                 </header>
+                {receipt.processorCorrectionPending && (
+                  <p role="status">PayPal još provjerava iznos korekcije.</p>
+                )}
                 <dl className={styles.details}>
                   {[
                     ["Primljeno", billingMoney(receipt.grossMinor)],

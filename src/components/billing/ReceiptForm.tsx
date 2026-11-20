@@ -307,11 +307,16 @@ export function ReceiptForm({
               <input
                 id={`${prefix}-refunded`}
                 name="refunded"
+                readOnly={receipt.source === "paypal" && Boolean(receipt.productionOrderId)}
                 inputMode="decimal"
                 required
                 defaultValue={billingInputValue(receipt.refundedMinor)}
               />
-              <small>Evidencija izvršenog povrata; ne šalje novac.</small>
+              <small>
+                {receipt.source === "paypal" && receipt.productionOrderId
+                  ? "Iznos preuzet od PayPala."
+                  : "Evidencija izvršenog povrata."}
+              </small>
             </label>
           )}
           <label htmlFor={`${prefix}-tax`}>

@@ -23,7 +23,7 @@ import {
 } from "./validation";
 
 const pageSize = 30;
-const columns = `r.id,r.kind,r.package_id AS "packageId",r.period,r.business_id AS "businessId",r.business_title AS "businessTitle",r.catalog_version AS "catalogVersion",r.quoted_price_minor AS "quotedPriceMinor",r.commitment_months AS "commitmentMonths",r.commitment_total_minor AS "commitmentTotalMinor",r.service_starts_on::text AS "serviceStartsOn",r.service_ends_on::text AS "serviceEndsOn",r.source,r.external_reference AS "externalReference",r.received_at AS "receivedAt",r.gross_minor AS "grossMinor",r.refunded_minor AS "refundedMinor",r.tax_minor AS "taxMinor",r.fee_minor AS "feeMinor",r.net_base_minor AS "netBaseMinor",r.development_rate_bps AS "developmentRateBps",r.development_minor AS "developmentMinor",r.allocation_status AS "allocationStatus",r.version,r.created_at AS "createdAt",r.updated_at AS "updatedAt"`;
+const columns = `r.production_order_id AS "productionOrderId",EXISTS(SELECT 1 FROM marketing_order mo JOIN paypal_checkout_order po ON po.id=mo.online_checkout_id WHERE mo.id=r.production_order_id AND (po.refund_total_unknown OR (po.status='reversed' AND po.refunded_minor<po.amount_minor))) AS "processorCorrectionPending",r.id,r.kind,r.package_id AS "packageId",r.period,r.business_id AS "businessId",r.business_title AS "businessTitle",r.catalog_version AS "catalogVersion",r.quoted_price_minor AS "quotedPriceMinor",r.commitment_months AS "commitmentMonths",r.commitment_total_minor AS "commitmentTotalMinor",r.service_starts_on::text AS "serviceStartsOn",r.service_ends_on::text AS "serviceEndsOn",r.source,r.external_reference AS "externalReference",r.received_at AS "receivedAt",r.gross_minor AS "grossMinor",r.refunded_minor AS "refundedMinor",r.tax_minor AS "taxMinor",r.fee_minor AS "feeMinor",r.net_base_minor AS "netBaseMinor",r.development_rate_bps AS "developmentRateBps",r.development_minor AS "developmentMinor",r.allocation_status AS "allocationStatus",r.version,r.created_at AS "createdAt",r.updated_at AS "updatedAt"`;
 type Row = Omit<BillingReceipt, "receivedAt" | "createdAt" | "updatedAt"> & {
   receivedAt: string | Date;
   createdAt: string | Date;
@@ -174,6 +174,125 @@ function summary(value: Record<keyof BillingSummary, string>): BillingSummary {
   if (Object.values(result).some((value) => !Number.isSafeInteger(value) || value < 0))
     fail(503, "BILLING_UNAVAILABLE");
   return result;
+}
+/** Called inside the capture, bank confirmation or refund transaction. Amounts in the ledger are KM. */
+export async function syncProductionReceipt(client: PoolClient, offerId: string) {
+  const sale = (
+    await client.query<{
+      business_id: string;
+      title: string;
+      settled_by: string;
+      paid_at: Date;
+      amount_minor: number;
+      source: "paypal" | "bank";
+      reference: string;
+      confirmed_eur: number | null;
+      refunded_eur: number;
+    }>(
+      `SELECT o.business_id,b.title,o.settled_by,COALESCE(p.captured_at,o.paid_at) AS paid_at,o.amount_minor,
+       CASE WHEN p.id IS NULL THEN 'bank' ELSE 'paypal' END AS source,
+       COALESCE(p.capture_id,o.bank_reference) AS reference,p.amount_minor AS confirmed_eur,
+       COALESCE(p.refunded_minor,0) AS refunded_eur
+     FROM marketing_order o JOIN directory_business b ON b.id=o.business_id
+     LEFT JOIN paypal_checkout_order p ON p.id=o.online_checkout_id AND p.environment='live'
+     WHERE o.id=$1 AND o.kind IN ('photo','video','photo_video') AND o.status='paid'
+       AND (o.bank_reference IS NOT NULL OR p.capture_id IS NOT NULL) FOR UPDATE OF o`,
+      [offerId],
+    )
+  ).rows[0];
+  if (!sale) return;
+  const now = new Date().toISOString();
+  const created = await client.query<{ id: string }>(
+    `INSERT INTO billing_receipt(id,production_order_id,kind,business_id,business_title,source,external_reference,received_at,gross_minor,allocation_status,created_by_user_id)
+      VALUES ($1,$2,'photo_video',$3,$4,$5,$6,$7,$8,'not_applicable',$9)
+      ON CONFLICT DO NOTHING RETURNING id`,
+    [
+      randomUUID(),
+      offerId,
+      sale.business_id,
+      sale.title,
+      sale.source,
+      sale.reference,
+      sale.paid_at,
+      sale.amount_minor,
+      sale.settled_by,
+    ],
+  );
+  const newId = created.rows[0]?.id;
+  if (newId)
+    await audit(
+      client,
+      sale.settled_by,
+      null,
+      await receipt(client, newId),
+      "Potvrđena uplata produkcije",
+      now,
+    );
+  let linkedId = newId;
+  if (!linkedId) {
+    const prior = (
+      await client.query<{ id: string; production_order_id: string | null }>(
+        "SELECT id,production_order_id FROM billing_receipt WHERE source=$1 AND external_reference=$2 FOR UPDATE",
+        [sale.source, sale.reference],
+      )
+    ).rows[0];
+    if (prior?.production_order_id === offerId) linkedId = prior.id;
+    else {
+      const old = prior && (await receipt(client, prior.id));
+      if (
+        prior &&
+        !prior.production_order_id &&
+        sale.source === "paypal" &&
+        old?.kind === "photo_video" &&
+        old.businessId === sale.business_id &&
+        old.grossMinor === sale.amount_minor &&
+        old.refundedMinor === 0
+      ) {
+        await client.query(
+          "UPDATE billing_receipt SET production_order_id=$1,version=version+1,updated_at=$2 WHERE id=$3",
+          [offerId, now, prior.id],
+        );
+        await audit(
+          client,
+          sale.settled_by,
+          old,
+          await receipt(client, prior.id),
+          "Povezan postojeći PayPal primitak produkcije",
+          now,
+        );
+        linkedId = prior.id;
+      } else {
+        // Preserve the verified payment and the earlier bookkeeping; a conflicting receipt is never duplicated or repurposed.
+        await client.query(
+          "UPDATE marketing_order SET production_receipt_conflict=true WHERE id=$1",
+          [offerId],
+        );
+        return;
+      }
+    }
+  }
+  if (!sale.refunded_eur || !sale.confirmed_eur) return;
+  // Reflect the same portion of the KM quote. A complete EUR refund must match the original KM total exactly.
+  const refunded = Number(
+    (BigInt(sale.refunded_eur) * BigInt(sale.amount_minor) +
+      BigInt(Math.floor(sale.confirmed_eur / 2))) /
+      BigInt(sale.confirmed_eur),
+  );
+  const before = await receipt(client, linkedId, true);
+  if (refunded <= before.refundedMinor) return;
+  const allocation = billingAllocation({ ...before, refundedMinor: refunded });
+  await client.query(
+    "UPDATE billing_receipt SET refunded_minor=$2,net_base_minor=$3,version=version+1,updated_at=$4 WHERE id=$1",
+    [before.id, refunded, allocation.netBaseMinor, now],
+  );
+  await audit(
+    client,
+    sale.settled_by,
+    before,
+    await receipt(client, before.id),
+    "PayPal korekcija produkcije",
+    now,
+  );
 }
 export function getBillingCatalog(rate: number | null = billingDevelopmentRateBps): BillingCatalog {
   return {
@@ -402,6 +521,12 @@ export function createBillingService({
         const user = await lockedActor(client, signed),
           before = await receipt(client, key, true);
         if (before.version !== value.expectedVersion) fail(409, "VERSION_CONFLICT");
+        if (
+          before.source === "paypal" &&
+          before.productionOrderId &&
+          value.refundedMinor !== before.refundedMinor
+        )
+          fail(400, "PROCESSOR_OWNS_REFUND");
         if (value.refundedMinor < before.refundedMinor || value.refundedMinor > before.grossMinor)
           fail(400, "INVALID_BILLING_INPUT");
         const dates = {

@@ -5,12 +5,21 @@ export const adPlacements = {
   nearby: "Isticanje u blizini",
 } as const;
 export type Placement = keyof typeof adPlacements;
+export const productionServices = {
+  photo: "Fotografisanje",
+  video: "Video snimanje",
+  photo_video: "Foto i video",
+} as const;
+export type ProductionService = keyof typeof productionServices;
+export function isProductionService(value: unknown): value is ProductionService {
+  return typeof value === "string" && Object.hasOwn(productionServices, value);
+}
 export function isPlacement(value: unknown): value is Placement {
   return typeof value === "string" && Object.hasOwn(adPlacements, value);
 }
 export type MarketingOrder = {
   id: string;
-  kind: Placement | "credits";
+  kind: Placement | ProductionService | "credits";
   status: "requested" | "quoted" | "paid" | "closed";
   quantity: number;
   amountMinor: number | null;
@@ -18,6 +27,7 @@ export type MarketingOrder = {
   instructions: string | null;
   onlinePending?: boolean;
   revokedAt?: string | null;
+  productionReceiptConflict?: boolean;
   businessTitle: string | null;
   customer: string;
   startsAt: string | null;
@@ -28,6 +38,7 @@ export type MarketingData = {
   more: boolean;
   balance: number;
   businesses: { id: string; title: string }[];
+  productionBusinesses?: { id: string; title: string }[];
   promotions: { id: string; title: string; endsAt: string }[];
   included: { id: string; title: string; kind: "featured" | "nearby"; endsAt: string }[];
   checkoutAvailable: boolean;
@@ -36,7 +47,7 @@ export type MarketingCommand =
   | {
       action: "request";
       id: string;
-      kind: Placement | "credits";
+      kind: Placement | ProductionService | "credits";
       quantity: number;
       businessId?: string;
     }

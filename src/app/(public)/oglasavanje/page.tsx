@@ -27,10 +27,14 @@ export default function PromotionPage() {
       <section className={styles.section}>
         <h2>Na početnoj stranici</h2>
         <p>
-          Za isticanje na cijeloj platformi ili baner zatraži ponudu u Mojim oglasima. Paketi mogu
-          uključivati i dane isticanja.
+          Oglas može biti baner ili istaknuta djelatnost koju vide posjetioci iz svih gradova.
         </p>
-        <Link href="/paketi">Pogledaj pakete</Link>
+        <Link href="/nalog?odjeljak=oglasi">Zatraži ponudu za početnu</Link>
+      </section>
+      <section className={styles.section}>
+        <h2>Isticanje uz paket</h2>
+        <p>Poslovni i Premium paket uključuju dane isticanja za tvoju djelatnost.</p>
+        <Link href="/paketi">Uporedi pakete</Link>
       </section>
     </main>
   );

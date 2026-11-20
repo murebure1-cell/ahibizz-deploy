@@ -28,6 +28,8 @@ export type BillingCatalog = {
   membershipActivation: false;
 };
 export type BillingReceipt = {
+  productionOrderId?: string | null;
+  processorCorrectionPending?: boolean;
   id: string;
   kind: BillingReceiptKind;
   packageId: BillingPackageId | null;

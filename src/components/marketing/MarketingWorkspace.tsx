@@ -6,11 +6,13 @@ import { billingMoney } from "../../lib/billing";
 import {
   adPlacements,
   isPlacement,
+  isProductionService,
   type MarketingCommand,
   type MarketingData,
   type MarketingMode,
   type MarketingOrder,
   marketingLabels,
+  productionServices,
 } from "../../lib/marketing";
 import styles from "./marketing.module.css";
 
@@ -86,17 +88,29 @@ function OfferCard({
             {admin ? `${order.customer} · ` : ""}
             {isPlacement(order.kind)
               ? `${adPlacements[order.kind]} · ${order.quantity} dana`
-              : "Dopuna kredita"}
+              : isProductionService(order.kind)
+                ? productionServices[order.kind]
+                : "Dopuna kredita"}
           </small>
         </div>
         <span className={styles.status}>
-          {order.revokedAt ? "Obustavljeno" : marketingLabels[order.status]}
+          {order.revokedAt
+            ? isProductionService(order.kind)
+              ? "Korekcija uplate"
+              : "Obustavljeno"
+            : marketingLabels[order.status]}
         </span>
       </header>
       {order.amountMinor !== null && (
         <p className={styles.amount}>
           {billingMoney(order.amountMinor)}
           {order.creditPrice !== null && <small> ili {credits(order.creditPrice)} kredita</small>}
+        </p>
+      )}
+      {admin && order.productionReceiptConflict && (
+        <p role="status">
+          Uplata je potvrđena. U evidenciji postoji primitak s istom PayPal referencom i različitim
+          podacima.
         </p>
       )}
       {order.endsAt && (
@@ -114,7 +128,7 @@ function OfferCard({
       )}
       {order.status === "quoted" && !order.onlinePending && (
         <div className={styles.instructions}>
-          <strong>Upute za uplatu</strong>
+          <strong>{isProductionService(order.kind) ? "Detalji ponude" : "Upute za uplatu"}</strong>
           <p>{order.instructions}</p>
           <small>Poziv na broj: {order.id}</small>
         </div>
@@ -132,7 +146,9 @@ function OfferCard({
             </label>
           )}
           <label>
-            Primalac, račun i upute za uplatu
+            {isProductionService(order.kind)
+              ? "Opis usluge i upute za uplatu"
+              : "Primalac, račun i upute za uplatu"}
             <textarea name="instructions" maxLength={600} required rows={3} />
           </label>
           <button disabled={busy} type="submit">
@@ -198,6 +214,18 @@ function MarketingView({ accountId, mode }: { accountId: string; mode: Marketing
     [failed, setFailed] = useState(false);
   const running = useRef(false);
   const mounted = useRef(false);
+  const openedProduction = useRef(false);
+  useEffect(() => {
+    if (
+      data &&
+      !openedProduction.current &&
+      mode === "ads" &&
+      window.location.hash === "#produkcija"
+    ) {
+      openedProduction.current = true;
+      document.getElementById("produkcija")?.scrollIntoView({ block: "start" });
+    }
+  }, [data, mode]);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -265,12 +293,12 @@ function MarketingView({ accountId, mode }: { accountId: string; mode: Marketing
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const placement = form.get("placement");
-    if (mode === "ads" && !isPlacement(placement)) return;
+    if (mode === "ads" && !isPlacement(placement) && !isProductionService(placement)) return;
     void submit({
       action: "request",
       id: crypto.randomUUID(),
-      kind: isPlacement(placement) ? placement : "credits",
-      quantity: Number(form.get("quantity")),
+      kind: isPlacement(placement) || isProductionService(placement) ? placement : "credits",
+      quantity: isProductionService(placement) ? 1 : Number(form.get("quantity")),
       ...(mode === "ads" ? { businessId: String(form.get("business")) } : {}),
     });
   }
@@ -390,6 +418,43 @@ function MarketingView({ accountId, mode }: { accountId: string; mode: Marketing
               Zatraži ponudu
             </button>
           </form>
+        </article>
+      )}
+      {mode === "ads" && (
+        <article id="produkcija" className={styles.order}>
+          <h2>Foto i video produkcija</h2>
+          {(data.productionBusinesses ?? data.businesses).length > 0 ? (
+            <form className={styles.form} onSubmit={request}>
+              <label>
+                Usluga
+                <select name="placement">
+                  {Object.entries(productionServices).map(([id, label]) => (
+                    <option key={id} value={id}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Djelatnost
+                <select name="business" required>
+                  {(data.productionBusinesses ?? data.businesses).map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="submit" disabled={busy}>
+                Zatraži ponudu za produkciju
+              </button>
+            </form>
+          ) : (
+            <p>
+              Za ponudu dodaj djelatnost.{" "}
+              <Link href="/nalog?odjeljak=djelatnosti">Moje djelatnosti</Link>
+            </p>
+          )}
         </article>
       )}
       {message && <p role="status">{message}</p>}

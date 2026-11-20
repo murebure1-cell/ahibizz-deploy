@@ -132,17 +132,9 @@ export function PricingCatalog({
           <h2>Foto i video</h2>
           <p>Produkcija se ugovara zasebno.</p>
         </div>
-        <ul>
-          <li>
-            Fotografisanje <strong>Po ponudi</strong>
-          </li>
-          <li>
-            Video <strong>Po ponudi</strong>
-          </li>
-          <li>
-            Foto i video <strong>Po ponudi</strong>
-          </li>
-        </ul>
+        <Link className={styles.secondary} href="/nalog?odjeljak=oglasi#produkcija">
+          Zatraži ponudu za produkciju
+        </Link>
       </section>
     </section>
   );
