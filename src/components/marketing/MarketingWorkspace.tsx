@@ -311,10 +311,8 @@ function MarketingView({ accountId, mode }: { accountId: string; mode: Marketing
       {mode === "ads" && (
         <article className={styles.order}>
           <header>
-            <div>
-              <h3>Isticanje u kategoriji</h3>
-              <small>7 dana · 10 KM</small>
-            </div>
+            <h2>Isticanje u kategoriji</h2>
+            <small>7 dana · 10 KM</small>
           </header>
           {data.promotions.map((item) => (
             <p key={item.id}>
@@ -337,12 +335,8 @@ function MarketingView({ accountId, mode }: { accountId: string; mode: Marketing
       )}
       {mode !== "admin" && (mode === "credits" || data.businesses.length > 0) && (
         <article className={styles.order}>
-          <h3>{mode === "credits" ? "Kupi kredite" : "Novi oglas"}</h3>
-          <small>
-            {mode === "credits"
-              ? "Zatraži cijenu za željeni broj kredita."
-              : "Odaberi gdje želiš prikazati djelatnost."}
-          </small>
+          <h2>{mode === "credits" ? "Kupi kredite" : "Novi oglas"}</h2>
+          {mode === "credits" && <small>Zatraži cijenu za željeni broj kredita.</small>}
           <form onSubmit={request} className={styles.form}>
             {mode === "ads" && (
               <label>

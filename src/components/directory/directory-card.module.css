@@ -3,7 +3,6 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  height: 100%;
   isolation: isolate;
   border: 1px solid var(--ui-border);
   border-radius: 22px;
@@ -21,10 +20,12 @@
   right: 14px;
   z-index: 2;
 }
-.card:hover {
-  border-color: var(--ui-border-strong);
-  box-shadow: 0 15px 35px #132c4010;
-  transform: translateY(-3px);
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    border-color: var(--ui-border-strong);
+    box-shadow: 0 15px 35px #132c4010;
+    transform: translateY(-2px);
+  }
 }
 .card:focus-within {
   border-color: var(--ui-accent-border);
@@ -121,11 +122,6 @@
 .body > ul {
   margin: 0 22px 18px;
 }
-.brand[data-rating="true"] {
-  top: 20px;
-  bottom: auto;
-  left: 72px;
-}
 .rating {
   position: absolute;
   bottom: 34px;
@@ -157,12 +153,14 @@
 .identity h2 {
   display: flex;
   align-items: start;
-  max-width: calc(100% - 70px);
   font-size: 21px;
   font-weight: 650;
   line-height: 1.35;
   letter-spacing: -0.035em;
   overflow-wrap: anywhere;
+}
+.identity[data-avatar="true"] h2 {
+  max-width: calc(100% - 70px);
 }
 .identity a {
   display: -webkit-box;
@@ -183,6 +181,12 @@
   font-size: 12px;
   line-height: 1.6;
   overflow-wrap: anywhere;
+}
+.location span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 .location svg {
   flex: 0 0 15px;
@@ -207,12 +211,11 @@
   margin-top: 0.2em;
 }
 .footer {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 9px 12px;
-  padding: 13px 17px 13px 22px;
+  gap: 8px;
+  padding: 10px 14px;
   border-top: 1px solid var(--ui-border);
   border-radius: 0 0 21px 21px;
   background: var(--ui-surface);
@@ -220,7 +223,7 @@
 .category {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 7px;
   min-width: 0;
   max-width: 100%;
   color: var(--ui-text-secondary);
@@ -229,14 +232,18 @@
   line-height: 1.5;
 }
 .category > span:last-child {
+  display: -webkit-box;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 .categoryIcon {
   display: grid;
-  flex: 0 0 36px;
+  flex: 0 0 30px;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--ui-accent-soft);
   color: var(--ui-accent-text);
@@ -249,7 +256,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  margin-left: auto;
+  grid-column: 2;
 }
 .actions a {
   display: grid;

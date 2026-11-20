@@ -256,7 +256,7 @@ function NearbyCards() {
       {expanded ? (
         cards
       ) : (
-        <HomeRail label="Djelatnosti u blizini" className={homeStyles.businessGrid}>
+        <HomeRail listings label="Djelatnosti u blizini" className={homeStyles.businessGrid}>
           {cards}
         </HomeRail>
       )}

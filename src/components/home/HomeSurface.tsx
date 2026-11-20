@@ -80,6 +80,7 @@ export function HomeSurface({
           </Link>
         </div>
         <HomeRail
+          listings
           label={titles.featured || "Istaknute djelatnosti"}
           className={styles.businessGrid}
         >

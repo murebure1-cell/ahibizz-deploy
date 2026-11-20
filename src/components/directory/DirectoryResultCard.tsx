@@ -23,7 +23,13 @@ export function DirectoryResultCard({
   preview?: boolean;
 }) {
   const logo = safeBusinessImage(business.logo, preview);
-  const image = safeBusinessImage(business.image, preview);
+  const cover = safeBusinessImage(business.image, preview);
+  const image =
+    cover && cover.src !== logo?.src
+      ? cover
+      : business.gallery
+          ?.map((photo) => safeBusinessImage(photo, preview))
+          .find((photo) => photo && photo.src !== logo?.src);
   const profile = `/djelatnosti/${business.id}`;
   const monogram = business.title
     .trim()
@@ -67,13 +73,11 @@ export function DirectoryResultCard({
               {monogram || "A"}
             </span>
           )}
-          <span
-            className={styles.brand}
-            data-rating={Boolean(business.reviews?.count)}
-            aria-hidden="true"
-          >
-            <Image src="/brand/ahi-logo-white.svg" alt="" width={88} height={24} unoptimized />
-          </span>
+          {!business.reviews?.count && (
+            <span className={styles.brand} aria-hidden="true">
+              <Image src="/brand/ahi-logo-white.svg" alt="" width={88} height={24} unoptimized />
+            </span>
+          )}
         </Link>
         <span className={styles.openStatus}>
           <BusinessOpenStatus details={business.details} />
@@ -86,14 +90,16 @@ export function DirectoryResultCard({
       </div>
 
       <div className={styles.body}>
-        <div className={styles.logo} aria-hidden="true">
-          {logo ? (
-            <BusinessLogo src={logo.src} alt="" monogram={monogram} sizes="72px" />
-          ) : (
-            <span>{monogram || "A"}</span>
-          )}
-        </div>
-        <header className={styles.identity}>
+        {image && (
+          <div className={styles.logo} aria-hidden="true">
+            {logo ? (
+              <BusinessLogo src={logo.src} alt="" monogram={monogram} sizes="72px" />
+            ) : (
+              <span>{monogram || "A"}</span>
+            )}
+          </div>
+        )}
+        <header className={styles.identity} data-avatar={Boolean(image)}>
           <h2 data-design="directory-title">
             <Link href={profile} title={business.title}>
               {business.title}

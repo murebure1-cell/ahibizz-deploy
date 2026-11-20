@@ -242,10 +242,10 @@
 }
 .businessGrid {
   --rail-gap: 18px;
+  --listing-width: calc((100% - 2 * var(--rail-gap)) / 3);
   gap: var(--rail-gap);
 }
 .businessGrid > * {
-  flex: 0 0 calc((100% - 2 * var(--rail-gap)) / 3);
   min-width: 0;
   height: auto;
 }
@@ -495,9 +495,7 @@
   }
   .businessGrid {
     --rail-gap: 14px;
-  }
-  .businessGrid > * {
-    flex-basis: calc((100% - var(--rail-gap)) / 2);
+    --listing-width: calc((100% - var(--rail-gap)) / 2);
   }
   .categories > a {
     padding: 12px 13px;
@@ -608,12 +606,7 @@
   }
   .businessGrid {
     --rail-gap: 12px;
-  }
-  .businessGrid > * {
-    flex-basis: min(calc(100% - 26px), 352px);
-  }
-  .businessGrid > :only-child {
-    flex-basis: min(100%, 352px);
+    --listing-width: 100%;
   }
   .section:has(.nearbyGrid) .sectionHeading {
     flex-wrap: wrap;
