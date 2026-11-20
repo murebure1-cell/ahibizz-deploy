@@ -19,12 +19,14 @@
 }
 .picker {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   margin-bottom: 24px;
   font-weight: 700;
 }
 .controls {
   display: flex;
+  min-width: 0;
   gap: 8px;
 }
 .controls select,
