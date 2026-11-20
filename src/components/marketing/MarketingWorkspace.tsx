@@ -409,11 +409,7 @@ function MarketingView({ accountId, mode, target }: MarketingProps) {
             {mode === "ads" && (
               <label>
                 Djelatnost
-                <select
-                  name="business"
-                  required
-                  defaultValue={initialBusiness}
-                >
+                <select name="business" required defaultValue={initialBusiness}>
                   {initialBusiness === "" && (
                     <option value="" disabled>
                       Odaberi objavljenu djelatnost
