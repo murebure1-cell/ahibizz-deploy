@@ -193,7 +193,7 @@ function SettingsWorkspace({
           <Icon name="sliders" />
         </span>
       </header>
-      {active && !blocked && !accessLost && request === accountSettingsRequest && (
+      {active && !accessLost && request === accountSettingsRequest && (
         <AccountPassword accountId={initial.id} email={initial.email} />
       )}
       <section className={styles.settingsCard} aria-labelledby="appearance-heading">
