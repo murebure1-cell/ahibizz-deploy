@@ -3,7 +3,7 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { Pool } from "pg";
 import { authOrigin, authSecret, readAuthConfiguration } from "./config";
 import { type AuthIngressConfiguration, authIpAddressHeaders } from "./ingress";
-import { AuthEmailDeliveryError, type AuthEmailSender, createSmtpSender } from "./mail";
+import { type AuthEmailSender, createSmtpSender, guardedAuthEmailSender } from "./mail";
 
 export { AuthConfigurationError, readAuthConfiguration } from "./config";
 export type { AuthEmail, AuthEmailSender } from "./mail";
@@ -48,22 +48,7 @@ export function createAuthService(options: {
   const baseURL = authOrigin(options.baseURL, production);
   const secret = authSecret(options.secret);
   const ipAddressHeaders = authIpAddressHeaders(options.ingress);
-  const sendEmail: AuthEmailSender = async (message) => {
-    try {
-      const target = new URL(message.url);
-      if (
-        target.origin !== baseURL ||
-        !target.pathname.startsWith("/api/auth/") ||
-        target.username ||
-        target.password ||
-        /[\r\n]/.test(message.to)
-      )
-        throw new AuthEmailDeliveryError();
-      await options.sendEmail(message);
-    } catch {
-      throw new AuthEmailDeliveryError();
-    }
-  };
+  const sendEmail = guardedAuthEmailSender(baseURL, options.sendEmail);
   return betterAuth({
     appName: "AhiBizz",
     baseURL,
