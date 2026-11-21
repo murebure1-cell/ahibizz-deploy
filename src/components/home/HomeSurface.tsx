@@ -275,6 +275,9 @@ export function HomeSurface({
       </section>
     ),
   };
+  const reelStrip = discovery && <div className={styles.container}>{discovery}</div>;
+  const hasAd = design.homeOrder.includes("ad");
+
   return (
     <main id="glavni-sadrzaj" className={styles.home}>
       <section className={styles.hero} aria-labelledby="home-title" data-design="home-hero">
@@ -338,10 +341,8 @@ export function HomeSurface({
           place ? `${searchAction}?${new URLSearchParams({ [placeField]: place })}` : searchAction
         }
       />
-      {discovery && <div className={styles.container}>{discovery}</div>}
-      {campaigns && design.homeOrder.includes("ad") && (
-        <CampaignAd candidates={campaigns.main} region="elsewhere" />
-      )}
+      {!hasAd && reelStrip}
+      {campaigns && hasAd && <CampaignAd candidates={campaigns.main} region="elsewhere" />}
       {design.homeOrder.map((id) => (
         <Fragment key={id}>
           {id === "ad" && campaigns && (campaigns.main.mobile || campaigns.main.desktop) ? (
@@ -349,6 +350,7 @@ export function HomeSurface({
           ) : (
             sections[id]
           )}
+          {id === "ad" && reelStrip}
         </Fragment>
       ))}
       {after}

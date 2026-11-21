@@ -9,6 +9,7 @@ import {
   accountSectionPath,
   readAccountNavigation,
 } from "../../lib/account-return";
+import { accountShortcuts } from "../../lib/account-shortcuts";
 import { campaignPath } from "../../lib/ad-brief";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
 import { placementOfferPath } from "../../lib/marketing";
@@ -122,6 +123,23 @@ function AccountWorkspace({
     [query, initialSection, messageTarget, invalidMessageTarget],
   );
   const section = IS_PLAY_EDITION && view.section === "credits" ? "overview" : view.section;
+  const focusNotifications =
+    section === "settings" &&
+    searchParams?.getAll("prikaz").length === 1 &&
+    searchParams.get("prikaz") === "obavijesti";
+  const startBusinessCreation =
+    section === "businesses" &&
+    searchParams?.getAll("novo").length === 1 &&
+    searchParams.get("novo") === "1";
+  const returnPath = view.campaign
+    ? campaignPath(view.campaign)
+    : view.placementTarget
+      ? placementOfferPath(view.placementTarget)
+      : focusNotifications
+        ? accountShortcuts.notifications
+        : startBusinessCreation
+          ? accountShortcuts.newBusiness
+          : accountSectionPath(section);
   const photo = personal ? profileImageUrl(personal, "photo") : null;
   const menu = accountMenu.filter((item) => !IS_PLAY_EDITION || !item.digital);
   const current = menu.find((item) => item.id === section);
@@ -177,7 +195,7 @@ function AccountWorkspace({
     <AccountAuthorityBoundary
       expectedAccountId={initial.id}
       expectedRole={initial.role}
-      loginHref={`/prijava?nastavi=${encodeURIComponent(view.campaign ? campaignPath(view.campaign) : view.placementTarget ? placementOfferPath(view.placementTarget) : accountSectionPath(section))}`}
+      loginHref={`/prijava?nastavi=${encodeURIComponent(returnPath)}`}
       onConfirmed={setProfile}
     >
       {(hasAccess) => (
@@ -307,9 +325,7 @@ function AccountWorkspace({
               <div hidden={Boolean(view.calendarTarget)}>
                 <BusinessManager
                   active={hasAccess && section === "businesses" && !view.calendarTarget}
-                  startCreation={
-                    searchParams?.get("novo") === "1" && searchParams.getAll("novo").length === 1
-                  }
+                  startCreation={startBusinessCreation}
                   isOwner={profile.role === "owner"}
                   expectedAccountId={initial.id}
                 />
@@ -373,6 +389,7 @@ function AccountWorkspace({
                 key={initial.id}
                 initial={initial}
                 active={hasAccess && section === "settings"}
+                focusNotifications={focusNotifications}
                 onConfirmed={(next) =>
                   setProfile((current) => ({
                     ...current,

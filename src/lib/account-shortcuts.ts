@@ -1,4 +1,4 @@
-import { accountSectionPath } from "./account-return";
+import { accountNotificationsPath, accountSectionPath } from "./account-return";
 export const accountShortcuts = {
   newBusiness: "/nalog?odjeljak=djelatnosti&novo=1",
   appointmentHistory: "/nalog?odjeljak=termini&prikaz=historija",
@@ -15,4 +15,5 @@ export const accountShortcuts = {
   credits: accountSectionPath("credits"),
   membership: accountSectionPath("membership"),
   settings: accountSectionPath("settings"),
+  notifications: accountNotificationsPath,
 } as const;

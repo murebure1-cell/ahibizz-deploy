@@ -847,6 +847,32 @@ a {
   }
 }
 @media (max-width: 760px) {
+  :root:has([data-mobile-dock]) {
+    --mobile-dock-space: calc(74px + max(7px, env(safe-area-inset-bottom, 0px)));
+    scroll-padding-bottom: var(--mobile-dock-space);
+  }
+  :root:has([data-mobile-dock]) body {
+    padding-bottom: var(--mobile-dock-space);
+  }
+  :root:has(
+      :where(
+          textarea,
+          [contenteditable="true"],
+          input:not(
+            [type="checkbox"],
+            [type="radio"],
+            [type="file"],
+            [type="range"],
+            [type="color"],
+            [type="button"],
+            [type="submit"],
+            [type="reset"]
+          )
+        ):focus
+    )
+    [data-mobile-dock] {
+    visibility: hidden;
+  }
   .container {
     width: calc(100% - 40px);
   }

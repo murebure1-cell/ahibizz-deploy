@@ -31,6 +31,7 @@ const choices = [
 type Props = {
   initial: SafeAccountProfile;
   active?: boolean;
+  focusNotifications?: boolean;
   request?: typeof accountSettingsRequest;
   onConfirmed?: (account: SafeAccountProfile) => void;
 };
@@ -42,6 +43,7 @@ export function AccountSettings(props: Props) {
 function SettingsWorkspace({
   initial,
   active = true,
+  focusNotifications = false,
   request = accountSettingsRequest,
   onConfirmed,
 }: Props) {
@@ -60,6 +62,15 @@ function SettingsWorkspace({
     [accessLost, setAccessLost] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
+  const deviceNotifications = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!active || !focusNotifications) return;
+    const frame = window.requestAnimationFrame(() => {
+      deviceNotifications.current?.focus({ preventScroll: true });
+      deviceNotifications.current?.scrollIntoView({ block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [active, focusNotifications]);
   const live = useRef(false),
     attempted = useRef(false),
     writing = useRef(false),
@@ -310,7 +321,12 @@ function SettingsWorkspace({
         )}
       </section>
       {active && !accessLost && request === accountSettingsRequest && (
-        <section aria-label="Obavijesti na uređaju" className={styles.settingsCard}>
+        <section
+          aria-label="Obavijesti na uređaju"
+          className={styles.settingsCard}
+          ref={deviceNotifications}
+          tabIndex={-1}
+        >
           <div className={permissionStyles.permissions}>
             <DevicePush actor={initial.id} />
           </div>

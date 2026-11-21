@@ -89,6 +89,7 @@ export function readAccountNavigation(params: URLSearchParams): {
 }
 
 export const productionRequestPath = "/nalog?odjeljak=oglasi&usluga=produkcija";
+export const accountNotificationsPath = "/nalog?odjeljak=postavke&prikaz=obavijesti";
 
 /** Only known in-app destinations survive login; never a caller-supplied origin or nested URL. */
 export function accountReturnPath(value: unknown): string {
@@ -100,6 +101,7 @@ export function accountReturnPath(value: unknown): string {
     return "/nalog";
   if (
     value === productionRequestPath ||
+    value === accountNotificationsPath ||
     value === "/sacuvane-pretrage" ||
     value === "/nalog?odjeljak=djelatnosti&novo=1" ||
     value === "/nalog?odjeljak=termini&prikaz=historija" ||

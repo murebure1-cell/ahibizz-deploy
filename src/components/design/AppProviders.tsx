@@ -1,10 +1,11 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import { AppAppearance } from "../appearance/AppAppearance";
 import { FavoritesProvider } from "../favorites/FavoritesProvider";
 import { DeviceLocationProvider } from "../location/DeviceLocation";
+import { MobileDock } from "../MobileDock";
 import { AppPwaProvider } from "../pwa/AppPwa";
 
 export const designerFramePath = "/administracija/izgled/pregled";
@@ -39,6 +40,9 @@ export function PublicShell({
       {header}
       <FavoritesProvider>{children}</FavoritesProvider>
       {footer}
+      <Suspense>
+        <MobileDock />
+      </Suspense>
     </>
   );
 }

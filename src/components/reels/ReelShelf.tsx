@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { businessMediaUrl } from "../../lib/business-media";
 import { type PublicReel, reelDuration, reelMedia } from "../../lib/reels";
 import { listPublicReels } from "../../server/reels/service";
 import { currentReelViewer } from "../../server/reels/viewer";
+import { Icon } from "../Icon";
 import styles from "./reels.module.css";
 
 export function ReelCards({
@@ -22,20 +24,41 @@ export function ReelCards({
             className={styles.reelCard}
             prefetch={false}
           >
-            <div className={styles.poster}>
-              {reel.hasPoster && (
-                // biome-ignore lint/performance/noImgElement: The server serves an already sized, normalized WebP with live publication checks.
-                <img src={reelMedia(reel.id, "poster")} alt="" loading="lazy" decoding="async" />
-              )}
-              <span className={styles.play} aria-hidden="true">
-                ▶
+            {reel.hasPoster && (
+              // biome-ignore lint/performance/noImgElement: Already normalized and served with live publication checks.
+              <img
+                className={styles.poster}
+                src={reelMedia(reel.id, "poster")}
+                alt=""
+                loading="lazy"
+                decoding="async"
+              />
+            )}
+            <span className={styles.reelBusiness}>
+              <span className={styles.reelAvatar} aria-hidden="true">
+                {reel.businessLogo ? (
+                  // biome-ignore lint/performance/noImgElement: The versioned business logo is already normalized.
+                  <img
+                    src={businessMediaUrl(reel.businessId, reel.businessLogo)}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    width={30}
+                    height={30}
+                  />
+                ) : (
+                  Array.from(reel.businessTitle)[0]?.toLocaleUpperCase("bs-BA")
+                )}
               </span>
-              <span className={styles.duration}>{reelDuration(reel.durationMs)}</span>
-            </div>
-            <div className={styles.cardText}>
-              <span>{reel.businessTitle}</span>
+              <span className={styles.businessName}>{reel.businessTitle}</span>
+            </span>
+            <span className={styles.cardText}>
               <strong>{reel.title}</strong>
-            </div>
+              <span className={styles.duration}>
+                <Icon name="play" />
+                {reelDuration(reel.durationMs)}
+              </span>
+            </span>
           </Link>
         </li>
       ))}
@@ -59,8 +82,8 @@ async function Shelf({ businessId }: { businessId: string | null }) {
     >
       <header className={styles.sectionHeading}>
         <h2>{businessId ? "Reels" : "Reels djelatnosti"}</h2>
-        <Link href={listUrl} prefetch={false}>
-          Pogledaj sve <span aria-hidden="true">→</span>
+        <Link href={listUrl} prefetch={false} aria-label="Pogledaj sve Reels objave">
+          Sve <Icon name="arrow" />
         </Link>
       </header>
       <ReelCards reels={reels} shelf businessScope={businessId} />

@@ -25,6 +25,8 @@ test("a booking continuation survives registration, email confirmation and sign-
 test("existing allowed account and message destinations remain single nested values", () => {
   for (const destination of [
     "/nalog?odjeljak=djelatnosti",
+    "/nalog?odjeljak=djelatnosti&novo=1",
+    "/nalog?odjeljak=postavke&prikaz=obavijesti",
     "/nalog?odjeljak=poruke&osoba=person_A-1",
     "/administracija?odjeljak=djelatnosti",
     "/ljudi/person_A-1",
@@ -63,6 +65,7 @@ test("foreign, duplicate, control and encoded destinations fall back without nes
     "/nalog?odjeljak=%74ermini",
     "/nalog?odjeljak=termini&odjeljak=poruke",
     "/nalog?odjeljak=termini%26nastavi%3D%2f%2fevil.invalid",
+    "/nalog?odjeljak=postavke&prikaz=obavijesti&next=//evil.invalid",
   ]) {
     assert.deepEqual(authReturnLinks(destination), {
       login: "/prijava",

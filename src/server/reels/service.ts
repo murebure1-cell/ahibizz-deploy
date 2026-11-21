@@ -26,6 +26,10 @@ const visible = `r.status='published' AND b.deleted_at IS NULL AND b.status='pub
 const publicFields = `r.id, r.business_id AS "businessId", b.title AS "businessTitle",
   b.city, r.title, r.caption, r.duration_ms AS "durationMs", r.has_poster AS "hasPoster",
   r.published_at::text AS "publishedAt"`;
+const cardFields = `${publicFields}, (
+  SELECT jsonb_build_object('kind',i.kind,'slot',i.slot,'version',i.version,'width',i.width,'height',i.height)
+  FROM directory_business_image i WHERE i.business_id=b.id AND i.kind='logo' AND i.slot=0
+) AS "businessLogo"`;
 const managementFields = `${publicFields}, r.status, r.review_reason AS "reviewReason",
   r.created_at::text AS "createdAt", r.price_minor::double precision/100 AS "priceCredits",
   r.wallet_payment_id IS NOT NULL AS paid`;
@@ -51,7 +55,7 @@ export async function listPublicReels(
   const pool = getAuthDatabasePool();
   if (!pool) return [];
   const { rows } = await pool.query<PublicReel>(
-    `SELECT ${publicFields} ${publicReels}
+    `SELECT ${cardFields} ${publicReels}
      AND ($1::uuid IS NULL OR b.id=$1) AND ${discoverable}
      ORDER BY r.published_at DESC,r.id DESC LIMIT $2 OFFSET $3`,
     [businessId, limit, offset, viewerId],
@@ -63,10 +67,9 @@ export async function readPublicReel(id: string) {
   if (!businessUuid(id)) return null;
   const pool = getAuthDatabasePool();
   if (!pool) return null;
-  const { rows } = await pool.query<PublicReel>(
-    `SELECT ${publicFields} ${publicReels} AND r.id=$1`,
-    [id],
-  );
+  const { rows } = await pool.query<PublicReel>(`SELECT ${cardFields} ${publicReels} AND r.id=$1`, [
+    id,
+  ]);
   return rows[0] ?? null;
 }
 

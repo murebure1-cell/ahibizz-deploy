@@ -179,7 +179,7 @@
 }
 .slot[data-position="bottom"] {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--mobile-dock-space, 0px)) + 8px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
@@ -189,7 +189,7 @@
 .slot[data-format="roller"] {
   max-width: none;
   padding: 0;
-  bottom: env(safe-area-inset-bottom, 0px);
+  bottom: max(env(safe-area-inset-bottom, 0px), var(--mobile-dock-space, 0px));
 }
 .slot[data-format="roller"] .creative {
   width: 100%;

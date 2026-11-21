@@ -30,6 +30,8 @@ export type IconName =
   | "car"
   | "bed"
   | "coffee"
+  | "bell"
+  | "plus"
   | "download";
 
 const paths: Record<IconName, ReactNode> = {
@@ -68,6 +70,13 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M12 6v6l4 2" />
     </>
   ),
+  bell: (
+    <>
+      <path d="M18 9a6 6 0 0 0-12 0c0 4-1 6-2 7h16c-1-1-2-3-2-7Z" />
+      <path d="M10 20a2 2 0 0 0 4 0" />
+    </>
+  ),
+  plus: <path d="M5 12h14M12 5v14" />,
   home: (
     <>
       <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" />

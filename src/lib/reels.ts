@@ -1,3 +1,5 @@
+import type { BusinessMediaAsset } from "./business-media";
+
 export const reelPartBytes = 768 * 1024;
 export const reelMaxBytes = 32 * reelPartBytes;
 export const reelMaxDuration = 90;
@@ -13,6 +15,7 @@ export type PublicReel = {
   id: string;
   businessId: string;
   businessTitle: string;
+  businessLogo: BusinessMediaAsset | null;
   city: string | null;
   title: string;
   caption: string;
@@ -20,7 +23,7 @@ export type PublicReel = {
   hasPoster: boolean;
   publishedAt: string | null;
 };
-export type ManagedReel = Omit<PublicReel, "durationMs"> & {
+export type ManagedReel = Omit<PublicReel, "durationMs" | "businessLogo"> & {
   status: ReelStatus;
   durationMs: number | null;
   reviewReason: string | null;
