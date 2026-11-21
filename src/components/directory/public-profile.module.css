@@ -49,20 +49,22 @@
 
 .cover {
   position: relative;
-  height: 240px;
+  display: grid;
+  place-items: center;
+  height: 148px;
   overflow: hidden;
   border: 1px solid #233f56;
   border-radius: 21px;
-  background: linear-gradient(120deg, #142d44 30%, #25475f);
+  background: #173047;
 }
 
-.cover::after {
+.cover[data-photo="true"]::after {
   position: absolute;
   right: 0;
   bottom: 0;
   left: 0;
-  height: 4px;
-  background: #caa35c;
+  height: 45%;
+  background: linear-gradient(transparent, #142d444f);
   content: "";
 }
 
@@ -71,22 +73,14 @@
   border: 0;
 }
 
-.cover[data-photo="true"]::after {
-  height: 45%;
-  background: linear-gradient(transparent, #142d444f);
-}
-
 .cover > img {
   object-fit: cover;
 }
 
 .cover > .brandMark {
-  position: absolute;
-  top: 30px;
-  left: 31px;
-  width: 144px;
-  height: auto;
-  opacity: 0.5;
+  margin-bottom: 14px;
+  object-fit: contain;
+  opacity: 0.69;
 }
 
 .identity {
@@ -695,18 +689,12 @@
   }
 
   .cover {
-    height: 165px;
+    height: 116px;
     border-radius: 16px;
   }
 
   .cover[data-photo="true"] {
     height: 220px;
-  }
-
-  .cover > .brandMark {
-    top: 23px;
-    left: 23px;
-    width: 119px;
   }
 
   .identity {

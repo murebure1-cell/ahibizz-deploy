@@ -10,7 +10,16 @@ import {
 
 test("a published design preserves the actual homepage order, plain text, and independent theme scopes", () => {
   const model = defaultVisualDesign();
-  model.homeOrder = ["nearby", "featured", "ad", "credits", "logos"];
+  model.homeOrder = [
+    "nearby",
+    "featured",
+    "ad",
+    "credits",
+    "logos",
+    "newest",
+    "reels",
+    "promotion",
+  ];
   model.heroTitle = "Poslovi u Tuzli.";
   model.heroSubtitle = "Pronađi novu uslugu.";
   model.sectionTitles = { nearby: "U blizini" };
@@ -21,16 +30,7 @@ test("a published design preserves the actual homepage order, plain text, and in
     mobileDark: { "backdrop-filter": "blur(8px)" },
   };
   const safe = parseVisualDesign(model);
-  assert.deepEqual(safe.homeOrder, [
-    "categoryFeatured",
-    "nearby",
-    "promotion",
-    "featured",
-    "ad",
-    "credits",
-    "logos",
-    "community",
-  ]);
+  assert.deepEqual(safe.homeOrder, model.homeOrder);
   assert.equal(safe.rules["home-title"]?.base?.color, "#aabbcc");
   const css = designCss(safe);
   assert.match(css, /@media\(max-width:760px\).*font-size:24px/);
@@ -38,6 +38,48 @@ test("a published design preserves the actual homepage order, plain text, and in
   assert.ok(css.includes("@media(prefers-reduced-motion:reduce)"));
   assert.deepEqual(parseVisualDesign(defaultVisualDesign()), defaultVisualDesign());
   assert.equal(designCss(defaultVisualDesign()), "");
+});
+
+test("both previous homepage schemas read in the current order and retain active style and title customizations", () => {
+  const base = defaultVisualDesign();
+  const expectedOrder = [
+    "ad",
+    "reels",
+    "newest",
+    "nearby",
+    "promotion",
+    "logos",
+    "credits",
+    "featured",
+  ];
+  assert.deepEqual(base.homeOrder, expectedOrder);
+  for (const homeOrder of [
+    ["nearby", "featured", "ad", "credits", "logos"],
+    ["featured", "ad", "categoryFeatured", "nearby", "promotion", "logos", "credits", "community"],
+  ]) {
+    const stored = {
+      ...base,
+      homeOrder,
+      heroTitle: "Moja naslovna",
+      sectionTitles: {
+        nearby: "Lokalne usluge",
+        categoryFeatured: "Kategorija",
+        community: "Zajednica",
+      },
+      rules: {
+        "home-nearby": { mobile: { "background-color": "#112233" } },
+        "home-community": { base: { color: "#223344" } },
+      },
+    };
+    const parsed = parseVisualDesign(stored);
+    assert.deepEqual(parsed.homeOrder, expectedOrder);
+    assert.deepEqual(parsed.sectionTitles, { nearby: "Lokalne usluge" });
+    assert.deepEqual(parsed.rules, stored.rules);
+    assert.equal(parsed.heroTitle, "Moja naslovna");
+    assert.deepEqual(stored.homeOrder, homeOrder);
+  }
+  assert.ok(designTargets.some(({ id }) => id === "home-reels"));
+  assert.ok(designTargets.some(({ id }) => id === "home-newest"));
 });
 
 test("the homepage uses only registered photos and retains its original cover for older designs", () => {

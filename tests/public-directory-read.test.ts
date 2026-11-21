@@ -117,6 +117,8 @@ test("public directory uses only the lazy database when SMTP and auth service ar
   assert.ok(f.service);
   assert.deepEqual(Object.keys(f.service).sort(), [
     "categories",
+    "homeAllPromotions",
+    "homeNewest",
     "homePromotions",
     "listPublic",
     "readPublic",
@@ -180,6 +182,31 @@ test("public search retains prepared literal filters and page bounds", async () 
   );
 });
 
+test("home promotion API and first server rail query agree on ordered six-item pages", async () => {
+  const f = fixture();
+  const first = await f.service?.homeAllPromotions();
+  const response = await f.handle(request("/api/directory/businesses?istaknute=sve"));
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.deepEqual(payload.items, first?.items);
+  assert.equal(payload.page, 1);
+  assert.equal(payload.pageSize, 6);
+  assert.equal(payload.hasMore, false);
+  const second = await (
+    await f.handle(request("/api/directory/businesses?istaknute=sve&page=2"))
+  ).json();
+  assert.equal(second.page, 2);
+  assert.deepEqual(
+    f.queries.map(({ values }) => values),
+    [
+      [7, 0],
+      [7, 0],
+      [7, 6],
+    ],
+  );
+  assert.ok(f.queries.every(({ sql }) => /b\.published_at DESC NULLS LAST, b\.id DESC/.test(sql)));
+});
+
 test("private routes and every write remain gated without consuming bodies or querying public data", async () => {
   const f = fixture();
   const paths = [
@@ -218,6 +245,10 @@ test("public UUID, query and URL validation rejects malformed requests before SQ
     "/api/directory/businesses?status=draft",
     "/api/directory/businesses?openNow=yesterday",
     "/api/directory/businesses?openNow=1&openNow=0",
+    "/api/directory/businesses?istaknute=sve&city=Tuzla",
+    "/api/directory/businesses?istaknute=sve&pageSize=6",
+    "/api/directory/businesses?istaknute=sve&istaknute=sve",
+    "/api/directory/businesses?istaknute=1",
     "/api/directory/businesses?page=1&page=2",
     "/api/directory/businesses?page=0",
     "/api/directory/businesses?page=501",

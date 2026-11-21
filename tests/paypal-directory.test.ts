@@ -50,6 +50,8 @@ test("home promotion queries stay bounded without changing public pagination", a
   });
   await directory.homePromotions(true);
   await directory.homePromotions("category");
+  await directory.homeAllPromotions(2);
+  await directory.homeNewest();
   await directory.listPublic();
   await assert.rejects(() => directory.listPublic({ pageSize: 6 }), {
     code: "INVALID_DIRECTORY_INPUT",
@@ -58,6 +60,34 @@ test("home promotion queries stay bounded without changing public pagination", a
   assert.deepEqual(parameters, [
     [7, 0],
     [7, 0],
+    [7, 6],
+    [7, 0],
     [21, 0],
   ]);
+});
+
+test("home newest stays organic and the paged promotions rail unions only current paid placements", async () => {
+  const statements: string[] = [];
+  const directory = createPublicDirectoryService({
+    database: {
+      async query(sql) {
+        statements.push(sql);
+        return { rows: [] };
+      },
+    },
+  });
+  await directory.homeNewest();
+  assert.doesNotMatch(statements.pop() ?? "", /marketing_order|wallet_category_promotion/);
+  await directory.homeAllPromotions(2);
+  const sql = statements.pop() ?? "";
+  assert.match(sql, /wallet_category_promotion/);
+  assert.match(sql, /paid_package_placement\(b,'nearby'\)/);
+  assert.match(sql, /paid_package_placement\(b,'featured'\)/);
+  assert.match(sql, /b\.latitude IS NOT NULL AND b\.longitude IS NOT NULL/);
+  assert.match(
+    sql,
+    /placement\.revoked_at IS NULL AND placement\.starts_at<=now\(\) AND placement\.ends_at>now\(\)/,
+  );
+  assert.match(sql, /ORDER BY b\.published_at DESC NULLS LAST, b\.id DESC/);
+  assert.doesNotMatch(sql, /md5\(/);
 });

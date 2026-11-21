@@ -17,7 +17,7 @@ import type { PublicBusinessView } from "../../lib/public-business";
 import { DirectoryResultCard } from "../directory/DirectoryResultCard";
 import { Icon } from "../Icon";
 import { useDeviceLocation } from "../location/DeviceLocation";
-import { HomeEmptyState, HomeNearbyGroups } from "./HomeSurface";
+import { HomeBusinessRail, HomeEmptyState } from "./HomeSurface";
 import homeStyles from "./home.module.css";
 import styles from "./nearby.module.css";
 
@@ -195,10 +195,7 @@ export function HomeNearbyControl() {
               : `Moja lokacija · ${nearbyRadiusKm} km`}
         </span>
       ) : location.permission === "denied" ? (
-        <details className={styles.permission}>
-          <summary>Lokacija je isključena</summary>
-          <p>Uključi lokaciju u postavkama preglednika ili odaberi grad.</p>
-        </details>
+        <span className={styles.current}>Lokacija je isključena</span>
       ) : (
         <button
           type="button"
@@ -244,7 +241,7 @@ export function HomeNearbyControl() {
   );
 }
 
-export function HomeNearbyResults() {
+export function HomeNearbyResults({ exampleId }: { exampleId?: string }) {
   const { businesses, state, place, useGps, location, refresh, retryRefresh } = useNearby();
   if (state === "unavailable")
     return (
@@ -264,20 +261,12 @@ export function HomeNearbyResults() {
       </HomeEmptyState>
     );
   if (state === "waiting")
-    return (
-      <div className={styles.group} data-design="home-local-featured">
-        <p className={homeStyles.availability}>
-          {location.status === "unavailable"
-            ? "Lokacija nije dostupna. Možeš odabrati grad."
-            : location.status === "locating"
-              ? "Pronalazimo tvoju lokaciju…"
-              : "Odaberi grad ili dozvoli pristup lokaciji."}
-        </p>
-      </div>
-    );
+    return location.status === "unavailable" ? (
+      <p className={homeStyles.availability}>Lokacija nije dostupna. Odaberi grad.</p>
+    ) : null;
   if (!businesses.length)
     return (
-      <div className={styles.group} data-design="home-local-featured">
+      <div className={styles.group}>
         <p className={homeStyles.availability}>
           {refresh
             ? "Nema rezultata za prethodnu lokaciju."
@@ -295,22 +284,35 @@ export function HomeNearbyResults() {
         )}
       </div>
     );
-  return <NearbyCards />;
+  return <NearbyCards exampleId={exampleId} />;
 }
 
-function NearbyCards() {
+function NearbyCards({ exampleId }: { exampleId?: string }) {
   const { businesses, hasMore, useGps, place, refresh, pagination, loadMore, retryRefresh } =
     useNearby();
   const [expanded, setExpanded] = useState(false);
-  const local = businesses.filter((business) => business.localFeatured);
-  const organic = businesses.filter((business) => !business.localFeatured);
-  function card(business: PublicBusinessView) {
-    return <DirectoryResultCard key={business.id} business={business} />;
-  }
-  const moreAvailable = local.length > 4 || organic.length > 4 || hasMore;
+  const moreAvailable = businesses.length > 6 || hasMore;
+  const featured = businesses.filter((business) => business.localFeatured);
+  const others = businesses.filter((business) => !business.localFeatured);
+  const sample = others.find((business) => business.id === exampleId);
+  const ordered = sample
+    ? [...featured, sample, ...others.filter((business) => business.id !== sample.id)]
+    : [...featured, ...others];
+  const selected = expanded ? ordered : ordered.slice(0, 6);
   return (
     <>
-      <HomeNearbyGroups local={local.map(card)} organic={organic.map(card)} expanded={expanded} />
+      <HomeBusinessRail
+        label="Djelatnosti u blizini"
+        cards={selected.map((business) => (
+          <DirectoryResultCard
+            key={business.id}
+            business={business}
+            compact
+            example={business.id === sample?.id}
+          />
+        ))}
+        expanded={expanded}
+      />
       {!useGps && moreAvailable && (
         <Link className={styles.more} href={`/pretraga?mjesto=${encodeURIComponent(place)}`}>
           Sve djelatnosti u ovom mjestu

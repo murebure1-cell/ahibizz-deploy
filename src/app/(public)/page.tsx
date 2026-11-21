@@ -1,14 +1,16 @@
 import { type ReactNode, Suspense } from "react";
 import { DirectoryResultCard } from "../../components/directory/DirectoryResultCard";
 import { HomeCategories } from "../../components/home/HomeCategories";
+import { HomeFeaturedRail } from "../../components/home/HomeFeaturedRail";
 import {
   HomeNearbyControl,
   HomeNearbyProvider,
   HomeNearbyResults,
 } from "../../components/home/HomeNearby";
 import {
+  HomeBusinessRail,
+  HomeListingsSection,
   HomeNearbySection,
-  HomePromotionSection,
   HomeSurface,
 } from "../../components/home/HomeSurface";
 import { CampaignAd } from "../../components/marketing/CampaignAd";
@@ -68,32 +70,72 @@ async function HomeDirectoryCategories({
   );
 }
 
-async function HomePromotedListings({
+async function HomeNewestListings({
   data,
+  example,
   classification,
-  kind,
   title,
 }: {
   data: Listings;
+  example: Promise<PublicDirectoryBusiness | null>;
   classification: Categories;
-  kind: "featured" | "category-featured";
   title: string;
 }) {
-  const [businesses, categories] = await Promise.all([data, classification]);
-  return (
-    <HomePromotionSection
-      kind={kind}
-      title={title}
-      href={kind === "featured" ? "/pretraga?istaknute=1" : "/pretraga?istaknute=kategorija"}
-      cards={
-        businesses?.map((business) => (
-          <DirectoryResultCard
-            key={business.id}
-            business={publicBusinessView(business, categories ?? [])}
-          />
-        )) ?? null
-      }
+  const [businesses, categories, sample] = await Promise.all([data, classification, example]);
+  const cards = (businesses ?? []).map((business) => (
+    <DirectoryResultCard
+      key={business.id}
+      business={publicBusinessView(business, categories ?? [])}
+      compact
     />
+  ));
+  if (sample && !businesses?.some((business) => business.id === sample.id))
+    cards.push(
+      <DirectoryResultCard
+        key={sample.id}
+        business={publicBusinessView(sample, categories ?? [])}
+        compact
+        example
+      />,
+    );
+  if (!cards.length) return null;
+  return (
+    <HomeListingsSection kind="newest" title={title}>
+      <HomeBusinessRail label={title} cards={cards} />
+    </HomeListingsSection>
+  );
+}
+
+async function HomePromotedListings({
+  data,
+  example,
+  classification,
+  title,
+}: {
+  data: Promise<{ items: PublicDirectoryBusiness[]; pageSize: number; hasMore: boolean } | null>;
+  example: Promise<PublicDirectoryBusiness | null>;
+  classification: Categories;
+  title: string;
+}) {
+  const [businesses, categories, sample] = await Promise.all([data, classification, example]);
+  if (!businesses?.items.length && !sample) return null;
+  return (
+    <HomeListingsSection
+      kind="featured"
+      title={title}
+      href={businesses?.items.length ? "/pretraga?istaknute=sve" : undefined}
+    >
+      <HomeFeaturedRail
+        title={title}
+        initial={(businesses?.items ?? []).map((business) =>
+          publicBusinessView(business, categories ?? []),
+        )}
+        initiallyMore={businesses?.hasMore ?? false}
+        pageSize={businesses?.pageSize ?? 6}
+        categories={categories ?? []}
+        example={sample ? publicBusinessView(sample, categories ?? []) : null}
+      />
+    </HomeListingsSection>
   );
 }
 
@@ -120,13 +162,14 @@ async function HomeLocalDirectory({
       place={place}
     >
       <HomeNearbySection title={title} control={<HomeNearbyControl />}>
-        <HomeNearbyResults />
+        <HomeNearbyResults exampleId={homeExampleId} />
       </HomeNearbySection>
     </HomeNearbyProvider>
   );
 }
 
 export const dynamic = "force-dynamic";
+const homeExampleId = "d0914355-b85e-40cd-b570-95eea243dc26";
 export default async function HomePage({
   searchParams,
 }: {
@@ -148,15 +191,12 @@ export default async function HomePage({
         )
       : Promise.resolve(null);
   const campaigns = publicPageAds({ page: "home", city: place });
-  const featured = design.homeOrder.includes("featured")
-    ? (service?.homePromotions(true).catch(() => null) ?? Promise.resolve(null))
-    : Promise.resolve(null);
-  const category = design.homeOrder.includes("categoryFeatured")
-    ? (service?.homePromotions("category").catch(() => null) ?? Promise.resolve(null))
-    : Promise.resolve(null);
+  const featured = service?.homeAllPromotions().catch(() => null) ?? Promise.resolve(null);
+  const newest = service?.homeNewest().catch(() => null) ?? Promise.resolve(null);
+  const example = service?.readPublic(homeExampleId).catch(() => null) ?? Promise.resolve(null);
   const href = place ? `/pretraga?${new URLSearchParams({ mjesto: place })}` : "/pretraga";
   const titles = design.sectionTitles ?? {};
-  const nearbyTitle = titles.nearby || "Blizu tebe";
+  const nearbyTitle = titles.nearby || "Djelatnosti u blizini";
   return (
     <HomeSurface
       design={design}
@@ -168,7 +208,6 @@ export default async function HomePage({
           <RecentReels />
         </Suspense>
       }
-      featuredHref="/pretraga?istaknute=1"
       advertisingHref="/nalog?odjeljak=oglasi"
       creditsHref="/nalog?odjeljak=krediti"
       slots={{
@@ -190,19 +229,19 @@ export default async function HomePage({
           <Suspense fallback={null}>
             <HomePromotedListings
               data={featured}
+              example={example}
               classification={classification}
-              kind="featured"
               title={titles.featured || "Istaknute djelatnosti"}
             />
           </Suspense>
         ),
-        categoryFeatured: (
+        newest: (
           <Suspense fallback={null}>
-            <HomePromotedListings
-              data={category}
+            <HomeNewestListings
+              data={newest}
+              example={example}
               classification={classification}
-              kind="category-featured"
-              title={titles.categoryFeatured || "Istaknuto u kategoriji"}
+              title={titles.newest || "Novi na AhiBizzu"}
             />
           </Suspense>
         ),

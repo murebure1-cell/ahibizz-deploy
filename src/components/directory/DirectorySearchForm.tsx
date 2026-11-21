@@ -22,7 +22,7 @@ export function DirectorySearchForm({
   categoryId: string;
   subcategoryId: string;
   categories: CategoryOption[];
-  featuredOnly?: boolean | "category";
+  featuredOnly?: boolean | "category" | "all";
   openNow?: boolean;
   checkedAt?: string;
 }) {
@@ -66,7 +66,7 @@ export function DirectorySearchForm({
         <input
           type="hidden"
           name="istaknute"
-          value={featuredOnly === "category" ? "kategorija" : "1"}
+          value={featuredOnly === "all" ? "sve" : featuredOnly === "category" ? "kategorija" : "1"}
         />
       )}
       <label htmlFor={`${prefix}-query`}>

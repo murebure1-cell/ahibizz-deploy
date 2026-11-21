@@ -13,6 +13,7 @@ import {
   safeBusinessImage,
 } from "../../lib/public-business";
 import { reportUrl } from "../../lib/support-requests";
+import { AhiMark } from "../AhiMark";
 import { FavoriteButton } from "../favorites/FavoriteButton";
 import { Icon } from "../Icon";
 import { BusinessReviews } from "../reviews/BusinessReviews";
@@ -60,15 +61,9 @@ export function PublicBusinessProfile({
       ? "Lokacija je označena na karti."
       : businessLocationLabel(business);
   const taxonomy = [business.categoryName, business.subcategoryName].filter(Boolean).join(" · ");
-  const monogram = business.title
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => Array.from(word)[0] ?? "")
-    .join("")
-    .toLocaleUpperCase("bs");
   const photo = safeBusinessImage(business.image, preview);
   const logo = safeBusinessImage(business.logo, preview);
+  const cover = photo && photo.src !== logo?.src ? photo : undefined;
   const gallery = (business.gallery ?? []).slice(0, 8).flatMap((image) => {
     const safe = safeBusinessImage(image, preview);
     return safe ? [safe] : [];
@@ -99,12 +94,12 @@ export function PublicBusinessProfile({
         </nav>
       )}
 
-      <div className={styles.cover} data-design="business-cover" data-photo={Boolean(photo)}>
-        {photo ? (
+      <div className={styles.cover} data-design="business-cover" data-photo={Boolean(cover)}>
+        {cover ? (
           <Image
-            src={photo.src}
+            src={cover.src}
             data-design="business-photo"
-            alt={photo.alt}
+            alt={cover.alt}
             fill
             sizes="(max-width: 700px) 100vw, 1160px"
             loading="eager"
@@ -112,14 +107,7 @@ export function PublicBusinessProfile({
             unoptimized
           />
         ) : (
-          <Image
-            className={styles.brandMark}
-            src="/brand/ahi-logo-white.svg"
-            alt=""
-            width={144}
-            height={39}
-            unoptimized
-          />
+          <AhiMark size={57} className={styles.brandMark} />
         )}
         {!preview && (
           <details
@@ -146,11 +134,7 @@ export function PublicBusinessProfile({
 
       <header className={styles.identity}>
         <div className={styles.logo}>
-          {logo ? (
-            <BusinessLogo src={logo.src} alt={logo.alt} monogram={monogram} sizes="72px" />
-          ) : (
-            <span aria-hidden="true">{monogram}</span>
-          )}
+          <BusinessLogo src={logo?.src} alt={logo?.alt ?? ""} sizes="72px" />
         </div>
         <div className={styles.title}>
           {taxonomy && <p className={styles.category}>{taxonomy}</p>}

@@ -43,31 +43,17 @@
   position: relative;
   display: grid;
   place-items: center;
-  aspect-ratio: 1.7;
-  min-height: 166px;
+  aspect-ratio: 2.45;
+  min-height: 126px;
   overflow: hidden;
   border-radius: 21px 21px 0 0;
-  background:
-    radial-gradient(ellipse at 8% 0%, #7695a833, transparent 65%),
-    linear-gradient(125deg, #18384b, #102638 72%);
+  background: #173047;
 }
-.cover::before {
-  content: "";
-  position: absolute;
-  inset: -110px -75px auto auto;
-  width: 275px;
-  height: 275px;
-  border: 1px solid #dfbd7830;
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 35px #dfbd7809,
-    0 0 0 70px #dfbd7806;
-  pointer-events: none;
+.cover[data-photo="true"] {
+  aspect-ratio: 1.7;
+  min-height: 166px;
 }
-.cover[data-photo="true"]::before {
-  display: none;
-}
-.cover::after {
+.cover[data-photo="true"]::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -77,46 +63,11 @@
 .cover > img {
   object-fit: cover;
 }
-.coverLogo {
-  position: relative;
-  z-index: 1;
-  width: 55%;
-  max-width: 210px;
-  height: 54%;
-  min-height: 80px;
-  border: 8px solid #ffffff12;
-  border-radius: 17px;
-  box-shadow: 0 8px 28px #00000012;
-}
-.coverMonogram {
-  color: #dfbd78;
-  font-size: clamp(50px, 10vw, 82px);
-  font-weight: 600;
-  letter-spacing: -0.075em;
-  line-height: 1;
-}
-.brand {
-  position: absolute;
-  bottom: 23px;
-  left: 22px;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  opacity: 0.76;
-}
-.brand img {
-  display: block;
-  width: 74px;
-  height: auto;
-}
-.brand[data-symbol="true"] {
-  top: 61px;
-  bottom: auto;
-  left: 23px;
-}
-.brand[data-symbol="true"] img {
-  width: 22px;
-  filter: drop-shadow(0 1px 2px #0b1b2d80);
+.cover > .coverMark {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  opacity: 0.69;
 }
 .body {
   position: relative;
@@ -159,17 +110,25 @@
 .identity {
   padding: 28px 22px 20px;
 }
+.card[data-compact="true"] .identity {
+  padding-bottom: 16px;
+}
+.example {
+  display: inline-block;
+  margin-bottom: 5px;
+  color: var(--ui-accent-text);
+  font-size: 12px;
+  font-weight: 650;
+}
 .identity h2 {
   display: flex;
   align-items: start;
+  max-width: calc(100% - 70px);
   font-size: 21px;
   font-weight: 650;
   line-height: 1.35;
   letter-spacing: -0.035em;
   overflow-wrap: anywhere;
-}
-.identity[data-avatar="true"] h2 {
-  max-width: calc(100% - 70px);
 }
 .identity a {
   display: -webkit-box;
@@ -304,8 +263,10 @@
     border-radius: 20px;
   }
   .cover {
-    aspect-ratio: 1.62;
     border-radius: 19px 19px 0 0;
+  }
+  .cover[data-photo="true"] {
+    aspect-ratio: 1.62;
   }
   .identity h2 {
     font-size: 20px;

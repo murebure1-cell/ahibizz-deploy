@@ -21,6 +21,11 @@
   object-fit: contain;
 }
 
+.surface > .ahiMark {
+  width: 54%;
+  height: 54%;
+}
+
 .monogram {
   color: #e9ca8a;
   font: inherit;

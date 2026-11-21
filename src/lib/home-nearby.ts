@@ -27,16 +27,33 @@ export function readNearbyBusinesses(
   categories: readonly { id: string; name: string; parentId: string | null }[],
   page = 1,
 ): PublicBusinessView[] {
+  return readHomeCardPage(input, categories, { page, pageSize: 20, requireCoordinates: true })
+    .items;
+}
+
+export function readHomeCardPage(
+  input: unknown,
+  categories: readonly { id: string; name: string; parentId: string | null }[],
+  {
+    page,
+    pageSize,
+    requireCoordinates = false,
+  }: {
+    page: number;
+    pageSize: number;
+    requireCoordinates?: boolean;
+  },
+) {
   if (
     !object(input) ||
     !Array.isArray(input.items) ||
-    input.items.length > 20 ||
+    input.items.length > pageSize ||
     input.page !== page ||
-    input.pageSize !== 20 ||
+    input.pageSize !== pageSize ||
     typeof input.hasMore !== "boolean"
   )
     throw new Error("INVALID_NEARBY_RESULT");
-  return input.items.map((row: unknown) => {
+  const items: PublicBusinessView[] = input.items.map((row: unknown) => {
     if (
       !object(row) ||
       typeof row.id !== "string" ||
@@ -47,9 +64,11 @@ export function readNearbyBusinesses(
       typeof row.categoryId !== "string" ||
       (row.subcategoryId !== null && typeof row.subcategoryId !== "string") ||
       typeof row.verified !== "boolean" ||
-      !initialLocationPoint(row.latitude, row.longitude) ||
       ["ownerId", "status", "version", "moderationReturn"].some((key) => Object.hasOwn(row, key))
     )
+      throw new Error("INVALID_NEARBY_RESULT");
+    const point = initialLocationPoint(row.latitude, row.longitude);
+    if (!point && (requireCoordinates || row.latitude !== null || row.longitude !== null))
       throw new Error("INVALID_NEARBY_RESULT");
     return {
       id: row.id,
@@ -64,8 +83,8 @@ export function readNearbyBusinesses(
       addressLine: optionalText(row.addressLine, 200),
       city: optionalText(row.city, 100),
       countryCode: optionalText(row.countryCode, 2),
-      latitude: row.latitude as number,
-      longitude: row.longitude as number,
+      latitude: point?.latitude ?? null,
+      longitude: point?.longitude ?? null,
       verified: row.verified,
       localFeatured: row.localFeatured === true,
       details: row.details == null ? null : readBusinessDetails(row.details),
@@ -73,6 +92,7 @@ export function readNearbyBusinesses(
       ...publicBusinessImages(row.id, row.media as BusinessMediaSummary | undefined),
     };
   });
+  return { items, hasMore: input.hasMore };
 }
 
 export async function fetchNearbyPages(

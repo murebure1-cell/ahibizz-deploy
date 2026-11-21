@@ -40,7 +40,12 @@ export default async function SearchPage({
     subcategoryId = text(params.subcategoryId, 128);
   const rawPage = text(params.page, 10),
     page = rawPage && /^\d{1,3}$/.test(rawPage) ? Number(rawPage) : 1;
-  const featuredOnly = params.istaknute === "kategorija" ? "category" : params.istaknute === "1";
+  const featuredOnly =
+    params.istaknute === "sve"
+      ? "all"
+      : params.istaknute === "kategorija"
+        ? "category"
+        : params.istaknute === "1";
   const openNow = params.otvoreno === "1";
   const blockViewer = await getSearchBlockViewer(await headers());
   const campaigns = publicPageAds({

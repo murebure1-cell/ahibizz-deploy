@@ -15,6 +15,8 @@ import {
 import { businessKeys, object, pageInput, uuid } from "./validation";
 
 export type DirectoryReadDatabase = Pick<Database, "query">;
+type PromotionFilter = boolean | "category" | "all";
+type ListOptions = { maximumPageSize?: number; newestFirst?: boolean };
 
 const publicBusinessWhere =
   "b.status = 'published' AND package_allows_listing(b) AND u.approval = 'approved' AND u.\"emailVerified\" = true";
@@ -150,10 +152,10 @@ export async function listDirectory(
   condition: string,
   parameters: unknown[],
   publicOnly = false,
-  featuredOnly: boolean | "category" = false,
+  featuredOnly: PromotionFilter = false,
   checkedAt?: Date,
   blockViewer?: string | null,
-  maximumPageSize?: number,
+  options: ListOptions = {},
 ) {
   const {
     page,
@@ -166,7 +168,7 @@ export async function listDirectory(
     nearby,
     openNow,
   } = pageInput(input, publicOnly);
-  const pageSize = Math.min(requestedSize, maximumPageSize ?? requestedSize);
+  const pageSize = Math.min(requestedSize, options.maximumPageSize ?? requestedSize);
   const filters = [condition, "b.deleted_at IS NULL"],
     values = [...parameters];
   if (publicOnly && blockViewer) {
@@ -182,7 +184,8 @@ export async function listDirectory(
     ["b.status", status],
   ] as const)
     if (value) filters.push(`${column} = $${values.push(value)}`);
-  let order = "b.created_at DESC, b.id DESC";
+  const publicationOrder = "b.published_at DESC NULLS LAST, b.id DESC";
+  let order = options.newestFirst ? publicationOrder : "b.created_at DESC, b.id DESC";
   if (q) {
     const words = [...new Set(q.split(/\s+/).map(searchPattern))];
     const index = values.push(words);
@@ -220,17 +223,22 @@ export async function listDirectory(
     filters.push(`(${distance}) <= $${radius}::double precision`);
     order = `(${distance}) ASC, b.id ASC`;
   }
-  const paidCategory = publicOnly && (Boolean(categoryId) || featuredOnly === "category");
+  const paidCategory =
+    publicOnly && (Boolean(categoryId) || featuredOnly === "category" || featuredOnly === "all");
   const paid = paidCategory
     ? promotionSql("b", process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY === "true")
     : null;
   if (paid) order = `(${paid}) DESC, ${order}`;
-  const localPlacement =
-    publicOnly && (nearby || city)
-      ? `(b.latitude IS NOT NULL AND b.longitude IS NOT NULL AND ${paidPlacementSql("nearby")})`
-      : null;
+  const includeLocal = publicOnly && (nearby || city || featuredOnly === "all");
+  const localPlacement = includeLocal
+    ? `(b.latitude IS NOT NULL AND b.longitude IS NOT NULL AND ${paidPlacementSql("nearby")})`
+    : null;
   if (localPlacement) order = `"localFeatured" DESC, ${order}`;
-  if (publicOnly && featuredOnly) {
+  if (publicOnly && featuredOnly === "all") {
+    filters.push(`(${paid} OR ${localPlacement} OR ${paidPlacementSql("featured")})`);
+    // Keep pages consistent while the home rail appends more results.
+    order = publicationOrder;
+  } else if (publicOnly && featuredOnly) {
     filters.push(featuredOnly === "category" ? (paid ?? "FALSE") : paidPlacementSql("featured"));
     // Stable within an hour for scrolling/pagination, then gives other paid profiles the lead.
     order = "md5(b.id::text || floor(extract(epoch FROM now())/3600)::text), b.id";
@@ -241,6 +249,8 @@ export async function listDirectory(
       : publicOnly
         ? publicColumns
         : columns;
+  if (publicOnly && featuredOnly === "all")
+    selectedColumns = publicColumns.replace("b.is_featured AS featured", "TRUE AS featured");
   if (localPlacement) selectedColumns += `, ${localPlacement} AS "localFeatured"`;
   const fromWhere = `FROM directory_business b ${publicOnly ? "JOIN auth_user u ON u.id = b.owner_user_id" : ""} WHERE ${filters.join(" AND ")}`;
   if (openNow) selectedColumns += ', COUNT(*) OVER()::int AS "openCount"';
@@ -281,6 +291,32 @@ export function createPublicDirectoryService({
   database: DirectoryReadDatabase;
   now?: () => Date;
 }) {
+  function queryPublic(
+    input: unknown,
+    featuredOnly: PromotionFilter = false,
+    blockViewer?: string | null,
+    options?: ListOptions,
+  ) {
+    return safeRead(async () => {
+      const checkedAt = now();
+      const result = await listDirectory(
+        database,
+        input,
+        publicBusinessWhere,
+        [],
+        true,
+        featuredOnly,
+        checkedAt,
+        blockViewer,
+        options,
+      );
+      return {
+        ...result,
+        checkedAt: checkedAt.toISOString(),
+        items: result.items.map(publicDto),
+      };
+    });
+  }
   return {
     categories: () =>
       safeRead(async () => ({
@@ -296,7 +332,7 @@ export function createPublicDirectoryService({
       })),
     async listPublic(
       input: unknown = {},
-      featuredOnly: boolean | "category" = false,
+      featuredOnly: PromotionFilter = false,
       blockViewer?: string | null,
     ) {
       object(input, [
@@ -311,40 +347,20 @@ export function createPublicDirectoryService({
         "radiusKm",
         "openNow",
       ]);
-      return safeRead(async () => {
-        const checkedAt = now();
-        const result = await listDirectory(
-          database,
-          input,
-          publicBusinessWhere,
-          [],
-          true,
-          featuredOnly,
-          checkedAt,
-          blockViewer,
-        );
-        return {
-          ...result,
-          checkedAt: checkedAt.toISOString(),
-          items: result.items.map(publicDto),
-        };
-      });
+      return queryPublic(input, featuredOnly, blockViewer);
     },
     async homePromotions(placement: true | "category") {
-      return safeRead(async () => {
-        const result = await listDirectory(
-          database,
-          {},
-          publicBusinessWhere,
-          [],
-          true,
-          placement,
-          now(),
-          null,
-          6,
-        );
-        return result.items.map(publicDto);
+      return (await queryPublic({}, placement, null, { maximumPageSize: 6 })).items;
+    },
+    homeAllPromotions(page = 1) {
+      return queryPublic({ page }, "all", null, { maximumPageSize: 6 });
+    },
+    async homeNewest(blockViewer?: string | null) {
+      const result = await queryPublic({}, false, blockViewer, {
+        maximumPageSize: 6,
+        newestFirst: true,
       });
+      return result.items;
     },
     async readPublic(id: string): Promise<PublicDirectoryBusiness> {
       const key = uuid(id);

@@ -12,6 +12,7 @@ import {
   type ReelFeedPage,
   reelMedia,
 } from "../../lib/reels";
+import { BusinessLogo } from "../directory/BusinessLogo";
 import { Icon } from "../Icon";
 import styles from "./reel-viewer.module.css";
 
@@ -261,12 +262,7 @@ function ReelSlide({
       <header className={styles.header}>
         <Link href={businessPath} prefetch={false} className={styles.identity}>
           <span className={styles.avatar} aria-hidden="true">
-            {logo ? (
-              // biome-ignore lint/performance/noImgElement: Versioned business logos are already normalized.
-              <img src={logo} alt="" width={40} height={40} decoding="async" />
-            ) : (
-              Array.from(reel.businessTitle)[0]?.toLocaleUpperCase("bs-BA")
-            )}
+            <BusinessLogo src={logo} alt="" sizes="44px" />
           </span>
           <span className={styles.identityCopy}>
             <strong className={styles.author}>{reel.businessTitle}</strong>

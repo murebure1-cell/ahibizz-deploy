@@ -15,43 +15,22 @@ import { HomeCategories } from "./HomeCategories";
 import { HomeLogoMarquee } from "./HomeLogoMarquee";
 import { HomeRail } from "./HomeRail";
 import styles from "./home.module.css";
-import nearbyStyles from "./nearby.module.css";
 
-export function HomeNearbyGroups({
-  local,
-  organic,
+export function HomeBusinessRail({
+  cards,
+  label,
   expanded = false,
 }: {
-  local: ReactNode[];
-  organic: ReactNode[];
+  cards: ReactNode[];
+  label: string;
   expanded?: boolean;
 }) {
-  function show(items: ReactNode[], label: string) {
-    return expanded ? (
-      <div className={styles.nearbyGrid}>{items}</div>
-    ) : (
-      <HomeRail listings label={label} className={styles.businessGrid}>
-        {items.slice(0, 4)}
-      </HomeRail>
-    );
-  }
-  return (
-    <>
-      <div className={nearbyStyles.group} data-design="home-local-featured">
-        <h3>Istaknuto na tvojoj lokaciji</h3>
-        {local.length ? (
-          show(local, "Istaknuto na tvojoj lokaciji")
-        ) : (
-          <p className={styles.availability}>Trenutno nema lokalnih isticanja.</p>
-        )}
-      </div>
-      {organic.length > 0 && (
-        <div className={nearbyStyles.group}>
-          <h3>Djelatnosti u blizini</h3>
-          {show(organic, "Djelatnosti u blizini")}
-        </div>
-      )}
-    </>
+  return expanded ? (
+    <div className={`${styles.nearbyGrid} ${styles.fullWidth}`}>{cards}</div>
+  ) : (
+    <HomeRail listings label={label} className={styles.businessGrid}>
+      {cards}
+    </HomeRail>
   );
 }
 
@@ -72,44 +51,38 @@ export function HomeEmptyState({
   );
 }
 
-export function HomePromotionSection({
+export function HomeListingsSection({
   title,
   href,
   kind,
-  cards,
+  children,
 }: {
   title: string;
-  href: string;
-  kind: "featured" | "category-featured";
-  cards: ReactNode[] | null;
+  href?: string;
+  kind: "featured" | "newest";
+  children: ReactNode;
 }) {
-  const id = `${kind}-heading`;
-  const count = cards?.length ?? 0;
-  if (kind === "featured" && count === 0) return null;
+  const id = `home-${kind}-heading`;
   return (
     <section
       className={`${styles.container} ${styles.section}`}
       data-design={`home-${kind}`}
-      data-empty={kind === "category-featured" && count === 0 ? true : undefined}
       aria-labelledby={id}
     >
       <div className={styles.sectionHeading}>
-        <h2 id={id}>{title}</h2>
-        {count > 0 && (
+        <h2 id={id} className={styles.listingTitle}>
+          <span className={styles.sectionGlyph}>
+            <Icon name={kind === "newest" ? "plus" : "star"} />
+          </span>
+          {title}
+        </h2>
+        {href && (
           <Link href={href} className={styles.subtleLink}>
             Pogledaj sve <Icon name="chevron" />
           </Link>
         )}
       </div>
-      {count > 0 ? (
-        <HomeRail listings label={title} className={styles.businessGrid}>
-          {cards}
-        </HomeRail>
-      ) : (
-        <p className={styles.availability}>
-          {cards ? "Nema aktivnih isticanja." : "Imenik trenutno nije dostupan."}
-        </p>
-      )}
+      {children}
     </section>
   );
 }
@@ -141,6 +114,20 @@ export function HomeNearbySection({
   );
 }
 
+function HomeArtwork({ kind }: { kind: "promotion" | "credits" }) {
+  return (
+    <div className={styles.artwork} aria-hidden="true">
+      <Image
+        src={`/brand/home-${kind}-20261121.webp`}
+        alt=""
+        fill
+        sizes="(max-width: 600px) 100vw, 580px"
+        unoptimized
+      />
+    </div>
+  );
+}
+
 /** The live directory and the isolated fixture use one visual surface with separate data adapters. */
 export function HomeSurface({
   design = defaultVisualDesign(),
@@ -151,7 +138,7 @@ export function HomeSurface({
   discovery,
   featured,
   featuredHref,
-  categoryFeatured = [],
+  newest = [],
   nearby,
   nearbyControl,
   nearbyBefore,
@@ -167,9 +154,9 @@ export function HomeSurface({
   place?: string;
   categories?: readonly HomeCategory[];
   discovery?: ReactNode;
-  featured?: ReactNode;
-  featuredHref: string;
-  categoryFeatured?: ReactNode[];
+  featured?: ReactNode[];
+  featuredHref?: string;
+  newest?: ReactNode[];
   nearby?: ReactNode;
   nearbyControl?: ReactNode;
   nearbyBefore?: ReactNode;
@@ -178,7 +165,7 @@ export function HomeSurface({
   slots?: {
     categories?: ReactNode;
     featured?: ReactNode;
-    categoryFeatured?: ReactNode;
+    newest?: ReactNode;
     nearby?: ReactNode;
     floatingAd?: ReactNode;
     inlineAd?: (fallback: ReactNode) => ReactNode;
@@ -187,22 +174,27 @@ export function HomeSurface({
   after?: ReactNode;
 }) {
   const titles = design.sectionTitles ?? {};
+  const featuredTitle = titles.featured || "Istaknute djelatnosti";
+  const newestTitle = titles.newest || "Novi na AhiBizzu";
   const sections: Record<string, ReactNode> = {
-    featured: slots?.featured ?? (
-      <HomePromotionSection
-        kind="featured"
-        title={titles.featured || "Istaknute djelatnosti"}
-        href={featuredHref}
-        cards={featured ? [featured] : []}
-      />
-    ),
-    categoryFeatured: slots?.categoryFeatured ?? (
-      <HomePromotionSection
-        kind="category-featured"
-        title={titles.categoryFeatured || "Istaknuto u kategoriji"}
-        href={searchAction === "/pretraga" ? "/pretraga?istaknute=kategorija" : searchAction}
-        cards={categoryFeatured}
-      />
+    featured:
+      slots?.featured ??
+      (featured?.length ? (
+        <HomeListingsSection kind="featured" title={featuredTitle} href={featuredHref}>
+          <HomeBusinessRail label={featuredTitle} cards={featured} />
+        </HomeListingsSection>
+      ) : null),
+    newest:
+      slots?.newest ??
+      (newest.length ? (
+        <HomeListingsSection kind="newest" title={newestTitle}>
+          <HomeBusinessRail label={newestTitle} cards={newest} />
+        </HomeListingsSection>
+      ) : null),
+    reels: discovery && (
+      <div className={`${styles.container} ${styles.reelStrip}`} data-design="home-reels">
+        {discovery}
+      </div>
     ),
     ad: !IS_PLAY_EDITION && (
       <section
@@ -241,10 +233,11 @@ export function HomeSurface({
     ),
     nearby: slots?.nearby ?? (
       <HomeNearbySection
-        title={titles.nearby || "Blizu tebe"}
+        title={titles.nearby || "Djelatnosti u blizini"}
         control={nearbyControl}
         before={nearbyBefore}
       >
+        <HomeArtwork kind="promotion" />
         {nearby}
       </HomeNearbySection>
     ),
@@ -268,27 +261,13 @@ export function HomeSurface({
         </Link>
       </section>
     ),
-    community: (
-      <section
-        className={`${styles.container} ${styles.callout} ${styles.community}`}
-        data-design="home-community"
-        aria-labelledby="community-heading"
-      >
-        <Link href="/o-nama" className={styles.calloutLink} aria-labelledby="community-heading">
-          <span aria-hidden="true" className={styles.calloutIcon}>
-            <Icon name="people" />
-          </span>
-          <h2 id="community-heading">{titles.community || "AhiBizz zajednica"}</h2>
-          <Icon name="chevron" className={styles.calloutArrow} />
-        </Link>
-      </section>
-    ),
     credits: !IS_PLAY_EDITION && (
       <section
         className={`${styles.container} ${styles.credits}`}
         data-design="home-credits"
         aria-labelledby="credits-heading"
       >
+        <HomeArtwork kind="credits" />
         <div className={styles.creditsIcon} aria-hidden="true">
           a<span>c</span>
         </div>
@@ -306,9 +285,6 @@ export function HomeSurface({
       </section>
     ),
   };
-  const reelStrip = discovery && (
-    <div className={`${styles.container} ${styles.reelStrip}`}>{discovery}</div>
-  );
   const hasAd = design.homeOrder.includes("ad");
 
   return (
@@ -371,12 +347,10 @@ export function HomeSurface({
           }
         />
       )}
-      {!hasAd && reelStrip}
       {hasAd && slots?.floatingAd}
       {design.homeOrder.map((id) => (
         <Fragment key={id}>
           {id === "ad" && slots?.inlineAd ? slots.inlineAd(sections.ad) : sections[id]}
-          {id === "ad" && reelStrip}
         </Fragment>
       ))}
       {after}

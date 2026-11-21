@@ -1,15 +1,7 @@
 "use client";
 
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { Icon } from "../Icon";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import styles from "./rail.module.css";
-
-function listingStep(scroller: HTMLElement) {
-  const [first, second] = scroller.children;
-  return second && first
-    ? second.getBoundingClientRect().left - first.getBoundingClientRect().left
-    : scroller.clientWidth;
-}
 
 export function HomeRail({
   label,
@@ -22,30 +14,18 @@ export function HomeRail({
   listings?: boolean;
   children: ReactNode;
 }) {
-  const id = useId();
   const track = useRef<HTMLDivElement>(null);
-  const [edges, setEdges] = useState({ before: false, after: false, first: 1, last: 1, count: 1 });
+  const [edges, setEdges] = useState({ before: false, after: false });
 
   useEffect(() => {
     const scroller = track.current;
-    if (!scroller) return;
+    if (!scroller || listings) return;
     function updateEdges() {
       if (!scroller) return;
       const before = scroller.scrollLeft > 2;
       const after = scroller.scrollWidth - scroller.clientWidth - scroller.scrollLeft > 2;
-      const count = listings ? scroller.children.length : 1;
-      const step = listings && count > 1 ? listingStep(scroller) : 0;
-      const first = step > 0 ? Math.round(scroller.scrollLeft / step) + 1 : 1;
-      const visible = step > 0 ? Math.max(1, Math.round(scroller.clientWidth / step)) : 1;
-      const last = Math.min(count, first + visible - 1);
       setEdges((previous) =>
-        before === previous.before &&
-        after === previous.after &&
-        first === previous.first &&
-        last === previous.last &&
-        count === previous.count
-          ? previous
-          : { before, after, first, last, count },
+        before === previous.before && after === previous.after ? previous : { before, after },
       );
     }
     const observer = new ResizeObserver(updateEdges);
@@ -66,18 +46,10 @@ export function HomeRail({
     };
   }, [listings]);
 
-  function page(direction: number) {
-    const scroller = track.current;
-    if (!scroller) return;
-    const step = listings ? listingStep(scroller) : scroller.clientWidth - 24;
-    scroller.scrollBy({ left: direction * step });
-  }
-
   return (
-    <div className={styles.rail} data-listings={listings || undefined}>
+    <section className={styles.rail} aria-label={label} data-listings={listings || undefined}>
       <div className={styles.viewport} data-before={edges.before} data-after={edges.after}>
         <div
-          id={id}
           ref={track}
           className={`${styles.track} ${className ?? ""}`}
           onFocusCapture={({ currentTarget, target }) => {
@@ -94,34 +66,6 @@ export function HomeRail({
           {children}
         </div>
       </div>
-      {(edges.before || edges.after) && (
-        <div className={styles.controls}>
-          <button
-            type="button"
-            aria-controls={id}
-            aria-label={`Pomjeri ulijevo: ${label}`}
-            disabled={!edges.before}
-            onClick={() => page(-1)}
-          >
-            <Icon name="chevron" />
-          </button>
-          {listings && (
-            <span className={styles.position}>
-              {edges.first === edges.last ? edges.first : `${edges.first}–${edges.last}`} /{" "}
-              {edges.count}
-            </span>
-          )}
-          <button
-            type="button"
-            aria-controls={id}
-            aria-label={`Pomjeri udesno: ${label}`}
-            disabled={!edges.after}
-            onClick={() => page(1)}
-          >
-            <Icon name="chevron" />
-          </button>
-        </div>
-      )}
-    </div>
+    </section>
   );
 }

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { HomeNearbyGroups, HomeSurface } from "../home/HomeSurface";
+import { HomeBusinessRail, HomeSurface } from "../home/HomeSurface";
 import { Icon } from "../Icon";
 import { BusinessCard } from "./BusinessCard";
 import { previewBusinesses } from "./data";
@@ -33,7 +33,7 @@ export function PreviewHome() {
         href: `/pregled/pretraga?category=${encodeURIComponent(category.name)}`,
       }))}
       featuredHref="/pregled/pretraga"
-      categoryFeatured={previewBusinesses
+      newest={previewBusinesses
         .slice(0, 1)
         .map((business) => <BusinessCard key={business.id} business={business} />)}
       featured={previewBusinesses.map((business) => (
@@ -74,13 +74,11 @@ export function PreviewHome() {
         )
       }
       nearby={
-        <HomeNearbyGroups
-          local={nearby
-            .slice(0, 1)
-            .map((business) => <BusinessCard key={business.id} business={business} compact />)}
-          organic={nearby
-            .slice(1)
-            .map((business) => <BusinessCard key={business.id} business={business} compact />)}
+        <HomeBusinessRail
+          label="Djelatnosti u blizini"
+          cards={nearby.map((business) => (
+            <BusinessCard key={business.id} business={business} compact />
+          ))}
         />
       }
       creditsHref="/pregled/prostor/credits"

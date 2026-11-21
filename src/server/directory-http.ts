@@ -86,6 +86,12 @@ export function createPublicDirectoryHttpHandler(service: PublicDirectoryService
         query(url, []);
         return reply(await service.categories());
       }
+      if (path === "/businesses" && url.searchParams.has("istaknute")) {
+        const { istaknute, page } = query(url, ["istaknute", "page"]);
+        if (istaknute !== "sve" || (page !== undefined && typeof page !== "number"))
+          return reply({ code: "INVALID_DIRECTORY_INPUT" }, 400);
+        return reply(await service.homeAllPromotions(page));
+      }
       if (path === "/businesses")
         return reply(
           await service.listPublic(

@@ -4,6 +4,7 @@ import { reelCardPath } from "../../lib/reel-navigation";
 import { type PublicReel, reelDuration, reelMedia } from "../../lib/reels";
 import { listPublicReels } from "../../server/reels/service";
 import { currentReelViewer } from "../../server/reels/viewer";
+import { BusinessLogo } from "../directory/BusinessLogo";
 import { Icon } from "../Icon";
 import styles from "./reels.module.css";
 
@@ -44,19 +45,15 @@ export function ReelCards({
             )}
             <span className={styles.reelBusiness}>
               <span className={styles.reelAvatar} aria-hidden="true">
-                {reel.businessLogo ? (
-                  // biome-ignore lint/performance/noImgElement: The versioned business logo is already normalized.
-                  <img
-                    src={businessMediaUrl(reel.businessId, reel.businessLogo)}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                    width={30}
-                    height={30}
-                  />
-                ) : (
-                  Array.from(reel.businessTitle)[0]?.toLocaleUpperCase("bs-BA")
-                )}
+                <BusinessLogo
+                  src={
+                    reel.businessLogo
+                      ? businessMediaUrl(reel.businessId, reel.businessLogo)
+                      : undefined
+                  }
+                  alt=""
+                  sizes="30px"
+                />
               </span>
               <span className={styles.businessName}>{reel.businessTitle}</span>
             </span>

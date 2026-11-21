@@ -7,6 +7,7 @@ import {
   isCurrentBusinessLogoImage,
   readBusinessLogoSurface,
 } from "../../lib/business-logo";
+import { AhiMark } from "../AhiMark";
 import styles from "./business-logo.module.css";
 
 type LogoResult = { source: string; surface: BusinessLogoSurface };
@@ -17,21 +18,21 @@ export function BusinessLogo({
   monogram,
   sizes = "72px",
 }: {
-  src: string;
+  src?: string;
   alt: string;
-  monogram: string;
+  monogram?: string;
   sizes?: string;
 }) {
   const imageRef = useRef<HTMLImageElement>(null);
   // Identical server/client initial output prevents a cached logo causing hydration mismatch.
   const [result, setResult] = useState<LogoResult | null>(null);
   const [failedSource, setFailedSource] = useState<string | null>(null);
-  const surface = result?.source === src ? result.surface : null;
-  const fallback = failedSource === src || surface === "empty";
+  const surface = result && result.source === src ? result.surface : null;
+  const imageSource = failedSource !== src && surface !== "empty" ? src : undefined;
 
   const inspect = useCallback(
     (image: HTMLImageElement) => {
-      if (imageRef.current !== image || !image.complete || !image.naturalWidth) return;
+      if (!src || imageRef.current !== image || !image.complete || !image.naturalWidth) return;
       const sampled = readBusinessLogoSurface(image, src);
       if (sampled === null) return;
       setResult({ source: src, surface: sampled });
@@ -47,10 +48,28 @@ export function BusinessLogo({
   return (
     <span
       className={styles.surface}
-      data-logo-surface={fallback ? "dark" : (surface ?? "neutral")}
-      data-logo-state={failedSource === src ? "error" : (surface ?? "pending")}
+      data-logo-surface={imageSource ? (surface ?? "neutral") : "dark"}
+      data-logo-state={!src ? "missing" : failedSource === src ? "error" : (surface ?? "pending")}
     >
-      {fallback ? (
+      {imageSource ? (
+        <Image
+          key={imageSource}
+          ref={imageRef}
+          src={imageSource}
+          alt={alt}
+          fill
+          sizes={sizes}
+          unoptimized
+          onLoad={(event) => inspect(event.currentTarget)}
+          onError={(event) => {
+            if (
+              imageRef.current === event.currentTarget &&
+              isCurrentBusinessLogoImage(event.currentTarget, imageSource)
+            )
+              setFailedSource(imageSource);
+          }}
+        />
+      ) : monogram ? (
         alt ? (
           <span className={styles.monogram} role="img" aria-label={alt}>
             {monogram}
@@ -61,23 +80,7 @@ export function BusinessLogo({
           </span>
         )
       ) : (
-        <Image
-          key={src}
-          ref={imageRef}
-          src={src}
-          alt={alt}
-          fill
-          sizes={sizes}
-          unoptimized
-          onLoad={(event) => inspect(event.currentTarget)}
-          onError={(event) => {
-            if (
-              imageRef.current === event.currentTarget &&
-              isCurrentBusinessLogoImage(event.currentTarget, src)
-            )
-              setFailedSource(src);
-          }}
-        />
+        <AhiMark size={36} className={styles.ahiMark} alt={alt} />
       )}
     </span>
   );

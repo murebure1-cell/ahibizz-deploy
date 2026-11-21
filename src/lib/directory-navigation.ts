@@ -18,7 +18,7 @@ export function directorySearchSuffix(params: DirectorySearchParams): string {
     const value = typeof raw === "string" ? raw.trim().slice(0, limit) : "";
     if (value) values.set(key, value);
   }
-  if (params.istaknute === "kategorija" || params.istaknute === "1")
+  if (params.istaknute === "sve" || params.istaknute === "kategorija" || params.istaknute === "1")
     values.set("istaknute", params.istaknute);
   if (params.otvoreno === "1") values.set("otvoreno", "1");
   if (typeof params.page === "string" && /^\d{1,3}$/.test(params.page)) {

@@ -7,6 +7,7 @@ import {
   publicBusinessPoint,
   safeBusinessImage,
 } from "../../lib/public-business";
+import { AhiMark } from "../AhiMark";
 import { FavoriteButton } from "../favorites/FavoriteButton";
 import { Icon } from "../Icon";
 import { VerificationBadge } from "../VerificationBadge";
@@ -20,35 +21,31 @@ export function DirectoryResultCard({
   preview = false,
   searchSuffix = "",
   checkedAt,
+  compact = false,
+  example = false,
 }: {
   business: PublicBusinessView;
   preview?: boolean;
   searchSuffix?: string;
   checkedAt?: string;
+  compact?: boolean;
+  example?: boolean;
 }) {
   const logo = safeBusinessImage(business.logo, preview);
   const cover = safeBusinessImage(business.image, preview);
-  const image =
-    cover && cover.src !== logo?.src
-      ? cover
-      : business.gallery
-          ?.map((photo) => safeBusinessImage(photo, preview))
-          .find((photo) => photo && photo.src !== logo?.src);
+  const image = cover && cover.src !== logo?.src ? cover : undefined;
   const profile = `/djelatnosti/${business.id}${searchSuffix}`;
-  const monogram = business.title
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => Array.from(word)[0] ?? "")
-    .join("")
-    .toLocaleUpperCase("bs");
   const hasLocation = Boolean(
     business.addressLine?.trim() || business.city?.trim() || business.countryCode?.trim(),
   );
   const hasMap = Boolean(publicBusinessPoint(business));
   const category = business.subcategoryName || business.categoryName;
   return (
-    <article className={styles.card} data-design="directory-card">
+    <article
+      className={styles.card}
+      data-design="directory-card"
+      data-compact={compact || undefined}
+    >
       <div className={styles.media}>
         <div className={styles.favorite}>
           <FavoriteButton businessId={business.id} title={business.title} compact />
@@ -68,32 +65,9 @@ export function DirectoryResultCard({
               sizes="(max-width: 650px) calc(100vw - 36px), (max-width: 1200px) 46vw, 560px"
               unoptimized
             />
-          ) : logo ? (
-            <span className={styles.coverLogo} aria-hidden="true">
-              <BusinessLogo src={logo.src} alt="" monogram={monogram} sizes="180px" />
-            </span>
           ) : (
-            <span className={styles.coverMonogram} aria-hidden="true">
-              {monogram || "A"}
-            </span>
+            <AhiMark size={52} className={styles.coverMark} />
           )}
-          <span
-            className={styles.brand}
-            data-symbol={Boolean(business.reviews?.count)}
-            aria-hidden="true"
-          >
-            <Image
-              src={
-                business.reviews?.count
-                  ? "/preview-app/icons/source-mark.svg"
-                  : "/brand/ahi-logo-white.svg"
-              }
-              alt=""
-              width={business.reviews?.count ? 22 : 88}
-              height={24}
-              unoptimized
-            />
-          </span>
         </Link>
         <span className={styles.openStatus}>
           <BusinessOpenStatus details={business.details} checkedAt={checkedAt} />
@@ -106,16 +80,11 @@ export function DirectoryResultCard({
       </div>
 
       <div className={styles.body}>
-        {image && (
-          <div className={styles.logo} aria-hidden="true">
-            {logo ? (
-              <BusinessLogo src={logo.src} alt="" monogram={monogram} sizes="72px" />
-            ) : (
-              <span>{monogram || "A"}</span>
-            )}
-          </div>
-        )}
-        <header className={styles.identity} data-avatar={Boolean(image)}>
+        <div className={styles.logo} aria-hidden="true">
+          <BusinessLogo src={logo?.src} alt="" sizes="72px" />
+        </div>
+        <header className={styles.identity}>
+          {example && <span className={styles.example}>Primjer</span>}
           <h2 data-design="directory-title">
             <Link href={profile} title={business.title}>
               {business.title}
@@ -125,14 +94,14 @@ export function DirectoryResultCard({
           {hasLocation && (
             <p className={styles.location}>
               <Icon name="pin" />
-              <span>{businessLocationLabel(business)}</span>
+              <span>{(compact && business.city?.trim()) || businessLocationLabel(business)}</span>
             </p>
           )}
         </header>
-        {business.description?.trim() && (
+        {!compact && business.description?.trim() && (
           <p className={styles.description}>{business.description}</p>
         )}
-        <BusinessAmenities details={business.details} compact />
+        {!compact && <BusinessAmenities details={business.details} compact />}
       </div>
 
       <footer className={styles.footer}>

@@ -173,6 +173,7 @@ export async function verifyMarketing({ auth, pool, owner, member, second, categ
     [closer, business],
   );
   assert.deepEqual((await directory.listPublic({}, true)).items, []);
+  assert.deepEqual((await directory.homeAllPromotions()).items, []);
   for (const [id, kind] of [
     [featured, "featured"],
     [nearby, "nearby"],
@@ -183,6 +184,10 @@ export async function verifyMarketing({ auth, pool, owner, member, second, categ
   assert.deepEqual((await directory.listPublic({}, true)).items, []);
   await command(owner, { ...settle, id: featured, reference: "GLOBAL-FIXTURE-856" });
   await command(owner, { ...settle, id: nearby, reference: "LOCAL-FIXTURE-172" });
+  assert.deepEqual(
+    (await directory.homeAllPromotions()).items.map((b) => [b.id, b.featured, b.localFeatured]),
+    [[business, true, true]],
+  );
   assert.deepEqual(
     (await directory.listPublic(near)).items.map((b) => [b.id, b.localFeatured]),
     [
@@ -215,6 +220,7 @@ export async function verifyMarketing({ auth, pool, owner, member, second, categ
   ]);
   assert.equal(await readActiveBanner(pool), null);
   assert.deepEqual((await directory.listPublic({}, true)).items, []);
+  assert.deepEqual((await directory.homeAllPromotions()).items, []);
   assert.deepEqual(
     (await directory.listPublic(near)).items.map((b) => b.id),
     [closer, business],
