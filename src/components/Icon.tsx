@@ -32,6 +32,8 @@ export type IconName =
   | "coffee"
   | "bell"
   | "plus"
+  | "more"
+  | "refresh"
   | "download";
 
 const paths: Record<IconName, ReactNode> = {
@@ -77,6 +79,14 @@ const paths: Record<IconName, ReactNode> = {
     </>
   ),
   plus: <path d="M5 12h14M12 5v14" />,
+  more: (
+    <>
+      <circle cx="5" cy="12" r="1" />
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+    </>
+  ),
+  refresh: <path d="M20 9a8 8 0 0 0-13.6-3L4 8m0-4v4h4m-4 7a8 8 0 0 0 13.6 3l2.4-2m0 4v-4h-4" />,
   home: (
     <>
       <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" />

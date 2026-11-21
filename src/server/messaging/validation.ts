@@ -1,4 +1,4 @@
-import { normalizeMessageBody } from "../../lib/messaging";
+import { normalizeMessageBody, normalizeMessageSearch } from "../../lib/messaging";
 
 export class MessagingAccessError extends Error {
   constructor(
@@ -48,9 +48,20 @@ export function openInput(input: unknown) {
   };
 }
 export function listInput(input: unknown) {
-  const row = object(input, ["inbox", "page"]);
+  const row = object(input, ["inbox", "page", "q", "unread"]);
   if (row.inbox !== "personal" && row.inbox !== "business") fail(400, "INVALID_MESSAGING_INPUT");
-  return { inbox: row.inbox, page: row.page === undefined ? 1 : integer(row.page, 1, 1000) };
+  if (row.unread !== undefined && typeof row.unread !== "boolean")
+    fail(400, "INVALID_MESSAGING_INPUT");
+  try {
+    return {
+      inbox: row.inbox,
+      page: row.page === undefined ? 1 : integer(row.page, 1, 1000),
+      q: row.q === undefined ? "" : normalizeMessageSearch(row.q),
+      unread: row.unread === true,
+    };
+  } catch {
+    fail(400, "INVALID_MESSAGING_INPUT");
+  }
 }
 export function readInput(input: unknown) {
   const row = object(input, ["before"]);

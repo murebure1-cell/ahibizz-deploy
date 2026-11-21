@@ -828,3 +828,23 @@
     transform: none;
   }
 }
+
+@media (max-width: 760px) {
+  .layout[data-account-pane="messages"] {
+    display: block;
+    width: 100%;
+    margin: 0;
+  }
+  .layout[data-account-pane="messages"]::before,
+  .layout[data-account-pane="messages"] > .sidebar,
+  :global(body):has(.layout[data-account-pane="messages"]) :global(.site-footer),
+  :global(body):has(.layout[data-account-pane="messages"] [data-message-chat="open"])
+    :global(.site-header),
+  :global(body):has(.layout[data-account-pane="messages"] [data-message-chat="open"])
+    :global([data-mobile-dock]) {
+    display: none;
+  }
+  :global(body):has(.layout[data-account-pane="messages"] [data-message-chat="open"]) {
+    padding-bottom: 0;
+  }
+}

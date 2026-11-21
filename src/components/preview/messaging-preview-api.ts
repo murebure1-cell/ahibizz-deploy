@@ -4,6 +4,7 @@ import {
   type MessageInbox,
   type MessageTarget,
   normalizeMessageBody,
+  normalizeMessageSearch,
 } from "../../lib/messaging";
 import { MessagingRequestError, type messagingRequest } from "../../lib/messaging-client";
 
@@ -215,12 +216,15 @@ export function createMessagingPreviewApi(options: Options) {
       fail(400, "INVALID_MESSAGING_INPUT");
     if (expectedAccountId !== null && expectedAccountId !== actor.id)
       fail(401, "ACCOUNT_IDENTITY_CHANGED");
+    const [pathname, , ...extra] = path.split("?");
     if (
-      !/^threads(?:\?|\/|$)/.test(path) ||
-      path.includes("..") ||
-      path.includes("#") ||
-      path.includes("%") ||
-      path.includes("\\")
+      extra.length ||
+      !pathname ||
+      !/^threads(?:\/|$)/.test(pathname) ||
+      pathname.includes("..") ||
+      pathname.includes("%") ||
+      pathname.includes("\\") ||
+      path.includes("#")
     )
       fail(400, "INVALID_MESSAGING_INPUT");
     const url = new URL(path, "https://messaging-fixture.invalid/");
@@ -231,19 +235,29 @@ export function createMessagingPreviewApi(options: Options) {
     const allowed =
       method === "GET"
         ? route === "threads"
-          ? ["inbox", "page"]
+          ? ["inbox", "page", "q", "unread"]
           : !detail?.[2]
             ? ["before"]
             : []
         : [];
     const seen = new Set<string>();
+    let search = "";
     for (const [key, value] of url.searchParams) {
       if (!allowed.includes(key) || seen.has(key)) fail(400, "INVALID_MESSAGING_INPUT");
       seen.add(key);
       if (key === "inbox" && !["personal", "business"].includes(value))
         fail(400, "INVALID_MESSAGING_INPUT");
+      if (key === "q") {
+        try {
+          decodeURIComponent(url.search);
+          search = normalizeMessageSearch(value).toLowerCase();
+        } catch {
+          fail(400, "INVALID_MESSAGING_INPUT");
+        }
+      }
+      if (key === "unread" && value !== "1") fail(400, "INVALID_MESSAGING_INPUT");
       if (
-        key !== "inbox" &&
+        (key === "page" || key === "before") &&
         (!/^[1-9]\d{0,9}$/.test(value) || Number(value) > (key === "page" ? 1000 : 2147483647))
       )
         fail(400, "INVALID_MESSAGING_INPUT");
@@ -252,6 +266,7 @@ export function createMessagingPreviewApi(options: Options) {
       if (route === "threads") {
         const inbox = (url.searchParams.get("inbox") ?? "personal") as MessageInbox;
         const page = Number(url.searchParams.get("page") ?? 1);
+        const unread = url.searchParams.get("unread") === "1";
         const items = [...threads.values()]
           .filter((thread) => {
             if (!thread.participants.includes(actor.id)) return false;
@@ -259,7 +274,7 @@ export function createMessagingPreviewApi(options: Options) {
               const business = options.business(thread.businessId);
               if (business && business.ownerId !== thread.ownerId) return false;
             }
-            return projection(thread, actor).inbox === inbox;
+            return true;
           })
           .sort(
             (a, b) =>
@@ -267,7 +282,13 @@ export function createMessagingPreviewApi(options: Options) {
                 a.messages.at(-1)?.createdAt ?? "",
               ) || a.id.localeCompare(b.id),
           )
-          .map((thread) => projection(thread, actor));
+          .map((thread) => projection(thread, actor))
+          .filter(
+            (thread) =>
+              thread.inbox === inbox &&
+              (!unread || thread.unreadCount > 0) &&
+              thread.title.normalize("NFC").toLowerCase().includes(search),
+          );
         return structuredClone({
           items: items.slice((page - 1) * 30, page * 30),
           page,

@@ -758,6 +758,34 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           assert.equal(ownerInbox.items.length, 1);
           assert.equal(ownerInbox.items[0].title, `${business.title} · ${member.user.name}`);
           assert.equal(ownerInbox.items[0].unreadCount, 1);
+          const find = async (actor, input) =>
+            (await messaging.list(actor.headers, input)).items.map((row) => row.id);
+          assert.deepEqual(
+            await find(owner, { inbox: "business", q: "ProFESSional StuDIO", unread: true }),
+            [businessThread.threadId],
+          );
+          assert.deepEqual(await find(owner, { inbox: "business", q: member.user.name }), [
+            businessThread.threadId,
+          ]);
+          assert.deepEqual(await find(owner, { inbox: "business", q: "%_" }), []);
+          assert.deepEqual(await find(other, { inbox: "personal", q: business.title }), []);
+          assert.deepEqual(
+            await find(member, { inbox: "personal", q: business.title, unread: true }),
+            [],
+            "A customer's own outgoing message is already read.",
+          );
+          assert.equal(
+            (await find(member, { inbox: "personal", q: owner.user.name })).includes(
+              businessThread.threadId,
+            ),
+            false,
+            "Search must not expose the private operator name behind a business inbox.",
+          );
+          await deny(
+            () => messaging.list(owner.headers, { inbox: "business", unread: "true" }),
+            400,
+            "INVALID_MESSAGING_INPUT",
+          );
           assert.equal(
             (await messaging.list(owner.headers, { inbox: "personal" })).items.some(
               (row) => row.id === businessThread.threadId,

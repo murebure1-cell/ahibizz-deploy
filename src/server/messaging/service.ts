@@ -147,9 +147,18 @@ async function context(client: PoolClient, signed: SignedSession, id: string): P
 }
 
 // Only participants reach this projection. Names do not imply public profile visibility.
+// Use the same thread title in search so a business owner hidden behind the brand
+// cannot be identified by testing private names against a customer conversation.
+const threadTitle =
+  "CASE WHEN t.kind='business' THEN CASE WHEN t.left_user_id=$1 THEN b.title ELSE b.title||' · '||left(peer.name,128) END ELSE peer.name END";
+const unreadMessages =
+  "FROM message_message unread WHERE unread.thread_id=t.id AND unread.sequence>own.read_sequence AND unread.sender_user_id<>$1";
+function searchText(expression: string) {
+  return `lower(translate(normalize(${expression}, NFC),'ČĆŠŽĐ','čćšžđ'))`;
+}
 const columns = `t.id,t.kind,
  CASE WHEN t.kind='business' AND t.right_user_id=$1 THEN 'business' ELSE 'personal' END AS inbox,
- CASE WHEN t.kind='business' THEN CASE WHEN t.left_user_id=$1 THEN b.title ELSE b.title||' · '||left(peer.name,128) END ELSE peer.name END AS title,
+ ${threadTitle} AS title,
  CASE WHEN t.kind='business' THEN t.business_id::text ELSE peer.id END AS "targetId",
  (peer.approval='approved' AND peer."emailVerified"=true AND peer.role IN ('member','owner')
    AND (t.kind='person' OR b.status='published' AND package_allows_listing(b))
@@ -158,7 +167,7 @@ const columns = `t.id,t.kind,
  (CASE WHEN t.kind='person' THEN COALESCE(own_block.blocked,false) ELSE own.blocked END) AS "blockedByMe",
  ((t.kind='business' AND (own.blocked OR theirs.blocked)) OR COALESCE(own_block.blocked,false) OR COALESCE(peer_block.blocked,false)) AS blocked,
  t.latest_sequence AS "latestSequence",own.read_sequence AS "readSequence",
- (SELECT count(*)::integer FROM message_message unread WHERE unread.thread_id=t.id AND unread.sequence>own.read_sequence AND unread.sender_user_id<>$1) AS "unreadCount",
+ (SELECT count(*)::integer ${unreadMessages}) AS "unreadCount",
  (SELECT jsonb_build_object('body',left(last.body,200),'createdAt',to_char(last.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) FROM message_message last WHERE last.thread_id=t.id ORDER BY last.sequence DESC LIMIT 1) AS "lastMessage"`;
 const joins = `JOIN auth_user peer ON peer.id=CASE WHEN t.left_user_id=$1 THEN t.right_user_id ELSE t.left_user_id END
  JOIN message_thread_member own ON own.thread_id=t.id AND own.user_id=$1
@@ -320,8 +329,12 @@ export function createMessagingService({
             : "(t.kind='person' OR t.left_user_id=$1)";
         const rows = (
           await client.query<ChatThread>(
-            `SELECT ${columns} FROM message_thread t ${joins} WHERE ${visible} AND (${filter}) ORDER BY t.updated_at DESC,t.id LIMIT 31 OFFSET $2`,
-            [actor.id, (value.page - 1) * 30],
+            `SELECT ${columns} FROM message_thread t ${joins}
+             WHERE ${visible} AND (${filter})
+               AND ($3::text='' OR strpos(${searchText(threadTitle)}, ${searchText("$3::text")})>0)
+               AND (NOT $4::boolean OR EXISTS (SELECT 1 ${unreadMessages}))
+             ORDER BY t.updated_at DESC,t.id LIMIT 31 OFFSET $2`,
+            [actor.id, (value.page - 1) * 30, value.q, value.unread],
           )
         ).rows;
         return {

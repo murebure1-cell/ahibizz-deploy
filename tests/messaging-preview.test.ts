@@ -194,6 +194,47 @@ test("unread counts include peer messages only and read pointers cannot regress 
   api.dispose();
 });
 
+test("preview searches the whole visible mailbox before pagination and removes read results", async () => {
+  let time = Date.parse("2026-11-14T12:00:00.000Z");
+  const api = createMessagingPreviewApi({
+    self: () => ({ id: "preview-self", name: "Moje ime" }),
+    person: (id) => ({ id, name: id === "peer-0" ? "Čaj & 100%_" : `Sagovornik ${id}` }),
+    business: () => null,
+    now: () => new Date(time),
+  });
+  try {
+    const first = await open(api, "person", "peer-0");
+    api.simulatePeerReply(first.threadId, "Unread at the end of the inbox");
+    for (let index = 1; index < 32; index++) {
+      time += 3600001;
+      const receipt = await open(api, "person", `peer-${index}`);
+      api.simulatePeerReply(receipt.threadId, "Unread");
+    }
+    const firstPage = readChatThreadPage(await api.request("threads?page=1"));
+    assert.equal(firstPage.hasMore, true);
+    assert.equal(
+      firstPage.items.some((item) => item.id === first.threadId),
+      false,
+    );
+    const query = new URLSearchParams({ q: "ČAJ & 100%_", unread: "1" });
+    const filtered = readChatThreadPage(await api.request(`threads?${query}`));
+    assert.deepEqual(
+      filtered.items.map((item) => item.id),
+      [first.threadId],
+    );
+    assert.equal(filtered.hasMore, false);
+    await api.request(`threads/${first.threadId}/read`, messagingWrite({ throughSequence: 1 }));
+    assert.deepEqual(readChatThreadPage(await api.request(`threads?${query}`)).items, []);
+    query.delete("unread");
+    assert.equal(
+      readChatThreadPage(await api.request(`threads?${query}`)).items[0]?.id,
+      first.threadId,
+    );
+  } finally {
+    api.dispose();
+  }
+});
+
 test("older pages remain ordered with immutable sequences and latest previews are bounded", async () => {
   const { api, advance } = fixture(),
     opened = await open(api);

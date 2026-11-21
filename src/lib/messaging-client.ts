@@ -1,3 +1,5 @@
+import { normalizeMessageSearch } from "./messaging";
+
 export class MessagingRequestError extends Error {
   constructor(
     readonly status: number,
@@ -9,15 +11,7 @@ export class MessagingRequestError extends Error {
 const id = "[A-Za-z0-9_-]{1,128}";
 const route = new RegExp(`^threads(?:/(${id})(?:/(messages|read|block))?)?$`);
 function validPath(path: string): boolean {
-  if (
-    typeof path !== "string" ||
-    path.length > 1024 ||
-    path.includes("#") ||
-    path.includes("%") ||
-    path.includes("\\") ||
-    path.includes("..")
-  )
-    return false;
+  if (typeof path !== "string" || path.length > 1500 || path.includes("#")) return false;
   const [pathname, query, ...extra] = path.split("?");
   if (extra.length || !pathname) return false;
   const match = route.exec(pathname);
@@ -29,7 +23,15 @@ function validPath(path: string): boolean {
     if (!match[1]) {
       if (key === "inbox" && !["personal", "business"].includes(value)) return false;
       else if (key === "page" && !/^[1-9]\d{0,2}$|^1000$/.test(value)) return false;
-      else if (!["inbox", "page"].includes(key)) return false;
+      else if (key === "unread" && value !== "1") return false;
+      else if (key === "q") {
+        try {
+          decodeURIComponent(query ?? "");
+          normalizeMessageSearch(value);
+        } catch {
+          return false;
+        }
+      } else if (!["inbox", "page", "unread"].includes(key)) return false;
     } else if (!match[2]) {
       if (key !== "before" || !/^[1-9]\d{0,9}$/.test(value) || Number(value) > 2147483647)
         return false;

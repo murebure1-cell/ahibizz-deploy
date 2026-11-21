@@ -199,7 +199,7 @@ function AccountWorkspace({
       onConfirmed={setProfile}
     >
       {(hasAccess) => (
-        <main id="glavni-sadrzaj" className={styles.layout}>
+        <main id="glavni-sadrzaj" className={styles.layout} data-account-pane={section}>
           <aside className={styles.sidebar} data-design="account-sidebar">
             <div className={styles.identity}>
               <span aria-hidden="true">

@@ -1,5 +1,6 @@
 import {
   normalizeMessageBody,
+  normalizeMessageSearch,
   readChatConversation,
   readChatReceipt,
   readChatThreadPage,
@@ -101,11 +102,32 @@ export function createMessagingHttpHandler({
       if (request.method === "GET") {
         if (action) return reply({ code: "NOT_FOUND" }, 404);
         if (!id) {
-          query(url, ["inbox", "page"]);
+          query(url, ["inbox", "page", "q", "unread"]);
           const inbox = url.searchParams.get("inbox") ?? "personal";
           if (!["personal", "business"].includes(inbox)) invalid();
           const page = numeric(url.searchParams.get("page"), 1000) ?? 1;
-          return reply(readChatThreadPage(await service.list(request.headers, { inbox, page })));
+          const queryValue = url.searchParams.get("q");
+          let search = "";
+          if (queryValue !== null) {
+            try {
+              decodeURIComponent(url.search);
+              search = normalizeMessageSearch(queryValue);
+            } catch {
+              invalid();
+            }
+          }
+          const unread = url.searchParams.get("unread");
+          if (unread !== null && unread !== "1") invalid();
+          return reply(
+            readChatThreadPage(
+              await service.list(request.headers, {
+                inbox,
+                page,
+                ...(search ? { q: search } : {}),
+                ...(unread === "1" ? { unread: true } : {}),
+              }),
+            ),
+          );
         }
         query(url, ["before"]);
         const before = numeric(url.searchParams.get("before"), 2147483647);

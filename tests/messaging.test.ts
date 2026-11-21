@@ -304,10 +304,17 @@ test("client paths stay same-origin and query-closed before fetch, preserving fi
     "threads?page=1001",
     "threads?page=01",
     "threads?page=1x1000",
+    "threads?unread=0",
+    "threads?unread=1&unread=1",
+    "threads?q=x&q=y",
+    "threads?q=%0A",
+    "threads?q=%GG",
+    `threads?q=${"x".repeat(121)}`,
     `threads/${id}?before=0`,
     `threads/${id}?before=2147483648`,
     `threads/${id}?before=1&before=2`,
     `threads/${id}?inbox=personal`,
+    `threads/${id}?q=Eden`,
     `threads/${id}/messages?before=2`,
     `threads/${id}%2fmessages`,
     `threads/${id}#x`,
@@ -339,6 +346,11 @@ test("client paths stay same-origin and query-closed before fetch, preserving fi
   await messagingRequest(`threads/${id}/messages`, messagingWrite({ body: "Pozdrav" }, messageId));
   assert.equal(calls[2]?.init?.body, '{"body":"Pozdrav"}');
   assert.equal(new Headers(calls[2]?.init?.headers).get("idempotency-key"), messageId);
+  await messagingRequest("threads?inbox=business&page=1&q=%C4%8Caj+%26+100%25_&unread=1");
+  assert.equal(
+    calls[3]?.url,
+    "/api/messaging/threads?inbox=business&page=1&q=%C4%8Caj+%26+100%25_&unread=1",
+  );
   assert.throws(() => messagingWrite({}, "not-a-uuid"), MessagingRequestError);
 });
 

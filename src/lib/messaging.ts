@@ -37,8 +37,14 @@ function object(value: unknown): Record<string, unknown> {
 function integer(value: unknown, min = 0, max = maxSequence): value is number {
   return Number.isInteger(value) && (value as number) >= min && (value as number) <= max;
 }
-function plain(value: unknown, max: number, multiline: boolean): value is string {
-  if (typeof value !== "string" || !value.trim() || value.length > max) return false;
+function plain(
+  value: unknown,
+  max: number,
+  multiline: boolean,
+  allowEmpty = false,
+): value is string {
+  if (typeof value !== "string" || (!allowEmpty && !value.trim()) || value.length > max)
+    return false;
   for (const character of value) {
     const code = character.codePointAt(0) as number;
     if (
@@ -51,6 +57,14 @@ function plain(value: unknown, max: number, multiline: boolean): value is string
       return false;
   }
   return true;
+}
+export const messageSearchLimit = 120;
+/** A conversation name search is a literal fragment, with no control characters. */
+export function normalizeMessageSearch(value: unknown): string {
+  if (!plain(value, messageSearchLimit, false, true)) throw new Error("invalid_message_search");
+  const normalized = value.trim().normalize("NFC");
+  if (normalized.length > messageSearchLimit) throw new Error("invalid_message_search");
+  return normalized;
 }
 function timestamp(value: unknown): value is string {
   if (

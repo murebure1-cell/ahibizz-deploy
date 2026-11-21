@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { messageDay as day } from "../../lib/display-date";
 import {
   type ChatConversation,
   type ChatMessage,
@@ -12,7 +11,9 @@ import {
   type MessageInbox,
   type MessageTarget,
   messageIdentifier,
+  messageSearchLimit,
   normalizeMessageBody,
+  normalizeMessageSearch,
   readChatConversation,
   readChatReceipt,
   readChatThreadPage,
@@ -38,6 +39,41 @@ import { reportUrl } from "../../lib/support-requests";
 import { Icon } from "../Icon";
 import styles from "./messaging.module.css";
 
+const messageTime = new Intl.DateTimeFormat("bs-BA", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: "Europe/Sarajevo",
+});
+const messageDate = new Intl.DateTimeFormat("bs-BA", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "Europe/Sarajevo",
+});
+const recentDate = new Intl.DateTimeFormat("bs-BA", {
+  day: "numeric",
+  month: "short",
+  timeZone: "Europe/Sarajevo",
+});
+const messageYear = new Intl.DateTimeFormat("bs-BA", {
+  year: "numeric",
+  timeZone: "Europe/Sarajevo",
+});
+
+type MailboxFilters = { query: string; unreadOnly: boolean };
+const baseFilters: MailboxFilters = { query: "", unreadOnly: false };
+
+function listKey(inbox: MessageInbox, page: number, { query, unreadOnly }: MailboxFilters) {
+  return `${inbox}:${page}:${unreadOnly ? "unread" : "all"}:${query}`;
+}
+function listPath(inbox: MessageInbox, page: number, { query, unreadOnly }: MailboxFilters) {
+  const params = new URLSearchParams({ inbox, page: String(page) });
+  if (query) params.set("q", query);
+  if (unreadOnly) params.set("unread", "1");
+  return `threads?${params}`;
+}
+
 function initials(name: string) {
   return name
     .split(/\s+/)
@@ -46,9 +82,28 @@ function initials(name: string) {
     .join("")
     .toLocaleUpperCase("bs");
 }
-function time(value: string) {
-  const date = new Date(value);
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+function previewDate(value: Date, today: Date) {
+  if (messageDate.format(value) === messageDate.format(today)) return messageTime.format(value);
+  return messageYear.format(value) === messageYear.format(today)
+    ? recentDate.format(value)
+    : messageDate.format(value);
+}
+function threadContext(thread: ChatThread) {
+  if (thread.kind === "person") return "Lični razgovor";
+  return thread.inbox === "business" ? "Upit za djelatnost" : "Djelatnost";
+}
+function ThreadAvatar({ thread }: { thread?: ChatThread }) {
+  return (
+    <span className={styles.avatar} aria-hidden="true">
+      {thread?.kind === "business" ? (
+        <Icon name="shop" />
+      ) : thread?.title ? (
+        initials(thread.title)
+      ) : (
+        <Icon name="message" />
+      )}
+    </span>
+  );
 }
 function mergeMessages(previous: ChatMessage[], incoming: ChatMessage[]) {
   const messages = new Map(previous.map((message) => [message.sequence, message]));
@@ -88,6 +143,9 @@ export function MessagingInbox({
 }) {
   const [inbox, setInbox] = useState<MessageInbox>("personal");
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState(baseFilters);
+  const [showSafetyTip, setShowSafetyTip] = useState(false);
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [listReady, setListReady] = useState(false);
@@ -122,7 +180,7 @@ export function MessagingInbox({
   const writing = useRef(false);
   const pendingRef = useRef<Intent | null>(null);
   const selection = useRef<string | null>(null);
-  const view = useRef({ inbox, page });
+  const view = useRef({ inbox, page, ...filters });
   const enabled = useRef(active);
   const listCache = useRef(new Map<string, ChatThreadPage>());
   const conversationCache = useRef(new Map<string, ChatConversation>());
@@ -131,10 +189,15 @@ export function MessagingInbox({
   const unpersistedDrafts = useRef(new Set<string>());
   const handledTarget = useRef("");
   const controllers = useRef(new Set<AbortController>());
+  const listController = useRef<AbortController | null>(null);
   const previousTransport = useRef({ request, preview, expectedAccountId });
   const scroll = useRef<HTMLDivElement | null>(null);
+  const inboxSearch = useRef<HTMLInputElement | null>(null);
+  const chatHeader = useRef<HTMLElement | null>(null);
+  const restoreRowFocus = useRef<HTMLButtonElement | null>(null);
+  const focusAfterSelection = useRef<"chat" | "list" | null>(null);
   const previousLast = useRef<string | null>(null);
-  view.current = { inbox, page };
+  view.current = { inbox, page, ...filters };
   enabled.current = active;
   const usable = messageIdentifier(expectedAccountId) && !(preview && request === messagingRequest);
   const scopedRequest = useCallback<MessagingRequest>(
@@ -171,6 +234,9 @@ export function MessagingInbox({
     writing.current = false;
     if (resetTarget) handledTarget.current = "";
     setSelected(null);
+    setSearch("");
+    setFilters(baseFilters);
+    setPage(1);
     setConversation(null);
     setThreads([]);
     setHasMore(false);
@@ -205,24 +271,33 @@ export function MessagingInbox({
     [clearPrivate, store],
   );
   const updateThread = useCallback((thread: ChatThread) => {
+    const update = (items: ChatThread[], unreadOnly: boolean) =>
+      items.flatMap((item) =>
+        item.id !== thread.id ? [item] : unreadOnly && !thread.unreadCount ? [] : [thread],
+      );
     for (const [key, value] of listCache.current) {
       listCache.current.set(key, {
         ...value,
-        items: value.items.map((item) => (item.id === thread.id ? thread : item)),
+        items: update(value.items, key.split(":", 3)[2] === "unread"),
       });
     }
-    setThreads((items) => items.map((item) => (item.id === thread.id ? thread : item)));
+    setThreads((items) => update(items, view.current.unreadOnly));
   }, []);
 
   const loadList = useCallback(
-    async (selectedInbox: MessageInbox, selectedPage: number, quiet = false) => {
+    async (
+      selectedInbox: MessageInbox,
+      selectedPage: number,
+      quiet = false,
+      criteria: MailboxFilters = view.current,
+    ) => {
       if (!usable) {
         setError("Pregled poruka trenutno nije dostupan.");
         return;
       }
       const generation = scope.current,
         ticket = ++listRevision.current;
-      const key = `${selectedInbox}:${selectedPage}`,
+      const key = listKey(selectedInbox, selectedPage, criteria),
         cached = listCache.current.get(key);
       if (!quiet) {
         setThreads(cached?.items ?? []);
@@ -230,11 +305,13 @@ export function MessagingInbox({
         setListReady(Boolean(cached));
         setLoading(true);
       }
+      listController.current?.abort();
       const controller = new AbortController();
+      listController.current = controller;
       controllers.current.add(controller);
       try {
         const value = readChatThreadPage(
-          await scopedRequest(`threads?inbox=${selectedInbox}&page=${selectedPage}`, {
+          await scopedRequest(listPath(selectedInbox, selectedPage, criteria), {
             signal: controller.signal,
           }),
         );
@@ -250,10 +327,11 @@ export function MessagingInbox({
           ticket !== listRevision.current
         )
           return;
-        listCache.current.set(key, value);
+        if (!criteria.query) listCache.current.set(key, value);
         setAuthorityVerified(true);
         setRequiresLogin(false);
-        if (view.current.inbox === selectedInbox && view.current.page === selectedPage) {
+        const current = view.current;
+        if (listKey(current.inbox, current.page, current) === key) {
           setThreads(value.items);
           setHasMore(value.hasMore);
           setListReady(true);
@@ -267,6 +345,7 @@ export function MessagingInbox({
         )
           fail(failure);
       } finally {
+        if (listController.current === controller) listController.current = null;
         controllers.current.delete(controller);
         if (alive.current && scope.current === generation && ticket === listRevision.current)
           setLoading(false);
@@ -378,6 +457,8 @@ export function MessagingInbox({
             conversationCache.current.set(id, marked);
             setConversation(marked);
             updateThread(marked.thread);
+            const currentView = view.current;
+            if (currentView.unreadOnly) void loadList(currentView.inbox, currentView.page, true);
             return marked;
           }
         }
@@ -399,7 +480,7 @@ export function MessagingInbox({
         }
       }
     },
-    [fail, scopedRequest, updateThread, usable, store],
+    [fail, loadList, scopedRequest, updateThread, usable, store],
   );
 
   const commit = useCallback(
@@ -518,7 +599,7 @@ export function MessagingInbox({
         setRequiresLogin(false);
         setInbox(fresh.thread.inbox);
         setPage(1);
-        view.current = { inbox: fresh.thread.inbox, page: 1 };
+        view.current = { ...view.current, inbox: fresh.thread.inbox, page: 1 };
         await loadList(fresh.thread.inbox, 1, true);
         if (!alive.current || scope.current !== generation) return;
         if (enabled.current && document.visibilityState === "visible")
@@ -594,12 +675,12 @@ export function MessagingInbox({
         pendingInbox.current = saved.inbox;
         setPending(saved.intent);
         setInbox(saved.inbox);
-        view.current = { inbox: saved.inbox, page: 1 };
+        view.current = { ...view.current, inbox: saved.inbox, page: 1 };
       } else {
         const last = store?.readSelection();
         if (last && !initialTarget && !initialBusinessThread) {
           setInbox(last.inbox);
-          view.current = { inbox: last.inbox, page: 1 };
+          view.current = { ...view.current, inbox: last.inbox, page: 1 };
           selection.current = last.threadId;
           setSelected(last.threadId);
           void loadConversation(last.threadId);
@@ -647,11 +728,37 @@ export function MessagingInbox({
     return () => window.removeEventListener("storage", onStorage);
   }, [clearPrivate, store, authorityVerified]);
   useEffect(() => {
-    if (active) void loadList(inbox, page);
+    if (active) void loadList(inbox, page, false, filters);
     return () => {
-      for (const controller of controllers.current) controller.abort();
+      listController.current?.abort();
     };
-  }, [active, inbox, loadList, page]);
+  }, [active, filters, inbox, loadList, page]);
+  useEffect(() => {
+    if (!active) for (const controller of controllers.current) controller.abort();
+  }, [active]);
+  useEffect(() => {
+    const debounce = window.setTimeout(() => {
+      let query = "";
+      try {
+        query = normalizeMessageSearch(search.trim());
+      } catch {
+        // The controlled input normally permits only a bounded, single-line query.
+        return;
+      }
+      if (query === view.current.query) return;
+      setPage(1);
+      setFilters((current) => ({ ...current, query }));
+    }, 220);
+    return () => window.clearTimeout(debounce);
+  }, [search]);
+  useEffect(() => {
+    if (preview) return;
+    try {
+      setShowSafetyTip(sessionStorage.getItem("ahibizz.messages.safety-dismissed") !== "1");
+    } catch {
+      setShowSafetyTip(true);
+    }
+  }, [preview]);
   const handledInquiry = useRef("");
   useEffect(() => {
     if (!active || !initialBusinessThread) {
@@ -758,9 +865,20 @@ export function MessagingInbox({
       scroll.current?.scrollTo({ top: scroll.current.scrollHeight, behavior: "instant" });
     previousLast.current = last;
   }, [conversation]);
+  useEffect(() => {
+    if (focusAfterSelection.current === "chat" && selected) {
+      chatHeader.current?.focus({ preventScroll: true });
+    } else if (focusAfterSelection.current === "list" && !selected) {
+      const row = restoreRowFocus.current;
+      (row?.isConnected ? row : inboxSearch.current)?.focus({ preventScroll: true });
+    }
+    focusAfterSelection.current = null;
+  }, [selected]);
 
-  function choose(thread: ChatThread) {
+  function choose(thread: ChatThread, trigger: HTMLButtonElement) {
     if (busy || pending || selection.current === thread.id) return;
+    focusAfterSelection.current = "chat";
+    restoreRowFocus.current = trigger;
     selection.current = thread.id;
     setSelected(thread.id);
     setDraft(draftCache.current.get(`${thread.inbox}:${thread.id}`) ?? "");
@@ -773,6 +891,20 @@ export function MessagingInbox({
     setConversation(conversationCache.current.get(thread.id) ?? null);
     void loadConversation(thread.id);
   }
+  function closeConversation() {
+    if (busy || pending) return;
+    focusAfterSelection.current = "list";
+    try {
+      store?.clearSelection(selection.current);
+    } catch {
+      // The draft remains available in storage even if the last-open pointer cannot be cleared.
+    }
+    selection.current = null;
+    setSelected(null);
+    setConversation(null);
+    setDraft("");
+    setError("");
+  }
   function switchInbox(next: MessageInbox) {
     if (next === inbox || busy || pending) return;
     selection.current = null;
@@ -782,11 +914,24 @@ export function MessagingInbox({
     setError("");
     setInbox(next);
     setPage(1);
-    view.current = { inbox: next, page: 1 };
-    const cached = listCache.current.get(`${next}:1`);
+    view.current = { ...view.current, inbox: next, page: 1 };
+    const cached = listCache.current.get(listKey(next, 1, filters));
     setThreads(cached?.items ?? []);
     setHasMore(cached?.hasMore ?? false);
     setListReady(Boolean(cached));
+  }
+  function filterUnread(unreadOnly: boolean) {
+    if (busy || pending || filters.unreadOnly === unreadOnly) return;
+    setPage(1);
+    setFilters((current) => ({ ...current, unreadOnly }));
+  }
+  function dismissSafetyTip() {
+    setShowSafetyTip(false);
+    try {
+      sessionStorage.setItem("ahibizz.messages.safety-dismissed", "1");
+    } catch {
+      // Dismissal still applies to the current view.
+    }
   }
   function refresh() {
     if (busy || pending) return;
@@ -838,23 +983,15 @@ export function MessagingInbox({
     }
   }
   const thread = conversation?.thread;
-  return (
-    <section className={styles.workspace} aria-label="Poruke" data-design="messages-panel">
-      {heading && (
-        <header className={styles.heading}>
-          <div>
-            <h1>Poruke</h1>
-          </div>
-          <button
-            type="button"
-            className={styles.refresh}
-            onClick={refresh}
-            disabled={busy || Boolean(pending) || !usable}
-          >
-            Osvježi
-          </button>
-        </header>
-      )}
+  const shownThread = thread ?? threads.find((item) => item.id === selected);
+  const interactionLocked = busy || Boolean(pending);
+  const today = new Date();
+  const datedMessages = conversation?.items.map((item) => {
+    const date = new Date(item.createdAt);
+    return { item, date, day: messageDate.format(date) };
+  });
+  const feedback = (
+    <>
       {error && (
         <div role="alert" className={styles.error}>
           <p>{error}</p>
@@ -887,48 +1024,148 @@ export function MessagingInbox({
           </button>
         </div>
       )}
+    </>
+  );
+  return (
+    <section
+      className={styles.workspace}
+      aria-label="Poruke"
+      data-design="messages-panel"
+      data-message-chat={active && selected ? "open" : undefined}
+    >
       <div className={`${styles.layout} ${selected ? styles.hasSelection : ""}`}>
         <aside className={styles.sidebar} aria-label="Razgovori">
-          <div className={styles.tabs} role="tablist" aria-label="Sandučić">
-            {(
-              [
-                ["personal", "Lično"],
-                ["business", "Djelatnosti"],
-              ] as const
-            ).map(([value, label]) => (
+          <header className={styles.inboxHeader}>
+            <div className={styles.inboxTitle}>
+              {heading ? (
+                <h1>Poruke</h1>
+              ) : (
+                <strong className={styles.sectionLabel}>Razgovori</strong>
+              )}
               <button
-                role="tab"
-                aria-selected={inbox === value}
                 type="button"
-                key={value}
-                onClick={() => switchInbox(value)}
-                disabled={busy || Boolean(pending)}
+                className={styles.refresh}
+                onClick={refresh}
+                disabled={interactionLocked || !usable}
+                aria-label="Osvježi razgovore"
+                title="Osvježi razgovore"
               >
-                {label}
+                <Icon name="refresh" />
               </button>
-            ))}
-          </div>
+            </div>
+            <div className={styles.searchField}>
+              <span className={styles.searchIcon}>
+                <Icon name="search" />
+              </span>
+              <input
+                ref={inboxSearch}
+                type="search"
+                autoComplete="off"
+                aria-label="Pretraži razgovore"
+                placeholder="Pretraži razgovore"
+                maxLength={messageSearchLimit}
+                disabled={interactionLocked || !usable}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+              {search && (
+                <button
+                  type="button"
+                  className={styles.clearSearch}
+                  disabled={interactionLocked}
+                  aria-label="Obriši pretragu"
+                  onClick={() => {
+                    setSearch("");
+                    inboxSearch.current?.focus();
+                  }}
+                >
+                  <Icon name="close" />
+                </button>
+              )}
+            </div>
+            <div className={styles.listControls}>
+              <fieldset className={styles.tabs}>
+                <legend className={styles.srOnly}>Sandučić</legend>
+                <button
+                  type="button"
+                  aria-pressed={inbox === "personal"}
+                  onClick={() => switchInbox("personal")}
+                  disabled={interactionLocked}
+                >
+                  Lično
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={inbox === "business"}
+                  onClick={() => switchInbox("business")}
+                  disabled={interactionLocked}
+                >
+                  Djelatnosti
+                </button>
+              </fieldset>
+              <fieldset className={styles.filterGroup}>
+                <legend className={styles.srOnly}>Status razgovora</legend>
+                <button
+                  type="button"
+                  aria-pressed={!filters.unreadOnly}
+                  onClick={() => filterUnread(false)}
+                  disabled={interactionLocked}
+                >
+                  Svi
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={filters.unreadOnly}
+                  onClick={() => filterUnread(true)}
+                  disabled={interactionLocked}
+                >
+                  Nepročitani
+                </button>
+              </fieldset>
+            </div>
+          </header>
+          {!selected && feedback}
+          {showSafetyTip && !filters.query && !filters.unreadOnly && (
+            <div className={styles.infoBanner}>
+              <Icon name="shield" />
+              <Link href="/pomoc?tema=sigurnost">Savjeti za sigurno dopisivanje</Link>
+              <button
+                className={styles.clearSearch}
+                type="button"
+                aria-label="Sakrij savjet"
+                onClick={dismissSafetyTip}
+              >
+                <Icon name="close" />
+              </button>
+            </div>
+          )}
           <div className={styles.threadList} aria-busy={loading}>
             {threads.map((item) => (
               <button
                 key={item.id}
                 type="button"
-                className={`${styles.thread} ${selected === item.id ? styles.selected : ""}`}
+                className={`${styles.thread} ${selected === item.id ? styles.selected : ""} ${item.unreadCount ? styles.unreadThread : ""}`}
                 aria-current={selected === item.id ? "true" : undefined}
-                onClick={() => choose(item)}
-                disabled={busy || Boolean(pending)}
+                onClick={(event) => choose(item, event.currentTarget)}
+                disabled={interactionLocked}
               >
-                <span className={styles.avatar} aria-hidden="true">
-                  {item.kind === "business" ? <Icon name="shop" /> : initials(item.title)}
-                </span>
+                <ThreadAvatar thread={item} />
                 <span className={styles.threadBody}>
                   <strong>{item.title}</strong>
-                  <span>{item.lastMessage?.body ?? "Započni razgovor"}</span>
+                  {item.kind === "business" && (
+                    <span className={styles.threadContext}>{threadContext(item)}</span>
+                  )}
+                  <span className={styles.threadPreview}>
+                    {item.lastMessage?.body ?? "Započni razgovor"}
+                  </span>
                 </span>
                 <span className={styles.threadMeta}>
                   {item.lastMessage && (
-                    <time dateTime={item.lastMessage.createdAt}>
-                      {time(item.lastMessage.createdAt)}
+                    <time
+                      dateTime={item.lastMessage.createdAt}
+                      title={messageDate.format(new Date(item.lastMessage.createdAt))}
+                    >
+                      {previewDate(new Date(item.lastMessage.createdAt), today)}
                     </time>
                   )}
                   {item.unreadCount > 0 && (
@@ -941,16 +1178,17 @@ export function MessagingInbox({
               </button>
             ))}
             {threads.length === 0 && (
-              <div className={styles.listEmpty}>
-                <Icon name={inbox === "business" ? "shop" : "message"} />
-                <strong>{loading && !listReady ? "Otvaram poruke…" : "Još nema razgovora"}</strong>
-                {!(loading && !listReady) && (
-                  <span>
-                    {inbox === "business"
-                      ? "Ovdje stižu upiti za tvoje djelatnosti."
-                      : "Javi se osobi ili djelatnosti s njenog profila."}
-                  </span>
-                )}
+              <div className={styles.listEmpty} role="status">
+                <Icon name={filters.query ? "search" : "message"} />
+                <strong>
+                  {loading && !listReady
+                    ? "Otvaram poruke…"
+                    : filters.query
+                      ? "Nema rezultata"
+                      : filters.unreadOnly
+                        ? "Nema nepročitanih razgovora"
+                        : "Još nema razgovora"}
+                </strong>
               </div>
             )}
           </div>
@@ -976,68 +1214,69 @@ export function MessagingInbox({
         </aside>
         <section
           className={styles.conversation}
-          aria-label={thread ? `Razgovor: ${thread.title}` : "Izabrani razgovor"}
+          aria-label={shownThread ? `Razgovor: ${shownThread.title}` : "Izabrani razgovor"}
         >
           {selected ? (
             <>
-              <header className={styles.conversationHeader}>
+              <header className={styles.conversationHeader} ref={chatHeader} tabIndex={-1}>
                 <button
                   type="button"
                   className={styles.back}
                   aria-label="Nazad na razgovore"
-                  disabled={busy || Boolean(pending)}
-                  onClick={() => {
-                    selection.current = null;
-                    setSelected(null);
-                    setConversation(null);
-                    setDraft("");
-                  }}
+                  disabled={interactionLocked}
+                  onClick={closeConversation}
                 >
                   <Icon name="arrow" />
                 </button>
-                <span className={styles.avatar} aria-hidden="true">
-                  {thread?.kind === "business" ? (
-                    <Icon name="shop" />
-                  ) : (
-                    initials(thread?.title ?? "")
-                  )}
-                </span>
-                <div className={styles.conversationTitle}>
-                  <h2>{thread?.title ?? "Razgovor"}</h2>
-                  <span>
-                    {thread?.kind === "business" ? "Poslovni razgovor" : "Lični razgovor"}
-                  </span>
+                <div className={styles.conversationIdentity}>
+                  <ThreadAvatar thread={shownThread} />
+                  <div className={styles.conversationTitle}>
+                    <h2>{shownThread?.title ?? "Razgovor"}</h2>
+                    {shownThread && <span>{threadContext(shownThread)}</span>}
+                  </div>
                 </div>
                 {thread && (
-                  <button
-                    type="button"
-                    className={styles.block}
-                    disabled={busy || Boolean(pending)}
-                    onClick={() =>
-                      void commit({
-                        action: "block",
-                        path: `threads/${thread.id}/block`,
-                        body: { blocked: !thread.blockedByMe },
-                        threadId: thread.id,
-                        key: crypto.randomUUID(),
-                      })
-                    }
+                  <details
+                    className={styles.conversationMenu}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Escape" || !event.currentTarget.open) return;
+                      event.currentTarget.open = false;
+                      event.currentTarget.querySelector("summary")?.focus();
+                    }}
                   >
-                    {thread.kind === "person"
-                      ? thread.blockedByMe
-                        ? "Odblokiraj korisnika"
-                        : "Blokiraj korisnika"
-                      : thread.blockedByMe
-                        ? "Odblokiraj razgovor"
-                        : "Blokiraj razgovor"}
-                  </button>
+                    <summary aria-label="Opcije razgovora" title="Opcije razgovora">
+                      <Icon name="more" />
+                    </summary>
+                    <div className={styles.menuItems}>
+                      <button
+                        type="button"
+                        className={styles.block}
+                        disabled={interactionLocked}
+                        onClick={(event) => {
+                          const menu = event.currentTarget.closest("details");
+                          if (menu) menu.open = false;
+                          void commit({
+                            action: "block",
+                            path: `threads/${thread.id}/block`,
+                            body: { blocked: !thread.blockedByMe },
+                            threadId: thread.id,
+                            key: crypto.randomUUID(),
+                          });
+                        }}
+                      >
+                        {thread.blockedByMe ? "Odblokiraj" : "Blokiraj"}{" "}
+                        {thread.kind === "person" ? "korisnika" : "razgovor"}
+                      </button>
+                      {!preview && (
+                        <Link href={reportUrl("conversation", thread.id)} className={styles.report}>
+                          Prijavi razgovor
+                        </Link>
+                      )}
+                    </div>
+                  </details>
                 )}
               </header>
-              {thread && !preview && (
-                <Link href={reportUrl("conversation", thread.id)} className={styles.report}>
-                  Prijavi razgovor
-                </Link>
-              )}
+              {feedback}
               <div
                 ref={scroll}
                 className={styles.messages}
@@ -1057,23 +1296,26 @@ export function MessagingInbox({
                   </button>
                 )}
                 {reading && !conversation && <p className={styles.centerNote}>Otvaram razgovor…</p>}
-                {conversation?.items.map((message, index) => (
-                  <div key={message.id}>
-                    {(index === 0 ||
-                      conversation.items[index - 1]?.createdAt.slice(0, 10) !==
-                        message.createdAt.slice(0, 10)) && (
-                      <div className={styles.day}>{day(message.createdAt)}</div>
-                    )}
-                    <div
-                      className={`${styles.messageRow} ${message.from === "me" ? styles.fromMe : ""}`}
-                    >
-                      <div className={styles.bubble}>
-                        <p>{message.body}</p>
-                        <time dateTime={message.createdAt}>{time(message.createdAt)}</time>
+                {datedMessages?.map(({ item, date, day }, index) => {
+                  const previous = datedMessages[index - 1];
+                  const next = datedMessages[index + 1];
+                  const isDayStart = previous?.day !== day;
+                  const startsGroup = isDayStart || previous?.item.from !== item.from;
+                  const endsGroup = next?.day !== day || next?.item.from !== item.from;
+                  return (
+                    <div key={item.id} className={styles.bubbleStack}>
+                      {isDayStart && <div className={styles.day}>{day}</div>}
+                      <div
+                        className={`${styles.messageRow} ${item.from === "me" ? styles.fromMe : ""} ${startsGroup ? styles.groupStart : ""} ${endsGroup ? styles.groupEnd : ""}`}
+                      >
+                        <div className={styles.bubble}>
+                          <p>{item.body}</p>
+                          <time dateTime={item.createdAt}>{messageTime.format(date)}</time>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {conversation && conversation.items.length === 0 && (
                   <div className={styles.emptyConversation}>
                     <Icon name="message" />
@@ -1083,8 +1325,11 @@ export function MessagingInbox({
                 )}
               </div>
               {thread && !thread.canSend && (
-                <p className={styles.blocked}>
-                  {thread.blocked ? "Razgovor je blokiran." : "Nove poruke trenutno nisu dostupne."}
+                <p className={styles.composerInfo}>
+                  <Icon name="info" />
+                  {thread.blocked
+                    ? "Razgovor je blokiran."
+                    : "Na ovaj razgovor trenutno ne možeš odgovoriti."}
                 </p>
               )}
               {preview && onSimulateReply && thread && (
@@ -1105,72 +1350,73 @@ export function MessagingInbox({
                   Isprobaj odgovor
                 </button>
               )}
-              <form
-                className={styles.composer}
-                data-design="message-composer"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  send();
-                }}
-              >
-                <label className={styles.srOnly} htmlFor={`message-${selected}`}>
-                  Tvoja poruka
-                </label>
-                <textarea
-                  id={`message-${selected}`}
-                  rows={2}
-                  maxLength={2000}
-                  value={draft}
-                  placeholder="Napiši poruku…"
-                  disabled={!thread?.canSend || busy || Boolean(pending)}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    if (selected) {
-                      const selectedInbox = conversation?.thread.inbox ?? inbox;
-                      draftCache.current.set(`${selectedInbox}:${selected}`, value);
-                      try {
-                        const revision = store?.saveDraft(selected, selectedInbox, value);
-                        draftRevisions.current.set(
-                          `${selectedInbox}:${selected}`,
-                          revision ?? null,
-                        );
-                        store?.saveSelection(selected, selectedInbox);
-                        unpersistedDrafts.current.delete(`${selectedInbox}:${selected}`);
-                        setStorageWarning("");
-                      } catch {
-                        unpersistedDrafts.current.add(`${selectedInbox}:${selected}`);
-                        setStorageWarning(
-                          "Nacrt se trenutno čuva samo dok je aplikacija otvorena.",
-                        );
-                      }
-                    }
-                    setDraft(value);
+              {thread?.canSend && (
+                <form
+                  className={styles.composer}
+                  data-design="message-composer"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    send();
                   }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-                      event.preventDefault();
-                      send();
-                    }
-                  }}
-                />
-                <button
-                  type="submit"
-                  className={styles.send}
-                  aria-label="Pošalji poruku"
-                  disabled={!thread?.canSend || !draft.trim() || busy || Boolean(pending)}
                 >
-                  <Icon name="arrow" />
-                  <span>Pošalji</span>
-                </button>
-              </form>
+                  <label className={styles.srOnly} htmlFor={`message-${selected}`}>
+                    Tvoja poruka
+                  </label>
+                  <textarea
+                    id={`message-${selected}`}
+                    rows={2}
+                    maxLength={2000}
+                    value={draft}
+                    placeholder="Napiši poruku…"
+                    disabled={!thread?.canSend || busy || Boolean(pending)}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      if (selected) {
+                        const selectedInbox = conversation?.thread.inbox ?? inbox;
+                        draftCache.current.set(`${selectedInbox}:${selected}`, value);
+                        try {
+                          const revision = store?.saveDraft(selected, selectedInbox, value);
+                          draftRevisions.current.set(
+                            `${selectedInbox}:${selected}`,
+                            revision ?? null,
+                          );
+                          store?.saveSelection(selected, selectedInbox);
+                          unpersistedDrafts.current.delete(`${selectedInbox}:${selected}`);
+                          setStorageWarning("");
+                        } catch {
+                          unpersistedDrafts.current.add(`${selectedInbox}:${selected}`);
+                          setStorageWarning(
+                            "Nacrt se trenutno čuva samo dok je aplikacija otvorena.",
+                          );
+                        }
+                      }
+                      setDraft(value);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                        event.preventDefault();
+                        send();
+                      }
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    className={styles.send}
+                    aria-label="Pošalji poruku"
+                    disabled={!thread?.canSend || !draft.trim() || busy || Boolean(pending)}
+                  >
+                    <Icon name="arrow" />
+                    <span>Pošalji</span>
+                  </button>
+                </form>
+              )}
             </>
           ) : (
             <div className={styles.welcome}>
               <span className={styles.welcomeIcon}>
                 <Icon name="message" />
               </span>
-              <h2>Tvoji razgovori, na jednom mjestu.</h2>
-              <p>Izaberi razgovor s lijeve strane.</p>
+              <h2>Izaberi razgovor</h2>
             </div>
           )}
         </section>

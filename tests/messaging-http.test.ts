@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ChatConversation, ChatReceipt, ChatThread } from "../src/lib/messaging";
+import {
+  type ChatConversation,
+  type ChatReceipt,
+  type ChatThread,
+  messageSearchLimit,
+} from "../src/lib/messaging";
 import { AccountAccessError } from "../src/server/auth/accounts";
 import { MessagingAccessError, type MessagingService } from "../src/server/messaging";
 import { createMessagingHttpHandler, handleMessagingRequest } from "../src/server/messaging-http";
@@ -130,6 +135,25 @@ test("private GETs forward signed request headers and closed pagination, project
   assert.deepEqual(f.calls[3]?.args[2], {});
 });
 
+test("the list endpoint accepts bounded literal search and unread filters with private cache policy", async () => {
+  const f = fixture();
+  const filters = new URLSearchParams({
+    inbox: "business",
+    page: "2",
+    q: "  C\u030caj & 100%_  ",
+    unread: "1",
+  });
+  assert.equal((await f.send("GET", `/api/messaging/threads?${filters}`)).status, 200);
+  assert.deepEqual(f.calls[0]?.args[1], {
+    inbox: "business",
+    page: 2,
+    q: "Čaj & 100%_",
+    unread: true,
+  });
+  assert.equal((await f.send("GET", "/api/messaging/threads?q=++")).status, 200);
+  assert.deepEqual(f.calls[1]?.args[1], { inbox: "personal", page: 1 });
+});
+
 test("open, send, block and read dispatch exactly once with original intent/key and whitelist each acknowledgement", async () => {
   const f = fixture();
   const openInput = { kind: "person", targetId: "fixture-person" };
@@ -188,10 +212,19 @@ test("unsupported paths and verbs and foreign/duplicate/coerced query input neve
     "/api/messaging/threads?page=1.0",
     "/api/messaging/threads?page=1001",
     "/api/messaging/threads?owner=other",
+    "/api/messaging/threads?q=Prvi&q=Drugi",
+    "/api/messaging/threads?unread=0",
+    "/api/messaging/threads?unread=true",
+    "/api/messaging/threads?unread=1&unread=1",
+    "/api/messaging/threads?q=%E0%A4%A",
+    "/api/messaging/threads?q=x%0Ay",
+    `/api/messaging/threads?q=${"x".repeat(messageSearchLimit + 1)}`,
     `/api/messaging/threads/${id}?before=0`,
     `/api/messaging/threads/${id}?before=2147483648`,
     `/api/messaging/threads/${id}?before=2&before=3`,
     `/api/messaging/threads/${id}?page=1`,
+    `/api/messaging/threads/${id}?q=Eden`,
+    `/api/messaging/threads/${id}?unread=1`,
     `/api/messaging/threads/${id}#secret`,
   ])
     assert.equal((await f.send("GET", path)).status, 400, path);
