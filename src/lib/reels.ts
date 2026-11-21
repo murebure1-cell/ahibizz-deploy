@@ -23,6 +23,14 @@ export type PublicReel = {
   hasPoster: boolean;
   publishedAt: string | null;
 };
+export type ReelFeedPage = { items: PublicReel[]; next: string | null };
+export type ReelEngagement = {
+  likes: number;
+  views: number;
+  liked: boolean;
+  canLike: boolean;
+  accountId: string | null;
+};
 export type ManagedReel = Omit<PublicReel, "durationMs" | "businessLogo"> & {
   status: ReelStatus;
   durationMs: number | null;

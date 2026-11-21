@@ -1,14 +1,17 @@
 import { businessUuid } from "../../../../lib/business-today";
 import { IS_PLAY_EDITION } from "../../../../lib/distribution";
 import { reelPartBytes } from "../../../../lib/reels";
+import { getSearchBlockViewer } from "../../../../server/account-blocks";
 import { AccountAccessError } from "../../../../server/auth/accounts";
 import { readAuthConfiguration } from "../../../../server/auth/config";
 import { checkContribution } from "../../../../server/community-rules";
 import { readFlatJson } from "../../../../server/flat-json";
+import { parseReelEngagement, readReelEngagement } from "../../../../server/reels/engagement";
 import { readReelRange } from "../../../../server/reels/range";
 import {
   applyReelCommand,
   parseReelCommand,
+  readReelFeed,
   reelMediaAccess,
   uploadReelPart,
 } from "../../../../server/reels/service";
@@ -16,8 +19,15 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 type Params = { params: Promise<{ path: string[] }> };
-const json = (value: unknown, status = 200) =>
-  Response.json(value, { status, headers: { "Cache-Control": "private, no-store" } });
+function json(value: unknown, status = 200, cookie?: string | null) {
+  const headers = new Headers({
+    "Cache-Control": "private, no-store",
+    "X-Content-Type-Options": "nosniff",
+    "Cross-Origin-Resource-Policy": "same-origin",
+  });
+  if (cookie) headers.set("Set-Cookie", cookie);
+  return Response.json(value, { status, headers });
+}
 const notFound = () => new AccountAccessError(404, "REEL_NOT_FOUND");
 function fail(error: unknown) {
   return error instanceof AccountAccessError
@@ -25,34 +35,45 @@ function fail(error: unknown) {
     : json({ code: "REEL_UNAVAILABLE" }, 503);
 }
 
-function requireWrite(request: Request, type: string) {
+function requireWrite(request: Request, type: string, identity = true) {
   const configuration = readAuthConfiguration();
   if (!configuration || request.headers.get("origin") !== new URL(configuration.baseURL).origin)
     throw new AccountAccessError(403, "INVALID_ORIGIN");
   if (request.headers.get("content-type")?.split(";")[0]?.trim() !== type)
     throw new AccountAccessError(415, "REEL_INPUT");
-  if (!request.headers.get("X-AhiBizz-Account-ID"))
+  if (identity && !request.headers.get("X-AhiBizz-Account-ID"))
     throw new AccountAccessError(401, "AUTHENTICATION_REQUIRED");
+  return configuration;
+}
+
+function jsonCommand(request: Request) {
+  return readFlatJson(
+    request,
+    () => {
+      throw new AccountAccessError(400, "REEL_INPUT");
+    },
+    () => {
+      throw new AccountAccessError(413, "REEL_INPUT");
+    },
+  );
 }
 
 export async function POST(request: Request, { params }: Params) {
   try {
     const { path } = await params;
     const [area, id] = path;
+    if (area === "engagement") {
+      if (!businessUuid(id) || path.length !== 2 || new URL(request.url).searchParams.size)
+        throw notFound();
+      const config = requireWrite(request, "application/json", false);
+      const input = parseReelEngagement(await jsonCommand(request));
+      const result = await readReelEngagement(request.headers, id.toLowerCase(), input, config);
+      return json(result.stats, 200, result.cookie);
+    }
     if ((area !== "mine" && area !== "moderation") || !id || !businessUuid(id) || path.length !== 2)
       throw notFound();
     requireWrite(request, "application/json");
-    const input = parseReelCommand(
-      await readFlatJson(
-        request,
-        () => {
-          throw new AccountAccessError(400, "REEL_INPUT");
-        },
-        () => {
-          throw new AccountAccessError(413, "REEL_INPUT");
-        },
-      ),
-    );
+    const input = parseReelCommand(await jsonCommand(request));
     const review = input.action === "approve" || input.action === "reject";
     if (review !== (area === "moderation")) throw notFound();
     if (input.action === "create" || input.action === "submit") {
@@ -147,9 +168,49 @@ async function media(request: Request, { params }: Params) {
 
 export async function GET(request: Request, params: Params) {
   try {
+    const { path } = await params.params;
+    const [area, id] = path;
+    if (area === "feed" || area === "engagement") {
+      if (!businessUuid(id) || path.length !== 2) throw notFound();
+      const query = new URL(request.url).searchParams;
+      if (area === "engagement") {
+        if (query.size || request.headers.get("sec-fetch-site") === "cross-site") throw notFound();
+        const config = readAuthConfiguration();
+        if (!config) throw new AccountAccessError(503, "REEL_UNAVAILABLE");
+        const result = await readReelEngagement(request.headers, id.toLowerCase(), null, config);
+        return json(result.stats, 200, result.cookie);
+      }
+      const scopes = query.getAll("djelatnost");
+      const origins = query.getAll("pocetak");
+      const [scope] = scopes;
+      const [origin] = origins;
+      if (
+        query.size !== scopes.length + origins.length ||
+        scopes.length > 1 ||
+        origins.length > 1 ||
+        (scope !== undefined && !businessUuid(scope)) ||
+        (origin !== undefined && !businessUuid(origin))
+      )
+        throw new AccountAccessError(400, "REEL_INPUT");
+      const viewer = await getSearchBlockViewer(request.headers);
+      return json(
+        await readReelFeed(
+          id.toLowerCase(),
+          scope?.toLowerCase() ?? null,
+          viewer,
+          origin?.toLowerCase(),
+        ),
+      );
+    }
     return await media(request, params);
   } catch (error) {
     return fail(error);
   }
 }
-export const HEAD = GET;
+export async function HEAD(request: Request, params: Params) {
+  try {
+    return await media(request, params);
+  } catch (error) {
+    return fail(error);
+  }
+}

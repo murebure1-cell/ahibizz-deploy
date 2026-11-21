@@ -36,7 +36,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Promis
         <p>Kratki snimci rada, prostora i ponude.</p>
       </header>
       {results?.length ? (
-        <ReelCards reels={results.slice(0, pageSize)} businessScope={businessId} />
+        <ReelCards reels={results.slice(0, pageSize)} businessScope={businessId} page={page} />
       ) : (
         <p className={styles.empty}>
           {results

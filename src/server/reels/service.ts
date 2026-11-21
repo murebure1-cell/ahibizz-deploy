@@ -3,6 +3,7 @@ import { businessUuid } from "../../lib/business-today";
 import {
   type ManagedReel,
   type PublicReel,
+  type ReelFeedPage,
   type ReelStatus,
   reelAccountLimit,
   reelBusinessLimit,
@@ -25,7 +26,7 @@ const visible = `r.status='published' AND b.deleted_at IS NULL AND b.status='pub
   AND u.approval='approved' AND u."emailVerified" AND u.role IN ('member','owner')`;
 const publicFields = `r.id, r.business_id AS "businessId", b.title AS "businessTitle",
   b.city, r.title, r.caption, r.duration_ms AS "durationMs", r.has_poster AS "hasPoster",
-  r.published_at::text AS "publishedAt"`;
+  to_char(r.published_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "publishedAt"`;
 const cardFields = `${publicFields}, (
   SELECT jsonb_build_object('kind',i.kind,'slot',i.slot,'version',i.version,'width',i.width,'height',i.height)
   FROM directory_business_image i WHERE i.business_id=b.id AND i.kind='logo' AND i.slot=0
@@ -34,7 +35,7 @@ const managementFields = `${publicFields}, r.status, r.review_reason AS "reviewR
   r.created_at::text AS "createdAt", r.price_minor::double precision/100 AS "priceCredits",
   r.wallet_payment_id IS NOT NULL AS paid`;
 const fromReels = `FROM business_reel r JOIN directory_business b ON b.id=r.business_id`;
-const publicReels = `${fromReels} JOIN auth_user u ON u.id=b.owner_user_id WHERE ${visible}`;
+export const publicReels = `${fromReels} JOIN auth_user u ON u.id=b.owner_user_id WHERE ${visible}`;
 
 function context() {
   const auth = getAuthService();
@@ -63,34 +64,58 @@ export async function listPublicReels(
   return rows;
 }
 
-export async function readPublicReel(id: string) {
+export async function readPublicReel(id: string, viewerId: string | null = null) {
   if (!businessUuid(id)) return null;
   const pool = getAuthDatabasePool();
   if (!pool) return null;
-  const { rows } = await pool.query<PublicReel>(`SELECT ${cardFields} ${publicReels} AND r.id=$1`, [
-    id,
-  ]);
+  const { rows } = await pool.query<PublicReel>(
+    `SELECT ${cardFields} ${publicReels} AND r.id=$1
+     AND ($2::text IS NULL OR NOT EXISTS (
+       SELECT 1 FROM people_block pb WHERE pb.actor_id=$2 AND pb.target_id=r.submitted_by AND pb.blocked
+     ))`,
+    [id, viewerId],
+  );
   return rows[0] ?? null;
 }
 
-export async function reelNeighbors(
-  reel: PublicReel,
+/** View the selected clip first, then older clips, followed by remaining newer clips once. */
+export async function readReelFeed(
+  cursor: string,
   businessId: string | null,
   viewerId: string | null,
-) {
-  const pool = getAuthDatabasePool();
-  if (!pool || !reel.publishedAt) return { previous: null, next: null };
-  const { rows } = await pool.query<{ previous: string | null; next: string | null }>(
-    `SELECT (
-       SELECT r.id ${publicReels} AND ($3::uuid IS NULL OR b.id=$3) AND ${discoverable}
-         AND (r.published_at,r.id)>($1::timestamptz,$2::uuid) ORDER BY r.published_at,r.id LIMIT 1
-     ) AS previous,(
-       SELECT r.id ${publicReels} AND ($3::uuid IS NULL OR b.id=$3) AND ${discoverable}
-         AND (r.published_at,r.id)<($1::timestamptz,$2::uuid) ORDER BY r.published_at DESC,r.id DESC LIMIT 1
-     ) AS next`,
-    [reel.publishedAt, reel.id, businessId, viewerId],
+  origin = cursor,
+  pool = getAuthDatabasePool(),
+): Promise<ReelFeedPage> {
+  const pageSize = 6;
+  if (!businessUuid(cursor) || !businessUuid(origin) || (businessId && !businessUuid(businessId)))
+    throw notFound();
+  if (!pool) throw new AccountAccessError(503, "REEL_UNAVAILABLE");
+  // An already displayed anchor can be withdrawn without making the rest of the feed unavailable.
+  // The branches each use the published tuple index and return only a bounded number of rows.
+  const { rows } = await pool.query<PublicReel & { phase: number; orderedAt: Date }>(
+    `WITH anchors AS (
+       SELECT c.id AS cursor_id,c.published_at AS cursor_at,o.id AS origin_id,o.published_at AS origin_at
+       FROM business_reel c JOIN business_reel o ON o.id=$3
+       WHERE c.id=$2 AND c.published_at IS NOT NULL AND o.published_at IS NOT NULL
+         AND ($1::uuid IS NULL OR (c.business_id=$1 AND o.business_id=$1))
+     )
+     SELECT page.* FROM anchors CROSS JOIN LATERAL (
+       (SELECT ${cardFields},0 AS phase,r.published_at AS "orderedAt" ${publicReels}
+        AND ($1::uuid IS NULL OR b.id=$1) AND ${discoverable}
+        AND (cursor_at,cursor_id)<=(origin_at,origin_id)
+        AND (r.published_at,r.id)<(cursor_at,cursor_id)
+        ORDER BY r.published_at DESC,r.id DESC LIMIT $5)
+       UNION ALL
+       (SELECT ${cardFields},1 AS phase,r.published_at AS "orderedAt" ${publicReels}
+        AND ($1::uuid IS NULL OR b.id=$1) AND ${discoverable}
+        AND (r.published_at,r.id)>(origin_at,origin_id)
+        AND ((cursor_at,cursor_id)<=(origin_at,origin_id) OR (r.published_at,r.id)<(cursor_at,cursor_id))
+        ORDER BY r.published_at DESC,r.id DESC LIMIT $5)
+     ) page ORDER BY phase,"orderedAt" DESC,id DESC LIMIT $5`,
+    [businessId, cursor, origin, viewerId, pageSize + 1],
   );
-  return rows[0] ?? { previous: null, next: null };
+  const items = rows.slice(0, pageSize).map(({ phase, orderedAt, ...item }) => item);
+  return { items, next: rows.length > pageSize ? (items.at(-1)?.id ?? null) : null };
 }
 
 type BusinessChoice = { id: string; title: string };

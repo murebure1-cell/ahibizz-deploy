@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { reelMaxBytes } from "../src/lib/reels";
 import { AccountAccessError } from "../src/server/auth/accounts";
+import { parseReelEngagement, reelBrowser } from "../src/server/reels/engagement";
 import { readReelRange } from "../src/server/reels/range";
 import { parseReelCommand } from "../src/server/reels/service";
 import { verifyReelVideo } from "../src/server/reels/video";
@@ -116,4 +117,36 @@ test("Reel writes require explicit state and bounded metadata", () => {
     { action: "reject", reason: "" },
   ])
     assert.throws(() => parseReelCommand(invalid), AccountAccessError);
+});
+
+test("Reel engagement accepts a closed explicit command shape", () => {
+  assert.deepEqual(parseReelEngagement({ action: "view" }), { action: "view" });
+  for (const liked of [true, false])
+    assert.deepEqual(parseReelEngagement({ action: "like", liked }), { action: "like", liked });
+  for (const value of [
+    { action: "view", count: 4 },
+    { action: "like", liked: "true" },
+    { action: "like" },
+    { action: "toggle" },
+    { action: "view", viewer: "other" },
+  ])
+    assert.throws(() => parseReelEngagement(value), AccountAccessError);
+});
+
+test("anonymous Reel identity is signed, private, and short lived", () => {
+  const secret = "only-reel-fixture-secret-for-signing";
+  const now = Date.UTC(2026, 10, 21);
+  const generated = reelBrowser(new Headers(), secret, true, now);
+  assert.equal(generated.id, null);
+  assert.match(
+    generated.cookie ?? "",
+    /Path=\/api\/reels\/engagement\/; Max-Age=172800; HttpOnly; SameSite=Lax; Secure$/,
+  );
+  const cookie = generated.cookie?.split(";")[0] ?? "";
+  const actual = reelBrowser(new Headers({ cookie }), secret, true, now);
+  assert.match(actual.id ?? "", /^[a-f0-9-]{36}$/);
+  assert.equal(actual.cookie, null);
+  const tampered = `${cookie.slice(0, -3)}xyz`;
+  assert.equal(reelBrowser(new Headers({ cookie: tampered }), secret, true, now).id, null);
+  assert.equal(reelBrowser(new Headers({ cookie }), secret, true, now + 172_801_000).id, null);
 });

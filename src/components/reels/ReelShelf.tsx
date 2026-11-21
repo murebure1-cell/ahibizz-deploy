@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { businessMediaUrl } from "../../lib/business-media";
+import { reelCardPath } from "../../lib/reel-navigation";
 import { type PublicReel, reelDuration, reelMedia } from "../../lib/reels";
 import { listPublicReels } from "../../server/reels/service";
 import { currentReelViewer } from "../../server/reels/viewer";
@@ -10,17 +11,24 @@ export function ReelCards({
   reels,
   shelf = false,
   businessScope = null,
+  page = 1,
 }: {
   reels: PublicReel[];
   shelf?: boolean;
   businessScope?: string | null;
+  page?: number;
 }) {
   return (
     <ul className={shelf ? styles.shelfCards : styles.cards}>
       {reels.map((reel) => (
         <li key={reel.id}>
           <Link
-            href={`/reels/${reel.id}${businessScope ? `?djelatnost=${businessScope}` : ""}`}
+            href={reelCardPath(
+              reel.id,
+              businessScope,
+              shelf ? (businessScope ? "profil" : "pocetna") : undefined,
+              page,
+            )}
             className={styles.reelCard}
             prefetch={false}
           >

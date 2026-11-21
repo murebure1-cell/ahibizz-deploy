@@ -34,6 +34,10 @@ export type IconName =
   | "plus"
   | "more"
   | "refresh"
+  | "volume"
+  | "mute"
+  | "share"
+  | "eye"
   | "download";
 
 const paths: Record<IconName, ReactNode> = {
@@ -87,6 +91,22 @@ const paths: Record<IconName, ReactNode> = {
     </>
   ),
   refresh: <path d="M20 9a8 8 0 0 0-13.6-3L4 8m0-4v4h4m-4 7a8 8 0 0 0 13.6 3l2.4-2m0 4v-4h-4" />,
+  volume: <path d="M4 9v6h4l5 4V5L8 9H4Zm12-.6a5 5 0 0 1 0 7.2m2.4-9.5a8 8 0 0 1 0 11.8" />,
+  mute: <path d="M4 9v6h4l5 4V5L8 9H4Zm12 1 4 4m0-4-4 4" />,
+  share: (
+    <>
+      <circle cx="5" cy="12" r="2.6" />
+      <circle cx="18" cy="5" r="2.6" />
+      <circle cx="18" cy="19" r="2.6" />
+      <path d="m7.5 10.7 8-4.3m-8 6.9 8 4.3" />
+    </>
+  ),
+  eye: (
+    <>
+      <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z" />
+      <circle cx="12" cy="12" r="2.5" />
+    </>
+  ),
   home: (
     <>
       <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" />
