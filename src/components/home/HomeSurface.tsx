@@ -275,7 +275,9 @@ export function HomeSurface({
       </section>
     ),
   };
-  const reelStrip = discovery && <div className={styles.container}>{discovery}</div>;
+  const reelStrip = discovery && (
+    <div className={`${styles.container} ${styles.reelStrip}`}>{discovery}</div>
+  );
   const hasAd = design.homeOrder.includes("ad");
 
   return (

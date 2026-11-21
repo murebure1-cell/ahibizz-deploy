@@ -357,6 +357,9 @@
   width: 21px;
   height: 21px;
 }
+.reelStrip {
+  margin-block-start: clamp(0.85rem, 2vw, 1.25rem);
+}
 .ad {
   display: flex;
   align-items: center;
