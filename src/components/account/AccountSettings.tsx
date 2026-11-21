@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { blockedPeoplePath } from "../../lib/account-blocks";
 import {
   AccountSettingsError,
   accountSettingsActorRequest,
@@ -45,6 +46,7 @@ function SettingsWorkspace({
   onConfirmed,
 }: Props) {
   const { setAppearance, resetAppearance } = useAppAppearance();
+  const [account, setAccount] = useState(initial);
   const scopedRequest = useMemo(
     () => accountSettingsActorRequest(initial.id, request),
     [initial.id, request],
@@ -125,6 +127,7 @@ function SettingsWorkspace({
       setBlocked(false);
       setAccessLost(false);
       setAppearance(account.appearance);
+      setAccount(account);
       changed.current?.(account);
     } catch (failure) {
       if (!live.current || boundary.current !== scopedRequest || current !== revision.current)
@@ -166,6 +169,7 @@ function SettingsWorkspace({
       setConfirmed(account.appearance);
       setDraft(account.appearance);
       setAppearance(account.appearance);
+      setAccount(account);
       changed.current?.(account);
       setNotice("Postavke su sačuvane.");
     } catch (failure) {
@@ -197,9 +201,40 @@ function SettingsWorkspace({
       </header>
       {active && !accessLost && request === accountSettingsRequest && (
         <>
-          <AccountPassword accountId={initial.id} email={initial.email} />
-          <AdPreference accountId={initial.id} />
-          <AudienceSettings accountId={initial.id} />
+          <section className={styles.settingsCard} aria-labelledby="identity-heading">
+            <h2 id="identity-heading">Korisničke informacije</h2>
+            <dl className={styles.settingsIdentity}>
+              <div>
+                <dt>Ime i prezime</dt>
+                <dd>{account.name}</dd>
+              </div>
+              <div>
+                <dt>Email za prijavu</dt>
+                <dd>{account.email}</dd>
+              </div>
+              <div>
+                <dt>Verifikacija emaila</dt>
+                <dd>
+                  {account.emailVerified ? (
+                    <>
+                      <Icon name="check" /> Potvrđen
+                    </>
+                  ) : (
+                    "Čeka potvrdu"
+                  )}
+                </dd>
+              </div>
+            </dl>
+            <div className={styles.settingsLinks}>
+              <Link href="/nalog?odjeljak=profil">
+                <Icon name="user" /> Uredi lične podatke
+              </Link>
+              <Link href="/nalog?odjeljak=djelatnosti">
+                <Icon name="shop" /> Moje djelatnosti
+              </Link>
+            </div>
+          </section>
+          <AccountPassword accountId={account.id} email={account.email} />
         </>
       )}
       <section className={styles.settingsCard} aria-labelledby="appearance-heading">
@@ -277,14 +312,28 @@ function SettingsWorkspace({
           </div>
         </section>
       )}
-      <section className={styles.settingsCard} aria-label="Privatnost naloga">
-        <h2>Privatnost</h2>
-        <p>
-          <Link href="/privatnost">Privatnost i podrška</Link>
-        </p>
-        <p>
-          <Link href="/brisanje-naloga">Zatraži brisanje naloga</Link>
-        </p>
+      {active && !accessLost && request === accountSettingsRequest && (
+        <>
+          <AdPreference accountId={initial.id} />
+          <AudienceSettings accountId={initial.id} />
+        </>
+      )}
+      <section className={styles.settingsCard} aria-labelledby="privacy-heading">
+        <h2 id="privacy-heading">Privatnost i podaci</h2>
+        <div className={styles.settingsLinks}>
+          <Link href={blockedPeoplePath}>
+            <Icon name="user" /> Blokirani korisnici
+          </Link>
+          <Link href="/privatnost">
+            <Icon name="info" /> Pravila privatnosti
+          </Link>
+          <Link href="/pomoc?tema=sigurnost#kontakt">
+            <Icon name="mail" /> Zatraži pristup podacima
+          </Link>
+          <Link href="/brisanje-naloga">
+            <Icon name="shield" /> Zatraži brisanje naloga
+          </Link>
+        </div>
       </section>
     </div>
   );

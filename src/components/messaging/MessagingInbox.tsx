@@ -1023,7 +1023,13 @@ export function MessagingInbox({
                       })
                     }
                   >
-                    {thread.blockedByMe ? "Odblokiraj" : "Blokiraj"}
+                    {thread.kind === "person"
+                      ? thread.blockedByMe
+                        ? "Odblokiraj korisnika"
+                        : "Blokiraj korisnika"
+                      : thread.blockedByMe
+                        ? "Odblokiraj razgovor"
+                        : "Blokiraj razgovor"}
                   </button>
                 )}
               </header>

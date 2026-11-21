@@ -98,6 +98,15 @@ export async function verifyCampaignBriefs({ pool, store, business, member, seco
   assert.equal(new Date(paid.endsAt) - new Date(paid.startsAt), 8 * 86400000);
   assert.ok(!(await store.read(second.headers, "ads", 0)).orders.some((o) => o.id === base.id));
   assert.ok((await store.read(owner.headers, "admin", 0)).orders.some((o) => o.id === base.id));
+  assert.ok(
+    (await store.read(member.headers, "ads", 0, "zakazane")).orders.some((o) => o.id === base.id),
+  );
+  assert.ok(
+    !(await store.read(member.headers, "ads", 0, "aktivne")).orders.some((o) => o.id === base.id),
+  );
+  assert.ok(
+    !(await store.read(second.headers, "ads", 0, "zakazane")).orders.some((o) => o.id === base.id),
+  );
   const next = {
     ...base,
     id: randomUUID(),

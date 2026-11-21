@@ -39,6 +39,30 @@
   color: var(--ui-text-secondary);
   line-height: 1.65;
 }
+.periodSwitch {
+  display: inline-flex;
+  gap: 3px;
+  padding: 4px;
+  margin: 0 0 18px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface-soft);
+}
+.periodSwitch button {
+  min-height: 40px;
+  padding: 6px 15px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--ui-text-secondary);
+  background: transparent;
+  font-weight: 650;
+  cursor: pointer;
+}
+.periodSwitch button[aria-pressed="true"] {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+  border-color: var(--ui-accent-border);
+}
 .plans {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -149,22 +173,7 @@
   font-size: 13px;
   line-height: 1.6;
 }
-.annual {
-  display: grid;
-  gap: 5px;
-  padding-top: 18px;
-  margin-top: 22px;
-  border-top: 1px solid var(--ui-border);
-}
-.annual strong {
-  font-size: 16px;
-  font-weight: 700;
-}
-.annual span {
-  color: var(--ui-muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
+
 .catalogNote {
   margin-block: 22px 30px;
   color: var(--ui-muted);

@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { BlockState } from "../../lib/account-blocks";
 import {
   type PublicPerson,
   publicPersonImageUrl,
@@ -34,6 +35,7 @@ import { PlatformBadges } from "../people/PlatformBadges";
 import { VerificationBadge } from "../VerificationBadge";
 import styles from "./connections.module.css";
 import { PersonAvatar, type PersonMediaUrl, personLocation } from "./PeopleSearch";
+import { ProfileBlockAction } from "./ProfileBlockAction";
 import { PublicPersonBusinesses } from "./PublicPersonBusinesses";
 
 type Action = "request" | "accept" | "decline" | "cancel" | "remove";
@@ -90,6 +92,7 @@ function PersonProfile({
   businessRequest,
 }: ProfileProps) {
   const [tab, setTab] = useState<"about" | "skills" | "businesses">("about");
+  const [contact, setContact] = useState<BlockState | null>(null);
   const tabId = useId(),
     tabButtons = useRef<(HTMLButtonElement | null)[]>([]);
   function tabKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
@@ -366,14 +369,16 @@ function PersonProfile({
               </p>
             )}
             <div className={styles.actions}>
-              {viewerId !== person.id && (!preview || messageHref) && (
-                <Link
-                  className={styles.secondary}
-                  href={messageHref ?? messageLink({ kind: "person", targetId: person.id })}
-                >
-                  <Icon name="message" /> Pošalji poruku
-                </Link>
-              )}
+              {viewerId !== person.id &&
+                contact?.canContact !== false &&
+                (!preview || messageHref) && (
+                  <Link
+                    className={styles.secondary}
+                    href={messageHref ?? messageLink({ kind: "person", targetId: person.id })}
+                  >
+                    <Icon name="message" /> Pošalji poruku
+                  </Link>
+                )}
               {viewerId === person.id ? (
                 <Link className={styles.secondary} href={ownProfileHref}>
                   <Icon name="sliders" /> Moj profil
@@ -382,6 +387,10 @@ function PersonProfile({
                 <Link className={styles.primary} href={signIn}>
                   Prijavi se za povezivanje
                 </Link>
+              ) : contact?.canContact === false ? (
+                <span className={styles.relationship}>
+                  {contact.blockedByMe ? "Blokiran korisnik" : "Kontakt trenutno nije dostupan"}
+                </span>
               ) : relationship?.status === "accepted" ? (
                 <>
                   <span className={styles.relationship}>
@@ -555,9 +564,18 @@ function PersonProfile({
             )}
           </div>
           {!preview && viewerId !== person.id && (
-            <p className={styles.detailRow}>
+            <div className={styles.profileSafety}>
+              {viewerId && request === connectionRequest && (
+                <ProfileBlockAction
+                  key={viewerId}
+                  accountId={viewerId}
+                  personId={person.id}
+                  disabled={busy}
+                  onContact={setContact}
+                />
+              )}
               <Link href={reportUrl("person", person.id)}>Prijavi profil</Link>
-            </p>
+            </div>
           )}
         </article>
       )}

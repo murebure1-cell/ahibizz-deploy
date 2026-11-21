@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { createSupportRequests } from "../../src/server/support-requests.ts";
+import { verifyContentHub } from "./content-hub-cases.mjs";
 
 export async function verifySupportRequests({ auth, pool, owner, member }) {
   const inbox = createSupportRequests(auth, pool);
+  await verifyContentHub({ auth, pool, owner, member });
   await assert.rejects(inbox.pending(member.headers, 0), (e) => e.status === 403);
   const switched = new Headers(member.headers);
   switched.set("X-AhiBizz-Account-ID", owner.user.id);

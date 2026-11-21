@@ -7,6 +7,27 @@
   color: var(--connections-ink);
 }
 
+.profileSafety {
+  display: grid;
+  gap: 10px;
+  padding: 14px clamp(16px, 3vw, 30px);
+  border-top: 1px solid var(--ui-border);
+  color: var(--ui-text-secondary);
+}
+.profileSafety > a {
+  justify-self: start;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.blockControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.blockControls :where(p, span) {
+  margin: 0;
+}
 .workspace :where(h1, h2, h3, p),
 .profile :where(h1, h2, h3, p) {
   margin: 0;

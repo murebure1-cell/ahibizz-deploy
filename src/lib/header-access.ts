@@ -1,4 +1,40 @@
+import { type Appearance, isAppearance } from "./appearance";
 import { type NavigationRole, readEligibleNavigationRole } from "./session-navigation";
+import { validCreditBalance } from "./wallet";
+
+export type HeaderMenuAccount = {
+  id: string;
+  name: string;
+  role: NavigationRole;
+  appearance: Appearance;
+  balance: number | null;
+};
+export async function headerMenuRequest({
+  signal,
+}: {
+  signal: AbortSignal;
+}): Promise<HeaderMenuAccount | "guest" | "unknown"> {
+  const response = await fetch("/api/account/menu", {
+    credentials: "same-origin",
+    mode: "same-origin",
+    redirect: "error",
+    cache: "no-store",
+    signal,
+  });
+  if (response.status === 401) return "guest";
+  if (!response.ok) return "unknown";
+  const { account } = await response.json().catch(() => ({}));
+  const role = readEligibleNavigationRole(account);
+  if (!role || typeof account.name !== "string" || !isAppearance(account.appearance))
+    return "unknown";
+  return {
+    id: account.id,
+    name: account.name,
+    role,
+    appearance: account.appearance,
+    balance: validCreditBalance(account.balance) ? account.balance : null,
+  };
+}
 
 export type HeaderAccess = NavigationRole | "unknown" | "guest";
 export type HeaderAccessRequest = (options: { signal: AbortSignal }) => Promise<HeaderAccess>;

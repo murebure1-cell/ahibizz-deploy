@@ -81,6 +81,7 @@ export function HomeSurface({
   placeField,
   place = "",
   categories,
+  discovery,
   featured,
   featuredHref,
   categoryFeatured = [],
@@ -99,6 +100,7 @@ export function HomeSurface({
   placeField: "mjesto" | "place";
   place?: string;
   categories: readonly HomeCategory[];
+  discovery?: ReactNode;
   featured?: ReactNode;
   featuredHref: string;
   categoryFeatured?: ReactNode[];
@@ -336,6 +338,7 @@ export function HomeSurface({
           place ? `${searchAction}?${new URLSearchParams({ [placeField]: place })}` : searchAction
         }
       />
+      {discovery && <div className={styles.container}>{discovery}</div>}
       {campaigns && design.homeOrder.includes("ad") && (
         <CampaignAd candidates={campaigns.main} region="elsewhere" />
       )}

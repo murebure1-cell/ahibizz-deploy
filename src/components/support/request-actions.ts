@@ -26,7 +26,9 @@ export async function submitSupportRequest(
       message:
         subject === "deletion"
           ? "Zahtjev za brisanje je zaprimljen."
-          : "Prijava je dostavljena administratoru.",
+          : subject === "help"
+            ? "Zahtjev je zaprimljen. Odgovor stiže na email povezan s nalogom."
+            : "Prijava je dostavljena administratoru.",
     };
   } catch (error) {
     const status = error instanceof AccountAccessError ? error.status : 503;

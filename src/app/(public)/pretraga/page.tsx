@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { Fragment } from "react";
 import { DirectoryResultCard } from "../../../components/directory/DirectoryResultCard";
 import { DirectorySearchForm } from "../../../components/directory/DirectorySearchForm";
 import styles from "../../../components/directory/public-search.module.css";
 import { EmptyDirectory } from "../../../components/EmptyDirectory";
+import { SaveSearchButton } from "../../../components/favorites/SavedSearches";
 import { CampaignAd } from "../../../components/marketing/CampaignAd";
 import adStyles from "../../../components/marketing/campaign-ad.module.css";
 import {
   type DirectorySearchParams,
   directorySearchSuffix,
 } from "../../../lib/directory-navigation";
+import { canonicalSavedSearch } from "../../../lib/saved-search";
+import { getSearchBlockViewer } from "../../../server/account-blocks";
 import {
   DirectoryAccessError,
   type DirectoryCategory,
@@ -38,11 +42,13 @@ export default async function SearchPage({
     page = rawPage && /^\d{1,3}$/.test(rawPage) ? Number(rawPage) : 1;
   const featuredOnly = params.istaknute === "kategorija" ? "category" : params.istaknute === "1";
   const openNow = params.otvoreno === "1";
+  const blockViewer = await getSearchBlockViewer(await headers());
   const campaigns = publicPageAds({
     page: !query && (categoryId || subcategoryId) ? "category" : "search",
     city,
     categoryIds: [categoryId, subcategoryId].filter(Boolean),
     keyword: query,
+    blockViewer,
   });
   let checkedAt: string | undefined, total: number | undefined;
   let items: PublicDirectoryBusiness[] = [],
@@ -67,6 +73,7 @@ export default async function SearchPage({
             page,
           },
           featuredOnly,
+          blockViewer,
         ),
         service.categories(),
       ]);
@@ -84,6 +91,7 @@ export default async function SearchPage({
     return `/pretraga${directorySearchSuffix({ ...params, page: String(next) })}`;
   }
   const sourceQuery = directorySearchSuffix(params);
+  const savedQuery = canonicalSavedSearch(directorySearchSuffix({ ...params, page: undefined }));
   const activeFilters = [
     { key: "q", label: query },
     { key: "mjesto", label: city },
@@ -129,6 +137,19 @@ export default async function SearchPage({
               )}
             </h2>
             {filtered && !invalidFilters && <Link href="/pretraga">Očisti pretragu</Link>}
+            {filtered && available && savedQuery && (
+              <SaveSearchButton
+                key={savedQuery}
+                filters={savedQuery}
+                label={
+                  activeFilters
+                    .map((item) => item.label)
+                    .filter(Boolean)
+                    .join(" · ")
+                    .slice(0, 100) || "Pretraga djelatnosti"
+                }
+              />
+            )}
           </div>
           {filtered && available && (
             <ul className={styles.activeFilters} aria-label="Primijenjeni filteri">

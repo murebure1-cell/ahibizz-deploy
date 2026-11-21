@@ -1,5 +1,5 @@
 import { IS_PLAY_EDITION } from "../../../lib/distribution";
-import type { MarketingMode } from "../../../lib/marketing";
+import { type MarketingMode, readPromotionView } from "../../../lib/marketing";
 import { AccountAccessError } from "../../../server/auth/accounts";
 import { readAuthConfiguration } from "../../../server/auth/config";
 import { readFlatJson } from "../../../server/flat-json";
@@ -32,9 +32,18 @@ export async function GET(request: Request) {
     }
     const mode = query.get("mode"),
       page = query.get("page") ?? "0";
-    if (!mode || !/^(?:admin|ads|credits)$/.test(mode) || !/^\d{1,3}$/.test(page))
+    const promotionView = readPromotionView(query.get("view"));
+    if (
+      !mode ||
+      !/^(?:admin|ads|credits)$/.test(mode) ||
+      !/^\d{1,3}$/.test(page) ||
+      (query.has("view") && (!promotionView || mode !== "ads" || query.getAll("view").length !== 1))
+    )
       return reply({ code: "INVALID_OFFER" }, 400);
-    return reply(await store.read(request.headers, mode as MarketingMode, Number(page)), 200);
+    return reply(
+      await store.read(request.headers, mode as MarketingMode, Number(page), promotionView),
+      200,
+    );
   } catch (error) {
     return failure(error);
   }

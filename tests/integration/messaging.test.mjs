@@ -125,6 +125,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0040_ad_audience_sample.sql",
           "0041_ad_geo_schedule.sql",
           "0042_ad_sample_devices.sql",
+          "0043_people_blocks.sql",
+          "0044_business_reels.sql",
+          "0045_content_hub.sql",
+          "0046_saved_searches.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -775,6 +779,93 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             () => messaging.read(other.headers, businessThread.threadId, {}),
             404,
             "THREAD_NOT_FOUND",
+          );
+        },
+      );
+
+      await t.test(
+        "account blocks control contact and private search filtering across business conversations",
+        async () => {
+          const { createAccountBlocksService } = await import("../../src/server/account-blocks.ts");
+          const { createPublicDirectoryService } = await import(
+            "../../src/server/directory/index.ts"
+          );
+          const blocks = createAccountBlocksService(auth, pool);
+          const publicDirectory = createPublicDirectoryService({ database: pool });
+          const bound = new Headers(member.headers);
+          bound.set("X-AhiBizz-Account-ID", member.user.id);
+          assert.deepEqual(await blocks.state(bound, owner.user.id), {
+            blockedByMe: false,
+            canContact: true,
+            version: 0,
+          });
+          assert.deepEqual(await blocks.set(bound, owner.user.id, true, 0), {
+            blockedByMe: true,
+            canContact: false,
+            version: 1,
+          });
+          assert.deepEqual(
+            (await blocks.list(bound, 1)).items.map(({ id }) => id),
+            [owner.user.id],
+          );
+          assert.equal((await blocks.list(owner.headers, 1)).items.length, 0);
+          const switched = new Headers(owner.headers);
+          switched.set("X-AhiBizz-Account-ID", member.user.id);
+          for (const operation of [
+            () => blocks.list(switched, 1),
+            () => blocks.set(switched, member.user.id, true, 0),
+          ])
+            await assert.rejects(
+              operation,
+              (error) => error.status === 401 && error.code === "ACCOUNT_IDENTITY_CHANGED",
+            );
+          assert.equal(await blocks.searchFilter(bound), null);
+          assert.equal(
+            (await messaging.read(member.headers, businessThread.threadId, {})).thread.canSend,
+            false,
+          );
+          await deny(
+            () =>
+              messaging.open(
+                other.headers,
+                { kind: "person", targetId: "missing-fixture" },
+                randomUUID(),
+              ),
+            404,
+            "PERSON_NOT_FOUND",
+          );
+          for (const actor of [member, owner]) {
+            await deny(
+              () =>
+                messaging.send(
+                  actor.headers,
+                  businessThread.threadId,
+                  { body: "No blocked business send" },
+                  randomUUID(),
+                ),
+              409,
+              "MESSAGING_BLOCKED",
+            );
+          }
+          await assert.rejects(
+            () => blocks.set(bound, owner.user.id, false, 0),
+            (error) => error.status === 409 && error.code === "BLOCK_VERSION_CONFLICT",
+          );
+          await blocks.changeSearchFilter(bound, true);
+          const viewer = await blocks.searchFilter(bound);
+          assert.equal(viewer, member.user.id);
+          const input = { q: business.title, pageSize: 20 };
+          assert.equal((await publicDirectory.listPublic(input, false, viewer)).items.length, 0);
+          assert.equal((await publicDirectory.listPublic(input)).items[0].id, business.id);
+          await blocks.set(bound, owner.user.id, false, 1);
+          assert.equal((await blocks.list(bound, 1)).items.length, 0);
+          assert.equal(
+            (await publicDirectory.listPublic(input, false, viewer)).items[0].id,
+            business.id,
+          );
+          assert.equal(
+            (await messaging.read(member.headers, businessThread.threadId, {})).thread.canSend,
+            true,
           );
         },
       );

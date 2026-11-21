@@ -292,14 +292,21 @@ function OfferCard({
     </article>
   );
 }
-export function MarketingWorkspace({ accountId, mode, target, campaign }: MarketingProps) {
+export function MarketingWorkspace({
+  accountId,
+  mode,
+  target,
+  campaign,
+  promotionView,
+}: MarketingProps) {
   return (
     <MarketingView
-      key={`${accountId}:${mode}:${target?.businessId ?? ""}:${target?.placement ?? ""}:${campaign ? campaignPath(campaign) : ""}`}
+      key={`${accountId}:${mode}:${promotionView ?? ""}:${target?.businessId ?? ""}:${target?.placement ?? ""}:${campaign ? campaignPath(campaign) : ""}`}
       accountId={accountId}
       mode={mode}
       target={target}
       campaign={campaign}
+      promotionView={promotionView}
     />
   );
 }
@@ -308,8 +315,9 @@ type MarketingProps = {
   mode: MarketingMode;
   target?: PlacementTarget;
   campaign?: CampaignSelection;
+  promotionView?: "aktivne" | "zakazane";
 };
-function MarketingView({ accountId, mode, target, campaign }: MarketingProps) {
+function MarketingView({ accountId, mode, target, campaign, promotionView }: MarketingProps) {
   const router = useRouter();
   const [selectedQuantity, setSelectedQuantity] = useState<number>(ahiCreditTopUps[0].quantity);
   const [rateInput, setRateInput] = useState("");
@@ -355,7 +363,9 @@ function MarketingView({ accountId, mode, target, campaign }: MarketingProps) {
   useEffect(() => {
     const abort = new AbortController();
     setFailed(false);
-    fetch(`/api/marketing?mode=${mode}&page=${page}`, {
+    const params = new URLSearchParams({ mode, page: String(page) });
+    if (promotionView) params.set("view", promotionView);
+    fetch(`/api/marketing?${params}`, {
       headers: { "X-AhiBizz-Account-ID": accountId },
       credentials: "same-origin",
       cache: "no-store",
@@ -374,7 +384,7 @@ function MarketingView({ accountId, mode, target, campaign }: MarketingProps) {
         }
       });
     return () => abort.abort();
-  }, [accountId, mode, page, refresh]);
+  }, [accountId, mode, page, promotionView, refresh]);
   async function submit(command: MarketingCommand) {
     if (running.current) return false;
     running.current = true;
@@ -475,6 +485,25 @@ function MarketingView({ accountId, mode, target, campaign }: MarketingProps) {
   return (
     <section className={styles.workspace}>
       {mode !== "admin" && <h1>{mode === "ads" ? "Moji oglasi" : "Ahi Credits"}</h1>}
+      {mode === "ads" && (
+        <nav aria-label="Prikaz oglasa" className={styles.viewTabs}>
+          <Link href="/nalog?odjeljak=oglasi" aria-current={!promotionView ? "page" : undefined}>
+            Svi zahtjevi
+          </Link>
+          <Link
+            href="/nalog?odjeljak=oglasi&prikaz=aktivne"
+            aria-current={promotionView === "aktivne" ? "page" : undefined}
+          >
+            Aktivne
+          </Link>
+          <Link
+            href="/nalog?odjeljak=oglasi&prikaz=zakazane"
+            aria-current={promotionView === "zakazane" ? "page" : undefined}
+          >
+            Zakazane
+          </Link>
+        </nav>
+      )}
       {mode === "credits" && (
         <header className={styles.wallet}>
           <span>Raspoloživi krediti</span>
@@ -554,7 +583,7 @@ function MarketingView({ accountId, mode, target, campaign }: MarketingProps) {
           </form>
         </article>
       )}
-      {mode === "ads" && data.included.length > 0 && (
+      {mode === "ads" && promotionView !== "zakazane" && data.included.length > 0 && (
         <article className={styles.order}>
           <h2>Uključeno u paket</h2>
           {data.included.map((item) => (
@@ -571,7 +600,7 @@ function MarketingView({ accountId, mode, target, campaign }: MarketingProps) {
           ))}
         </article>
       )}
-      {mode === "ads" && (
+      {mode === "ads" && promotionView !== "zakazane" && (
         <article className={styles.order}>
           <header>
             <h2>Isticanje u kategoriji</h2>
@@ -596,7 +625,7 @@ function MarketingView({ accountId, mode, target, campaign }: MarketingProps) {
           )}
         </article>
       )}
-      {mode === "ads" && data.businesses.length > 0 && (
+      {mode === "ads" && !promotionView && data.businesses.length > 0 && (
         <AdCampaignForm
           data={data}
           target={target}
@@ -606,7 +635,7 @@ function MarketingView({ accountId, mode, target, campaign }: MarketingProps) {
           formRef={placementForm}
         />
       )}
-      {mode === "ads" && (
+      {mode === "ads" && !promotionView && (
         <article id="produkcija" className={styles.order}>
           <h2>Foto i video produkcija</h2>
           {(data.productionBusinesses ?? data.businesses).length > 0 ? (
@@ -666,9 +695,23 @@ function MarketingView({ accountId, mode, target, campaign }: MarketingProps) {
         </article>
       )}
       <div className={styles.orders}>
-        <h2>{mode === "admin" ? "Zahtjevi i uplate" : "Moji zahtjevi"}</h2>
+        <h2>
+          {mode === "admin"
+            ? "Zahtjevi i uplate"
+            : promotionView === "aktivne"
+              ? "Aktivne kampanje"
+              : promotionView === "zakazane"
+                ? "Zakazane kampanje"
+                : "Moji zahtjevi"}
+        </h2>
         {!data.orders.length && (
-          <p>{mode === "admin" ? "Nema zahtjeva." : "Još nemaš zahtjeva."}</p>
+          <p>
+            {mode === "admin"
+              ? "Nema zahtjeva."
+              : promotionView
+                ? "Nema kampanja za ovaj prikaz."
+                : "Još nemaš zahtjeva."}
+          </p>
         )}
         {data.orders.map((order) => (
           <OfferCard

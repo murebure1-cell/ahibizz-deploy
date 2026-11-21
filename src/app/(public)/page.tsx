@@ -5,6 +5,7 @@ import {
   HomeNearbyResults,
 } from "../../components/home/HomeNearby";
 import { HomeSurface } from "../../components/home/HomeSurface";
+import { RecentReels } from "../../components/reels/ReelShelf";
 import { homeCategories, homePlace } from "../../lib/home";
 import {
   type DirectoryCategory,
@@ -61,6 +62,7 @@ export default async function HomePage({
         placeField="mjesto"
         place={place}
         categories={homeCategories(categories, place)}
+        discovery={<RecentReels />}
         featuredHref="/pretraga?istaknute=1"
         featured={
           featured.length

@@ -1,0 +1,438 @@
+.page,
+.narrow {
+  width: min(100% - 2rem, 71rem);
+  margin-inline: auto;
+  padding-block: clamp(1.8rem, 5vw, 4.5rem);
+}
+.narrow {
+  width: min(100% - 2rem, 50rem);
+}
+.page h1,
+.narrow h1 {
+  font-size: clamp(2.1rem, 5.8vw, 4.1rem);
+  letter-spacing: -0.055em;
+  line-height: 1.07;
+}
+.page h2,
+.narrow h2 {
+  font-size: clamp(1.25rem, 2.8vw, 1.85rem);
+  letter-spacing: -0.025em;
+}
+.page h3,
+.narrow h3 {
+  font-size: 1.13rem;
+  line-height: 1.35;
+}
+.page :is(p, dd),
+.narrow :is(p, dd) {
+  overflow-wrap: anywhere;
+}
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 0.9fr);
+  gap: clamp(1.5rem, 5vw, 4rem);
+  align-items: center;
+  min-height: 18rem;
+  padding: clamp(1.5rem, 5.5vw, 3.8rem);
+  border-radius: 2rem;
+  color: #fff;
+  background: linear-gradient(120deg, #142c40 24%, #234c62 100%);
+}
+.hero .heroLead {
+  max-width: 40ch;
+  margin-top: 1rem;
+  color: #dce8f0;
+}
+.search {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1.2rem;
+  max-width: 33rem;
+}
+.search input {
+  flex: 1 1 11rem;
+  min-width: 0;
+}
+.searchLabel,
+.editor label {
+  font-weight: 650;
+}
+.searchLabel {
+  width: 100%;
+}
+.search input,
+.editor :is(input:not([type="checkbox"]), select, textarea) {
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--ui-border-strong);
+  color: var(--ui-text);
+  background: var(--ui-input);
+  font: inherit;
+}
+.search button,
+.accent,
+.secondary,
+.bookmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 2.8rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 0.75rem;
+  font-weight: 680;
+  border: 1px solid transparent;
+}
+.search button,
+.accent {
+  color: var(--ui-on-accent);
+  background: var(--ui-accent);
+}
+.secondary,
+.bookmark {
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border-color: var(--ui-border-strong);
+}
+.secondary:hover,
+.bookmark:hover {
+  background: var(--ui-surface-hover);
+}
+.bookmark[aria-pressed="true"] {
+  color: var(--ui-accent-text);
+  background: var(--ui-accent-soft);
+  border-color: var(--ui-accent-border);
+}
+.search :disabled,
+.editor :disabled,
+.bookmark:disabled {
+  opacity: 0.65;
+}
+.search :where(button) svg,
+.secondary svg,
+.bookmark svg {
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+}
+.heroImage {
+  min-height: 14rem;
+  align-self: stretch;
+  border-radius: 1.35rem;
+  background: center 44% / cover no-repeat url("/images/business-community.webp");
+  border: 1px solid #9cbdcb65;
+}
+.categories,
+.pageFooter {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-block: 1.45rem;
+}
+.categories a,
+.quick button {
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--ui-border);
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  font-weight: 630;
+  line-height: 1.35;
+}
+.categories a[aria-current],
+.quick button[aria-pressed="true"] {
+  background: var(--ui-accent-soft);
+  border-color: var(--ui-accent-border);
+  color: var(--ui-accent-text);
+}
+.saved {
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.saved svg {
+  width: 1em;
+  height: 1em;
+}
+.featured,
+.card,
+.ticket,
+.chat,
+.editor,
+.editItem {
+  min-width: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 1.2rem;
+  background: var(--ui-surface);
+}
+.featured {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+  gap: 1rem;
+  margin-block: 2rem;
+  padding: clamp(1.2rem, 4vw, 2.5rem);
+  background: linear-gradient(125deg, var(--ui-surface-raised), var(--ui-surface-soft));
+}
+.related {
+  display: grid;
+  gap: 0.7rem;
+  align-content: center;
+  border-inline-start: 1px solid var(--ui-border-strong);
+  padding-inline-start: clamp(0.9rem, 3vw, 1.8rem);
+}
+.related h3 {
+  color: var(--ui-text-secondary);
+}
+.related a {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  justify-content: space-between;
+  color: var(--ui-text);
+  border-bottom: 1px solid var(--ui-border);
+  padding-bottom: 0.55rem;
+  font-weight: 630;
+}
+.related svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+}
+.boxLabel {
+  font-weight: 680;
+  font-size: 0.9rem;
+  color: var(--ui-accent-text);
+  margin-block-end: 0.5rem;
+}
+.featured :is(.boxLabel + h2, h2 + p),
+.card p {
+  margin-block-end: 0.75rem;
+}
+.featured .featuredExcerpt,
+.card p,
+.articleLead,
+.caption {
+  color: var(--ui-text-secondary);
+}
+.featured a:hover,
+.card a:hover,
+.related a:hover,
+.inlineLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.23em;
+}
+.section {
+  margin-block: 1.5rem;
+}
+.section h2 {
+  margin-bottom: 1rem;
+}
+.cards,
+.helpGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16.5rem), 1fr));
+  gap: 1rem;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: 1.2rem;
+}
+.card p {
+  flex: 1;
+  margin-top: 0.6rem;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  align-items: center;
+  font-size: 0.88rem;
+  color: var(--ui-muted);
+}
+.backLink {
+  display: inline-block;
+  margin-bottom: 1.1rem;
+}
+.backLink,
+.inlineLink {
+  color: var(--ui-accent-text);
+  font-weight: 650;
+}
+.articleHeader h1,
+.pageTitle {
+  margin-block: 0.45rem 0.8rem;
+}
+.articleLead {
+  font-size: 1.2rem;
+  max-width: 65ch;
+}
+.articleBody {
+  margin-block: 2rem;
+  padding-block: 1.8rem;
+  border-block: 1px solid var(--ui-border);
+  font-size: clamp(1rem, 1vw + 0.7rem, 1.115rem);
+  line-height: 1.78;
+}
+.articleBody p {
+  white-space: pre-line;
+}
+.articleBody p + p {
+  margin-top: 1.3rem;
+}
+.toolRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.helpGrid {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  align-items: start;
+  margin-block: 1.5rem 2rem;
+}
+.chat,
+.ticket,
+.editor,
+.editItem {
+  padding: clamp(1rem, 3vw, 1.45rem);
+}
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  margin: 1rem 0;
+}
+.quick legend {
+  padding: 0;
+  margin-bottom: 0.55rem;
+  font-weight: 650;
+}
+.quick button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.quick svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+}
+.reply {
+  padding: 0.95rem 1rem;
+  margin-top: 1rem;
+  border-radius: 0.9rem;
+  border-inline-start: 0.18rem solid var(--ui-accent);
+  background: var(--ui-surface-soft);
+}
+.reply ul {
+  margin-block: 0;
+  padding-inline-start: 1.15rem;
+}
+.reply p + p,
+.reply p + ul {
+  margin-top: 0.65rem;
+}
+.submitted {
+  width: fit-content;
+  max-width: 95%;
+  margin-block-start: 1rem;
+  margin-inline-start: auto;
+  padding: 0.55rem 0.8rem;
+  border-radius: 0.8rem 0.8rem 0.2rem 0.8rem;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+}
+.reply strong {
+  color: var(--ui-text);
+}
+.ticket .caption,
+.ticket > .contact {
+  margin-top: 0.6rem;
+}
+.ticket .contact a {
+  display: inline-block;
+}
+.ticket select {
+  width: 100%;
+  padding: 0.65rem 0.7rem;
+  margin-top: 0.35rem;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 0.62rem;
+  color: var(--ui-text);
+  background: var(--ui-input);
+  font: inherit;
+}
+.adminGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.5fr);
+  gap: 1rem;
+  align-items: start;
+  margin-top: 1.55rem;
+}
+.editItem {
+  margin-top: 0.5rem;
+  display: block;
+  line-height: 1.35;
+}
+.editItem:hover {
+  background: var(--ui-surface-hover);
+}
+.editItem .caption {
+  display: block;
+  margin-top: 0.28rem;
+  font-size: 0.85rem;
+}
+.editItem[aria-current] {
+  border-color: var(--ui-accent-border);
+}
+.editor {
+  display: grid;
+  gap: 0.9rem;
+}
+.editor label {
+  min-width: 0;
+}
+.editor textarea {
+  resize: vertical;
+}
+.editor label :is(input:not([type="checkbox"]), select, textarea) {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+}
+.editor input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--ui-accent);
+  margin-inline-end: 0.45rem;
+}
+.editor p[role="alert"] {
+  color: var(--ui-danger);
+}
+@media (max-width: 720px) {
+  .hero,
+  .featured,
+  .helpGrid,
+  .adminGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .heroImage {
+    display: none;
+  }
+  .related {
+    border-inline-start: 0;
+    border-top: 1px solid var(--ui-border);
+    padding: 0.9rem 0 0;
+  }
+  .saved {
+    margin-inline-start: 0;
+  }
+}

@@ -9,6 +9,6 @@ export default async function ReportPage({
 }) {
   const params = await searchParams;
   const target = supportTarget(params.vrsta, params.oznaka);
-  if (!target || target.subject === "deletion") notFound();
+  if (!target || target.subject === "deletion" || target.subject === "help") notFound();
   return <RequestScreen target={target} />;
 }

@@ -7,6 +7,7 @@ import type {
   ChatThread,
   ChatThreadPage,
 } from "../../lib/messaging";
+import { contactBlocked, writePeopleBlock } from "../account-blocks";
 import {
   AccountAccessError,
   type AccountService,
@@ -151,14 +152,19 @@ const columns = `t.id,t.kind,
  CASE WHEN t.kind='business' THEN CASE WHEN t.left_user_id=$1 THEN b.title ELSE b.title||' · '||left(peer.name,128) END ELSE peer.name END AS title,
  CASE WHEN t.kind='business' THEN t.business_id::text ELSE peer.id END AS "targetId",
  (peer.approval='approved' AND peer."emailVerified"=true AND peer.role IN ('member','owner')
-   AND (t.kind='person' OR b.status='published' AND package_allows_listing(b)) AND NOT own.blocked AND NOT theirs.blocked) AS "canSend",
- own.blocked AS "blockedByMe",(own.blocked OR theirs.blocked) AS blocked,
+   AND (t.kind='person' OR b.status='published' AND package_allows_listing(b))
+   AND NOT (t.kind='business' AND (own.blocked OR theirs.blocked))
+   AND NOT COALESCE(own_block.blocked,false) AND NOT COALESCE(peer_block.blocked,false)) AS "canSend",
+ (CASE WHEN t.kind='person' THEN COALESCE(own_block.blocked,false) ELSE own.blocked END) AS "blockedByMe",
+ ((t.kind='business' AND (own.blocked OR theirs.blocked)) OR COALESCE(own_block.blocked,false) OR COALESCE(peer_block.blocked,false)) AS blocked,
  t.latest_sequence AS "latestSequence",own.read_sequence AS "readSequence",
  (SELECT count(*)::integer FROM message_message unread WHERE unread.thread_id=t.id AND unread.sequence>own.read_sequence AND unread.sender_user_id<>$1) AS "unreadCount",
  (SELECT jsonb_build_object('body',left(last.body,200),'createdAt',to_char(last.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) FROM message_message last WHERE last.thread_id=t.id ORDER BY last.sequence DESC LIMIT 1) AS "lastMessage"`;
 const joins = `JOIN auth_user peer ON peer.id=CASE WHEN t.left_user_id=$1 THEN t.right_user_id ELSE t.left_user_id END
  JOIN message_thread_member own ON own.thread_id=t.id AND own.user_id=$1
  JOIN message_thread_member theirs ON theirs.thread_id=t.id AND theirs.user_id=peer.id
+ LEFT JOIN people_block own_block ON own_block.actor_id=$1 AND own_block.target_id=peer.id
+ LEFT JOIN people_block peer_block ON peer_block.actor_id=peer.id AND peer_block.target_id=$1
  LEFT JOIN directory_business b ON b.id=t.business_id`;
 const visible = `$1 IN (t.left_user_id,t.right_user_id) AND (t.kind='person' OR b.owner_user_id=t.right_user_id)`;
 function bounded(value: string, maximum: number): string {
@@ -372,6 +378,7 @@ export function createMessagingService({
         ).rows[0];
         let id = existing?.id;
         if (!id) {
+          if (await contactBlocked(client, actor.id, targetId)) fail(409, "MESSAGING_BLOCKED");
           if (!available(target))
             fail(404, value.kind === "person" ? "PERSON_NOT_FOUND" : "BUSINESS_NOT_FOUND");
           if (value.kind === "person") {
@@ -503,14 +510,17 @@ export function createMessagingService({
         intent = fingerprint({ operation: "block", id, ...value }),
         signed = await session(headers);
       return transaction(pool, async (client) => {
-        const { actor } = await context(client, signed, id),
+        const { actor, thread, peer } = await context(client, signed, id),
           prior = await receipt(client, actor.id, requestId, intent);
         if (prior) return prior;
         await rate(client, actor.id, "block");
-        await client.query(
-          "UPDATE message_thread_member SET blocked=$3,updated_at=clock_timestamp() WHERE thread_id=$1 AND user_id=$2",
-          [id, actor.id, value.blocked],
-        );
+        if (thread.kind === "person" && peer)
+          await writePeopleBlock(client, actor.id, peer.id, value.blocked);
+        else
+          await client.query(
+            "UPDATE message_thread_member SET blocked=$3,updated_at=clock_timestamp() WHERE thread_id=$1 AND user_id=$2",
+            [id, actor.id, value.blocked],
+          );
         return record(client, actor.id, requestId, "block", intent, {
           threadId: id,
           messageId: null,

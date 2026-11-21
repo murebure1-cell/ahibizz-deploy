@@ -65,7 +65,7 @@ test("header selection follows profiles, account subsections and back navigation
   for (const [path, search, selected] of [
     ["/nalog", "odjeljak=poruke&osoba=test", "/nalog?odjeljak=poruke"],
     ["/nalog", "odjeljak=poruke&odjeljak=postavke", "/nalog"],
-    ["/nalog", "odjeljak=postavke", "/nalog"],
+    ["/nalog", "odjeljak=postavke", "/nalog?odjeljak=postavke"],
     ["/ljudi/test", "", "/ljudi"],
     ["/djelatnosti/test", "", "/pretraga"],
     ["/administracija/uvoz-prijava", "", "/administracija"],

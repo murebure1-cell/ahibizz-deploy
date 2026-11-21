@@ -167,6 +167,7 @@ export function BusinessManager({
   isOwner,
   initialAll = false,
   initialReview = false,
+  startCreation = false,
   embedded = false,
   expectedAccountId,
   request: directoryApi = directoryRequest,
@@ -181,6 +182,7 @@ export function BusinessManager({
   isOwner: boolean;
   initialAll?: boolean;
   initialReview?: boolean;
+  startCreation?: boolean;
   embedded?: boolean;
   expectedAccountId?: string;
   request?: DirectoryRequest;
@@ -246,6 +248,24 @@ export function BusinessManager({
   const writing = useRef<AbortController | null>(null);
   const creation = useRef(createDirectoryCreation());
   const mutation = useRef<DirectoryMutation | null>(null);
+  const openedFromLink = useRef(false);
+  useEffect(() => {
+    if (!startCreation) {
+      openedFromLink.current = false;
+      return;
+    }
+    if (
+      !active ||
+      openedFromLink.current ||
+      !categories.length ||
+      busy ||
+      creation.current.intent ||
+      editing !== undefined
+    )
+      return;
+    openedFromLink.current = true;
+    setEditing(null);
+  }, [startCreation, active, categories.length, busy, editing]);
   const loadedSelection = useRef("");
   const live = useRef(false);
   const epoch = useRef(0);
@@ -1544,6 +1564,14 @@ export function BusinessManager({
                     {item.status === "published" && (
                       <Link className={styles.secondary} href={`/djelatnosti/${item.id}`}>
                         Javni profil
+                      </Link>
+                    )}
+                    {item.status === "published" && item.ownerId === expectedAccountId && (
+                      <Link
+                        className={styles.secondary}
+                        href={`/nalog/reels?djelatnost=${item.id}`}
+                      >
+                        <Icon name="play" /> Reels
                       </Link>
                     )}
                     {item.status !== "archived" ? (

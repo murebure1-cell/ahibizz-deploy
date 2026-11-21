@@ -47,6 +47,7 @@ export function connectionError(error: unknown): string {
   if (code === "AUTHENTICATION_REQUIRED") return "Prijavi se ponovo.";
   if (code === "ACCOUNT_IDENTITY_CHANGED") return "Prijavi se ponovo svojim nalogom.";
   if (code === "PUBLIC_PROFILE_REQUIRED") return "Prvo uključi javni profil u svom nalogu.";
+  if (code === "CONTACT_UNAVAILABLE") return "Kontakt trenutno nije dostupan.";
   if (["PERSON_NOT_FOUND", "NOT_FOUND"].includes(code)) return "Profil nije javno dostupan.";
   if (
     [

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { productionRequestPath } from "../../lib/account-return";
-import { type BillingCatalog, billingPackages } from "../../lib/billing";
+import { type BillingCatalog, type BillingPeriod, billingPackages } from "../../lib/billing";
 import { type PackageBenefitsCatalog, readPackageBenefits } from "../../lib/package-benefits";
 import styles from "./billing.module.css";
 
@@ -19,6 +19,7 @@ export function PricingCatalog({
   const [benefits, setBenefits] = useState<PackageBenefitsCatalog | null>(initialBenefits);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [period, setPeriod] = useState<BillingPeriod>("monthly");
   useEffect(() => {
     if (initialBenefits && attempt === 0) return;
     const controller = new AbortController();
@@ -38,28 +39,47 @@ export function PricingCatalog({
     <section className={styles.workspace} aria-label="Paketi AhiBizz">
       <header className={styles.heading}>
         <div>{embedded ? <h2>Paketi</h2> : <h1>Paketi za djelatnosti</h1>}</div>
+        {!embedded && (
+          <Link className={styles.secondary} href="/nalog?odjeljak=paketi">
+            Moje članstvo
+          </Link>
+        )}
       </header>
       <p className={styles.intro}>
         Prva djelatnost je besplatna 12 mjeseci. Dodatne se plaćaju od početka.
       </p>
+      <fieldset className={styles.periodSwitch} aria-label="Period plaćanja">
+        <button
+          type="button"
+          aria-pressed={period === "monthly"}
+          onClick={() => setPeriod("monthly")}
+        >
+          Mjesečno
+        </button>
+        <button
+          type="button"
+          aria-pressed={period === "annual"}
+          onClick={() => setPeriod("annual")}
+        >
+          Godišnje
+        </button>
+      </fieldset>
       <div className={styles.plans}>
         {plans.map((plan) => {
           const included = benefits?.benefits[plan.id];
+          const monthly = period === "monthly";
           return (
             <article className={styles.plan} key={plan.name}>
               <h2>{plan.name}</h2>
               <p className={styles.price}>
-                {plan.monthlyMinor / 100} <span>KM / mjesec</span>
+                {(monthly ? plan.monthlyMinor : plan.annualMinor) / 100}{" "}
+                <span>{monthly ? "KM / mjesec" : "KM / godina"}</span>
               </p>
               <p className={styles.term}>
-                Ugovor na 12 mjeseci · ukupno {(plan.monthlyMinor * 12) / 100} KM
+                {monthly
+                  ? `Ugovor na 12 mjeseci · ukupno ${(plan.monthlyMinor * 12) / 100} KM`
+                  : `Jednokratno · ušteda ${(plan.monthlyMinor * 12 - plan.annualMinor) / 100} KM`}
               </p>
-              <div className={styles.annual}>
-                <strong>{plan.annualMinor / 100} KM godišnje</strong>
-                <span>
-                  Jednokratno · ušteda {(plan.monthlyMinor * 12 - plan.annualMinor) / 100} KM
-                </span>
-              </div>
               {included && (
                 <ul className={styles.planBenefits} aria-label="Uključeno u paket">
                   <li>Poslovni profil, poruke i booking</li>
@@ -85,17 +105,10 @@ export function PricingCatalog({
                 <div className={styles.planActions}>
                   <Link
                     className={styles.primary}
-                    href={`/paketi/placanje?paket=${plan.id}&period=monthly`}
-                    aria-label={`Odaberi ${plan.name}, mjesečno plaćanje`}
+                    href={`/paketi/placanje?paket=${plan.id}&period=${period}`}
+                    aria-label={`Odaberi ${plan.name}, ${monthly ? "mjesečno" : "godišnje"} plaćanje`}
                   >
-                    Odaberi mjesečno
-                  </Link>
-                  <Link
-                    className={styles.secondary}
-                    href={`/paketi/placanje?paket=${plan.id}&period=annual`}
-                    aria-label={`Odaberi ${plan.name}, godišnje plaćanje`}
-                  >
-                    Odaberi godišnje
+                    Odaberi {monthly ? "mjesečno" : "godišnje"}
                   </Link>
                 </div>
               ) : (

@@ -10,6 +10,7 @@ import type {
   PublicPerson,
 } from "../../lib/connections";
 import type { ProfileImageKind } from "../../lib/people";
+import { contactBlocked } from "../account-blocks";
 import {
   AccountAccessError,
   type AccountService,
@@ -409,7 +410,7 @@ export function createConnectionsService({
               requesterId: string;
             }
           >(
-            `SELECT person.*,c.id AS "connectionId",c.status,c.version,c.requester_user_id AS "requesterId",CASE WHEN c.left_user_id=$1 THEN c.right_user_id ELSE c.left_user_id END AS "personId" FROM people_connection c LEFT JOIN LATERAL (SELECT ${publicColumns} FROM auth_user u ${publicJoins} WHERE u.id=CASE WHEN c.left_user_id=$1 THEN c.right_user_id ELSE c.left_user_id END AND ${publicEligibility}) person ON true WHERE (c.left_user_id=$1 OR c.right_user_id=$1) AND (($2='contacts' AND c.status='accepted') OR ($2='incoming' AND c.status='pending' AND c.requester_user_id<>$1) OR ($2='outgoing' AND c.status='pending' AND c.requester_user_id=$1)) ORDER BY c.updated_at DESC,c.id LIMIT $3 OFFSET $4`,
+            `SELECT person.*,c.id AS "connectionId",c.status,c.version,c.requester_user_id AS "requesterId",CASE WHEN c.left_user_id=$1 THEN c.right_user_id ELSE c.left_user_id END AS "personId" FROM people_connection c LEFT JOIN LATERAL (SELECT ${publicColumns} FROM auth_user u ${publicJoins} WHERE u.id=CASE WHEN c.left_user_id=$1 THEN c.right_user_id ELSE c.left_user_id END AND ${publicEligibility}) person ON true WHERE (c.left_user_id=$1 OR c.right_user_id=$1) AND NOT people_contact_blocked(c.left_user_id,c.right_user_id) AND (($2='contacts' AND c.status='accepted') OR ($2='incoming' AND c.status='pending' AND c.requester_user_id<>$1) OR ($2='outgoing' AND c.status='pending' AND c.requester_user_id=$1)) ORDER BY c.updated_at DESC,c.id LIMIT $3 OFFSET $4`,
             [actor.id, value.view, pageSize + 1, (value.page - 1) * pageSize],
           )
         ).rows;
@@ -440,6 +441,7 @@ export function createConnectionsService({
         const { actor } = await authority(client, current, [id]);
         const prior = await receipt(client, actor.id, requestId, intent);
         if (prior) return prior;
+        if (await contactBlocked(client, actor.id, id)) fail(409, "CONTACT_UNAVAILABLE");
         await requirePublicActor(client, actor.id);
         await readPublic(client, id);
         const [left, right] = [actor.id, id].sort();
@@ -500,6 +502,7 @@ export function createConnectionsService({
           if (before.status !== "pending" || !requester) fail(409, "CONNECTION_ACTION_NOT_ALLOWED");
         } else if (before.status !== "accepted") fail(409, "CONNECTION_ACTION_NOT_ALLOWED");
         if (value.action === "accept") {
+          if (await contactBlocked(client, actor.id, target)) fail(409, "CONTACT_UNAVAILABLE");
           await requirePublicActor(client, actor.id);
           await readPublic(client, target);
         }

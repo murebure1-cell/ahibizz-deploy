@@ -6,6 +6,7 @@ import { PublicBusinessProfile } from "../../../../components/directory/PublicBu
 import styles from "../../../../components/directory/public-search.module.css";
 import { CampaignAd } from "../../../../components/marketing/CampaignAd";
 import adStyles from "../../../../components/marketing/campaign-ad.module.css";
+import { BusinessReels } from "../../../../components/reels/ReelShelf";
 import { RentalFleet } from "../../../../components/rentals/RentalFleet";
 import { StayUnits } from "../../../../components/stays/StayUnits";
 import {
@@ -95,6 +96,7 @@ export default async function PublicBusinessPage({
               ) : undefined
             }
           >
+            <BusinessReels businessId={id} />
             {(!hostsGuests ||
               (booking.status === "fulfilled" &&
                 booking.value?.enabled &&

@@ -8,13 +8,15 @@ import { IS_PLAY_EDITION } from "../lib/distribution";
 import {
   type HeaderAccess,
   type HeaderAccessRequest,
-  headerAccessRequest,
+  type HeaderMenuAccount,
+  headerMenuRequest,
 } from "../lib/header-access";
 import {
   headerCurrentDestination,
   headerDestinations,
   type NavigationDestination,
 } from "../lib/header-navigation";
+import { AccountQuickMenu } from "./account/AccountQuickMenu";
 import { Icon } from "./Icon";
 import { useOptionalAppPwa } from "./pwa/AppPwa";
 
@@ -24,17 +26,19 @@ const accessLinks = [
 ];
 
 export function SiteHeader({
-  request = headerAccessRequest,
   supportAvailable = false,
+  request,
 }: {
-  request?: HeaderAccessRequest;
   supportAvailable?: boolean;
+  request?: HeaderAccessRequest;
 }) {
   const pathname = usePathname();
   const installed = useOptionalAppPwa()?.installed ?? true;
   const [open, setOpen] = useState(false);
   const [currentHref, setCurrentHref] = useState<string | null>(null);
-  const [access, setAccess] = useState<HeaderAccess>("unknown");
+  const [summary, setSummary] = useState<HeaderMenuAccount | "guest" | "unknown">("unknown");
+  const account = typeof summary === "object" ? summary : null;
+  const access: HeaderAccess = typeof summary === "object" ? summary.role : summary;
   const [refresh, setRefresh] = useState(0);
   const header = useRef<HTMLElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
@@ -45,7 +49,7 @@ export function SiteHeader({
     revision.current++;
     controller.current?.abort();
     controller.current = null;
-    setAccess("unknown");
+    setSummary("unknown");
   }, []);
   const closeMenu = useCallback(() => {
     clearAccess();
@@ -88,19 +92,23 @@ export function SiteHeader({
     const current = revision.current;
     const read = new AbortController();
     controller.current = read;
-    void request({ signal: read.signal })
+    const load = request
+      ? request({ signal: read.signal }).then((role) =>
+          role === "guest" ? ("guest" as const) : ("unknown" as const),
+        )
+      : headerMenuRequest({ signal: read.signal });
+    void load
       .then((next) => {
-        if (!read.signal.aborted && current === revision.current)
-          setAccess(next === "guest" || next === "member" || next === "owner" ? next : "unknown");
+        if (!read.signal.aborted && current === revision.current) setSummary(next);
       })
       .catch(() => {
-        if (!read.signal.aborted && current === revision.current) setAccess("unknown");
+        if (!read.signal.aborted && current === revision.current) setSummary("unknown");
       });
     return () => {
       read.abort();
       if (controller.current === read) controller.current = null;
     };
-  }, [open, pathname, request, clearAccess, refresh]);
+  }, [open, pathname, clearAccess, refresh, request]);
 
   useEffect(() => {
     if (!open) return;
@@ -181,11 +189,34 @@ export function SiteHeader({
           className="header-menu"
           aria-label="Glavna navigacija"
           hidden={!open}
+          data-account-menu={account ? "true" : undefined}
         >
-          {primary.map(destination)}
+          {account && (
+            <AccountQuickMenu
+              key={account.id}
+              account={account}
+              close={closeMenu}
+              currentHref={currentHref}
+              confirmed={(next) =>
+                setSummary((current) =>
+                  typeof current === "object" && current.id === next.id ? next : current,
+                )
+              }
+            />
+          )}
+          {account ? (
+            <details className="header-more">
+              <summary>
+                Istraži AhiBizz <Icon name="chevron" />
+              </summary>
+              {primary.filter((link) => !link.href.startsWith("/nalog")).map(destination)}
+            </details>
+          ) : (
+            primary.map(destination)
+          )}
           {access === "owner" &&
             destination({ href: "/administracija", label: "Administracija", icon: "shield" })}
-          {business.length > 0 && (
+          {!account && business.length > 0 && (
             <details
               key={`business-${open}`}
               className="header-more"

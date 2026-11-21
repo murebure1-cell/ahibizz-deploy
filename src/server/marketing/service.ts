@@ -6,7 +6,12 @@ import type {
   MarketingMode,
   MarketingOrder,
 } from "../../lib/marketing";
-import { isPlacement, isProductionService } from "../../lib/marketing";
+import {
+  isPlacement,
+  isProductionService,
+  type PromotionView,
+  readPromotionView,
+} from "../../lib/marketing";
 import { creditsForBamMinor, validCreditBalance } from "../../lib/wallet";
 import { AccountAccessError, accountTransaction, createAccountAccess } from "../auth/accounts";
 import { type AuthService, getAuthDatabasePool, getAuthService } from "../auth/service";
@@ -209,12 +214,18 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
         return { offer: quote };
       });
     },
-    async read(headers: Headers, mode: MarketingMode, page: number): Promise<MarketingData> {
+    async read(
+      headers: Headers,
+      mode: MarketingMode,
+      page: number,
+      promotionView?: PromotionView,
+    ): Promise<MarketingData> {
       if (
         !["admin", "ads", "credits"].includes(mode) ||
         !Number.isSafeInteger(page) ||
         page < 0 ||
-        page > 999
+        page > 999 ||
+        (promotionView !== undefined && (mode !== "ads" || !readPromotionView(promotionView)))
       )
         fail(400, "INVALID_OFFER");
       const session = await access.session(headers);
@@ -233,8 +244,14 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           LEFT JOIN directory_category dc ON dc.id=c.category_id
           LEFT JOIN marketing_ad_totals stats ON stats.order_id=o.id
           WHERE ($2::text='admin' OR (o.account_id=$1 AND (o.kind='credits')=($2='credits')))
+            AND ($4::text IS NULL OR
+              (o.kind IN ('banner','featured','nearby') AND o.status='paid' AND o.revoked_at IS NULL
+                AND o.ends_at>now() AND b.owner_user_id=o.account_id AND b.status='published'
+                AND b.deleted_at IS NULL AND package_allows_listing(b)
+                AND (c.impression_goal IS NULL OR c.impression_goal>COALESCE(stats.impressions,0))
+                AND CASE WHEN $4='zakazane' THEN o.starts_at>now() ELSE o.starts_at<=now() END))
           ORDER BY CASE o.status WHEN 'requested' THEN 0 WHEN 'quoted' THEN 1 WHEN 'paid' THEN 2 ELSE 3 END,o.created_at DESC,o.id LIMIT 21 OFFSET $3`,
-            [actor.id, mode, page * 20],
+            [actor.id, mode, page * 20, promotionView ?? null],
           )
         ).rows;
         const businesses =

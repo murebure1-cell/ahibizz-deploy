@@ -28,7 +28,7 @@ export function createSupportRequests(auth: AuthService, pool: Pool) {
       return accountTransaction(pool, async (client) => {
         const actor = await access.authority(client, current);
         const existing = await client.query(
-          "SELECT id FROM support_request WHERE actor_id=$1 AND subject=$2 AND reference=$3 AND resolved_at IS NULL",
+          "SELECT id FROM support_request WHERE actor_id=$1 AND subject=$2 AND reference=$3 AND (subject='help' OR resolved_at IS NULL)",
           [actor.id, target.subject, target.reference],
         );
         if (existing.rowCount) return;

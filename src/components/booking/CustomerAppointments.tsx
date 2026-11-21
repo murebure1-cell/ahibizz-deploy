@@ -31,6 +31,7 @@ type Props = {
   preview?: boolean;
   request?: typeof bookingRequest;
   expectedAccountId?: string;
+  initialView?: BookingListView;
 };
 
 export function CustomerAppointments(props: Props) {
@@ -43,18 +44,23 @@ function AppointmentsWorkspace({
   preview = false,
   request = bookingRequest,
   expectedAccountId,
+  initialView = "upcoming",
 }: Props) {
   const [readState, setReadState] = useState<CustomerAppointmentsState>({
       result: null,
       requiresLogin: false,
     }),
-    [view, setView] = useState<BookingListView>("upcoming"),
+    [view, setView] = useState<BookingListView>(initialView),
     [page, setPage] = useState(1),
     [loading, setLoading] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [refresh, setRefresh] = useState(0);
+  useEffect(() => {
+    setView(initialView);
+    setPage(1);
+  }, [initialView]);
   const revision = useRef(0),
     authority = useRef(0),
     live = useRef(false),

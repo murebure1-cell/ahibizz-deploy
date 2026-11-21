@@ -152,6 +152,7 @@ export async function listDirectory(
   publicOnly = false,
   featuredOnly: boolean | "category" = false,
   checkedAt?: Date,
+  blockViewer?: string | null,
 ) {
   const { page, pageSize, categoryId, subcategoryId, status, q, city, nearby, openNow } = pageInput(
     input,
@@ -159,6 +160,12 @@ export async function listDirectory(
   );
   const filters = [condition, "b.deleted_at IS NULL"],
     values = [...parameters];
+  if (publicOnly && blockViewer) {
+    const actor = values.push(blockViewer);
+    filters.push(
+      `NOT EXISTS (SELECT 1 FROM people_block pb WHERE pb.actor_id=$${actor} AND pb.target_id=b.owner_user_id AND pb.blocked)`,
+    );
+  }
   if (!publicOnly && status === undefined) filters.push("b.status <> 'archived'");
   for (const [column, value] of [
     ["b.category_id", categoryId],
@@ -278,7 +285,11 @@ export function createPublicDirectoryService({
           )
         ).rows as DirectoryCategory[],
       })),
-    async listPublic(input: unknown = {}, featuredOnly: boolean | "category" = false) {
+    async listPublic(
+      input: unknown = {},
+      featuredOnly: boolean | "category" = false,
+      blockViewer?: string | null,
+    ) {
       object(input, [
         "page",
         "pageSize",
@@ -301,6 +312,7 @@ export function createPublicDirectoryService({
           true,
           featuredOnly,
           checkedAt,
+          blockViewer,
         );
         return {
           ...result,

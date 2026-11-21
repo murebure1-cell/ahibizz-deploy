@@ -221,6 +221,10 @@ a {
   border-radius: 18px;
   box-shadow: 0 14px 36px var(--ui-shadow);
 }
+.header-menu[data-account-menu="true"] {
+  width: min(375px, calc(100vw - 28px));
+  scrollbar-gutter: stable;
+}
 .header-menu > a,
 .header-more a,
 .header-more summary {

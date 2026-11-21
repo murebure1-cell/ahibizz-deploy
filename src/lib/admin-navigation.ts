@@ -53,6 +53,8 @@ export function adminReturnPath(value: unknown): string | null {
     value === "/administracija" ||
     value === "/administracija/izgled" ||
     value === "/administracija/zahtjevi" ||
+    value === "/administracija/blog" ||
+    value === "/administracija/reels" ||
     value === "/administracija/oglasi" ||
     value === businessImportPath ||
     value === businessLocationBatchPath ||

@@ -47,25 +47,29 @@ export default async function AccountPage({
       invalidMessageTarget = true;
     }
   }
+  const requestedPath = params.size ? `/nalog?${params}` : "/nalog";
+  const closedPath = accountReturnPath(requestedPath);
   const continuation = invalidMessageTarget
     ? "/nalog"
-    : accountReturnPath(
-        campaign
-          ? campaignPath(campaign)
-          : placement
-            ? placementOfferPath(placement)
-            : calendar
-              ? ownerCalendarPath(calendar)
-              : inquiry
-                ? businessInquiryPath(inquiry)
-                : messageTarget
-                  ? messageLink(messageTarget)
-                  : query.odjeljak === "oglasi" && query.usluga === "produkcija"
-                    ? productionRequestPath
-                    : typeof query.odjeljak === "string"
-                      ? `/nalog?odjeljak=${encodeURIComponent(query.odjeljak)}`
-                      : "/nalog",
-      );
+    : closedPath !== "/nalog"
+      ? closedPath
+      : accountReturnPath(
+          campaign
+            ? campaignPath(campaign)
+            : placement
+              ? placementOfferPath(placement)
+              : calendar
+                ? ownerCalendarPath(calendar)
+                : inquiry
+                  ? businessInquiryPath(inquiry)
+                  : messageTarget
+                    ? messageLink(messageTarget)
+                    : query.odjeljak === "oglasi" && query.usluga === "produkcija"
+                      ? productionRequestPath
+                      : typeof query.odjeljak === "string"
+                        ? `/nalog?odjeljak=${encodeURIComponent(query.odjeljak)}`
+                        : "/nalog",
+        );
   let profile: SafeAccountProfile | undefined;
   try {
     const service = getAccountService();

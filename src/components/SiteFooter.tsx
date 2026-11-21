@@ -19,6 +19,8 @@ export function SiteFooter() {
         <nav aria-label="Navigacija podnožja">
           <Link href="/o-nama">O AhiBizzu</Link>
           <Link href="/privatnost">Privatnost</Link>
+          <Link href="/pomoc">Pomoć</Link>
+          <Link href="/blog">Blog</Link>
           {!IS_PLAY_EDITION && <Link href="/paketi">Paketi</Link>}
           {!IS_PLAY_EDITION && <Link href="/instaliraj">Instaliraj aplikaciju</Link>}
           {!IS_PLAY_EDITION && getSupportConfig() && <Link href="/podrzi">Podrži AhiBizz</Link>}

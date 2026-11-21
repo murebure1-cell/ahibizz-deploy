@@ -186,6 +186,12 @@ export function AdminDashboard({
                 <Icon name="star" /> Oglašavanje i krediti
               </Link>
             )}
+            <Link href="/administracija/reels">
+              <Icon name="play" /> Pregled Reelsa
+            </Link>
+            <Link href="/administracija/blog">
+              <Icon name="info" /> Uređivanje bloga
+            </Link>
             <Link href="/administracija/izgled">
               <Icon name="sliders" /> Uređivač izgleda
             </Link>

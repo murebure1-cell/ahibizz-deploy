@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import styles from "../../../../components/support/resources.module.css";
+import { helpTicketLabel } from "../../../../lib/help-center";
 import { supportSubjects } from "../../../../lib/support-requests";
 import { AccountAccessError } from "../../../../server/auth/accounts";
 import { getSupportRequests, type OpenSupportRequest } from "../../../../server/support-requests";
@@ -67,8 +68,17 @@ export default async function SupportQueue({
                 </p>
               ) : (
                 <>
-                  <p>{item.reference}</p>
+                  <p>
+                    {item.subject === "help" ? helpTicketLabel(item.reference) : item.reference}
+                  </p>
                   <p>{item.details}</p>
+                  {item.subject === "help" && (
+                    <a
+                      href={`mailto:${encodeURIComponent(item.email).replace("%40", "@")}?subject=Zahtjev%20AhiBizz`}
+                    >
+                      Odgovori emailom
+                    </a>
+                  )}
                   <form action={closeReport}>
                     <input type="hidden" name="id" value={item.id} />
                     <button className="button button-navy" type="submit">

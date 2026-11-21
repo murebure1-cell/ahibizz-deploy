@@ -307,6 +307,9 @@ function AccountWorkspace({
               <div hidden={Boolean(view.calendarTarget)}>
                 <BusinessManager
                   active={hasAccess && section === "businesses" && !view.calendarTarget}
+                  startCreation={
+                    searchParams?.get("novo") === "1" && searchParams.getAll("novo").length === 1
+                  }
                   isOwner={profile.role === "owner"}
                   expectedAccountId={initial.id}
                 />
@@ -323,10 +326,24 @@ function AccountWorkspace({
             <AccountPane selected={section === "appointments"}>
               <CustomerAppointments
                 active={hasAccess && section === "appointments"}
+                initialView={
+                  searchParams?.get("prikaz") === "historija" &&
+                  searchParams.getAll("prikaz").length === 1
+                    ? "history"
+                    : "upcoming"
+                }
                 expectedAccountId={initial.id}
               />
             </AccountPane>
             <AccountPane selected={section === "saved"}>
+              <nav aria-label="Sačuvano" className={styles.savedLinks} hidden={!hasAccess}>
+                <Link className="text-link" href="/sacuvane-pretrage">
+                  Sačuvane pretrage
+                </Link>
+                <Link className="text-link" href="/blog?sacuvano=1">
+                  Sačuvani članci
+                </Link>
+              </nav>
               <SavedBusinesses
                 active={hasAccess && section === "saved"}
                 expectedAccountId={initial.id}
@@ -374,6 +391,15 @@ function AccountWorkspace({
                   mode={section === "credits" ? "credits" : "ads"}
                   target={view.placementTarget}
                   campaign={view.campaign}
+                  promotionView={
+                    searchParams?.getAll("prikaz").length === 1
+                      ? searchParams.get("prikaz") === "aktivne"
+                        ? "aktivne"
+                        : searchParams.get("prikaz") === "zakazane"
+                          ? "zakazane"
+                          : undefined
+                      : undefined
+                  }
                 />
               )}
             {IS_PLAY_EDITION && section === "advertising" && (

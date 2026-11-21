@@ -1,3 +1,4 @@
+import { blockedPeoplePath } from "./account-blocks";
 import { type CampaignSelection, campaignPath, readCampaignSelection } from "./ad-brief";
 import { adminReturnPath } from "./admin-navigation";
 import { bookingReturnPath } from "./booking-return";
@@ -10,6 +11,7 @@ import {
 } from "./business-today";
 import { type PlacementTarget, placementOfferPath, readPlacementTarget } from "./marketing";
 import { type MessageTarget, messageLink, readMessageTarget } from "./messaging";
+import { canonicalSavedSearch } from "./saved-search";
 
 const accountSections = {
   pregled: "overview",
@@ -96,7 +98,23 @@ export function accountReturnPath(value: unknown): string {
     [...value].some((c) => c.charCodeAt(0) <= 32 || c.charCodeAt(0) > 126)
   )
     return "/nalog";
-  if (value === productionRequestPath) return value;
+  if (
+    value === productionRequestPath ||
+    value === "/blokirani-korisnici" ||
+    value === "/sacuvane-pretrage" ||
+    value === "/nalog?odjeljak=djelatnosti&novo=1" ||
+    value === "/nalog?odjeljak=termini&prikaz=historija" ||
+    value === "/nalog?odjeljak=oglasi&prikaz=aktivne" ||
+    value === "/nalog?odjeljak=oglasi&prikaz=zakazane" ||
+    /^\/nalog\/reels(?:\?djelatnost=[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})?$/i.test(value) ||
+    value === blockedPeoplePath ||
+    value === "/pomoc" ||
+    value === "/blog?sacuvano=1" ||
+    (/^\/blog\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && value.length <= 86)
+  )
+    return value;
+  if (value.startsWith("/pretraga?") && canonicalSavedSearch(value.slice("/pretraga".length)))
+    return value;
   if (value.startsWith("/nalog?")) {
     const params = new URLSearchParams(value.slice(7));
     const campaign = readCampaignSelection(params);

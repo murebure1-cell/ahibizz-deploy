@@ -15,6 +15,7 @@ type PageContext = {
   listingId?: string;
   publishedPrices?: number[];
   gender?: "women" | "men" | null;
+  blockViewer?: string | null;
 };
 const empty = (): PageAds => ({ main: {}, icon: {} });
 const eligibility = `
@@ -30,6 +31,7 @@ const eligibility = `
     AND (c.city IS NULL OR lower(c.city)=lower($2))
     AND (c.order_id IS NULL OR cardinality(c.target_cities)=0 OR EXISTS(SELECT 1 FROM unnest(c.target_cities) place WHERE lower(place)=lower($2)))
     AND (c.country_code IS NULL OR ($1='listing' AND c.country_code=$8))
+    AND ($9::text IS NULL OR NOT EXISTS (SELECT 1 FROM people_block pb WHERE pb.actor_id=$9 AND pb.target_id=o.account_id AND pb.blocked))
     AND campaign_window_open(now(),c.local_start_minute,c.local_end_minute,c.local_time_zone)
     AND (c.category_id IS NULL OR c.category_id::text=ANY($3::text[]))
     AND (c.keyword IS NULL OR position(lower(c.keyword) in lower($4))>0)
@@ -80,6 +82,7 @@ export async function readPageAds(
       ctx.listingId ?? null,
       ctx.publishedPrices ?? [],
       ctx.countryCode ?? null,
+      ctx.blockViewer ?? null,
     ],
   );
   for (const row of rows) {

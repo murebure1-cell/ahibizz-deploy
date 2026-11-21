@@ -122,6 +122,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0040_ad_audience_sample.sql",
           "0041_ad_geo_schedule.sql",
           "0042_ad_sample_devices.sql",
+          "0043_people_blocks.sql",
+          "0044_business_reels.sql",
+          "0045_content_hub.sql",
+          "0046_saved_searches.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -520,6 +524,23 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           assert.equal(outgoing.items.length, 1);
           assert.equal(outgoing.items[0].person.id, bob.user.id);
           assert.equal((await connections.list(bob.headers, { view: "incoming" })).items.length, 1);
+          const { createAccountBlocksService } = await import("../../src/server/account-blocks.ts");
+          const blocks = createAccountBlocksService(auth, pool),
+            bound = new Headers(alice.headers);
+          bound.set("X-AhiBizz-Account-ID", alice.user.id);
+          await blocks.set(bound, bob.user.id, true, 0);
+          assert.equal(
+            (await connections.list(alice.headers, { view: "outgoing" })).items.length,
+            0,
+          );
+          assert.equal((await connections.list(bob.headers, { view: "incoming" })).items.length, 0);
+          await denied(() => request(bob, alice), 409, "CONTACT_UNAVAILABLE");
+          await denied(() => action(bob, initial, "accept"), 409, "CONTACT_UNAVAILABLE");
+          await blocks.set(bound, bob.user.id, false, 1);
+          assert.equal(
+            (await connections.list(alice.headers, { view: "outgoing" })).items.length,
+            1,
+          );
           await denied(() => request(bob, alice), 409, "CONNECTION_ALREADY_EXISTS");
           await denied(
             () => action(alice, initial, "accept"),
