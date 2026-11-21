@@ -45,7 +45,7 @@ const messageTime = new Intl.DateTimeFormat("bs-BA", {
   hourCycle: "h23",
   timeZone: "Europe/Sarajevo",
 });
-const messageDate = new Intl.DateTimeFormat("bs-BA", {
+const messageDate = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
   month: "2-digit",
   year: "numeric",
@@ -82,11 +82,17 @@ function initials(name: string) {
     .join("")
     .toLocaleUpperCase("bs");
 }
+function messageDayLabel(value: Date) {
+  const { day, month, year } = Object.fromEntries(
+    messageDate.formatToParts(value).map(({ type, value }) => [type, value]),
+  );
+  return `${day}.${month}.${year}.`;
+}
 function previewDate(value: Date, today: Date) {
   if (messageDate.format(value) === messageDate.format(today)) return messageTime.format(value);
   return messageYear.format(value) === messageYear.format(today)
     ? recentDate.format(value)
-    : messageDate.format(value);
+    : messageDayLabel(value);
 }
 function threadContext(thread: ChatThread) {
   if (thread.kind === "person") return "Lični razgovor";
@@ -988,7 +994,7 @@ export function MessagingInbox({
   const today = new Date();
   const datedMessages = conversation?.items.map((item) => {
     const date = new Date(item.createdAt);
-    return { item, date, day: messageDate.format(date) };
+    return { item, date, day: messageDayLabel(date) };
   });
   const feedback = (
     <>
@@ -1163,7 +1169,7 @@ export function MessagingInbox({
                   {item.lastMessage && (
                     <time
                       dateTime={item.lastMessage.createdAt}
-                      title={messageDate.format(new Date(item.lastMessage.createdAt))}
+                      title={messageDayLabel(new Date(item.lastMessage.createdAt))}
                     >
                       {previewDate(new Date(item.lastMessage.createdAt), today)}
                     </time>
