@@ -30,6 +30,7 @@ export default async function BlogPage({
   const categories = Object.entries(articleCategories) as [ArticleCategory, string][];
   const visibleArticles =
     data?.articles.filter((article) => article.slug !== data.featured?.slug) ?? [];
+  const onlyFeatured = data?.featured && !visibleArticles.length && !data.more;
 
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
@@ -86,63 +87,63 @@ export default async function BlogPage({
           <Icon name="heart" /> Sačuvani članci
         </Link>
       </nav>
-      {data?.featured && (
-        <FeaturedArticle article={data.featured} related={visibleArticles.slice(0, 3)} />
+      {data?.featured && <FeaturedArticle article={data.featured} />}
+      {!onlyFeatured && (
+        <section aria-labelledby="blog-results" className={styles.section}>
+          <h2 id="blog-results">
+            {filters.saved
+              ? "Sačuvani članci"
+              : filters.q
+                ? "Rezultati pretrage"
+                : filters.category
+                  ? articleCategories[filters.category]
+                  : "Najnoviji članci"}
+          </h2>
+          {signIn ? (
+            <p>
+              Sačuvani članci pripadaju tvom nalogu.{" "}
+              <Link className={styles.inlineLink} href="/prijava?nastavi=%2Fblog%3Fsacuvano%3D1">
+                Prijavi se
+              </Link>
+            </p>
+          ) : !data ? (
+            <p role="status">Članci trenutno nisu dostupni. Pokušaj ponovo kasnije.</p>
+          ) : !visibleArticles.length ? (
+            <p>
+              {filters.saved && !filters.q
+                ? "Još nema sačuvanih članaka."
+                : "Nema članaka za ovaj izbor."}
+            </p>
+          ) : (
+            <div className={styles.cards}>
+              {visibleArticles.map((article) => (
+                <ArticleCard key={article.slug} article={article} />
+              ))}
+            </div>
+          )}
+          {data && (filters.page > 1 || data.more) && (
+            <nav className={styles.pageFooter} aria-label="Stranice članaka">
+              {filters.page > 1 && (
+                <Link
+                  className={styles.secondary}
+                  href={blogPath({ ...filters, page: filters.page - 1 })}
+                >
+                  Prethodna
+                </Link>
+              )}
+              <span>Stranica {filters.page}</span>
+              {data.more && (
+                <Link
+                  className={styles.secondary}
+                  href={blogPath({ ...filters, page: filters.page + 1 })}
+                >
+                  Sljedeća
+                </Link>
+              )}
+            </nav>
+          )}
+        </section>
       )}
-      <section aria-labelledby="blog-results" className={styles.section}>
-        <h2 id="blog-results">
-          {filters.saved
-            ? "Sačuvani članci"
-            : filters.q
-              ? "Rezultati pretrage"
-              : filters.category
-                ? articleCategories[filters.category]
-                : "Najnoviji članci"}
-        </h2>
-        {signIn ? (
-          <p>
-            Sačuvani članci pripadaju tvom nalogu.{" "}
-            <Link className={styles.inlineLink} href="/prijava?nastavi=%2Fblog%3Fsacuvano%3D1">
-              Prijavi se
-            </Link>
-          </p>
-        ) : !data ? (
-          <p role="status">Članci trenutno nisu dostupni. Pokušaj ponovo kasnije.</p>
-        ) : !visibleArticles.length ? (
-          <p>
-            {filters.saved && !filters.q
-              ? "Još nema sačuvanih članaka."
-              : "Nema članaka za ovaj izbor."}
-          </p>
-        ) : (
-          <div className={styles.cards}>
-            {visibleArticles.map((article) => (
-              <ArticleCard key={article.slug} article={article} />
-            ))}
-          </div>
-        )}
-        {data && (filters.page > 1 || data.more) && (
-          <nav className={styles.pageFooter} aria-label="Stranice članaka">
-            {filters.page > 1 && (
-              <Link
-                className={styles.secondary}
-                href={blogPath({ ...filters, page: filters.page - 1 })}
-              >
-                Prethodna
-              </Link>
-            )}
-            <span>Stranica {filters.page}</span>
-            {data.more && (
-              <Link
-                className={styles.secondary}
-                href={blogPath({ ...filters, page: filters.page + 1 })}
-              >
-                Sljedeća
-              </Link>
-            )}
-          </nav>
-        )}
-      </section>
     </main>
   );
 }

@@ -129,6 +129,11 @@ export function MembershipOverview({
             {IS_PLAY_EDITION ? "Pregled" : "Paketi"} <Icon name="arrow" />
           </button>
         )}
+        {!openPlans && !IS_PLAY_EDITION && (
+          <Link href="/paketi" className={styles.manage}>
+            Pogledaj pakete <Icon name="arrow" />
+          </Link>
+        )}
       </header>
       {error ? (
         <ReadError retry={retry} />

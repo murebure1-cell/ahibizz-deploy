@@ -119,7 +119,6 @@ test("public directory uses only the lazy database when SMTP and auth service ar
     "categories",
     "homeAllPromotions",
     "homeNewest",
-    "homePromotions",
     "listPublic",
     "readPublic",
   ]);

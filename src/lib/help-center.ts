@@ -1,5 +1,7 @@
 import { contentSearchKey, searchInput } from "./content-hub";
 
+export const reportHelpPath = "/pomoc?tema=sigurnost";
+
 export const helpTopics = {
   nalog: {
     label: "Pristup nalogu",
@@ -26,12 +28,12 @@ export const helpTopics = {
     ],
   },
   rezervacije: {
-    label: "Rezervacije",
+    label: "Booking i termini",
     icon: "calendar",
-    question: "Gdje mogu provjeriti ili promijeniti rezervaciju?",
-    keywords: ["rezerv", "termin", "otkaz", "dolazak", "najam", "nocenj", "zakaz"],
+    question: "Gdje mogu provjeriti ili promijeniti termin?",
+    keywords: ["booking", "rezerv", "termin", "otkaz", "dolazak", "najam", "nocenj", "zakaz"],
     answer:
-      "Otvori Moje termine, pronađi rezervaciju i provjeri dostupne opcije u detaljima. Ako želiš izmjenu ili odabrani profil nema slobodan termin, kontaktiraj djelatnost kroz poruke.",
+      "U Mojim terminima možeš provjeriti status zahtjeva ili otkazati termin. Za drugi termin pošalji novi zahtjev na profilu djelatnosti. Ako ti nijedan termin ne odgovara, javi se djelatnosti kroz poruke.",
     links: [
       { label: "Moji termini", href: "/nalog?odjeljak=termini" },
       { label: "Otvori poruke", href: "/nalog?odjeljak=poruke" },

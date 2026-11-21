@@ -39,7 +39,7 @@ export function PreviewHome() {
       featured={previewBusinesses.map((business) => (
         <BusinessCard key={business.id} business={business} />
       ))}
-      advertisingHref="/pregled/prostor/oglasavanje"
+      advertisingHref="/oglasavanje"
       nearbyControl={
         <button
           type="button"
@@ -81,7 +81,6 @@ export function PreviewHome() {
           ))}
         />
       }
-      creditsHref="/pregled/prostor/credits"
       after={
         <>
           <PreviewInstall />

@@ -467,9 +467,7 @@
   background: var(--reel-gold);
 }
 
-.tip,
 .status,
-.nextLoader,
 .feedEnd {
   z-index: 4;
   max-inline-size: calc(100% - 2 * var(--reel-gutter));
@@ -483,7 +481,6 @@
   text-align: center;
 }
 
-.tip,
 .status {
   position: absolute;
   inset: calc(var(--reel-top) + 4rem) 0 auto;
@@ -529,7 +526,6 @@
   font-weight: 730;
 }
 
-.nextLoader,
 .feedEnd {
   position: fixed;
   inset: auto 0 calc(var(--reel-bottom) + 0.6rem);

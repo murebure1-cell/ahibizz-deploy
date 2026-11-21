@@ -48,8 +48,6 @@ test("home promotion queries stay bounded without changing public pagination", a
       },
     },
   });
-  await directory.homePromotions(true);
-  await directory.homePromotions("category");
   await directory.homeAllPromotions(2);
   await directory.homeNewest();
   await directory.listPublic();
@@ -58,8 +56,6 @@ test("home promotion queries stay bounded without changing public pagination", a
     status: 400,
   });
   assert.deepEqual(parameters, [
-    [7, 0],
-    [7, 0],
     [7, 6],
     [7, 0],
     [21, 0],

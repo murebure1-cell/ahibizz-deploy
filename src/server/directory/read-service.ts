@@ -349,9 +349,6 @@ export function createPublicDirectoryService({
       ]);
       return queryPublic(input, featuredOnly, blockViewer);
     },
-    async homePromotions(placement: true | "category") {
-      return (await queryPublic({}, placement, null, { maximumPageSize: 6 })).items;
-    },
     homeAllPromotions(page = 1) {
       return queryPublic({ page }, "all", null, { maximumPageSize: 6 });
     },

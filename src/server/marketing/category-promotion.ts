@@ -1,5 +1,5 @@
 import type { PoolClient } from "pg";
-import { promotionTrialOffer } from "../../lib/checkout-preview";
+import { categoryPromotionPriceBamMinor } from "../../lib/marketing";
 import { creditsForBamMinor } from "../../lib/wallet";
 import { AccountAccessError } from "../auth/accounts";
 import { debitWallet } from "../wallet/service";
@@ -56,7 +56,7 @@ export async function buyCategoryPromotion(
   if (reserved.rowCount || (await hasActiveWalletPromotion(client, offer.businessId)))
     throw new AccountAccessError(409, "PROMOTION_ALREADY_RESERVED");
   const rate = await lockWalletRate(client);
-  const cost = rate && creditsForBamMinor(promotionTrialOffer.amountMinor, rate);
+  const cost = rate && creditsForBamMinor(categoryPromotionPriceBamMinor, rate);
   if (cost == null || cost < 1) throw new AccountAccessError(409, "WALLET_PRICE_UNAVAILABLE");
   if (cost !== offer.expectedCreditMinor)
     throw new AccountAccessError(409, "WALLET_PAYMENT_CHANGED");

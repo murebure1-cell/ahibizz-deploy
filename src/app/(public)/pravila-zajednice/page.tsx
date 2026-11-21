@@ -1,6 +1,7 @@
 import Link from "next/link";
 import styles from "../../../components/support/resources.module.css";
 import { communityRules } from "../../../lib/community-rules";
+import { reportHelpPath } from "../../../lib/help-center";
 
 export const metadata = { title: "Pravila zajednice" };
 
@@ -11,7 +12,7 @@ export default function CommunityRulesPage() {
       {communityRules.map((rule) => (
         <p key={rule}>{rule}</p>
       ))}
-      <Link href="/prijavi-sadrzaj">Prijavi sadržaj</Link>
+      <Link href={reportHelpPath}>Kako prijaviti sadržaj</Link>
     </main>
   );
 }

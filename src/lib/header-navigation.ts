@@ -61,9 +61,16 @@ export function headerCurrentDestination(pathname: string, query: URLSearchParam
         return "/nalog?odjeljak=djelatnosti&novo=1";
       if (
         selected &&
-        ["termini", "oglasi", "djelatnosti", "sacuvani", "profil", "postavke", "krediti"].includes(
-          selected,
-        )
+        [
+          "termini",
+          "oglasi",
+          "djelatnosti",
+          "sacuvani",
+          "profil",
+          "postavke",
+          "krediti",
+          "paketi",
+        ].includes(selected)
       )
         return `/nalog?odjeljak=${selected}`;
     }

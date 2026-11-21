@@ -435,28 +435,9 @@
   text-align: center;
   max-width: 540px;
 }
-.preview-space-icon {
-  display: grid;
-  place-items: center;
-  width: 62px;
-  height: 62px;
-  margin: 0 auto 22px;
-  border-radius: 19px;
-  background: var(--ui-surface-soft);
-  color: var(--ui-text-secondary);
-}
 .preview-space h1 {
   font-size: 35px;
   margin-bottom: 15px;
-}
-.preview-space > p {
-  font-size: 16px;
-  color: var(--preview-muted);
-}
-.preview-space .preview-space-note {
-  font-size: 13px;
-  margin: 25px 0;
-  line-height: 1.7;
 }
 @media (max-width: 1000px) {
   .preview-business-grid {

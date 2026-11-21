@@ -5,6 +5,12 @@ import { AccountAccessError } from "../../server/auth/accounts";
 import { getSupportRequests } from "../../server/support-requests";
 
 export type RequestResult = { sent: boolean; message: string };
+const requestErrors: Record<number, string> = {
+  401: "Prijava je istekla. Prijavi se ponovo ili piši podršci.",
+  403: "Prijava je istekla. Prijavi se ponovo ili piši podršci.",
+  404: "Ovaj sadržaj više nije dostupan za prijavu.",
+  429: "Dostignut je dnevni broj prijava. Za hitnu pomoć obrati se podršci.",
+};
 export async function submitSupportRequest(
   _: RequestResult,
   form: FormData,
@@ -34,12 +40,7 @@ export async function submitSupportRequest(
     const status = error instanceof AccountAccessError ? error.status : 503;
     return {
       sent: false,
-      message:
-        status === 429
-          ? "Dostignut je dnevni broj prijava. Za hitnu pomoć obrati se podršci."
-          : status === 401 || status === 403
-            ? "Prijava je istekla. Prijavi se ponovo ili piši podršci."
-            : "Zahtjev nije potvrđen. Pokušaj ponovo ili piši podršci.",
+      message: requestErrors[status] ?? "Zahtjev nije potvrđen. Pokušaj ponovo ili piši podršci.",
     };
   }
 }

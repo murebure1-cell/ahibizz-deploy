@@ -2,9 +2,15 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { getPackageBenefits } from "../../src/server/paypal-subscriptions/benefits.ts";
 import { createPackageSubscriptions } from "../../src/server/paypal-subscriptions/service.ts";
+import { createPeopleService } from "../../src/server/people/service.ts";
 
 export async function verifyWalletPackages({ pool, auth, customer, plans, provider }) {
   const service = createPackageSubscriptions({ environment: "live", pool, auth, plans, provider });
+  const people = createPeopleService({
+    pool,
+    auth,
+    accounts: { read: (headers) => ({ id: headers.get("X-AhiBizz-Account-ID") }) },
+  });
   const buyer = await customer(),
     stranger = await customer(),
     second = await customer();
@@ -35,6 +41,7 @@ export async function verifyWalletPackages({ pool, auth, customer, plans, provid
   await assert.rejects(service.create(buyer.headers, monthly, true), {
     code: "INSUFFICIENT_CREDITS",
   });
+  assert.equal((await people.read(buyer.headers)).canCustomizeCover, false);
   assert.equal((await service.list(buyer.headers)).contracts.length, 0);
   await fund(buyer, 100);
   await assert.rejects(service.create(stranger.headers, monthly, true), { status: 403 });
@@ -50,6 +57,7 @@ export async function verifyWalletPackages({ pool, auth, customer, plans, provid
   assert.equal(one.contract.paidCycles, 1);
   assert.equal(one.contract.paidEurMinor, 0);
   assert.equal(one.contract.paymentMethod, "credits");
+  assert.equal((await people.read(buyer.headers)).canCustomizeCover, true);
   assert.equal(await balance(buyer), 51);
   const { expectedCreditMinor, ...paypalOffer } = monthly;
   await assert.rejects(service.create(buyer.headers, { ...paypalOffer, requestId: randomUUID() }), {
@@ -76,6 +84,7 @@ export async function verifyWalletPackages({ pool, auth, customer, plans, provid
   ]);
   assert.equal(renewed.contract.paidCycles, 2);
   assert.equal(replayed.contract.paidCycles, 2);
+  assert.equal((await people.read(buyer.headers)).canCustomizeCover, true);
   assert.equal(await balance(buyer), 2);
   const checkWindow = (id) =>
     pool.query(

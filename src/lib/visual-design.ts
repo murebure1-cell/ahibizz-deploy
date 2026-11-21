@@ -88,10 +88,7 @@ export const designTargets: readonly DesignTarget[] = [
   target("home-search", "Brza pretraga", "home"),
   target("home-categories", "Traka kategorija", "home"),
   target("home-featured", "Istaknute djelatnosti", "home"),
-  target("home-category-featured", "Istaknuto u kategoriji", "home"),
-  target("home-local-featured", "Istaknuto na lokaciji", "home"),
   target("home-promotion", "Poziv na isticanje", "home"),
-  target("home-community", "AhiBizz zajednica", "home"),
   target("home-ad", "Oglas", "home"),
   target("home-reels", "Reels djelatnosti", "home"),
   target("home-newest", "Novi na AhiBizzu", "home"),
@@ -126,6 +123,8 @@ export const designTargets: readonly DesignTarget[] = [
   target("directory-photo", "Fotografija kartice", "search"),
   target("business-photo", "Fotografija poslovne naslovnice", "business"),
 ];
+// Read and preserve older saved designs without offering retired sections in the editor.
+const retiredHomeTargetIds = ["home-category-featured", "home-local-featured", "home-community"];
 
 /** Inspect the closest editable element; an explicit name on that element wins. */
 export function findDesignTarget(element: Element, boundary: Element) {
@@ -387,10 +386,10 @@ export function parseVisualDesign(input: unknown): VisualDesign {
     if (normalized) sectionTitles[id] = normalized;
   }
   design.sectionTitles = sectionTitles;
-  const targets = object(
-    value.rules,
-    designTargets.map(({ id }) => id),
-  );
+  const targets = object(value.rules, [
+    ...designTargets.map(({ id }) => id),
+    ...retiredHomeTargetIds,
+  ]);
   for (const [id, scopes] of Object.entries(targets)) {
     const scoped = object(scopes, variants);
     for (const variant of variants) {

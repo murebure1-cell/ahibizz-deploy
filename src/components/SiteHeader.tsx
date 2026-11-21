@@ -216,7 +216,7 @@ export function SiteHeader({
           )}
           {access === "owner" &&
             destination({ href: "/administracija", label: "Administracija", icon: "shield" })}
-          {!account && business.length > 0 && (
+          {business.length > 0 && (
             <details
               key={`business-${open}`}
               className="header-more"

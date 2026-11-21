@@ -20,6 +20,7 @@ import {
   getAuthService,
 } from "../auth";
 import { getAuthDatabasePool } from "../auth/service";
+import { canCustomizeCoverSql } from "../people/cover-entitlement";
 import { platformBadgeColumns, platformFounderJoin } from "../people/platform-badges";
 import {
   ConnectionsAccessError,
@@ -46,8 +47,8 @@ type Pair = {
   version: number;
 };
 const pageSize = 20;
-const publicColumns = `u.id,u.name,${platformBadgeColumns},p.city,p.country_code AS "countryCode",p.bio,p.skills,p.work_status AS "workStatus",photo.version AS "photoVersion",CASE WHEN u.role='owner' OR grant_cover.can_customize_cover=true THEN cover.version ELSE NULL END AS "coverVersion"`;
-const publicJoins = `JOIN personal_profile p ON p.user_id=u.id AND p.is_public=true ${platformFounderJoin} LEFT JOIN personal_profile_image photo ON photo.user_id=u.id AND photo.kind='photo' LEFT JOIN personal_profile_image cover ON cover.user_id=u.id AND cover.kind='cover' LEFT JOIN personal_profile_entitlement grant_cover ON grant_cover.user_id=u.id`;
+const publicColumns = `u.id,u.name,${platformBadgeColumns},p.city,p.country_code AS "countryCode",p.bio,p.skills,p.work_status AS "workStatus",photo.version AS "photoVersion",CASE WHEN cover.version IS NOT NULL THEN CASE WHEN ${canCustomizeCoverSql} THEN cover.version END END AS "coverVersion"`;
+const publicJoins = `JOIN personal_profile p ON p.user_id=u.id AND p.is_public=true ${platformFounderJoin} LEFT JOIN personal_profile_image photo ON photo.user_id=u.id AND photo.kind='photo' LEFT JOIN personal_profile_image cover ON cover.user_id=u.id AND cover.kind='cover'`;
 const publicEligibility = `u.approval='approved' AND u."emailVerified"=true AND u.role IN ('member','owner')`;
 
 function eligible(user: CurrentAuthUser | undefined): asserts user is CurrentAuthUser {
@@ -370,7 +371,7 @@ export function createConnectionsService({
         // Visibility, current eligibility, entitlement and exact image version are checked in one statement.
         const row = (
           await client.query<Image>(
-            `SELECT image.bytes,image.mime,image.width,image.height,image.version FROM auth_user u JOIN personal_profile p ON p.user_id=u.id AND p.is_public=true JOIN personal_profile_image image ON image.user_id=u.id AND image.kind=$2 AND image.version=$3 LEFT JOIN personal_profile_entitlement grant_cover ON grant_cover.user_id=u.id WHERE u.id=$1 AND ${publicEligibility} AND ($2='photo' OR u.role='owner' OR grant_cover.can_customize_cover=true)`,
+            `SELECT image.bytes,image.mime,image.width,image.height,image.version FROM auth_user u JOIN personal_profile p ON p.user_id=u.id AND p.is_public=true JOIN personal_profile_image image ON image.user_id=u.id AND image.kind=$2 AND image.version=$3 WHERE u.id=$1 AND ${publicEligibility} AND ($2='photo' OR ${canCustomizeCoverSql})`,
             [id, kind, wanted],
           )
         ).rows[0];

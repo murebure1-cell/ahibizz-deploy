@@ -2,20 +2,16 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { productionRequestPath } from "../../lib/account-return";
-import { type BillingCatalog, type BillingPeriod, billingPackages } from "../../lib/billing";
+import { accountShortcuts } from "../../lib/account-shortcuts";
+import { type BillingPeriod, billingPackages } from "../../lib/billing";
 import { type PackageBenefitsCatalog, readPackageBenefits } from "../../lib/package-benefits";
 import styles from "./billing.module.css";
 
 export function PricingCatalog({
-  embedded = false,
-  catalog,
   initialBenefits = null,
 }: {
-  embedded?: boolean;
-  catalog?: BillingCatalog;
   initialBenefits?: PackageBenefitsCatalog | null;
 }) {
-  const plans = catalog?.packages ?? billingPackages;
   const [benefits, setBenefits] = useState<PackageBenefitsCatalog | null>(initialBenefits);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -38,12 +34,10 @@ export function PricingCatalog({
   return (
     <section className={styles.workspace} aria-label="Paketi AhiBizz">
       <header className={styles.heading}>
-        <div>{embedded ? <h2>Paketi</h2> : <h1>Paketi za djelatnosti</h1>}</div>
-        {!embedded && (
-          <Link className={styles.secondary} href="/nalog?odjeljak=paketi">
-            Moje članstvo
-          </Link>
-        )}
+        <h1>Paketi za djelatnosti</h1>
+        <Link className={styles.secondary} href={accountShortcuts.membership}>
+          Moji paketi i ugovori
+        </Link>
       </header>
       <p className={styles.intro}>
         Prva djelatnost je besplatna 12 mjeseci. Dodatne se plaćaju od početka.
@@ -65,7 +59,7 @@ export function PricingCatalog({
         </button>
       </fieldset>
       <div className={styles.plans}>
-        {plans.map((plan) => {
+        {billingPackages.map((plan) => {
           const included = benefits?.benefits[plan.id];
           const monthly = period === "monthly";
           return (
@@ -83,6 +77,7 @@ export function PricingCatalog({
               {included && (
                 <ul className={styles.planBenefits} aria-label="Uključeno u paket">
                   <li>Poslovni profil, poruke i booking</li>
+                  <li>Vlastita naslovnica ličnog profila</li>
                   {included.nearbyDays > 0 && (
                     <li>
                       <strong>

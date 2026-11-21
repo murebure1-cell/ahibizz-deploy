@@ -142,7 +142,7 @@ test("real isolated confirmed-receipt ledger, accounting corrections and current
       "account deletion requests and content reports use an owner-only inbox",
       async () => {
         const { verifySupportRequests } = await import("./support-cases.mjs");
-        await verifySupportRequests({ auth, pool, owner, member });
+        await verifySupportRequests({ auth, pool, owner, member, other: second });
       },
     );
     await t.test(

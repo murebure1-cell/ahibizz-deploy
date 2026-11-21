@@ -693,6 +693,12 @@ export function PackageCheckout({
                   Čekamo PayPalov zapis prve uplate.
                 </p>
               )}
+              {confirmCancel === c.id && c.period === "monthly" && c.paidCycles < c.totalCycles && (
+                <p className={styles.footnote}>
+                  Za status preostalih rata iz ugovora obrati se{" "}
+                  <a href="/pomoc">korisničkoj podršci</a>.
+                </p>
+              )}
               <div className={styles.actions}>
                 {(c.status === "CREATING" || c.status === "APPROVAL_PENDING") && (
                   <>
@@ -761,7 +767,7 @@ export function PackageCheckout({
                         disabled={busy}
                         onClick={() => void perform("cancel", c)}
                       >
-                        Potvrdi otkazivanje
+                        Potvrdi zaustavljanje naplate
                       </button>
                       <button
                         type="button"
@@ -769,7 +775,7 @@ export function PackageCheckout({
                         disabled={busy}
                         onClick={() => setConfirmCancel("")}
                       >
-                        Zadrži pretplatu
+                        Zadrži automatsku naplatu
                       </button>
                     </>
                   ) : (
@@ -779,7 +785,7 @@ export function PackageCheckout({
                       disabled={busy}
                       onClick={() => setConfirmCancel(c.id)}
                     >
-                      Otkaži pretplatu
+                      Zaustavi PayPal naplatu
                     </button>
                   ))}
               </div>

@@ -4,6 +4,7 @@ import type { BusinessMediaAsset } from "./business-media";
 import { businessUuid } from "./business-today";
 
 export type MarketingMode = "ads" | "credits" | "admin";
+export const categoryPromotionPriceBamMinor = 1000;
 export type PromotionView = "aktivne" | "zakazane";
 export function readPromotionView(value: unknown): PromotionView | undefined {
   return value === "aktivne" || value === "zakazane" ? value : undefined;

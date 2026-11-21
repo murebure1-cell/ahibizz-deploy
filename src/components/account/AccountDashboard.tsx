@@ -18,7 +18,6 @@ import { clearBrowserMessagingRecovery } from "../../lib/messaging-recovery-stor
 import { type PersonalProfile, profileImageUrl } from "../../lib/people";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { useAppAppearance } from "../appearance/AppAppearance";
-import { PricingCatalog } from "../billing/PricingCatalog";
 import { SavedBusinesses } from "../favorites/SavedBusinesses";
 import { Icon, type IconName } from "../Icon";
 import { PersonalProfileWorkspace } from "../people/PersonalProfileWorkspace";
@@ -423,10 +422,7 @@ function AccountWorkspace({
               <CurrentPlacements accountId={initial.id} active={hasAccess} />
             )}
             {section === "membership" && (
-              <>
-                <MembershipOverview accountId={initial.id} active={hasAccess} />
-                {!IS_PLAY_EDITION && <PricingCatalog embedded />}
-              </>
+              <MembershipOverview accountId={initial.id} active={hasAccess} />
             )}
           </section>
         </main>

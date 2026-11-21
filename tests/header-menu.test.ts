@@ -66,6 +66,7 @@ test("header selection follows profiles, account subsections and back navigation
     ["/nalog", "odjeljak=poruke&osoba=test", "/nalog?odjeljak=poruke"],
     ["/nalog", "odjeljak=poruke&odjeljak=postavke", "/nalog"],
     ["/nalog", "odjeljak=postavke", "/nalog?odjeljak=postavke"],
+    ["/nalog", "odjeljak=paketi", "/nalog?odjeljak=paketi"],
     ["/ljudi/test", "", "/ljudi"],
     ["/djelatnosti/test", "", "/pretraga"],
     ["/administracija/uvoz-prijava", "", "/administracija"],

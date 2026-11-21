@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ReelCards } from "../../../components/reels/ReelShelf";
 import styles from "../../../components/reels/reels.module.css";
 import { businessUuid } from "../../../lib/business-today";
+import { IS_PLAY_EDITION } from "../../../lib/distribution";
 import { listPublicReels } from "../../../server/reels/service";
 import { currentReelViewer } from "../../../server/reels/viewer";
 
@@ -33,7 +34,6 @@ export default async function ReelsPage({ searchParams }: { searchParams: Promis
           ← {businessId ? "Na djelatnost" : "Početna"}
         </Link>
         <h1>{businessTitle ? `Reels · ${businessTitle}` : "Reels djelatnosti"}</h1>
-        <p>Kratki snimci rada, prostora i ponude.</p>
       </header>
       {results?.length ? (
         <ReelCards reels={results.slice(0, pageSize)} businessScope={businessId} page={page} />
@@ -52,9 +52,11 @@ export default async function ReelsPage({ searchParams }: { searchParams: Promis
           )}
         </nav>
       )}
-      <Link href="/nalog/reels" className={styles.primary}>
-        Objavi reel svoje djelatnosti
-      </Link>
+      {!IS_PLAY_EDITION && (
+        <Link href="/nalog/reels" className={styles.primary}>
+          Objavi Reel
+        </Link>
+      )}
     </main>
   );
 }

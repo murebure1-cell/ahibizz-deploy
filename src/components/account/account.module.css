@@ -247,35 +247,6 @@
   width: 14px;
   height: 14px;
 }
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 13px;
-  align-items: center;
-  margin-top: 27px;
-}
-.actions button,
-.queueHeading button {
-  border: 0;
-  border-radius: 9px;
-  background: var(--ui-accent);
-  color: var(--ui-on-accent);
-  padding: 12px 20px;
-  min-height: 44px;
-  font-size: 13px;
-  font-weight: 600;
-}
-.actions button:disabled,
-.queueHeading button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.actions a {
-  font-size: 12px;
-  color: var(--ui-muted);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
 .card > p {
   font-size: 13px;
   line-height: 1.6;
@@ -285,56 +256,6 @@
 .card p.error {
   color: var(--ui-danger);
 }
-.queueHeading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.queueHeading h2 {
-  margin: 0;
-}
-.queueHeading button {
-  background: var(--ui-surface-soft);
-  color: var(--ui-text-secondary);
-}
-.queue {
-  margin-top: 20px;
-}
-.queue article {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  border-top: 1px solid var(--ui-border);
-  padding: 21px 0;
-}
-.queue article > div:first-child {
-  display: grid;
-  gap: 5px;
-  min-width: 0;
-}
-.queue article strong {
-  font-size: 14px;
-}
-.queue article span {
-  font-size: 13px;
-  overflow-wrap: anywhere;
-  color: var(--ui-muted);
-}
-.queue article small {
-  font-size: 11px;
-  color: var(--ui-muted);
-}
-.queue .actions {
-  margin: 0;
-  flex-wrap: nowrap;
-  gap: 8px;
-}
-.actions button.secondary {
-  background: var(--ui-surface-soft);
-  color: var(--ui-muted);
-}
 @media (max-width: 900px) {
   .layout {
     grid-template-columns: 210px minmax(0, 1fr);
@@ -342,13 +263,6 @@
   }
   .card {
     padding: 23px;
-  }
-  .queue article {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .queue .actions {
-    justify-content: flex-start;
   }
 }
 @media (max-width: 700px) {
@@ -462,15 +376,6 @@
   }
   .card {
     padding: 23px 20px;
-  }
-  .actions {
-    gap: 17px;
-  }
-  .queueHeading h2 {
-    font-size: 17px;
-  }
-  .queue .actions {
-    gap: 9px;
   }
 }
 

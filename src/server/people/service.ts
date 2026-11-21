@@ -9,6 +9,7 @@ import {
   getAuthService,
 } from "../auth";
 import { getAuthDatabasePool } from "../auth/service";
+import { canCustomizeCoverSql } from "./cover-entitlement";
 import { normalizeProfileImage } from "./media";
 import { platformBadgeColumns, platformFounderJoin } from "./platform-badges";
 import { fail, mediaKind, object, PeopleAccessError, profileInput, version } from "./validation";
@@ -81,11 +82,11 @@ async function entitled(client: PoolClient, user: CurrentAuthUser): Promise<bool
   if (user.role === "owner") return true;
   return (
     (
-      await client.query<{ can_customize_cover: boolean }>(
-        "SELECT can_customize_cover FROM personal_profile_entitlement WHERE user_id=$1 FOR SHARE",
+      await client.query<{ canCustomizeCover: boolean }>(
+        `SELECT ${canCustomizeCoverSql} AS "canCustomizeCover" FROM auth_user u WHERE u.id=$1`,
         [user.id],
       )
-    ).rows[0]?.can_customize_cover === true
+    ).rows[0]?.canCustomizeCover === true
   );
 }
 async function profile(client: PoolClient, user: CurrentAuthUser): Promise<PersonalProfile> {

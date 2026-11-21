@@ -470,40 +470,6 @@
 .fullWidth {
   grid-column: 1 / -1;
 }
-.placeForm {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  max-width: 230px;
-  border: 1px solid var(--home-line);
-  background: var(--ui-surface);
-  border-radius: 11px;
-  padding: 4px;
-}
-.placeForm input {
-  width: 100%;
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  color: var(--home-ink);
-  padding: 7px 8px;
-  font-size: 16px;
-}
-.placeForm button {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  min-width: 44px;
-  min-height: 44px;
-  border: 0;
-  border-radius: 8px;
-  color: var(--home-ink);
-  background: var(--ui-surface-soft);
-}
-.placeForm svg {
-  width: 17px;
-  height: 17px;
-}
 .partners {
   padding: 30px 0;
   border-block: 1px solid var(--home-line);
@@ -744,12 +710,6 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
-  .placeForm {
-    max-width: 150px;
-  }
-  .placeForm input {
-    padding-inline: 5px;
-  }
   .partners {
     padding-block: 21px 26px;
   }
@@ -789,10 +749,6 @@
 @media (max-width: 360px) {
   .sectionHeading {
     flex-wrap: wrap;
-  }
-  .placeForm {
-    max-width: none;
-    width: 100%;
   }
   .ad {
     align-items: start;

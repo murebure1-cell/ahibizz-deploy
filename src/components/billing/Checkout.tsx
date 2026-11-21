@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { readCheckoutOrder } from "../../lib/checkout-order-read";
-import { promotionTrialOffer } from "../../lib/checkout-preview";
+import { categoryPromotionPriceBamMinor } from "../../lib/marketing";
 import {
   canOfferPayPalCard,
   checkoutEuro as money,
@@ -147,7 +147,7 @@ export function Checkout({
           if (!response.ok) return;
           const value = await response.json();
           const priceMinor = creditsForBamMinor(
-            promotionTrialOffer.amountMinor,
+            categoryPromotionPriceBamMinor,
             value.creditUnitBamMinor,
           );
           if (active && priceMinor !== null && Number.isFinite(value.balance))

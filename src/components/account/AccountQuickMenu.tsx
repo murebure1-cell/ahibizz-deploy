@@ -135,7 +135,7 @@ export function AccountQuickMenu({
         >
           <summary>
             <Icon name="calendar" />
-            <span>Termini i rezervacije</span>
+            <span>Termini</span>
             <Icon name="chevron" className={styles.chevron} />
           </summary>
           {link({ href: path.appointments, label: "Aktuelni termini", icon: "calendar" })}
@@ -178,7 +178,11 @@ export function AccountQuickMenu({
       </div>
       <div className={styles.publish}>
         {link({ href: path.newBusiness, label: "Dodaj djelatnost", icon: "shop" })}
-        {link({ href: path.manageReels, label: "Objavi Reel", icon: "play" })}
+        {link({
+          href: path.manageReels,
+          label: IS_PLAY_EDITION ? "Moji reels" : "Objavi Reel",
+          icon: "play",
+        })}
       </div>
       <div className={styles.links}>
         {link({ href: path.notifications, label: "Obavijesti", icon: "bell" })}
@@ -186,8 +190,8 @@ export function AccountQuickMenu({
         {link({ href: path.blocked, label: "Blokirani korisnici", icon: "shield" })}
         {link({ href: "/pomoc", label: "Centar za pomoć", icon: "message" })}
         {link({ href: "/blog", label: "AhiBizz blog", icon: "info" })}
-        {!IS_PLAY_EDITION && link({ href: "/oglasavanje", label: "Oglašavanje", icon: "star" })}
-        {!IS_PLAY_EDITION && link({ href: "/paketi", label: "Poslovni paketi", icon: "crown" })}
+        {!IS_PLAY_EDITION &&
+          link({ href: path.membership, label: "Moji paketi i ugovori", icon: "crown" })}
       </div>
       <div className={styles.preferences}>
         <fieldset>

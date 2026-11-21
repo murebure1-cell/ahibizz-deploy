@@ -68,6 +68,8 @@ test("both previous homepage schemas read in the current order and retain active
       },
       rules: {
         "home-nearby": { mobile: { "background-color": "#112233" } },
+        "home-category-featured": { dark: { color: "#ccbb99" } },
+        "home-local-featured": { mobile: { color: "#553311" } },
         "home-community": { base: { color: "#223344" } },
       },
     };
@@ -75,11 +77,17 @@ test("both previous homepage schemas read in the current order and retain active
     assert.deepEqual(parsed.homeOrder, expectedOrder);
     assert.deepEqual(parsed.sectionTitles, { nearby: "Lokalne usluge" });
     assert.deepEqual(parsed.rules, stored.rules);
+    assert.deepEqual(parseVisualDesign(JSON.parse(JSON.stringify(parsed))), parsed);
+    assert.match(designCss(parsed), /home-nearby/);
+    assert.doesNotMatch(designCss(parsed), /home-(category-featured|local-featured|community)/);
     assert.equal(parsed.heroTitle, "Moja naslovna");
     assert.deepEqual(stored.homeOrder, homeOrder);
   }
   assert.ok(designTargets.some(({ id }) => id === "home-reels"));
   assert.ok(designTargets.some(({ id }) => id === "home-newest"));
+  assert.ok(
+    !designTargets.some(({ id }) => /^home-(category-featured|local-featured|community)$/.test(id)),
+  );
 });
 
 test("the homepage uses only registered photos and retains its original cover for older designs", () => {
