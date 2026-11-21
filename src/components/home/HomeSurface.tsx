@@ -237,7 +237,6 @@ export function HomeSurface({
         control={nearbyControl}
         before={nearbyBefore}
       >
-        <HomeArtwork kind="promotion" />
         {nearby}
       </HomeNearbySection>
     ),
@@ -248,6 +247,7 @@ export function HomeSurface({
         data-design="home-promotion"
         aria-labelledby="promotion-heading"
       >
+        <HomeArtwork kind="promotion" />
         <Link
           href="/oglasavanje"
           className={styles.calloutLink}
