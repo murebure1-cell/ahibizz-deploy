@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { createAccountService } from "../../src/server/auth/accounts.ts";
+import { createMessagingService } from "../../src/server/messaging/service.ts";
 import { createSupportRequests } from "../../src/server/support-requests.ts";
 import { verifyContentHub } from "./content-hub-cases.mjs";
 
@@ -39,8 +41,7 @@ export async function verifySupportRequests({ auth, pool, owner, member, other }
 
   const categoryId = randomUUID(),
     businessId = randomUUID(),
-    reviewId = randomUUID(),
-    threadId = randomUUID();
+    reviewId = randomUUID();
   await pool.query("INSERT INTO directory_category(id,name,slug) VALUES($1,'Report fixture',$2)", [
     categoryId,
     `report-fixture-${categoryId}`,
@@ -70,14 +71,14 @@ export async function verifySupportRequests({ auth, pool, owner, member, other }
   await assert.rejects(inbox.submit(other.headers, "review", reviewId, comment), unavailable);
   await inbox.submit(member.headers, "review", reviewId.toUpperCase(), comment);
 
-  await pool.query(
-    "INSERT INTO message_thread(id,kind,left_user_id,right_user_id,business_id,created_by_user_id) VALUES($1,'business',$2,$3,$4,$2)",
-    [threadId, member.user.id, owner.user.id, businessId],
+  const accounts = createAccountService({ auth, pool });
+  const messaging = createMessagingService({ accounts, auth, pool });
+  const { threadId } = await messaging.open(
+    member.headers,
+    { kind: "business", targetId: businessId },
+    randomUUID(),
   );
-  await pool.query(
-    "INSERT INTO message_thread_member(thread_id,user_id,blocked) VALUES($1,$2,true),($1,$3,false)",
-    [threadId, member.user.id, owner.user.id],
-  );
+  await messaging.block(member.headers, threadId, { blocked: true }, randomUUID());
   await assert.rejects(inbox.submit(other.headers, "conversation", threadId, comment), unavailable);
   await inbox.submit(member.headers, "conversation", threadId, comment);
   await pool.query("UPDATE directory_business SET owner_user_id=$2,version=version+1 WHERE id=$1", [
@@ -107,10 +108,4 @@ export async function verifySupportRequests({ auth, pool, owner, member, other }
       .rows[0].count,
     1,
   );
-  await pool.query("DELETE FROM message_thread_member WHERE thread_id=$1", [threadId]);
-  await pool.query("DELETE FROM message_thread WHERE id=$1", [threadId]);
-  await pool.query("DELETE FROM business_review WHERE id=$1", [reviewId]);
-  await pool.query("DELETE FROM directory_business WHERE id=$1", [businessId]);
-  await pool.query("DELETE FROM directory_category WHERE id=$1", [categoryId]);
-  await pool.query("DELETE FROM personal_profile WHERE user_id=$1", [other.user.id]);
 }
