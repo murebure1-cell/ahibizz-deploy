@@ -108,6 +108,59 @@ export async function verifyMarketingOnlineQuotes(
     },
   );
 
+  await t.test("a failed pending refund restores only the original verified top-up", async () => {
+    const baseline = await balance();
+    const id = await quote("credits", 15, 1000);
+    const paid = await capture(await attach(await store.create(user, input(id))));
+    assert.equal(await balance(), baseline + 15);
+    const command = await store.reserveRefund(owner, paid.id, {
+      requestId: randomUUID(),
+      amountMinor: 100,
+      reason: "failed credit refund fixture",
+    });
+    const facts = { refundId: `REFUND${command.id}`, amountMinor: 100, captureId: paid.captureId };
+    await store.attachRefundResult(command.id, { ...facts, status: "PENDING" });
+    assert.equal(await balance(), baseline);
+    assert.equal((await capture(paid)).status, "review");
+    await store.attachRefundResult(command.id, { ...facts, status: "FAILED" });
+    assert.equal(await balance(), baseline);
+    assert.equal((await capture(paid)).status, "captured");
+    assert.equal((await state(id)).online_checkout_id, paid.id);
+    assert.equal((await state(id)).revoked_at, null);
+    await capture(paid);
+    assert.equal(await balance(), baseline + 15);
+  });
+
+  await t.test(
+    "pending refund on a partially refunded top-up keeps the remainder held",
+    async () => {
+      const baseline = await balance();
+      const id = await quote("credits", 15, 1000);
+      const paid = await capture(await attach(await store.create(user, input(id))));
+      await store.reconcileRefund(paid.id, { captureId: paid.captureId, refundedMinor: 100 });
+      assert.ok((await balance()) > baseline);
+      const command = await store.reserveRefund(owner, paid.id, {
+        requestId: randomUUID(),
+        amountMinor: 100,
+        reason: "second refund fixture",
+      });
+      const facts = {
+        refundId: `REFUND${command.id}`,
+        amountMinor: 100,
+        captureId: paid.captureId,
+      };
+      const held = await store.attachRefundResult(command.id, { ...facts, status: "PENDING" });
+      assert.equal(held.status, "review");
+      assert.equal(held.refundedMinor, 100);
+      assert.equal(await balance(), baseline);
+      await store.attachRefundResult(command.id, { ...facts, status: "FAILED" });
+      const current = await capture(paid);
+      assert.equal(current.status, "review");
+      assert.equal(current.refundedMinor, 100);
+      assert.equal(await balance(), baseline);
+    },
+  );
+
   await t.test(
     "a fully corrected unfulfilled payment releases the quote while pending and partial corrections block it",
     async (t) => {

@@ -45,6 +45,12 @@ export type CheckoutOrder = {
   capturedAt: string | null;
   version: number;
 };
+type HeldQuote = {
+  businessId: string | null;
+  businessVersion: number | null;
+  revokedAt: string;
+  userUpdatedAt: string;
+};
 export class CheckoutStoreError extends Error {
   constructor(
     readonly status: number,
@@ -148,6 +154,106 @@ async function audit(c: PoolClient, id: string, action: string, details: unknown
     "INSERT INTO paypal_checkout_event(id,order_id,action,details) VALUES($1,$2,$3,$4::jsonb)",
     [randomUUID(), id, action, JSON.stringify(details)],
   );
+}
+async function holdCapturedOrder(c: PoolClient, order: CheckoutOrder, commandId: string) {
+  const quote =
+    order.quoteId && order.environment === "live"
+      ? ((
+          await c.query<HeldQuote>(
+            `UPDATE marketing_order q SET revoked_at=clock_timestamp()
+           FROM auth_user u WHERE q.id=$1 AND q.online_checkout_id=$2 AND q.account_id=u.id
+             AND q.status='paid' AND q.revoked_at IS NULL
+             AND u.approval='approved' AND u."emailVerified" AND u.role IN ('member','owner')
+           RETURNING q.business_id AS "businessId", q.revoked_at::text AS "revokedAt",
+             u."updatedAt"::text AS "userUpdatedAt",
+             (SELECT version FROM directory_business WHERE id=q.business_id) AS "businessVersion"`,
+            [order.quoteId, order.id],
+          )
+        ).rows[0] ?? null)
+      : null;
+  const held = await c.query<{ version: number }>(
+    "UPDATE paypal_checkout_order SET status='review',updated_at=now(),version=version+1 WHERE id=$1 RETURNING version",
+    [order.id],
+  );
+  const version = held.rows[0]?.version;
+  if (!version) fail(404, "ORDER_NOT_FOUND");
+  await audit(c, order.id, "refund_hold", { commandId, version, quote });
+}
+
+async function recoverRefundHold(c: PoolClient, order: CheckoutOrder) {
+  if (
+    order.status !== "review" ||
+    !order.captureId ||
+    order.refundedMinor !== 0 ||
+    order.refundTotalUnknown
+  )
+    return order;
+  const hold = (
+    await c.query<{ quote: HeldQuote | null }>(
+      `SELECT details->'quote' AS quote FROM paypal_checkout_event hold
+       WHERE hold.order_id=$1 AND hold.action='refund_hold' AND hold.details->>'version'=$2
+         AND EXISTS (SELECT 1 FROM paypal_refund_command command
+           WHERE command.order_id=hold.order_id AND command.id::text=hold.details->>'commandId'
+             AND command.status='failed' AND command.provider_refund_id IS NOT NULL)
+         AND NOT EXISTS (SELECT 1 FROM paypal_refund_command
+           WHERE order_id=hold.order_id AND status IN ('reserved','completed'))
+       LIMIT 1`,
+      [order.id, String(order.version)],
+    )
+  ).rows[0];
+  if (!hold) return order;
+  if (order.businessId) {
+    const listing = await business(c, order.businessId);
+    if (
+      !listing ||
+      listing.owner_user_id !== order.userId ||
+      listing.category_id !== order.categoryId ||
+      listing.status !== "published" ||
+      (order.environment === "live" && (await hasActiveWalletPromotion(c, order.businessId)))
+    )
+      return order;
+    const entitled = await c.query(
+      "SELECT 1 FROM paypal_promotion_entitlement WHERE order_id=$1 AND revoked_at IS NULL",
+      [order.id],
+    );
+    if (!entitled.rowCount) return order;
+  }
+  if (order.quoteId && order.environment === "live") {
+    const quote = hold.quote;
+    if (!quote) return order;
+    if (quote.businessId) await business(c, quote.businessId);
+    const restored = await c.query(
+      `UPDATE marketing_order q SET revoked_at=NULL
+       WHERE q.id=$1 AND q.online_checkout_id=$2 AND q.account_id=$3 AND q.revoked_at=$4::timestamptz
+         AND q.status='paid' AND q.business_id IS NOT DISTINCT FROM $5::uuid
+         AND EXISTS (SELECT 1 FROM auth_user u WHERE u.id=q.account_id AND u."updatedAt"=$6::timestamptz)
+         AND (q.kind='credits' OR EXISTS (
+           SELECT 1 FROM directory_business b WHERE b.id=q.business_id AND b.version=$7
+            AND b.owner_user_id=q.account_id AND b.deleted_at IS NULL
+            AND CASE WHEN q.kind IN ('photo','video','photo_video') THEN b.status<>'archived'
+              ELSE b.status='published' AND package_allows_listing(b) END))
+         AND NOT EXISTS (SELECT 1 FROM marketing_order other WHERE other.id<>q.id
+           AND other.business_id=q.business_id AND other.kind=q.kind
+           AND other.campaign_key IS NOT DISTINCT FROM q.campaign_key
+           AND other.status='paid' AND other.revoked_at IS NULL AND other.ends_at>now())`,
+      [
+        order.quoteId,
+        order.id,
+        order.userId,
+        quote.revokedAt,
+        quote.businessId,
+        quote.userUpdatedAt,
+        quote.businessVersion,
+      ],
+    );
+    if (!restored.rowCount) return order;
+  }
+  await c.query(
+    "UPDATE paypal_checkout_order SET status='captured',updated_at=now(),version=version+1 WHERE id=$1",
+    [order.id],
+  );
+  await audit(c, order.id, "refund_hold_released", { captureId: order.captureId });
+  return row(c, order.id);
 }
 async function requireCurrentPromotionBusiness(
   c: PoolClient,
@@ -474,7 +580,13 @@ export function createCheckoutStore(pool: Pool) {
           fail(409, "CAPTURE_MISMATCH");
         if (o.captureId && o.captureId !== value.captureId) fail(409, "CAPTURE_CONFLICT");
         if (!(await event(c, o, eventId))) return o;
-        if (o.captureId) return o;
+        if (o.captureId) {
+          return u?.approval === "approved" &&
+            u.emailVerified &&
+            ["member", "owner"].includes(u.role)
+            ? recoverRefundHold(c, o)
+            : o;
+        }
         let eligible = Boolean(
           !o.refundTotalUnknown &&
             o.status !== "review" &&
@@ -776,6 +888,18 @@ export function createCheckoutStore(pool: Pool) {
         )
       ).rows;
     },
+    async findRefundByProvider(environment: CheckoutEnvironment, refundId: string) {
+      return (
+        (
+          await pool.query<{ id: string; orderId: string; amountMinor: number }>(
+            `SELECT r.id,r.order_id AS "orderId",r.amount_minor AS "amountMinor"
+           FROM paypal_refund_command r JOIN paypal_checkout_order o ON o.id=r.order_id
+           WHERE o.environment=$1 AND r.provider_refund_id=$2`,
+            [environment, refundId],
+          )
+        ).rows[0] ?? null
+      );
+    },
     async attachRefundResult(
       commandId: string,
       value: {
@@ -813,7 +937,12 @@ export function createCheckoutStore(pool: Pool) {
           (command.provider_refund_id && command.provider_refund_id !== value.refundId)
         )
           fail(409, "REFUND_MISMATCH");
-        if (command.status === "completed") return o;
+        if (
+          command.status === "completed" ||
+          (command.status === "failed" && value.status !== "COMPLETED") ||
+          (command.provider_refund_id && value.status === "PENDING")
+        )
+          return o;
         const status =
           value.status === "COMPLETED"
             ? "completed"
@@ -825,35 +954,40 @@ export function createCheckoutStore(pool: Pool) {
           [commandId, status, value.refundId],
         );
         if (value.status === "PENDING") {
-          await c.query(
-            "UPDATE paypal_checkout_order SET status=CASE WHEN status IN ('refunded','reversed') THEN status ELSE 'review' END,updated_at=now(),version=version+1 WHERE id=$1",
-            [o.id],
-          );
-        }
-        if (value.status !== "FAILED") {
+          if (o.status === "captured" && o.refundedMinor === 0 && !o.refundTotalUnknown) {
+            // Checkout status suspends visibility. Keep independent promotion revocations writable.
+            await holdCapturedOrder(c, o, commandId);
+          } else if (o.status === "captured" || o.status === "partially_refunded") {
+            // A second pending refund keeps an already-corrected purchase on review.
+            await c.query(
+              "UPDATE paypal_checkout_order SET status='review',updated_at=now(),version=version+1 WHERE id=$1",
+              [o.id],
+            );
+          }
+        } else if (value.status === "COMPLETED") {
           await c.query(
             "UPDATE paypal_promotion_entitlement SET revoked_at=COALESCE(revoked_at,now()),revoke_reason=COALESCE(revoke_reason,'refund_requested') WHERE order_id=$1",
             [o.id],
           );
-          if (value.status === "COMPLETED") {
-            const total = Number(
-              (
-                await c.query<{ total: string }>(
-                  "SELECT sum(amount_minor)::text AS total FROM paypal_refund_command WHERE order_id=$1 AND status='completed'",
-                  [o.id],
-                )
-              ).rows[0]?.total ?? 0,
-            );
-            if (total > o.amountMinor) fail(409, "REFUND_EXCEEDS_REMAINING");
-            const refunded = Math.max(total, o.refundedMinor);
-            const unknown =
-              refunded < o.amountMinor &&
-              (o.refundTotalUnknown || o.refundedMinor > total - value.amountMinor);
-            await c.query(
-              "UPDATE paypal_checkout_order SET refunded_minor=$2,refund_total_unknown=$3,status=CASE WHEN status='reversed' THEN status WHEN $2=amount_minor THEN 'refunded' WHEN $3 THEN 'review' ELSE 'partially_refunded' END,updated_at=now(),version=version+1 WHERE id=$1",
-              [o.id, refunded, unknown],
-            );
-          }
+          const total = Number(
+            (
+              await c.query<{ total: string }>(
+                "SELECT sum(amount_minor)::text AS total FROM paypal_refund_command WHERE order_id=$1 AND status='completed'",
+                [o.id],
+              )
+            ).rows[0]?.total ?? 0,
+          );
+          if (total > o.amountMinor) fail(409, "REFUND_EXCEEDS_REMAINING");
+          const refunded = Math.max(total, o.refundedMinor);
+          const unknown =
+            refunded < o.amountMinor &&
+            (o.refundTotalUnknown || o.refundedMinor > total - value.amountMinor);
+          await c.query(
+            "UPDATE paypal_checkout_order SET refunded_minor=$2,refund_total_unknown=$3,status=CASE WHEN status='reversed' THEN status WHEN $2=amount_minor THEN 'refunded' WHEN $3 THEN 'review' ELSE 'partially_refunded' END,updated_at=now(),version=version+1 WHERE id=$1",
+            [o.id, refunded, unknown],
+          );
+          if (o.quoteId && o.environment === "live")
+            await reconcileProductionSale(c, o.quoteId, o.id, false);
         }
         await audit(c, o.id, "refund_result", { commandId, refundId: value.refundId, status });
         return row(c, o.id);

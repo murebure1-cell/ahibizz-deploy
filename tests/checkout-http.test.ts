@@ -449,6 +449,71 @@ test("native refund webhook resolves strict capture up link and records already-
   assert.deepEqual(lookups, [["live", { captureId: "CAPTURE1234567" }]]);
   assert.deepEqual(events, ["native-refund-event"]);
 });
+test("failed refund webhook re-reads the known refund and confirms the original capture", async () => {
+  const f = serviceFixture({ terminal: true });
+  const saved = {
+    ...(await f.store.read({ userId: "buyer", id: "session", token: "f" }, id)),
+    status: "review",
+  };
+  f.calls.length = 0;
+  const refundId = "REFUND1234567";
+  const refund = { refundId, captureId: "CAPTURE123", amountMinor: 100, status: "FAILED" as const };
+  f.store.findRefundByProvider = async (environment, providerId) => {
+    f.calls.push("match-refund");
+    assert.equal(environment, saved.environment);
+    assert.equal(providerId, refundId);
+    return { id, orderId: id, amountMinor: refund.amountMinor };
+  };
+  f.store.readSystem = async () => saved;
+  f.provider.readRefund = async (_order, input) => {
+    f.calls.push("inspect-refund");
+    const { status: _status, ...identity } = refund;
+    assert.deepEqual(input, identity);
+    return refund;
+  };
+  f.store.attachRefundResult = async (commandId, result) => {
+    f.calls.push("record-refund");
+    assert.equal(commandId, id);
+    assert.deepEqual(result, refund);
+    return saved;
+  };
+  assert.ok(saved.providerOrderId);
+  const proof = {
+    status: "COMPLETED" as const,
+    providerOrderId: saved.providerOrderId,
+    captureId: refund.captureId,
+    merchantId: saved.merchantId,
+    amountMinor: saved.amountMinor,
+    currency: "EUR" as const,
+    completedAt: "2026-11-18T18:00:00.000Z",
+  };
+  f.provider.inspect = async () => {
+    f.calls.push("confirm-capture");
+    return proof;
+  };
+  f.store.settleCapture = async (_id, facts, webhookId) => {
+    f.calls.push("settle");
+    assert.equal(facts.captureId, proof.captureId);
+    assert.equal(webhookId, "failed-refund-event");
+    return { ...saved, status: "captured" };
+  };
+  assert.deepEqual(
+    await f.service.webhook(new Headers(), {
+      id: "failed-refund-event",
+      event_type: "PAYMENT.REFUND.FAILED",
+      resource: { id: refundId },
+    }),
+    { received: true, matched: true },
+  );
+  assert.deepEqual(f.calls, [
+    "verify-signature",
+    "match-refund",
+    "inspect-refund",
+    "record-refund",
+    "confirm-capture",
+    "settle",
+  ]);
+});
 test("refund webhook ignores malicious, cross-environment or malformed capture links", async () => {
   const f = serviceFixture();
   const base = "https://api.paypal.com/v2/payments/captures/CAPTURE1234567";

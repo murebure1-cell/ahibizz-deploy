@@ -74,3 +74,33 @@ export function readNearbyBusinesses(
     };
   });
 }
+
+export async function fetchNearbyPages(
+  path: string,
+  categories: Parameters<typeof readNearbyBusinesses>[1],
+  firstPage: number,
+  lastPage: number,
+  signal: AbortSignal,
+) {
+  const items: PublicBusinessView[] = [];
+  let page = firstPage;
+  let hasMore = false;
+  while (page <= lastPage) {
+    signal.throwIfAborted();
+    const response = await fetch(page === 1 ? path : `${path}&page=${page}`, {
+      signal,
+      cache: "no-store",
+      credentials: "omit",
+      mode: "same-origin",
+      redirect: "error",
+    });
+    if (!response.ok) throw new Error("DIRECTORY_UNAVAILABLE");
+    const result: unknown = await response.json();
+    signal.throwIfAborted();
+    items.push(...readNearbyBusinesses(result, categories, page));
+    hasMore = object(result) && result.hasMore === true;
+    if (page === lastPage || !hasMore) break;
+    page++;
+  }
+  return { items, page, hasMore };
+}

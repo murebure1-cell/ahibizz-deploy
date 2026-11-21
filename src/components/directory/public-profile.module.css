@@ -444,8 +444,10 @@
   position: relative;
   isolation: isolate;
   margin-top: 21px;
+  min-height: 287px;
   overflow: hidden;
   border-radius: 12px;
+  background: var(--ui-surface-soft);
 }
 
 .directions {

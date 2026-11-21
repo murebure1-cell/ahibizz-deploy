@@ -1,4 +1,5 @@
 import { accountNotificationsPath, accountSectionPath } from "./account-return";
+import { deviceNotificationSettingsPath } from "./activity";
 export const accountShortcuts = {
   newBusiness: "/nalog?odjeljak=djelatnosti&novo=1",
   appointmentHistory: "/nalog?odjeljak=termini&prikaz=historija",
@@ -16,4 +17,5 @@ export const accountShortcuts = {
   membership: accountSectionPath("membership"),
   settings: accountSectionPath("settings"),
   notifications: accountNotificationsPath,
+  notificationSettings: deviceNotificationSettingsPath,
 } as const;

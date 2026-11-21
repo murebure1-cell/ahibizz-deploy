@@ -56,6 +56,7 @@ self.addEventListener("fetch", (event) => {
 
 const settings = "/nalog?odjeljak=postavke";
 const messages = "/nalog?odjeljak=poruke";
+const activityInbox = "/nalog/obavijesti";
 const pushId = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 async function reportPush(id, event) {
   if (!pushId.test(id)) return;
@@ -69,11 +70,14 @@ self.addEventListener("push", event => {
   try { data = event.data?.json(); } catch {}
   const test = data?.kind === "test" && pushId.test(data?.id);
   const id = pushId.test(data?.id) ? data.id : "";
+  const activity = data?.kind === "activity";
+  const activityId = !test && pushId.test(data?.activityId) ? data.activityId : "";
   event.waitUntil((async () => {
     await self.registration.showNotification("AhiBizz", {
-      body:test ? "Probna obavijest je stigla. Dodirni za povratak u postavke." : "Imaš novu poruku.",
+      body:test ? "Probna obavijest je stigla. Dodirni za povratak u postavke." :
+        activity ? "Imaš novu obavijest." : "Imaš novu poruku.",
       icon:"/preview-app/icons/icon-192.png", tag:id ? "ahibizz-"+id : "ahibizz-message",
-      data:{kind:test?"test":"message",id}
+      data:{kind:test?"test":activity?"activity":"message",id,activityId}
     });
     if(test) await reportPush(id,"shown");
   })());
@@ -81,7 +85,10 @@ self.addEventListener("push", event => {
 self.addEventListener("notificationclick", event => {
   event.notification.close();
   const data=event.notification.data, test=data?.kind==="test" && pushId.test(data?.id);
-  const url=new URL(test ? settings : messages,self.location.origin).href;
+  const activityPath=pushId.test(data?.activityId)
+    ? activityInbox+"?stavka="+data.activityId
+    : data?.kind==="activity" ? activityInbox : messages;
+  const url=new URL(test ? settings : activityPath,self.location.origin).href;
   const open=(async () => {
     const windows=await self.clients.matchAll({type:"window"});
     const current=windows.find(client=>client.url===url);

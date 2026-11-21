@@ -115,7 +115,12 @@ test("public directory uses only the lazy database when SMTP and auth service ar
   assert.equal(readAuthConfiguration(environment), null);
   const f = fixture();
   assert.ok(f.service);
-  assert.deepEqual(Object.keys(f.service).sort(), ["categories", "listPublic", "readPublic"]);
+  assert.deepEqual(Object.keys(f.service).sort(), [
+    "categories",
+    "homePromotions",
+    "listPublic",
+    "readPublic",
+  ]);
   assert.equal(f.pools, 0);
   for (const route of [
     "/api/directory/categories",

@@ -344,7 +344,7 @@ export function ReelManager({
           </p>
         )}
         {visible.map((reel) => (
-          <article key={reel.id} className={styles.managed}>
+          <article key={reel.id} id={`reel-${reel.id}`} className={styles.managed}>
             <div className={styles.entry}>
               <div>
                 <h3>{reel.title}</h3>

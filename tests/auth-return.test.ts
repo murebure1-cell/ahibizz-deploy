@@ -27,6 +27,8 @@ test("existing allowed account and message destinations remain single nested val
     "/nalog?odjeljak=djelatnosti",
     "/nalog?odjeljak=djelatnosti&novo=1",
     "/nalog?odjeljak=postavke&prikaz=obavijesti",
+    "/nalog/obavijesti",
+    "/nalog/obavijesti?stavka=11111111-1111-4111-8111-111111111111",
     "/nalog?odjeljak=poruke&osoba=person_A-1",
     "/administracija?odjeljak=djelatnosti",
     "/ljudi/person_A-1",
@@ -66,6 +68,7 @@ test("foreign, duplicate, control and encoded destinations fall back without nes
     "/nalog?odjeljak=termini&odjeljak=poruke",
     "/nalog?odjeljak=termini%26nastavi%3D%2f%2fevil.invalid",
     "/nalog?odjeljak=postavke&prikaz=obavijesti&next=//evil.invalid",
+    "/nalog/obavijesti?stavka=11111111-1111-4111-8111-111111111111&next=//evil.invalid",
   ]) {
     assert.deepEqual(authReturnLinks(destination), {
       login: "/prijava",

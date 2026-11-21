@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Fragment, type ReactNode, Suspense } from "react";
 import { PublicBooking } from "../../../../components/booking/PublicBooking";
 import { PublicBusinessProfile } from "../../../../components/directory/PublicBusinessProfile";
+import profileStyles from "../../../../components/directory/public-profile.module.css";
 import styles from "../../../../components/directory/public-search.module.css";
 import { CampaignAd } from "../../../../components/marketing/CampaignAd";
 import adStyles from "../../../../components/marketing/campaign-ad.module.css";
 import { BusinessReels } from "../../../../components/reels/ReelShelf";
 import { RentalFleet } from "../../../../components/rentals/RentalFleet";
 import { StayUnits } from "../../../../components/stays/StayUnits";
+import type { PageAds } from "../../../../lib/ad-render";
 import {
   type DirectorySearchParams,
   directorySearchSuffix,
@@ -22,6 +25,42 @@ import { getStayService } from "../../../../server/stays/service";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Poslovni profil" };
+
+type Offer = {
+  id: string;
+  label: string;
+  content: Promise<ReactNode>;
+};
+
+async function ListingOffer({ offer, link = false }: { offer: Offer; link?: boolean }) {
+  const content = await offer.content;
+  if (!content) return null;
+  return link ? (
+    <a
+      href={`#${offer.id}`}
+      className={offer.id === "business-appointments" ? profileStyles.appointmentsLink : undefined}
+    >
+      {offer.label}
+    </a>
+  ) : (
+    <section id={offer.id} className={profileStyles.appointments} aria-label={offer.label}>
+      {content}
+    </section>
+  );
+}
+
+async function ListingAd({
+  data,
+  region,
+}: {
+  data: Promise<PageAds>;
+  region: "inline" | "elsewhere";
+}) {
+  const ads = await data;
+  if (!ads.main.mobile && !ads.main.desktop) return null;
+  return <CampaignAd candidates={ads.main} region={region} />;
+}
+
 export default async function PublicBusinessPage({
   params,
   searchParams,
@@ -37,7 +76,7 @@ export default async function PublicBusinessPage({
     if (service) {
       const [business, { categories }] = await Promise.all([
         service.readPublic(id),
-        service.categories(),
+        service.categories().catch(() => ({ categories: [] })),
       ]);
       const rentsCars = categories.some(
         (c) => c.vehicleRental && (c.id === business.categoryId || c.id === business.subcategoryId),
@@ -45,68 +84,110 @@ export default async function PublicBusinessPage({
       const hostsGuests = categories.some(
         (c) => c.accommodation && (c.id === business.categoryId || c.id === business.subcategoryId),
       );
-      // Optional offers must not prevent the business profile from opening.
-      const [booking, catalog, stays] = await Promise.allSettled([
-        Promise.resolve().then(() => getBookingService()?.publicConfig(id)),
-        rentsCars ? Promise.resolve().then(() => getRentalService()?.publicCatalog(id)) : null,
-        hostsGuests ? Promise.resolve().then(() => getStayService()?.publicCatalog(id)) : null,
-      ]);
-      const stayCatalog = stays.status === "fulfilled" ? (stays.value ?? undefined) : undefined;
-      const initialCatalog =
-        catalog.status === "fulfilled" ? (catalog.value ?? undefined) : undefined;
-      const offerings = [
-        ...(booking.status === "fulfilled" && booking.value?.enabled ? booking.value.services : []),
-        ...(initialCatalog?.vehicles ?? []),
-        ...(stayCatalog?.units ?? []),
+      // Start each offer once and share it between its link, section, and ad targeting.
+      const booking = Promise.resolve()
+        .then(() => getBookingService()?.publicConfig(id))
+        .catch(() => null);
+      const rentals = rentsCars
+        ? Promise.resolve()
+            .then(() => getRentalService()?.publicCatalog(id))
+            .catch(() => undefined)
+        : Promise.resolve(undefined);
+      const stays = hostsGuests
+        ? Promise.resolve()
+            .then(() => getStayService()?.publicCatalog(id))
+            .catch(() => undefined)
+        : Promise.resolve(undefined);
+      const offers: Offer[] = [
+        {
+          id: "business-stays",
+          label: "Smještaj",
+          content: stays.then((catalog) =>
+            hostsGuests && (!catalog || catalog.units.length > 0) ? (
+              <StayUnits
+                key={id}
+                businessId={id}
+                photos={business.media?.gallery}
+                initialCatalog={catalog ?? undefined}
+              />
+            ) : null,
+          ),
+        },
+        {
+          id: "business-rentals",
+          label: "Automobili",
+          content: rentals.then((catalog) =>
+            rentsCars && (!catalog || catalog.vehicles.length > 0) ? (
+              <RentalFleet
+                businessId={id}
+                photos={business.media?.gallery}
+                initialCatalog={catalog ?? undefined}
+              />
+            ) : null,
+          ),
+        },
+        {
+          id: "business-appointments",
+          label: "Termini",
+          content: booking.then((configuration) =>
+            !hostsGuests || (configuration?.enabled && configuration.services.length > 0) ? (
+              <PublicBooking businessId={id} configuration={configuration ?? null} />
+            ) : null,
+          ),
+        },
       ];
-      const ads = await publicPageAds({
-        page: "listing",
-        listingId: id,
-        city: business.city ?? "",
-        countryCode: business.countryCode,
-        categoryIds: [business.categoryId, business.subcategoryId].filter((v): v is string =>
-          Boolean(v),
-        ),
-        publishedPrices: [...new Set(offerings.map((s) => s.priceMinor))],
-      });
+      const ads = Promise.all([booking, rentals, stays]).then(
+        ([configuration, rentalCatalog, stayCatalog]) =>
+          publicPageAds({
+            page: "listing",
+            listingId: id,
+            city: business.city ?? "",
+            countryCode: business.countryCode,
+            categoryIds: [business.categoryId, business.subcategoryId].filter((v): v is string =>
+              Boolean(v),
+            ),
+            publishedPrices: [
+              ...new Set(
+                [
+                  ...(configuration?.enabled ? configuration.services : []),
+                  ...(rentalCatalog?.vehicles ?? []),
+                  ...(stayCatalog?.units ?? []),
+                ].map((service) => service.priceMinor),
+              ),
+            ],
+          }),
+      );
       return (
         <main id="glavni-sadrzaj" className={adStyles.withResults}>
-          <CampaignAd candidates={ads.main} region="elsewhere" />
+          <Suspense fallback={null}>
+            <ListingAd data={ads} region="elsewhere" />
+          </Suspense>
           <PublicBusinessProfile
-            sponsor={<CampaignAd candidates={ads.main} region="inline" />}
+            sponsor={
+              <Suspense fallback={null}>
+                <ListingAd data={ads} region="inline" />
+              </Suspense>
+            }
             backHref={`/pretraga${directorySearchSuffix(search)}`}
             business={publicBusinessView(business, categories)}
-            accommodation={
-              hostsGuests && (!stayCatalog || stayCatalog.units.length > 0) ? (
-                <StayUnits
-                  key={id}
-                  businessId={id}
-                  photos={business.media?.gallery}
-                  initialCatalog={stayCatalog}
-                />
-              ) : undefined
-            }
-            rental={
-              rentsCars && (!initialCatalog || initialCatalog.vehicles.length > 0) ? (
-                <RentalFleet
-                  businessId={id}
-                  photos={business.media?.gallery}
-                  initialCatalog={initialCatalog}
-                />
-              ) : undefined
-            }
-          >
-            <BusinessReels businessId={id} />
-            {(!hostsGuests ||
-              (booking.status === "fulfilled" &&
-                booking.value?.enabled &&
-                booking.value.services.length > 0)) && (
-              <PublicBooking
-                businessId={id}
-                configuration={booking.status === "fulfilled" ? (booking.value ?? null) : null}
-              />
-            )}
-          </PublicBusinessProfile>
+            offerLinks={offers.map((offer) => (
+              <Suspense key={offer.id} fallback={null}>
+                <ListingOffer offer={offer} link />
+              </Suspense>
+            ))}
+            offerSections={offers.map((offer) => (
+              <Fragment key={offer.id}>
+                {offer.id === "business-appointments" && (
+                  <Suspense fallback={null}>
+                    <BusinessReels businessId={id} />
+                  </Suspense>
+                )}
+                <Suspense fallback={null}>
+                  <ListingOffer offer={offer} />
+                </Suspense>
+              </Fragment>
+            ))}
+          />
         </main>
       );
     }

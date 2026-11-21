@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { listDirectory } from "../src/server/directory/read-service";
+import { createPublicDirectoryService, listDirectory } from "../src/server/directory/read-service";
 
 test("paid category ranking is release gated, public only and live-only", async () => {
   const before = process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY;
@@ -36,4 +36,28 @@ test("paid category ranking is release gated, public only and live-only", async 
     if (before === undefined) delete process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY;
     else process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY = before;
   }
+});
+
+test("home promotion queries stay bounded without changing public pagination", async () => {
+  const parameters: unknown[][] = [];
+  const directory = createPublicDirectoryService({
+    database: {
+      async query(_sql, values = []) {
+        parameters.push(values);
+        return { rows: [] };
+      },
+    },
+  });
+  await directory.homePromotions(true);
+  await directory.homePromotions("category");
+  await directory.listPublic();
+  await assert.rejects(() => directory.listPublic({ pageSize: 6 }), {
+    code: "INVALID_DIRECTORY_INPUT",
+    status: 400,
+  });
+  assert.deepEqual(parameters, [
+    [7, 0],
+    [7, 0],
+    [21, 0],
+  ]);
 });

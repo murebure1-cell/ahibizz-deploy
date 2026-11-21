@@ -3,8 +3,16 @@
 import Form from "next/form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from "react";
-import { nearbyDirectoryPath, readNearbyBusinesses } from "../../lib/home-nearby";
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { fetchNearbyPages, nearbyDirectoryPath, nearbyRadiusKm } from "../../lib/home-nearby";
 import type { PublicBusinessView } from "../../lib/public-business";
 import { DirectoryResultCard } from "../directory/DirectoryResultCard";
 import { Icon } from "../Icon";
@@ -25,14 +33,20 @@ type NearbyContext = {
   state: "waiting" | "loading" | "ready" | "unavailable";
   place: string;
   useGps: boolean;
-  categoryOptions: NearbyProps["categories"];
-  searchPath: string | null;
+  refresh: "pending" | "failed" | null;
+  pagination: "pending" | "failed" | null;
   hasMore: boolean;
+  loadMore: () => void;
+  retryRefresh: () => void;
   location: ReturnType<typeof useDeviceLocation>;
   chooseGps: () => void;
   chooseCity: () => void;
 };
 const Context = createContext<NearbyContext | null>(null);
+
+type NearbySnapshot = Awaited<ReturnType<typeof fetchNearbyPages>> & { path: string };
+type NearbyRequest = { path: string; page: number };
+type NearbyFailure = { path: string; kind: "refresh" | "page" };
 
 export function HomeNearbyProvider({
   categories,
@@ -45,37 +59,53 @@ export function HomeNearbyProvider({
   const router = useRouter();
   const location = useDeviceLocation({ active: useGps });
   const path = useGps && location.point ? nearbyDirectoryPath(location.point) : null;
-  const [response, setResponse] = useState<{
-    path: string;
-    items: PublicBusinessView[];
-    hasMore: boolean;
-    state: "loading" | "ready" | "unavailable";
-  } | null>(null);
+  const latest = useRef<NearbySnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<NearbySnapshot | null>(null);
+  const [request, setRequest] = useState<NearbyRequest | null>(null);
+  const [failure, setFailure] = useState<NearbyFailure | null>(null);
   useEffect(() => {
     if (!path) {
-      setResponse(null);
+      latest.current = null;
+      setSnapshot(null);
+      setRequest(null);
+      setFailure(null);
       return;
     }
+    const previous = latest.current;
+    const sameLocation = previous?.path === path;
+    const firstPage = sameLocation ? previous.page + 1 : 1;
+    // Replace a widened list as one snapshot, so a coordinate change cannot mix two locations.
+    const lastPage = sameLocation
+      ? request?.path === path
+        ? request.page
+        : previous.page
+      : (previous?.page ?? 1);
+    if (lastPage < firstPage) return;
     let current = true;
     const abort = new AbortController();
     const timeout = window.setTimeout(() => abort.abort(), 12_000);
-    setResponse({ path, items: [], hasMore: false, state: "loading" });
+    setFailure(null);
     void (async () => {
       try {
-        const result = await fetch(path, {
-          signal: abort.signal,
-          cache: "no-store",
-          credentials: "omit",
-          mode: "same-origin",
-          redirect: "error",
-        });
-        if (!result.ok) throw new Error("DIRECTORY_UNAVAILABLE");
-        const data = await result.json();
-        const items = readNearbyBusinesses(data, categories);
-        if (current && !abort.signal.aborted)
-          setResponse({ path, items, hasMore: data.hasMore, state: "ready" });
+        const response = await fetchNearbyPages(
+          path,
+          categories,
+          firstPage,
+          lastPage,
+          abort.signal,
+        );
+        if (!current) return;
+        const items = new Map(
+          [...(sameLocation ? previous.items : []), ...response.items].map((item) => [
+            item.id,
+            item,
+          ]),
+        );
+        const next = { ...response, path, items: [...items.values()] };
+        latest.current = next;
+        setSnapshot(next);
       } catch {
-        if (current) setResponse({ path, items: [], hasMore: false, state: "unavailable" });
+        if (current) setFailure({ path, kind: sameLocation ? "page" : "refresh" });
       } finally {
         window.clearTimeout(timeout);
       }
@@ -85,25 +115,43 @@ export function HomeNearbyProvider({
       window.clearTimeout(timeout);
       abort.abort();
     };
-  }, [path, categories]);
-  const value = useMemo<NearbyContext>(
-    () => ({
-      businesses: useGps ? (response?.path === path ? response.items : []) : initialBusinesses,
-      state: !useGps
-        ? available
+  }, [path, categories, request]);
+  const value = useMemo<NearbyContext>(() => {
+    const gpsResults = path ? snapshot : null;
+    const refreshFailed = failure?.path === path && failure.kind === "refresh";
+    const paginationPending =
+      path && gpsResults?.path === path && request?.path === path && request.page > gpsResults.page;
+    return {
+      businesses: useGps ? (gpsResults?.items ?? []) : initialBusinesses,
+      state: useGps
+        ? !path
+          ? "waiting"
+          : gpsResults
+            ? "ready"
+            : refreshFailed
+              ? "unavailable"
+              : "loading"
+        : available
           ? "ready"
-          : "unavailable"
-        : path
-          ? response?.path === path
-            ? response.state
-            : "loading"
-          : "waiting",
+          : "unavailable",
       place,
       useGps,
       location,
-      categoryOptions: categories,
-      searchPath: path,
-      hasMore: response?.path === path && response.hasMore,
+      refresh:
+        gpsResults && gpsResults.path !== path ? (refreshFailed ? "failed" : "pending") : null,
+      pagination: paginationPending
+        ? failure?.path === path && failure.kind === "page"
+          ? "failed"
+          : "pending"
+        : null,
+      hasMore: gpsResults?.hasMore ?? false,
+      loadMore() {
+        if (!gpsResults || !path || gpsResults.path !== path || !gpsResults.hasMore) return;
+        setRequest({ path, page: gpsResults.page + 1 });
+      },
+      retryRefresh() {
+        if (path) setRequest({ path, page: 1 });
+      },
       chooseGps() {
         setUseGps(true);
         if (place) router.replace("/", { scroll: false });
@@ -112,9 +160,19 @@ export function HomeNearbyProvider({
       chooseCity() {
         setUseGps(false);
       },
-    }),
-    [useGps, response, path, initialBusinesses, available, place, location, router, categories],
-  );
+    };
+  }, [
+    useGps,
+    snapshot,
+    request,
+    failure,
+    path,
+    initialBusinesses,
+    available,
+    place,
+    location,
+    router,
+  ]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 function useNearby() {
@@ -124,12 +182,17 @@ function useNearby() {
 }
 
 export function HomeNearbyControl() {
-  const { location, chooseGps, chooseCity, place, useGps } = useNearby();
+  const { location, chooseGps, chooseCity, place, useGps, refresh } = useNearby();
   return (
     <div className={styles.controls}>
       {useGps && location.point ? (
-        <span className={styles.current}>
-          <Icon name="pin" /> Moja lokacija · 25 km
+        <span className={styles.current} role="status">
+          <Icon name="pin" />
+          {refresh === "pending"
+            ? "Osvježavamo rezultate…"
+            : refresh === "failed"
+              ? "Rezultati za prethodnu lokaciju"
+              : `Moja lokacija · ${nearbyRadiusKm} km`}
         </span>
       ) : location.permission === "denied" ? (
         <details className={styles.permission}>
@@ -149,7 +212,18 @@ export function HomeNearbyControl() {
       )}
       <details className={styles.city}>
         <summary>{!useGps && place ? place : "Odaberi grad"}</summary>
-        <Form action="/" className={styles.form} onSubmit={chooseCity}>
+        <Form
+          action="/"
+          className={styles.form}
+          onSubmit={(event) => {
+            const city = new FormData(event.currentTarget).get("mjesto");
+            if (typeof city !== "string" || !city.trim()) {
+              event.preventDefault();
+              return;
+            }
+            chooseCity();
+          }}
+        >
           <label htmlFor="home-place" className={styles.srOnly}>
             Grad ili mjesto
           </label>
@@ -159,6 +233,7 @@ export function HomeNearbyControl() {
             placeholder="Grad ili mjesto"
             defaultValue={place}
             maxLength={100}
+            required
           />
           <button type="submit" aria-label="Prikaži djelatnosti u ovom mjestu">
             <Icon name="search" />
@@ -170,9 +245,18 @@ export function HomeNearbyControl() {
 }
 
 export function HomeNearbyResults() {
-  const { businesses, state, place, useGps, location, searchPath } = useNearby();
+  const { businesses, state, place, useGps, location, refresh, retryRefresh } = useNearby();
   if (state === "unavailable")
-    return <HomeEmptyState>Imenik trenutno nije dostupan.</HomeEmptyState>;
+    return (
+      <>
+        <HomeEmptyState>Imenik trenutno nije dostupan.</HomeEmptyState>
+        {useGps && (
+          <button onClick={retryRefresh} type="button" className={styles.more}>
+            Pokušaj ponovo
+          </button>
+        )}
+      </>
+    );
   if (state === "loading")
     return (
       <HomeEmptyState icon="pin">
@@ -195,67 +279,31 @@ export function HomeNearbyResults() {
     return (
       <div className={styles.group} data-design="home-local-featured">
         <p className={homeStyles.availability}>
-          {useGps
-            ? "U tvojoj blizini još nema objavljenih djelatnosti."
-            : `Još nema objavljenih djelatnosti za ${place}.`}
+          {refresh
+            ? "Nema rezultata za prethodnu lokaciju."
+            : useGps
+              ? "U tvojoj blizini još nema objavljenih djelatnosti."
+              : `Još nema objavljenih djelatnosti za ${place}.`}
         </p>
         <Link className={homeStyles.subtleLink} href="/pretraga">
           Istraži sve djelatnosti <Icon name="arrow" />
         </Link>
+        {refresh === "failed" && (
+          <button onClick={retryRefresh} type="button" className={styles.more}>
+            Pokušaj ponovo
+          </button>
+        )}
       </div>
     );
-  return <NearbyCards key={searchPath ?? place} />;
+  return <NearbyCards />;
 }
 
 function NearbyCards() {
-  const { businesses, hasMore, searchPath, useGps, categoryOptions, place } = useNearby();
+  const { businesses, hasMore, useGps, place, refresh, pagination, loadMore, retryRefresh } =
+    useNearby();
   const [expanded, setExpanded] = useState(false);
-  const [request, setRequest] = useState({ page: 1 });
-  const [more, setMore] = useState({ items: [] as PublicBusinessView[], page: 1, hasMore });
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    const { page } = request;
-    if (!searchPath || page === 1) return;
-    const abort = new AbortController();
-    let active = true;
-    const timer = window.setTimeout(() => abort.abort(), 12_000);
-    setFailed(false);
-    async function fetchPage() {
-      try {
-        const result = await fetch(`${searchPath}&page=${page}`, {
-          signal: abort.signal,
-          cache: "no-store",
-          credentials: "omit",
-          mode: "same-origin",
-          redirect: "error",
-        });
-        if (!result.ok) throw new Error("DIRECTORY_UNAVAILABLE");
-        const data = await result.json();
-        const items = readNearbyBusinesses(data, categoryOptions, page);
-        if (active)
-          setMore((previous) => ({
-            items: [...previous.items, ...items],
-            page,
-            hasMore: data.hasMore,
-          }));
-      } catch {
-        if (active) setFailed(true);
-      } finally {
-        window.clearTimeout(timer);
-      }
-    }
-    void fetchPage();
-    return () => {
-      active = false;
-      abort.abort();
-      window.clearTimeout(timer);
-    };
-  }, [request, searchPath, categoryOptions]);
-  const combined = [
-    ...new Map([...businesses, ...more.items].map((item) => [item.id, item])).values(),
-  ];
-  const local = combined.filter((business) => business.localFeatured);
-  const organic = combined.filter((business) => !business.localFeatured);
+  const local = businesses.filter((business) => business.localFeatured);
+  const organic = businesses.filter((business) => !business.localFeatured);
   function card(business: PublicBusinessView) {
     return <DirectoryResultCard key={business.id} business={business} />;
   }
@@ -273,14 +321,23 @@ function NearbyCards() {
           Sve u blizini
         </button>
       )}
-      {useGps && expanded && more.hasMore && (
+      {useGps && expanded && hasMore && refresh !== "failed" && (
         <button
           className={styles.more}
           type="button"
-          disabled={request.page > more.page && !failed}
-          onClick={() => setRequest({ page: more.page + 1 })}
+          disabled={refresh === "pending" || pagination === "pending"}
+          onClick={loadMore}
         >
-          {failed ? "Pokušaj ponovo" : request.page > more.page ? "Učitavanje…" : "Prikaži još"}
+          {pagination === "failed"
+            ? "Pokušaj ponovo"
+            : pagination === "pending"
+              ? "Učitavanje…"
+              : "Prikaži još"}
+        </button>
+      )}
+      {refresh === "failed" && (
+        <button className={styles.more} type="button" onClick={retryRefresh}>
+          Pokušaj ponovo
         </button>
       )}
     </>

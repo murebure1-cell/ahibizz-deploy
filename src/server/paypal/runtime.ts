@@ -174,6 +174,14 @@ export function createCheckoutService({
     }
     return order;
   }
+  async function recordRefundResult(
+    commandId: string,
+    value: Awaited<ReturnType<typeof provider.readRefund>>,
+    eventId?: string,
+  ) {
+    const order = await store.attachRefundResult(commandId, value);
+    if (value.status === "FAILED" && order.status === "review") await reconcile(order, eventId);
+  }
   return {
     catalog: () => checkoutCatalog(config),
     async reconcileBatch(headers, cursors = {}) {
@@ -201,7 +209,7 @@ export function createCheckoutService({
             captureId: order.captureId,
             amountMinor: item.amountMinor,
           });
-          await store.attachRefundResult(item.id, value);
+          await recordRefundResult(item.id, value);
           pendingRefunds++;
         } catch {
           failed++;
@@ -342,7 +350,7 @@ export function createCheckoutService({
         amountMinor: reservation.amountMinor,
         requestId: reservation.providerRequestId,
       });
-      await store.attachRefundResult(reservation.id, result);
+      await recordRefundResult(reservation.id, result);
       return { status: result.status, orderId: id };
     },
     async webhook(headers, value, rawJson) {
@@ -366,6 +374,31 @@ export function createCheckoutService({
         };
       };
       const related = event.resource?.supplementary_data?.related_ids;
+      if (
+        event.event_type === "PAYMENT.REFUND.FAILED" ||
+        event.event_type === "PAYMENT.REFUND.PENDING"
+      ) {
+        const refundId = event.resource?.id;
+        if (!refundId || !/^[A-Z0-9]{10,32}$/.test(refundId))
+          return { received: true, matched: false };
+        const command = await store.findRefundByProvider(config.environment, refundId);
+        if (!command) return { received: true, matched: false };
+        const order = await store.readSystem(command.orderId);
+        matching(order);
+        if (
+          !order.captureId ||
+          (related?.capture_id && related.capture_id !== order.captureId) ||
+          (related?.order_id && related.order_id !== order.providerOrderId)
+        )
+          throw new CheckoutHttpError(409, "REFUND_MISMATCH");
+        const result = await provider.readRefund(providerOrder(order), {
+          refundId,
+          captureId: order.captureId,
+          amountMinor: command.amountMinor,
+        });
+        await recordRefundResult(command.id, result, event.id);
+        return { received: true, matched: true };
+      }
       const captureId =
         event.event_type?.startsWith("PAYMENT.CAPTURE.") &&
         event.event_type !== "PAYMENT.CAPTURE.REFUNDED"

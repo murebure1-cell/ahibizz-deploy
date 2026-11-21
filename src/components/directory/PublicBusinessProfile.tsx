@@ -21,7 +21,7 @@ import { BusinessAmenities, BusinessHours } from "./BusinessDetails";
 import { BusinessGallery } from "./BusinessGallery";
 import { BusinessLogo } from "./BusinessLogo";
 import { BusinessRating } from "./BusinessRating";
-import { LocationMap } from "./LocationMap";
+import { PublicProfileMap } from "./PublicProfileMap";
 import styles from "./public-profile.module.css";
 
 export function PublicBusinessProfile({
@@ -31,8 +31,8 @@ export function PublicBusinessProfile({
   children,
   actions,
   messageHref,
-  rental,
-  accommodation,
+  offerLinks,
+  offerSections,
   sponsor,
 }: {
   business: PublicBusinessView;
@@ -41,8 +41,8 @@ export function PublicBusinessProfile({
   children?: ReactNode;
   actions?: ReactNode;
   messageHref?: string;
-  rental?: ReactNode;
-  accommodation?: ReactNode;
+  offerLinks?: ReactNode;
+  offerSections?: ReactNode;
   sponsor?: ReactNode;
 }) {
   const links = businessContactLinks(business);
@@ -218,8 +218,7 @@ export function PublicBusinessProfile({
       <nav className={styles.sectionNavigation} aria-label="Na ovoj stranici">
         {hasAbout && <a href="#business-about">O djelatnosti</a>}
         {business.details?.hours && <a href="#business-hours">Radno vrijeme</a>}
-        {accommodation && <a href="#business-stays">Smještaj</a>}
-        {rental && <a href="#business-rentals">Automobili</a>}
+        {offerLinks}
         {hasAppointments && (
           <a className={styles.appointmentsLink} href="#business-appointments">
             Termini
@@ -268,16 +267,7 @@ export function PublicBusinessProfile({
             </section>
           )}
 
-          {accommodation && (
-            <section id="business-stays" className={styles.appointments}>
-              {accommodation}
-            </section>
-          )}
-          {rental && (
-            <section id="business-rentals" className={styles.appointments}>
-              {rental}
-            </section>
-          )}
+          {offerSections}
           {hasAppointments && (
             <section
               className={styles.appointments}
@@ -314,17 +304,7 @@ export function PublicBusinessProfile({
                 <h2 id="business-location-heading">Lokacija</h2>
               </div>
               <p className={styles.address}>{location}</p>
-              {point && (
-                <div className={styles.map}>
-                  <LocationMap
-                    point={point}
-                    disabled
-                    readOnly
-                    logoUrl={logo?.src}
-                    onPoint={() => {}}
-                  />
-                </div>
-              )}
+              {point && <PublicProfileMap point={point} logoUrl={logo?.src} />}
               {(driving || walking) && (
                 <div className={styles.directions}>
                   <p>

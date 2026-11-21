@@ -112,6 +112,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0045_content_hub.sql",
           "0046_saved_searches.sql",
           "0047_paid_business_reels.sql",
+          "0048_account_activity.sql",
         ],
       );
 

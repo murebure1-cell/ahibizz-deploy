@@ -29,7 +29,10 @@ export function pushAcceptance(auth, pool, actors) {
     assert.match(req.headers.Authorization, /^vapid /);
     assert.ok(req.body.length > payload.length);
     const data = JSON.parse(payload);
-    assert.deepEqual(Object.keys(data).sort(), ["id", "kind"]);
+    assert.deepEqual(
+      Object.keys(data).sort(),
+      data.kind === "test" ? ["id", "kind"] : ["activityId", "id", "kind"],
+    );
     sent.push({ endpoint: subscription.endpoint, data });
     return { statusCode: 201, headers: {}, body: "" };
   }
@@ -82,6 +85,27 @@ export function pushAcceptance(auth, pool, actors) {
       assert.deepEqual(
         sent.map((x) => [x.endpoint, x.data.kind]),
         [[other.subscription.endpoint, "message"]],
+      );
+      const recipient = actors[2].user.id;
+      const messageActivity = await pool.query(
+        "SELECT kind FROM account_activity WHERE id=$1 AND recipient_id=$2",
+        [sent[0].data.activityId, recipient],
+      );
+      assert.deepEqual(messageActivity.rows, [{ kind: "message" }]);
+      sent.length = 0;
+      const activityId = randomUUID();
+      await pool.query(
+        `INSERT INTO account_activity(id,recipient_id,kind,subject_id,version,action,business_id)
+         VALUES($1,$2,'service',$3,1,'approve',$4)`,
+        [activityId, recipient, randomUUID(), randomUUID()],
+      );
+      await Promise.all([
+        dispatchDuePush(pool, "no-reply@fixture.invalid", sender),
+        dispatchDuePush(pool, "no-reply@fixture.invalid", sender),
+      ]);
+      assert.deepEqual(
+        sent.map((x) => [x.endpoint, x.data.kind, x.data.activityId]),
+        [[other.subscription.endpoint, "activity", activityId]],
       );
       await call(devices[0], "test");
       await pool.query("UPDATE push_delivery SET expires_at=now() WHERE kind='test'");

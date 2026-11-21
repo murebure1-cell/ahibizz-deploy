@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { nearbyDirectoryPath, readNearbyBusinesses } from "../src/lib/home-nearby";
+import {
+  fetchNearbyPages,
+  nearbyDirectoryPath,
+  readNearbyBusinesses,
+} from "../src/lib/home-nearby";
 
 const row = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -97,4 +101,38 @@ test("nearby response projects actual public card fields and never accepts hidde
     result(Array.from({ length: 21 }, () => row)),
   ])
     assert.throws(() => readNearbyBusinesses(malformed, []));
+});
+
+test("refreshing an expanded list reads the same depth at one location and stops at the last available page", async (t) => {
+  const path = nearbyDirectoryPath({ latitude: 44.54, longitude: 18.67 });
+  const visited: string[] = [];
+  t.mock.method(globalThis, "fetch", async (url: string, init: RequestInit) => {
+    visited.push(url);
+    assert.equal(init.credentials, "omit");
+    const page = url.endsWith("page=2") ? 2 : 1;
+    return Response.json({
+      ...result([{ ...row, title: `Page ${page}` }]),
+      page,
+      hasMore: page < 2,
+    });
+  });
+
+  const refreshed = await fetchNearbyPages(path, [], 1, 3, new AbortController().signal);
+  assert.deepEqual(visited, [path, `${path}&page=2`]);
+  assert.deepEqual(
+    refreshed.items.map((item) => item.title),
+    ["Page 1", "Page 2"],
+  );
+  assert.equal(refreshed.page, 2);
+  assert.equal(refreshed.hasMore, false);
+});
+
+test("a late response from an aborted location cannot finish a fresh snapshot", async (t) => {
+  const path = nearbyDirectoryPath({ latitude: 44.54, longitude: 18.67 });
+  const abort = new AbortController();
+  t.mock.method(globalThis, "fetch", async () => {
+    abort.abort();
+    return Response.json(result());
+  });
+  await assert.rejects(fetchNearbyPages(path, [], 1, 2, abort.signal), { name: "AbortError" });
 });

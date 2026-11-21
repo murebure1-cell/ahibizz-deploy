@@ -146,6 +146,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0045_content_hub.sql",
           "0046_saved_searches.sql",
           "0047_paid_business_reels.sql",
+          "0048_account_activity.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -1661,6 +1662,24 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         unrelatedBusiness: business.id,
         waitForTwoWriters: () => waitForLockWaiters(pool, applicationName),
       });
+      await t.test(
+        "booking activity follows the other party across all three calendars",
+        async () => {
+          for (const kind of ["service", "rental", "stay"]) {
+            const { rows } = await pool.query(
+              "SELECT action,owner_side,recipient_id FROM account_activity WHERE kind=$1",
+              [kind],
+            );
+            assert.ok(rows.some((row) => row.action === "request" && row.owner_side));
+            assert.ok(rows.some((row) => row.action === "approve" && !row.owner_side));
+            assert.ok(rows.some((row) => row.action === "cancel"));
+            assert.ok(rows.every((row) => row.recipient_id));
+          }
+          const unrelated = await pool.query(`SELECT count(*)::int AS n FROM account_activity a
+          JOIN booking_entry e ON a.kind='service' AND e.id=a.subject_id WHERE e.kind<>'customer'`);
+          assert.equal(unrelated.rows[0].n, 0);
+        },
+      );
       await t.test(
         "revoked sessions cannot read or create bookings and the isolated fixture preserves other schemas",
         async () => {

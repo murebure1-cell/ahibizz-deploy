@@ -3,7 +3,12 @@ import { sendNotification } from "web-push";
 import { getAuthDatabasePool, readAuthConfiguration } from "../auth/service";
 import { readPushSubscription, signingKeys } from "./service";
 
-type Job = { id: string; kind: "test" | "message"; device_id: string; attempts: number };
+type Job = {
+  id: string;
+  kind: "test" | "message" | "activity";
+  device_id: string;
+  attempts: number;
+};
 export async function dispatchDuePush(pool: Pool, contact: string, send = sendNotification) {
   // A short claim survives process death. Concurrent app replicas cannot claim the same work.
   await pool.query(`WITH expired AS (
@@ -23,12 +28,23 @@ export async function dispatchDuePush(pool: Pool, contact: string, send = sendNo
         pool.query("DELETE FROM push_delivery WHERE id=$1 AND attempts=$2", [job.id, job.attempts]);
       const device = (
         await pool.query(
-          `SELECT d.endpoint,d.auth_key,d.p256dh FROM push_delivery q
+          `SELECT d.endpoint,d.auth_key,d.p256dh,COALESCE(activity.id,thread_activity.id) AS activity_id
+      FROM push_delivery q
       JOIN push_device d ON d.id=q.device_id JOIN auth_user u ON u.id=d.user_id
       JOIN auth_session s ON s.id=d.session_id AND s."userId"=u.id
+      LEFT JOIN account_activity activity ON activity.id=q.activity_id
+      LEFT JOIN message_message queued_message ON queued_message.id=q.message_id
+      LEFT JOIN account_activity thread_activity ON thread_activity.kind='message'
+        AND thread_activity.subject_id=queued_message.thread_id AND thread_activity.recipient_id=d.user_id
       WHERE q.id=$1 AND q.attempts=$2 AND s."expiresAt">clock_timestamp()
         AND u.approval='approved' AND u."emailVerified" AND
-        ((q.kind='test' AND q.id=d.test_id) OR (q.kind='message' AND EXISTS (
+        ((q.kind='test' AND q.id=d.test_id) OR (q.kind='activity' AND
+          activity.recipient_id=d.user_id AND activity.read_at IS NULL AND
+          ((NOT activity.owner_side AND activity.kind<>'reel') OR EXISTS (
+            SELECT 1 FROM directory_business b WHERE b.id=activity.business_id
+              AND b.owner_user_id=d.user_id AND b.deleted_at IS NULL
+          ))
+        ) OR (q.kind='message' AND EXISTS (
           SELECT 1 FROM message_message m JOIN message_thread t ON t.id=m.thread_id
           JOIN message_thread_member member ON member.thread_id=t.id AND member.user_id=d.user_id
           WHERE m.id=q.message_id AND member.read_sequence<m.sequence AND
@@ -50,7 +66,12 @@ export async function dispatchDuePush(pool: Pool, contact: string, send = sendNo
           keys: { auth: device.auth_key, p256dh: device.p256dh },
         });
         const signer = await signingKeys(pool);
-        await send(subscription, JSON.stringify({ kind: job.kind, id: job.id }), {
+        const payload = {
+          kind: job.kind,
+          id: job.id,
+          ...(typeof device.activity_id === "string" ? { activityId: device.activity_id } : {}),
+        };
+        await send(subscription, JSON.stringify(payload), {
           TTL: 300,
           urgency: "normal",
           timeout: 8000,

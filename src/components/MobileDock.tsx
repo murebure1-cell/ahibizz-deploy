@@ -33,15 +33,13 @@ export function MobileDock() {
   const accountPane = pathname === "/nalog";
   const financialPane =
     accountPane && ["krediti", "oglasi", "paketi"].includes(query.get("odjeljak") ?? "");
-  const notificationsOpen =
-    current === accountShortcuts.settings &&
-    query.getAll("prikaz").length === 1 &&
-    query.get("prikaz") === "obavijesti";
+  const notificationsOpen = pathname === accountShortcuts.notifications;
   if (
     financialPane ||
     current === publish.href ||
     (pathname !== "/" &&
       !accountPane &&
+      !notificationsOpen &&
       pathname !== accountShortcuts.savedSearches &&
       pathname !== accountShortcuts.blocked &&
       !sectionRoots.some((root) => pathname === root || pathname.startsWith(`${root}/`)))

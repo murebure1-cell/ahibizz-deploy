@@ -181,6 +181,7 @@ export function AccountQuickMenu({
         {link({ href: path.manageReels, label: "Objavi Reel", icon: "play" })}
       </div>
       <div className={styles.links}>
+        {link({ href: path.notifications, label: "Obavijesti", icon: "bell" })}
         {link({ href: path.settings, label: "Postavke", icon: "sliders" })}
         {link({ href: path.blocked, label: "Blokirani korisnici", icon: "shield" })}
         {link({ href: "/pomoc", label: "Centar za pomoć", icon: "message" })}

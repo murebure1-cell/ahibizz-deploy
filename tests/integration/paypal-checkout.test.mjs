@@ -511,6 +511,99 @@ test("durable checkout isolated PostgreSQL authority, replay, rights and refunds
       assert.equal(paid.status, "review");
       assert.equal(await visible(o.businessId), false);
     });
+    await t.test(
+      "failed pending refunds release the original promotion only after verified capture",
+      async () => {
+        const paid = await capture(await attach(await make()));
+        const pending = async () => {
+          const command = await store.reserveRefund(owner, paid.id, {
+            requestId: randomUUID(),
+            amountMinor: 20,
+            reason: "failed refund fixture",
+          });
+          const facts = {
+            refundId: `REFUND${command.id}`,
+            captureId: paid.captureId,
+            amountMinor: 20,
+          };
+          await store.attachRefundResult(command.id, { ...facts, status: "PENDING" });
+          return { command, facts };
+        };
+        const first = await pending();
+        const second = await pending();
+        assert.equal(await visible(paid.businessId), false);
+        assert.equal((await capture(paid)).status, "review");
+        await store.attachRefundResult(first.command.id, { ...first.facts, status: "FAILED" });
+        assert.equal((await capture(paid)).status, "review");
+        await store.attachRefundResult(second.command.id, { ...second.facts, status: "FAILED" });
+        assert.equal(await visible(paid.businessId), false);
+        const replayed = await Promise.all([
+          capture(paid, "REFUND-FAILED-A"),
+          capture(paid, "REFUND-FAILED-B"),
+        ]);
+        for (const recovered of replayed) {
+          assert.equal(recovered.status, "captured");
+          assert.equal(recovered.startsAt, paid.startsAt);
+          assert.equal(recovered.endsAt, paid.endsAt);
+        }
+        await store.attachRefundResult(first.command.id, { ...first.facts, status: "PENDING" });
+        assert.equal(await visible(paid.businessId), true);
+        assert.equal(
+          (
+            await pool.query(
+              "SELECT count(*)::int AS n FROM paypal_checkout_event WHERE order_id=$1 AND action='refund_hold_released'",
+              [paid.id],
+            )
+          ).rows[0].n,
+          1,
+        );
+      },
+    );
+    await t.test(
+      "failed refund cannot revive an independently revoked or uncertain right",
+      async () => {
+        for (const guard of ["business", "account", "unknown", "reversal"]) {
+          const paid = await capture(await attach(await make()));
+          const command = await store.reserveRefund(owner, paid.id, {
+            requestId: randomUUID(),
+            amountMinor: 20,
+            reason: "check independent hold",
+          });
+          const facts = {
+            refundId: `REFUND${command.id}`,
+            captureId: paid.captureId,
+            amountMinor: 20,
+          };
+          await store.attachRefundResult(command.id, { ...facts, status: "PENDING" });
+          if (guard === "business") {
+            await pool.query("UPDATE directory_business SET category_id=$2 WHERE id=$1", [
+              paid.businessId,
+              category2,
+            ]);
+            await pool.query("UPDATE directory_business SET category_id=$2 WHERE id=$1", [
+              paid.businessId,
+              category,
+            ]);
+          } else if (guard === "account") {
+            await pool.query("UPDATE auth_user SET approval='suspended' WHERE id=$1", [
+              paid.userId,
+            ]);
+            await pool.query("UPDATE auth_user SET approval='approved' WHERE id=$1", [paid.userId]);
+          } else if (guard === "unknown") {
+            await store.markReview(paid.id);
+          } else {
+            await store.reconcileRefund(paid.id, {
+              captureId: paid.captureId,
+              refundedMinor: 20,
+              reversed: true,
+            });
+          }
+          await store.attachRefundResult(command.id, { ...facts, status: "FAILED" });
+          assert.equal((await capture(paid)).status, guard === "reversal" ? "reversed" : "review");
+          assert.equal(await visible(paid.businessId), false);
+        }
+      },
+    );
     await t.test("sandbox never highlights public profile and support never grants", async () => {
       const o = await capture(await attach(await make("promotion", "sandbox")));
       assert.equal(o.status, "captured");

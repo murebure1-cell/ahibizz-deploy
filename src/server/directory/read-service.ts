@@ -153,11 +153,20 @@ export async function listDirectory(
   featuredOnly: boolean | "category" = false,
   checkedAt?: Date,
   blockViewer?: string | null,
+  maximumPageSize?: number,
 ) {
-  const { page, pageSize, categoryId, subcategoryId, status, q, city, nearby, openNow } = pageInput(
-    input,
-    publicOnly,
-  );
+  const {
+    page,
+    pageSize: requestedSize,
+    categoryId,
+    subcategoryId,
+    status,
+    q,
+    city,
+    nearby,
+    openNow,
+  } = pageInput(input, publicOnly);
+  const pageSize = Math.min(requestedSize, maximumPageSize ?? requestedSize);
   const filters = [condition, "b.deleted_at IS NULL"],
     values = [...parameters];
   if (publicOnly && blockViewer) {
@@ -319,6 +328,22 @@ export function createPublicDirectoryService({
           checkedAt: checkedAt.toISOString(),
           items: result.items.map(publicDto),
         };
+      });
+    },
+    async homePromotions(placement: true | "category") {
+      return safeRead(async () => {
+        const result = await listDirectory(
+          database,
+          {},
+          publicBusinessWhere,
+          [],
+          true,
+          placement,
+          now(),
+          null,
+          6,
+        );
+        return result.items.map(publicDto);
       });
     },
     async readPublic(id: string): Promise<PublicDirectoryBusiness> {

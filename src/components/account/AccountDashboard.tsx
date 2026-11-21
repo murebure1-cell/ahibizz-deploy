@@ -136,7 +136,7 @@ function AccountWorkspace({
     : view.placementTarget
       ? placementOfferPath(view.placementTarget)
       : focusNotifications
-        ? accountShortcuts.notifications
+        ? accountShortcuts.notificationSettings
         : startBusinessCreation
           ? accountShortcuts.newBusiness
           : accountSectionPath(section);
