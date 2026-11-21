@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { IS_PLAY_EDITION } from "../../lib/distribution";
 import {
   type ManagedReel,
   type ReelStatus,
@@ -13,6 +14,7 @@ import {
   reelMedia,
   reelPartBytes,
 } from "../../lib/reels";
+import { CommunityRulesPrompt } from "../support/CommunityRulesPrompt";
 import { previewFrame } from "./poster";
 import styles from "./reels.module.css";
 
@@ -47,6 +49,7 @@ const problems: Record<string, string> = {
   REEL_BUSINESS_HIDDEN: "Djelatnost mora biti javno objavljena prije odobravanja reela.",
   REEL_BUSY: "Pregled snimka je trenutno zauzet. Pokušaj ponovo.",
   AUTHENTICATION_REQUIRED: "Prijavi se ponovo i pošalji reel.",
+  COMMUNITY_RULES_REQUIRED: "Prihvati pravila zajednice da bi mogao objaviti reel.",
   ACCOUNT_IDENTITY_CHANGED: "Nalog je promijenjen. Osvježi stranicu.",
 };
 function describe(code: string) {
@@ -225,6 +228,7 @@ export function ReelManager({
   const visible = reels.filter((reel) => !removed.includes(reel.id));
   return (
     <>
+      {!admin && IS_PLAY_EDITION && <CommunityRulesPrompt actor={accountId} />}
       {!admin &&
         (businesses.length ? (
           <form

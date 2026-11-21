@@ -31,7 +31,7 @@ export const helpTopics = {
     question: "Gdje mogu provjeriti ili promijeniti rezervaciju?",
     keywords: ["rezerv", "termin", "otkaz", "dolazak", "najam", "nocenj", "zakaz"],
     answer:
-      "Otvori rezervacije u nalogu, pronađi termin i provjeri dostupne opcije u detaljima. Ako odabrani profil ne nudi rezervaciju ili želiš dogovoriti izmjenu, kontaktiraj djelatnost kroz poruke.",
+      "Otvori Moje termine, pronađi rezervaciju i provjeri dostupne opcije u detaljima. Ako želiš izmjenu ili odabrani profil nema slobodan termin, kontaktiraj djelatnost kroz poruke.",
     links: [
       { label: "Moji termini", href: "/nalog?odjeljak=termini" },
       { label: "Otvori poruke", href: "/nalog?odjeljak=poruke" },
@@ -77,9 +77,9 @@ export const helpTopics = {
     question: "Kako da objavim kratki video za svoju djelatnost?",
     keywords: ["reels", "reel", "video", "story", "snim", "klip"],
     answer:
-      "Kratki video povezuješ sa svojom djelatnošću. Otvori svoje djelatnosti, odaberi profil i dodaj snimak s naslovom koji objašnjava šta je na videu. Prikaži vlastiti rad i usluge koje kupci mogu pronaći na profilu.",
+      "Otvori Moji reels, odaberi djelatnost i dodaj snimak s naslovom koji objašnjava šta je na videu. Prikaži vlastiti rad ili uslugu koja je dostupna na profilu. Reel se prikazuje nakon odobrenja.",
     links: [
-      { label: "Moje djelatnosti", href: "/nalog?odjeljak=djelatnosti" },
+      { label: "Moji reels", href: "/nalog/reels" },
       { label: "Pogledaj Reels", href: "/reels" },
     ],
   },

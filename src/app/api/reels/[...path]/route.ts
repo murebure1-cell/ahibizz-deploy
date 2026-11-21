@@ -2,6 +2,7 @@ import { businessUuid } from "../../../../lib/business-today";
 import { reelPartBytes } from "../../../../lib/reels";
 import { AccountAccessError } from "../../../../server/auth/accounts";
 import { readAuthConfiguration } from "../../../../server/auth/config";
+import { checkContribution } from "../../../../server/community-rules";
 import { readFlatJson } from "../../../../server/flat-json";
 import { readReelRange } from "../../../../server/reels/range";
 import {
@@ -53,6 +54,10 @@ export async function POST(request: Request, { params }: Params) {
     );
     const review = input.action === "approve" || input.action === "reject";
     if (review !== (area === "moderation")) throw notFound();
+    if (input.action === "create" || input.action === "submit") {
+      const denied = await checkContribution(request);
+      if (denied) return denied;
+    }
     const status = await applyReelCommand(request.headers, id.toLowerCase(), input);
     return json({ status });
   } catch (error) {

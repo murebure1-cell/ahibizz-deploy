@@ -100,7 +100,6 @@ export function accountReturnPath(value: unknown): string {
     return "/nalog";
   if (
     value === productionRequestPath ||
-    value === "/blokirani-korisnici" ||
     value === "/sacuvane-pretrage" ||
     value === "/nalog?odjeljak=djelatnosti&novo=1" ||
     value === "/nalog?odjeljak=termini&prikaz=historija" ||

@@ -87,7 +87,7 @@ export function ProfileBlockAction({
           <>
             <span>
               {state.blockedByMe
-                ? "Želiš li ponovo dozvoliti kontakt?"
+                ? "Želiš li ukloniti svoju blokadu?"
                 : "Nove poruke i zahtjevi za prijateljstvo bit će zaustavljeni."}
             </span>
             <button

@@ -142,7 +142,11 @@ function SettingsWorkspace({
     }
   }, [initial.id, scopedRequest, setAppearance, denied]);
   useEffect(() => {
-    if (active && !attempted.current) void load();
+    if (!active) {
+      attempted.current = false;
+      return;
+    }
+    if (!attempted.current) void load();
   }, [active, load]);
 
   async function save() {

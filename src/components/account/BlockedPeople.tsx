@@ -78,7 +78,7 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
           />
           <span>
             <strong>Sakrij djelatnosti blokiranih korisnika u pretrazi</strong>
-            <span>Postavka se odnosi na tvoje rezultate dok si prijavljen.</span>
+            <span>Odnosi se na rezultate pretrage i prijedloge u Reelsima dok si prijavljen.</span>
           </span>
         </label>
       </section>
