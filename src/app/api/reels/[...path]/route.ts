@@ -1,4 +1,5 @@
 import { businessUuid } from "../../../../lib/business-today";
+import { IS_PLAY_EDITION } from "../../../../lib/distribution";
 import { reelPartBytes } from "../../../../lib/reels";
 import { AccountAccessError } from "../../../../server/auth/accounts";
 import { readAuthConfiguration } from "../../../../server/auth/config";
@@ -55,6 +56,7 @@ export async function POST(request: Request, { params }: Params) {
     const review = input.action === "approve" || input.action === "reject";
     if (review !== (area === "moderation")) throw notFound();
     if (input.action === "create" || input.action === "submit") {
+      if (IS_PLAY_EDITION) throw notFound();
       const denied = await checkContribution(request);
       if (denied) return denied;
     }

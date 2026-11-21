@@ -7,10 +7,13 @@ import {
   reelAccountLimit,
   reelBusinessLimit,
   reelMaxBytes,
+  reelMaxPublicationCredits,
   reelPartBytes,
+  reelPublicationCredits,
 } from "../../lib/reels";
 import { AccountAccessError, accountTransaction, createAccountAccess } from "../auth/accounts";
 import { getAuthDatabasePool, getAuthService } from "../auth/service";
+import { debitWallet, walletBalance } from "../wallet/service";
 import { normalizeReelPoster, readReelPart, verifyReelVideo } from "./video";
 
 const notFound = () => new AccountAccessError(404, "REEL_NOT_FOUND");
@@ -24,7 +27,8 @@ const publicFields = `r.id, r.business_id AS "businessId", b.title AS "businessT
   b.city, r.title, r.caption, r.duration_ms AS "durationMs", r.has_poster AS "hasPoster",
   r.published_at::text AS "publishedAt"`;
 const managementFields = `${publicFields}, r.status, r.review_reason AS "reviewReason",
-  r.created_at::text AS "createdAt"`;
+  r.created_at::text AS "createdAt", r.price_minor::double precision/100 AS "priceCredits",
+  r.wallet_payment_id IS NOT NULL AS paid`;
 const fromReels = `FROM business_reel r JOIN directory_business b ON b.id=r.business_id`;
 const publicReels = `${fromReels} JOIN auth_user u ON u.id=b.owner_user_id WHERE ${visible}`;
 
@@ -117,6 +121,8 @@ export async function manageReels(headers: Headers, admin: boolean, offset = 0) 
       reels: reels.slice(0, 30),
       hasMore: reels.length > 30,
       businesses,
+      priceCredits: admin ? null : reelPublicationCredits,
+      balance: admin ? null : await walletBalance(client, actor.id),
     };
   });
 }
@@ -129,11 +135,12 @@ type ReelRow = {
   upload_active: boolean;
   title: string;
   caption: string;
+  price_minor: string | null;
 };
 
 function ownUpload(client: PoolClient, id: string, actorId: string, lock: boolean) {
   return client.query<ReelRow>(
-    `SELECT r.business_id,r.source_size,r.status,r.has_poster,r.title,r.caption,
+    `SELECT r.business_id,r.source_size,r.status,r.has_poster,r.title,r.caption,r.price_minor,
        r.created_at>clock_timestamp()-interval '24 hours' AS upload_active
      ${fromReels} WHERE r.id=$1 AND r.submitted_by=$2 AND b.owner_user_id=$2
        AND b.deleted_at IS NULL AND b.status='published' AND package_allows_listing(b)
@@ -168,6 +175,7 @@ type ReelCommand =
       caption: string;
       bytes: number;
       poster: boolean;
+      priceCredits: number;
     }
   | { action: "submit" }
   | { action: "withdraw"; expected: ReelStatus }
@@ -179,13 +187,25 @@ export function parseReelCommand(value: unknown): ReelCommand {
   const input = value as Record<string, unknown>;
   if (
     input.action === "create" &&
-    sameKeys(input, ["action", "businessId", "title", "caption", "bytes", "poster"]) &&
+    sameKeys(input, [
+      "action",
+      "businessId",
+      "title",
+      "caption",
+      "bytes",
+      "poster",
+      "priceCredits",
+    ]) &&
     businessUuid(input.businessId) &&
     typeof input.bytes === "number" &&
     Number.isInteger(input.bytes) &&
     input.bytes >= 32 &&
     input.bytes <= reelMaxBytes &&
-    typeof input.poster === "boolean"
+    typeof input.poster === "boolean" &&
+    typeof input.priceCredits === "number" &&
+    Number.isInteger(input.priceCredits) &&
+    input.priceCredits >= 1 &&
+    input.priceCredits <= reelMaxPublicationCredits
   ) {
     const title = editText(input.title, 100, true);
     if (title.includes("\n")) throw invalid();
@@ -196,6 +216,7 @@ export function parseReelCommand(value: unknown): ReelCommand {
       caption: editText(input.caption, 600, false),
       bytes: input.bytes,
       poster: input.poster,
+      priceCredits: input.priceCredits,
     };
   }
   if ((input.action === "submit" || input.action === "approve") && sameKeys(input, ["action"]))
@@ -227,6 +248,7 @@ async function beginUpload(
     [input.businessId, actorId],
   );
   if (!business.rowCount) throw notFound();
+  const priceMinor = input.priceCredits * 100;
   await client.query(
     `DELETE FROM business_reel WHERE submitted_by=$1 AND id IN (
        SELECT id FROM business_reel WHERE submitted_by=$1 AND status='uploading'
@@ -240,7 +262,8 @@ async function beginUpload(
       prior.source_size !== input.bytes ||
       prior.title !== input.title ||
       prior.caption !== input.caption ||
-      prior.has_poster !== input.poster
+      prior.has_poster !== input.poster ||
+      Number(prior.price_minor) !== priceMinor
     )
       throw stateChanged();
     if (prior.status !== "uploading" && prior.status !== "pending" && prior.status !== "published")
@@ -259,10 +282,23 @@ async function beginUpload(
   if (!limits || limits.overall >= reelAccountLimit || limits.listing >= reelBusinessLimit)
     throw new AccountAccessError(409, "REEL_LIMIT");
   if (limits.recent >= 24) throw new AccountAccessError(429, "REEL_DAILY_LIMIT");
+  if (input.priceCredits !== reelPublicationCredits)
+    throw new AccountAccessError(409, "REEL_PRICE_CHANGED");
+  if ((await walletBalance(client, actorId)) < input.priceCredits)
+    throw new AccountAccessError(409, "INSUFFICIENT_CREDITS");
   const inserted = await client.query(
-    `INSERT INTO business_reel (id,business_id,submitted_by,title,caption,source_size,has_poster)
-       VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING`,
-    [id, input.businessId, actorId, input.title, input.caption, input.bytes, input.poster],
+    `INSERT INTO business_reel (id,business_id,submitted_by,title,caption,source_size,has_poster,price_minor)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING`,
+    [
+      id,
+      input.businessId,
+      actorId,
+      input.title,
+      input.caption,
+      input.bytes,
+      input.poster,
+      priceMinor,
+    ],
   );
   if (!inserted.rowCount) throw stateChanged();
   return "uploading" as const;
@@ -274,6 +310,7 @@ async function submitUpload(client: PoolClient, actorId: string, id: string) {
   if (!reel) throw notFound();
   if (reel.status === "pending" || reel.status === "published") return reel.status;
   if (reel.status !== "uploading" || !reel.upload_active) throw stateChanged();
+  if (reel.price_minor === null) throw new AccountAccessError(409, "REEL_PRICE_REQUIRED");
   if (validationSlots >= 3) throw new AccountAccessError(503, "REEL_BUSY");
   validationSlots++;
   try {
@@ -343,8 +380,14 @@ async function reviewReel(
   actorId: string,
   input: Extract<ReelCommand, { action: "approve" | "reject" }>,
 ) {
-  const { rows } = await client.query<{ status: ReelStatus; eligible: boolean }>(
-    `SELECT r.status, (b.status='published' AND b.deleted_at IS NULL AND b.owner_user_id=r.submitted_by
+  const { rows } = await client.query<{
+    status: ReelStatus;
+    eligible: boolean;
+    submitted_by: string;
+    price_minor: string | null;
+  }>(
+    `SELECT r.status,r.submitted_by,r.price_minor,
+      (b.status='published' AND b.deleted_at IS NULL AND b.owner_user_id=r.submitted_by
       AND package_allows_listing(b) AND u.approval='approved' AND u."emailVerified" AND u.role IN ('member','owner')) AS eligible
       ${fromReels} JOIN auth_user u ON u.id=b.owner_user_id WHERE r.id=$1 FOR UPDATE OF b,r`,
     [id],
@@ -354,11 +397,20 @@ async function reviewReel(
   const status = input.action === "approve" ? "published" : "rejected";
   if (row.status === status) return status;
   if (row.status !== "pending") throw stateChanged();
-  if (status === "published" && !row.eligible)
-    throw new AccountAccessError(409, "REEL_BUSINESS_HIDDEN");
+  if (status === "published") {
+    if (!row.eligible) throw new AccountAccessError(409, "REEL_BUSINESS_HIDDEN");
+    if (row.price_minor === null) throw new AccountAccessError(409, "REEL_PRICE_REQUIRED");
+    await debitWallet(client, {
+      accountId: row.submitted_by,
+      purchaseId: id,
+      kind: "reel",
+      creditMinor: Number(row.price_minor),
+    });
+  }
   await client.query(
     `UPDATE business_reel SET status=$2,reviewed_by=$3,reviewed_at=clock_timestamp(),
-      review_reason=$4,published_at=CASE WHEN $2='published' THEN clock_timestamp() END WHERE id=$1`,
+      review_reason=$4,published_at=CASE WHEN $2='published' THEN clock_timestamp() END,
+      wallet_payment_id=CASE WHEN $2='published' THEN id END WHERE id=$1`,
     [id, status, actorId, input.action === "reject" ? input.reason : null],
   );
   if (status === "rejected")

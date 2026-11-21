@@ -23,7 +23,7 @@ export async function debitWallet(
   input: {
     accountId: string;
     purchaseId: string;
-    kind: "marketing" | "package" | "promotion";
+    kind: "marketing" | "package" | "promotion" | "reel";
     creditMinor: number;
   },
 ): Promise<boolean> {
@@ -76,6 +76,7 @@ const movementLabels: Record<string, string> = {
   promotion: "Isticanje u kategoriji",
   package: "Plaćanje paketa",
   marketing: "Plaćanje ponude",
+  reel: "Objava Reela",
 };
 export async function readCreditMovements(
   client: PoolClient,

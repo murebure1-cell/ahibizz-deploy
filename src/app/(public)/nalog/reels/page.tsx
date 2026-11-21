@@ -36,7 +36,6 @@ export default async function ManageReelsPage({ searchParams }: { searchParams: 
           ← Moj nalog
         </Link>
         <h1>Moji reels</h1>
-        <p>Pošalji kratak video svoje djelatnosti. Reel se prikazuje nakon odobrenja.</p>
       </header>
       {list ? (
         <ReelManager
@@ -45,6 +44,8 @@ export default async function ManageReelsPage({ searchParams }: { searchParams: 
           businesses={list.businesses}
           businessId={selected}
           reels={list.reels}
+          priceCredits={list.priceCredits}
+          balance={list.balance}
           admin={false}
         />
       ) : (

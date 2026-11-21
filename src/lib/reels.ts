@@ -5,6 +5,8 @@ export const reelMinDuration = 1;
 export const reelPosterEdge = 720;
 export const reelBusinessLimit = 3;
 export const reelAccountLimit = 12;
+export const reelPublicationCredits = 50;
+export const reelMaxPublicationCredits = 100_000;
 
 export type ReelStatus = "uploading" | "pending" | "published" | "rejected" | "withdrawn";
 export type PublicReel = {
@@ -23,6 +25,8 @@ export type ManagedReel = Omit<PublicReel, "durationMs"> & {
   durationMs: number | null;
   reviewReason: string | null;
   createdAt: string;
+  priceCredits: number | null;
+  paid: boolean;
 };
 export function reelMedia(id: string, kind: "poster" | "video", preview = false) {
   return `/api/reels/media/${id}/${kind}${preview ? "?pregled=1" : ""}`;

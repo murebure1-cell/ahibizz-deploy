@@ -14,7 +14,6 @@ import {
   reelMedia,
   reelPartBytes,
 } from "../../lib/reels";
-import { CommunityRulesPrompt } from "../support/CommunityRulesPrompt";
 import { previewFrame } from "./poster";
 import styles from "./reels.module.css";
 
@@ -23,6 +22,7 @@ type Upload = {
   businessId: string;
   title: string;
   caption: string;
+  priceCredits: number;
   source: File;
   posterFile: File | null;
   poster: Blob | null;
@@ -39,6 +39,10 @@ const statuses: Record<ReelStatus, string> = {
 const problems: Record<string, string> = {
   REEL_INPUT: "Provjeri naziv, opis i odabrane datoteke.",
   REEL_CHANGED: "Stanje reela se promijenilo. Osvježi stranicu.",
+  REEL_PRICE_CHANGED: "Cijena objave se promijenila. Provjeri novi iznos i pošalji ponovo.",
+  REEL_PRICE_UNAVAILABLE: "Objava reelova trenutno nije dostupna.",
+  REEL_PRICE_REQUIRED: "Za objavu vlasnik treba ponovo poslati reel uz potvrdu cijene.",
+  WALLET_PAYMENT_CHANGED: "Naplata za ovaj reel se promijenila. Provjeri stanje objave.",
   REEL_LIMIT: `Jedna djelatnost može imati najviše ${reelBusinessLimit} aktivna reela ili reela na pregledu.`,
   REEL_DAILY_LIMIT: "Dostignut je dnevni limit objava. Pokušaj ponovo sutra.",
   REEL_POSTER_INVALID: "Odaberi statičnu JPG, PNG ili WebP naslovnicu do 768 KB.",
@@ -52,8 +56,16 @@ const problems: Record<string, string> = {
   COMMUNITY_RULES_REQUIRED: "Prihvati pravila zajednice da bi mogao objaviti reel.",
   ACCOUNT_IDENTITY_CHANGED: "Nalog je promijenjen. Osvježi stranicu.",
 };
-function describe(code: string) {
+function describe(code: string, admin: boolean) {
+  if (code === "INSUFFICIENT_CREDITS")
+    return admin
+      ? "Vlasnik nema dovoljno Ahi kredita. Reel ostaje na pregledu do dopune."
+      : "Nemaš dovoljno Ahi kredita za objavu.";
   return problems[code] ?? "Prijenos nije završen. Pokušaj ponovo.";
+}
+
+function formatCredits(amount: number) {
+  return `${amount.toLocaleString("bs-BA")} ${amount === 1 ? "Ahi kredit" : "Ahi kredita"}`;
 }
 
 export function ReelManager({
@@ -62,12 +74,16 @@ export function ReelManager({
   businesses,
   businessId,
   admin,
+  priceCredits,
+  balance,
 }: {
   accountId: string;
   reels: ManagedReel[];
   businesses: { id: string; title: string }[];
   businessId?: string;
   admin: boolean;
+  priceCredits: number | null;
+  balance: number | null;
 }) {
   const router = useRouter();
   const active = useRef(false);
@@ -77,6 +93,7 @@ export function ReelManager({
   const [feedback, setFeedback] = useState("");
   const [preview, setPreview] = useState("");
   const [removed, setRemoved] = useState<string[]>([]);
+  const insufficient = priceCredits !== null && balance !== null && balance < priceCredits;
   async function request(path: string, body: Blob, type: string, method: "PUT" | "POST") {
     const response = await fetch(`/api/reels/${path}`, {
       method,
@@ -113,6 +130,8 @@ export function ReelManager({
   async function upload(form: HTMLFormElement) {
     if (!start()) return;
     try {
+      if (priceCredits === null || balance === null) throw new Error("REEL_PRICE_UNAVAILABLE");
+      if (insufficient) throw new Error("INSUFFICIENT_CREDITS");
       const fields = new FormData(form);
       const source = fields.get("video");
       const supplied = fields.get("poster");
@@ -136,7 +155,8 @@ export function ReelManager({
         matches(before.posterFile, posterFile) &&
         before.title === title &&
         before.caption === caption &&
-        before.businessId === businessId;
+        before.businessId === businessId &&
+        before.priceCredits === priceCredits;
       const upload = same
         ? before
         : {
@@ -144,6 +164,7 @@ export function ReelManager({
             businessId,
             title,
             caption,
+            priceCredits,
             source,
             posterFile,
             poster: posterFile ?? (await previewFrame(source)),
@@ -154,6 +175,7 @@ export function ReelManager({
         businessId,
         title,
         caption,
+        priceCredits: upload.priceCredits,
         bytes: source.size,
         poster: upload.poster !== null,
       });
@@ -185,7 +207,7 @@ export function ReelManager({
       setFeedback("Reel je poslan na pregled.");
       router.refresh();
     } catch (error) {
-      setFeedback(describe(error instanceof Error ? error.message : ""));
+      setFeedback(describe(error instanceof Error ? error.message : "", admin));
       router.refresh();
     } finally {
       end();
@@ -216,7 +238,7 @@ export function ReelManager({
       );
       router.refresh();
     } catch (error) {
-      setFeedback(describe(error instanceof Error ? error.message : ""));
+      setFeedback(describe(error instanceof Error ? error.message : "", admin));
       router.refresh();
     } finally {
       end();
@@ -228,8 +250,11 @@ export function ReelManager({
   const visible = reels.filter((reel) => !removed.includes(reel.id));
   return (
     <>
-      {!admin && IS_PLAY_EDITION && <CommunityRulesPrompt actor={accountId} />}
+      {!admin && IS_PLAY_EDITION && (
+        <p className={styles.empty}>Objava Reelsa trenutno nije dostupna u ovom izdanju.</p>
+      )}
       {!admin &&
+        !IS_PLAY_EDITION &&
         (businesses.length ? (
           <form
             className={styles.form}
@@ -240,6 +265,23 @@ export function ReelManager({
           >
             <fieldset disabled={busy}>
               <legend>Novi reel</legend>
+              <div className={styles.payment}>
+                <div className={styles.paymentSummary}>
+                  {priceCredits !== null && <strong>Objava · {formatCredits(priceCredits)}</strong>}
+                  {balance !== null && <span>Stanje · {formatCredits(balance)}</span>}
+                </div>
+                <p id="reel-payment-terms">
+                  {priceCredits === null || balance === null
+                    ? "Objava reelova trenutno nije dostupna."
+                    : "Krediti se skidaju jednom, nakon odobrenja. Odbijeni reel se ne naplaćuje."}
+                </p>
+                {insufficient && (
+                  <p className={styles.paymentWarning}>
+                    Nemaš dovoljno Ahi kredita.{" "}
+                    <Link href="/nalog?odjeljak=krediti">Dopuni kredite</Link>
+                  </p>
+                )}
+              </div>
               <label>
                 Djelatnost
                 <select name="business" defaultValue={selected} required>
@@ -268,8 +310,13 @@ export function ReelManager({
                 <input name="poster" type="file" accept="image/png,image/jpeg,image/webp" />
                 <small>JPG, PNG ili WebP do 768 KB. Može se izdvojiti i kadar iz snimka.</small>
               </label>
-              <button type="submit" className={styles.primary}>
-                {busy ? "Obrađuje se…" : "Pošalji na pregled"}
+              <button
+                type="submit"
+                className={styles.primary}
+                aria-describedby="reel-payment-terms"
+                disabled={priceCredits === null || balance === null || insufficient}
+              >
+                {busy ? "Obrađuje se…" : "Potvrdi cijenu i pošalji"}
               </button>
             </fieldset>
           </form>
@@ -310,6 +357,23 @@ export function ReelManager({
                 {statuses[reel.status]}
               </span>
             </div>
+            {reel.priceCredits !== null && (
+              <p className={styles.paymentHistory}>
+                {formatCredits(reel.priceCredits)} ·{" "}
+                {reel.paid
+                  ? "Plaćeno"
+                  : reel.status === "rejected"
+                    ? "Bez naplate"
+                    : "Po odobrenju"}
+              </p>
+            )}
+            {reel.status === "pending" && reel.priceCredits === null && (
+              <p className={styles.paymentWarning}>
+                {admin
+                  ? "Vlasnik mora ponovo poslati reel uz potvrdu cijene."
+                  : "Povuci ovaj reel i pošalji ga ponovo uz potvrdu cijene."}
+              </p>
+            )}
             {reel.caption && <p className={styles.caption}>{reel.caption}</p>}
             {reel.reviewReason && (
               <p className={styles.caption}>Razlog vraćanja · {reel.reviewReason}</p>
@@ -344,7 +408,7 @@ export function ReelManager({
                 <button
                   type="button"
                   className={styles.primary}
-                  disabled={busy || preview !== reel.id}
+                  disabled={busy || preview !== reel.id || reel.priceCredits === null}
                   onClick={() => void decide(reel, "approve")}
                 >
                   Odobri i objavi
