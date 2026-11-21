@@ -53,6 +53,10 @@
   aspect-ratio: 1.7;
   min-height: 166px;
 }
+.card[data-compact="true"] .cover {
+  aspect-ratio: 2.1;
+  min-height: 118px;
+}
 .cover[data-photo="true"]::after {
   content: "";
   position: absolute;
@@ -112,6 +116,7 @@
 }
 .card[data-compact="true"] .identity {
   padding-bottom: 16px;
+  --card-title-lines: 2;
 }
 .example {
   display: inline-block;
@@ -134,7 +139,7 @@
   display: -webkit-box;
   min-width: 0;
   overflow: hidden;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: var(--card-title-lines, 3);
   -webkit-box-orient: vertical;
 }
 .identity a:hover {
