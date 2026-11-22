@@ -154,7 +154,9 @@ export const homeSections = [
 ] as const;
 const originalHomeSections = ["featured", "ad", "nearby", "logos", "credits"];
 const retiredHomeSections = ["categoryFeatured", "community", "credits"];
-const previousHomeSections = [...originalHomeSections, "promotion", ...retiredHomeSections];
+const previousHomeSections = [
+  ...new Set([...originalHomeSections, "promotion", ...retiredHomeSections]),
+];
 
 export type DesignProperty = {
   name: string;
@@ -365,14 +367,21 @@ export function parseVisualDesign(input: unknown): VisualDesign {
   const ids: readonly string[] = homeSections.map(({ id }) => id);
   const order = value.homeOrder;
   if (!Array.isArray(order) || new Set(order).size !== order.length) invalid();
-  const matches = (sections: readonly string[]) =>
-    order.length === sections.length &&
-    order.every((id) => typeof id === "string" && sections.includes(id));
-  const currentOrder = matches(ids);
-  if (!currentOrder && !matches(previousHomeSections) && !matches(originalHomeSections)) invalid();
+  const matches = (list: readonly unknown[], sections: readonly string[]) =>
+    list.length === sections.length &&
+    list.every((id) => typeof id === "string" && sections.includes(id));
+  // A published order from before a section was retired keeps its arrangement without it.
+  const kept = order.filter((id) => !retiredHomeSections.includes(id));
+  const currentOrder = matches(kept, ids);
+  if (
+    !currentOrder &&
+    !matches(order, previousHomeSections) &&
+    !matches(order, originalHomeSections)
+  )
+    invalid();
   const design: VisualDesign = {
     rules: {},
-    homeOrder: currentOrder ? [...order] : [...ids],
+    homeOrder: currentOrder ? [...kept] : [...ids],
     heroTitle: plainText(value.heroTitle, 100, 3, true),
     heroImage: homeCoverId(value.heroImage),
     heroSubtitle: plainText(value.heroSubtitle === undefined ? "" : value.heroSubtitle, 160, 2),

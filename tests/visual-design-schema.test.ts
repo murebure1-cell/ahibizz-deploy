@@ -35,6 +35,17 @@ test("both previous homepage schemas read in the current order and retain active
   const base = defaultVisualDesign();
   const expectedOrder = ["ad", "reels", "newest", "nearby", "promotion", "logos", "featured"];
   assert.deepEqual(base.homeOrder, expectedOrder);
+  // The order published while the credits section existed keeps its arrangement without it.
+  const customized = ["reels", "ad", "credits", "newest", "featured", "nearby", "promotion", "logos"];
+  assert.deepEqual(parseVisualDesign({ ...base, homeOrder: customized }).homeOrder, [
+    "reels",
+    "ad",
+    "newest",
+    "featured",
+    "nearby",
+    "promotion",
+    "logos",
+  ]);
   for (const homeOrder of [
     ["nearby", "featured", "ad", "credits", "logos"],
     ["featured", "ad", "categoryFeatured", "nearby", "promotion", "logos", "credits", "community"],

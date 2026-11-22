@@ -71,5 +71,5 @@ test("a Play viewer receives support guidance for an old Reel requiring resubmis
   assert.match(reelResubmissionNotice(false, true), /obrati se podršci/);
   assert.doesNotMatch(reelResubmissionNotice(false, true), /pošalji|cijene/);
   assert.match(reelResubmissionNotice(false, false), /pošalji ga ponovo/);
-  assert.match(reelResubmissionNotice(true, true), /Vlasnik mora ponovo/);
+  assert.match(reelResubmissionNotice(true, true), /Vlasnik treba ponovo/);
 });

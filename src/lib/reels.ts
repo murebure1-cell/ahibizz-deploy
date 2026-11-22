@@ -43,6 +43,10 @@ export function reelDuration(durationMs: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-export function reelResubmissionNotice(admin: boolean, _playEdition: boolean) {
-  return admin ? "Vlasnik treba ponovo poslati reel." : "Povuci ovaj reel i po?alji ga ponovo.";
+export function reelResubmissionNotice(admin: boolean, playEdition: boolean) {
+  if (admin) return "Vlasnik treba ponovo poslati reel.";
+  // The Play edition cannot submit Reels, so it must not tell the owner to resend one.
+  return playEdition
+    ? "Za provjeru ove objave obrati se podršci."
+    : "Povuci ovaj reel i pošalji ga ponovo.";
 }
