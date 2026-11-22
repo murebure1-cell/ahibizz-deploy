@@ -94,7 +94,7 @@ test("guest card resume reads and validates the saved PayPal order without creat
   unit.amount.value = "5.12";
   await assert.rejects(client.canResumeCard(order), /ORDER_MISMATCH/);
 });
-test("cancellation requires a matched CREATED order with no captures or authorizations", async () => {
+test("cancellation requires a matched CREATED or VOIDED order with no captures or authorizations", async () => {
   const detail = provider();
   const unit = detail.purchase_units[0];
   assert.ok(unit);
@@ -117,10 +117,14 @@ test("cancellation requires a matched CREATED order with no captures or authoriz
   assert.equal(await client.isUnpaidForCancellation(order), false);
   Reflect.deleteProperty(unit, "payments");
   assert.equal(await client.isUnpaidForCancellation(order), true);
-  for (const status of ["APPROVED", "SAVED", "PAYER_ACTION_REQUIRED", "COMPLETED", "VOIDED", ""]) {
+  for (const status of ["APPROVED", "SAVED", "PAYER_ACTION_REQUIRED", "COMPLETED", ""]) {
     detail.status = status;
     assert.equal(await client.isUnpaidForCancellation(order), false);
   }
+  detail.status = "VOIDED";
+  assert.equal(await client.isUnpaidForCancellation(order), true);
+  Object.assign(unit, { payments: { authorizations: [{ id: "AUTHORIZATION" }] } });
+  assert.equal(await client.isUnpaidForCancellation(order), false);
   detail.status = "CREATED";
   unit.amount.value = "5.12";
   await assert.rejects(client.isUnpaidForCancellation(order), /ORDER_MISMATCH/);
@@ -154,7 +158,87 @@ test("live capture validates identity, purpose binding, recipient, amount and co
   const pending = provider();
   pending.status = "APPROVED";
   assert.throws(() => verifyLiveOrder(pending, order));
+  assert.throws(() => verifyLiveOrder(pending, order, false), /PAYPAL_CAPTURE_PENDING/);
+  Reflect.deleteProperty(pending.purchase_units[0] ?? {}, "payments");
   assert.equal(verifyLiveOrder(pending, order, false).status, "APPROVED");
+});
+test("provider inspection distinguishes approval, missing 3DS and voided guest orders without charging", async () => {
+  const detail = provider();
+  const unit = detail.purchase_units[0];
+  assert.ok(unit);
+  Reflect.deleteProperty(unit, "payments");
+  const client = createLivePayPal(config, async (url, init) => {
+    if (String(url).endsWith("/v1/oauth2/token")) return Response.json({ access_token: "fixture" });
+    assert.equal(init?.method, "GET");
+    return Response.json(detail);
+  });
+  for (const [state, normalized] of [
+    ["APPROVED", "APPROVED"],
+    ["PAYER_ACTION_REQUIRED", "ACTION_REQUIRED"],
+    ["VOIDED", "VOIDED"],
+    ["CREATED", "UNPAID"],
+    ["SAVED", "UNPAID"],
+    ["UNEXPECTED", "UNKNOWN"],
+  ]) {
+    detail.status = state ?? "";
+    assert.deepEqual(await client.inspect(order), { status: normalized });
+  }
+  detail.status = "APPROVED";
+  Object.assign(unit, { payments: { captures: [], authorizations: [{ id: "AUTHORIZATION" }] } });
+  assert.deepEqual(await client.inspect(order), { status: "PENDING" });
+});
+test("guest capture reads approval and emits only whitelisted PayPal rejection codes", async () => {
+  const detail = provider();
+  Reflect.deleteProperty(detail.purchase_units[0] ?? {}, "payments");
+  let captureRequests = 0;
+  let issue = "";
+  const client = createLivePayPal({ ...config, chargingApproved: true }, async (url, init) => {
+    if (String(url).endsWith("/v1/oauth2/token")) return Response.json({ access_token: "fixture" });
+    if (init?.method === "GET") return Response.json(detail);
+    assert.equal(init?.method, "POST");
+    assert.ok(String(url).endsWith("/capture"));
+    assert.equal(new Headers(init.headers).get("PayPal-Request-Id"), order.captureRequestId);
+    captureRequests++;
+    return Response.json(
+      { details: [{ issue, description: "private provider detail" }] },
+      { status: 422 },
+    );
+  });
+  detail.status = "PAYER_ACTION_REQUIRED";
+  await assert.rejects(client.capture(order, "guest"), /PAYPAL_PAYER_ACTION_REQUIRED/);
+  assert.equal(captureRequests, 0);
+  detail.status = "APPROVED";
+  issue = "INSTRUMENT_DECLINED";
+  await assert.rejects(client.capture(order, "guest"), /PAYPAL_CARD_DECLINED/);
+  issue = "UNEXPECTED_PRIVATE_ERROR";
+  await assert.rejects(client.capture(order, "guest"), /PAYPAL_REQUEST_FAILED/);
+  assert.equal(captureRequests, 2);
+});
+test("a declined or failed capture is not reported as an actual refund", async () => {
+  const detail = provider();
+  const capture = detail.purchase_units[0]?.payments.captures[0];
+  assert.ok(capture);
+  capture.id = "CAPTURE12345678";
+  const client = createLivePayPal(config, async (url, init) => {
+    if (String(url).endsWith("/v1/oauth2/token")) return Response.json({ access_token: "fixture" });
+    assert.equal(init?.method, "GET");
+    return Response.json(
+      String(url).endsWith(`/v2/payments/captures/${capture.id}`)
+        ? {
+            ...capture,
+            payee: { merchant_id: order.merchantId },
+            supplementary_data: { related_ids: { order_id: order.providerOrderId } },
+          }
+        : detail,
+    );
+  });
+  for (const status of ["DECLINED", "FAILED", "REFUNDED"]) {
+    capture.status = status;
+    const result = await client.inspect(order);
+    assert.equal(result.status, status === "REFUNDED" ? "REFUNDED" : "REVERSED");
+    assert.ok("refundedMinor" in result);
+    assert.equal(result.refundedMinor, status === "REFUNDED" ? 511 : 0);
+  }
 });
 test("completed live order is re-read without a second capture", async () => {
   const calls: string[] = [];
@@ -436,7 +520,9 @@ test("advanced card captures use the provider's SCA decision before any charge",
       }
       if (captureCount) return Response.json(provider());
       assert.equal(new URL(String(url)).searchParams.get("fields"), "payment_source");
-      return Response.json({ ...provider(), status: "APPROVED", payment_source: { card } });
+      const uncharged = provider();
+      Reflect.deleteProperty(uncharged.purchase_units[0] ?? {}, "payments");
+      return Response.json({ ...uncharged, status: "APPROVED", payment_source: { card } });
     }) as typeof fetch;
     const operation = createLivePayPal({ ...config, chargingApproved: true }, mock).capture(
       order,

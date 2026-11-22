@@ -5,7 +5,7 @@ import {
   checkoutInput,
   createCheckoutHttpHandler,
 } from "../src/server/paypal/http";
-import type { createLivePayPal } from "../src/server/paypal/live";
+import { type createLivePayPal, PayPalLiveError } from "../src/server/paypal/live";
 import {
   checkoutCatalog,
   checkoutConfiguration,
@@ -753,4 +753,51 @@ test("cancellation verifies the matching provider order and fails closed on prov
     throw new Error("PAYPAL_REQUEST_FAILED");
   };
   await assert.rejects(f.service.cancel(new Headers(), id), /ORDER_CANCELLATION_UNAVAILABLE/);
+});
+test("only provider approval and current checkout authority allow an explicit completion", async () => {
+  const f = serviceFixture();
+  f.provider.inspect = async (expected) => {
+    assert.equal(expected.id, id);
+    return { status: "APPROVED" };
+  };
+  let current = true;
+  f.store.canCompleteApprovedPayment = async (actor, selected) => {
+    assert.equal(actor.userId, "buyer");
+    assert.equal(selected.id, id);
+    assert.equal(selected.providerOrderId, "ORDER12345678");
+    return current;
+  };
+  assert.deepEqual(await f.service.reconcile(new Headers(), id), {
+    order: await f.service.read(new Headers(), id),
+    paymentState: "approved",
+    canCompleteApprovedPayment: true,
+  });
+  current = false;
+  const stale = (await f.service.reconcile(new Headers(), id)) as {
+    canCompleteApprovedPayment: boolean;
+  };
+  assert.equal(stale.canCompleteApprovedPayment, false);
+  f.store.canCompleteApprovedPayment = async () => {
+    assert.fail("Payment was never approved");
+  };
+  f.provider.inspect = async () => ({ status: "ACTION_REQUIRED" });
+  const awaiting = (await f.service.reconcile(new Headers(), id)) as {
+    paymentState: string;
+    canCompleteApprovedPayment: boolean;
+  };
+  assert.equal(awaiting.paymentState, "action_required");
+  assert.equal(awaiting.canCompleteApprovedPayment, false);
+  assert.ok(!f.calls.some((call) => ["prepare", "capture-provider", "settle"].includes(call)));
+});
+test("capture returns only controlled error codes and treats transport uncertainty as pending", async () => {
+  const f = serviceFixture();
+  f.provider.capture = async () => {
+    throw new PayPalLiveError("PAYPAL_CARD_DECLINED");
+  };
+  await assert.rejects(f.service.capture(new Headers(), id), /PAYPAL_CARD_DECLINED/);
+  f.provider.capture = async () => {
+    throw new Error("untrusted provider detail");
+  };
+  await assert.rejects(f.service.capture(new Headers(), id), /PAYPAL_CAPTURE_PENDING/);
+  assert.ok(!f.calls.includes("settle"));
 });

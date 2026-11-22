@@ -45,6 +45,13 @@ const messages: Record<string, string> = {
   ORDER_CANCELLATION_UNAVAILABLE:
     "Narudžba se još obrađuje ili provjerava. Osvježi njen status prije odustajanja ili drugog načina plaćanja.",
   PAYMENT_NOT_COMPLETED: "Uplata još nije potvrđena.",
+  PAYMENT_NOT_APPROVED: "PayPal još nije odobrio ovu uplatu. Provjeri status narudžbe.",
+  PAYPAL_PAYER_ACTION_REQUIRED: "PayPal traži potvrdu kartice prije naplate.",
+  PAYPAL_ORDER_VOIDED: "PayPal je zatvorio ovaj pokušaj. Provjeri status prije nove uplate.",
+  PAYPAL_CARD_DECLINED: "Kartica je odbijena. Provjeri sačuvanu narudžbu prije novog pokušaja.",
+  PAYPAL_CARD_EXPIRED: "Kartica je istekla. Provjeri sačuvanu narudžbu prije novog pokušaja.",
+  CARD_AUTHENTICATION_NOT_APPROVED: "Banka još nije potvrdila karticu. Provjeri status narudžbe.",
+  PAYPAL_CAPTURE_PENDING: "Ishod naplate još nije potvrđen. Osvježi status ove narudžbe.",
   CHECKOUT_UNAVAILABLE: "Plaćanje trenutno nije dostupno. Pokušaj ponovo.",
   ORDER_NOT_FOUND: "Narudžba nije pronađena na ovom nalogu.",
   QUOTE_NOT_PAYABLE: "Ova ponuda više nije dostupna za plaćanje. Provjeri je u svom nalogu.",
@@ -53,6 +60,17 @@ const messages: Record<string, string> = {
   WALLET_PAYMENT_CHANGED: "Cijena se promijenila. Ponovo otvori izbor plaćanja.",
   WALLET_PRICE_UNAVAILABLE: "Plaćanje kreditima trenutno nije dostupno.",
 };
+const confirmationMessages: Record<string, string> = {
+  approved: "PayPal je odobrio karticu. Čeka se potvrda naplate za ovu narudžbu.",
+  action_required: "PayPal još čeka potvrdu kartice.",
+  unpaid: "PayPal nema potvrđenu naplatu za ovu narudžbu.",
+  voided: "PayPal je zatvorio ovaj pokušaj. Provjeri možeš li sigurno zatvoriti narudžbu.",
+  pending: "Naplata se još obrađuje. Osvježi status prije ponovnog plaćanja.",
+  unknown: "Status naplate još nije dostupan. Osvježi status prije ponovnog plaćanja.",
+};
+function isSavedCardPayment(order: Order | null) {
+  return order?.status === "provider_created" && Boolean(order.flow && order.flow !== "redirect");
+}
 type PayableOffer = { id: string; title: string; amountMinor: number; originalBamMinor: number };
 function cents(value: string) {
   const match = /^(\d{1,4})(?:[.,](\d{1,2}))?$/.exec(value.trim());
@@ -104,6 +122,13 @@ export function Checkout({
   const [findExisting, setFindExisting] = useState(false);
   const [cancellingOrder, setCancellingOrder] = useState(false);
   const [cancellationUncertain, setCancellationUncertain] = useState(false);
+  const [paymentCheck, setPaymentCheck] = useState<{
+    orderId: string;
+    state: string;
+    canComplete: boolean;
+  } | null>(null);
+  const cardCheck = order && paymentCheck?.orderId === order.id ? paymentCheck : null;
+  const canCompleteCard = isSavedCardPayment(order) && cardCheck?.canComplete === true;
   const [error, setError] = useState(
     cancelled
       ? "Odustali ste na PayPalu. Odustajanje nije dokaz naplate; provjerite status narudžbe."
@@ -158,6 +183,7 @@ export function Checkout({
     setFindExisting(false);
     setCancellingOrder(false);
     setCancellationUncertain(false);
+    setPaymentCheck(null);
     fetch("/api/checkout/catalog", { cache: "no-store" })
       .then((r) => r.json())
       .then((value) => {
@@ -293,6 +319,7 @@ export function Checkout({
   async function act(action: "create" | "capture" | "reconcile") {
     if (locked.current || !userId || (initialOrderId && !order) || orderLoading) return;
     if (action === "create" && order?.flow && order.flow !== "redirect") return;
+    if (action === "capture" && isSavedCardPayment(order) && !canCompleteCard) return;
     if (action === "create" && (order?.kind ?? kind) === "quote" && !(order?.quoteId ?? offer?.id))
       return;
     if (order?.status === "cancelled" && action !== "reconcile") return;
@@ -307,6 +334,7 @@ export function Checkout({
     locked.current = true;
     setBusy(true);
     setError("");
+    if (action !== "reconcile") setPaymentCheck(null);
     try {
       key.current ??= crypto.randomUUID();
       const value =
@@ -348,8 +376,17 @@ export function Checkout({
       }
       if (value.order) {
         setOrder(value.order);
-        if (action === "reconcile" && value.order.id === order?.id && !value.pending)
+        if (action === "reconcile" && value.order.id === order?.id && !value.pending) {
           setCancellationUncertain(false);
+          if (isSavedCardPayment(order) && typeof value.paymentState === "string") {
+            setPaymentCheck({
+              orderId: value.order.id,
+              state: value.paymentState,
+              canComplete:
+                value.canCompleteApprovedPayment === true && value.paymentState === "approved",
+            });
+          }
+        }
         window.history.replaceState(null, "", `/naplata?narudzba=${value.order.id}`);
       }
       if (value.order && action === "create" && !order && value.order.requestId !== key.current) {
@@ -494,6 +531,7 @@ export function Checkout({
   const openCardOrder =
     order &&
     !returned &&
+    !["approved", "pending", "voided"].includes(cardCheck?.state ?? "") &&
     catalog?.available &&
     catalog.paypalClientId &&
     canOfferPayPalCard(order, review, kind);
@@ -775,7 +813,18 @@ export function Checkout({
                   ? "Vratio si se s PayPala. Povratak nije dokaz uplate."
                   : "Uplata još nije potvrđena. Ne otvaraj novu narudžbu za isti pokušaj."}
               </p>
-              {(returned || !order.flow || order.flow === "redirect") && (
+              {isSavedCardPayment(order) && cardCheck && (
+                <p role="status">{confirmationMessages[cardCheck.state]}</p>
+              )}
+              {canCompleteCard ? (
+                <button
+                  type="button"
+                  disabled={busy || !catalog?.available}
+                  onClick={() => act("capture")}
+                >
+                  Potvrdi naplatu iste narudžbe
+                </button>
+              ) : !order.flow || order.flow === "redirect" ? (
                 <button
                   type="button"
                   disabled={
@@ -787,7 +836,7 @@ export function Checkout({
                 >
                   {returned ? "Potvrdi i provjeri uplatu" : "Nastavi istu narudžbu na PayPalu"}
                 </button>
-              )}
+              ) : null}
             </>
           )}
           <button type="button" disabled={busy} onClick={() => act("reconcile")}>
@@ -795,8 +844,7 @@ export function Checkout({
           </button>
         </section>
       )}
-      {(review && !order && !initialOrderId && !paidWithCreditsUntil) ||
-      (order && canOfferPayPalCard(order, review, kind)) ? (
+      {(review && !order && !initialOrderId && !paidWithCreditsUntil) || openCardOrder ? (
         <section className={styles.methodPanel} aria-label="Način plaćanja">
           <div className={styles.cardMethod}>
             {!order &&
@@ -964,30 +1012,34 @@ export function Checkout({
             </button>
           </section>
         )}
-      {userId && canCancelPromotionOrder(order) && (
-        <section
-          className={styles.orderRecovery}
-          aria-label="Odustajanje od narudžbe"
-          aria-busy={cancellingOrder}
-        >
-          <p>
-            Za drugi način plaćanja prvo zatvori ovu neplaćenu narudžbu. Nastaviti možeš tek kada je
-            odustajanje potvrđeno.
-          </p>
-          <button
-            type="button"
-            disabled={busy || orderLoading || cancellationUncertain}
-            onClick={() => recoverPromotion("cancel")}
+      {userId &&
+        canCancelPromotionOrder(order) &&
+        !["approved", "pending"].includes(cardCheck?.state ?? "") && (
+          <section
+            className={styles.orderRecovery}
+            aria-label="Odustajanje od narudžbe"
+            aria-busy={cancellingOrder}
           >
-            {cancellingOrder ? "Zatvaram narudžbu…" : "Odustani od narudžbe"}
-          </button>
-        </section>
-      )}
+            <p>
+              Za drugi način plaćanja prvo zatvori ovu neplaćenu narudžbu. Nastaviti možeš tek kada
+              je odustajanje potvrđeno.
+            </p>
+            <button
+              type="button"
+              disabled={busy || orderLoading || cancellationUncertain}
+              onClick={() => recoverPromotion("cancel")}
+            >
+              {cancellingOrder ? "Zatvaram narudžbu…" : "Odustani od narudžbe"}
+            </button>
+          </section>
+        )}
       {order && openCardOrder && (
         <details className={styles.orderDetails}>
           <summary>Detalji narudžbe</summary>
           <p>Broj narudžbe: {order.id}</p>
-          <p>Uplata još nije potvrđena.</p>
+          <p role="status">
+            {confirmationMessages[cardCheck?.state ?? ""] ?? "Uplata još nije potvrđena."}
+          </p>
           <button type="button" disabled={busy} onClick={() => act("reconcile")}>
             Osvježi status uplate
           </button>

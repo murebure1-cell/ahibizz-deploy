@@ -7,7 +7,7 @@ import {
   createCheckoutHttpHandler,
   providerOrder,
 } from "./http";
-import { createLivePayPal, type LiveConfiguration } from "./live";
+import { createLivePayPal, type LiveConfiguration, PayPalLiveError } from "./live";
 import { type CheckoutActor, type CheckoutOrder, createCheckoutStore } from "./store";
 
 export type CheckoutConfiguration = LiveConfiguration & {
@@ -74,6 +74,14 @@ const terminal = new Set([
   "reversed",
   "cancelled",
 ]);
+const captureFailureCodes = new Set([
+  "PAYMENT_NOT_APPROVED",
+  "PAYPAL_PAYER_ACTION_REQUIRED",
+  "PAYPAL_ORDER_VOIDED",
+  "PAYPAL_CARD_DECLINED",
+  "PAYPAL_CARD_EXPIRED",
+  "CARD_AUTHENTICATION_NOT_APPROVED",
+]);
 export function checkoutCatalog(config: CheckoutConfiguration | null) {
   return {
     available: Boolean(config?.chargingApproved),
@@ -139,7 +147,7 @@ export function createCheckoutService({
     matching(order);
     const status = await provider.inspect(providerOrder(order));
     if (status.status === "COMPLETED" && status.captureId && status.completedAt) {
-      return store.settleCapture(
+      const settled = await store.settleCapture(
         order.id,
         {
           providerOrderId: order.providerOrderId ?? "",
@@ -151,6 +159,7 @@ export function createCheckoutService({
         },
         eventId,
       );
+      return { order: settled, paymentState: "confirmed" as const };
     }
     if (
       (status.status === "REFUNDED" ||
@@ -158,7 +167,7 @@ export function createCheckoutService({
         status.status === "PARTIALLY_REFUNDED") &&
       status.captureId
     ) {
-      return store.settleRefundedCapture(
+      const adjusted = await store.settleRefundedCapture(
         order.id,
         {
           providerOrderId: status.providerOrderId,
@@ -171,8 +180,20 @@ export function createCheckoutService({
         { refundedMinor: status.refundedMinor, reversed: status.status === "REVERSED" },
         eventId,
       );
+      return { order: adjusted, paymentState: "adjusted" as const };
     }
-    return order;
+    const paymentState = {
+      ACTION_REQUIRED: "action_required",
+      APPROVED: "approved",
+      PENDING: "pending",
+      UNKNOWN: "unknown",
+      UNPAID: "unpaid",
+      VOIDED: "voided",
+    } as const;
+    return {
+      order,
+      paymentState: paymentState[status.status as keyof typeof paymentState] ?? "unknown",
+    };
   }
   async function recordRefundResult(
     commandId: string,
@@ -327,17 +348,23 @@ export function createCheckoutService({
           order = await store.read(identity, id);
           matching(order);
           chargePurpose(order.kind);
-          return { order: dto(await reconcile(order)), pending: true };
+          return { order: dto((await reconcile(order)).order), pending: true };
         }
         throw error;
       }
       matching(order);
       chargePurpose(order.kind);
       if (terminal.has(order.status)) return { order: dto(order) };
-      const value = await provider.capture(
-        providerOrder(order),
-        paypalOrderFlow(order.offerVersion),
-      );
+      let value: Awaited<ReturnType<typeof provider.capture>>;
+      try {
+        value = await provider.capture(providerOrder(order), paypalOrderFlow(order.offerVersion));
+      } catch (error) {
+        const code =
+          error instanceof PayPalLiveError && captureFailureCodes.has(error.message)
+            ? error.message
+            : "PAYPAL_CAPTURE_PENDING";
+        throw new CheckoutHttpError(409, code);
+      }
       if (value.status !== "COMPLETED" || !value.captureId || !value.completedAt)
         throw new CheckoutHttpError(409, "PAYMENT_NOT_COMPLETED");
       return {
@@ -354,10 +381,17 @@ export function createCheckoutService({
       };
     },
     async reconcile(headers, id) {
-      const order = await store.read(await actor(headers), id);
+      const identity = await actor(headers);
+      const order = await store.read(identity, id);
       matching(order);
-      if (!order.providerOrderId) return { order: dto(order) };
-      return { order: dto(await reconcile(order)) };
+      if (!order.providerOrderId)
+        return { order: dto(order), paymentState: "unknown", canCompleteApprovedPayment: false };
+      const result = await reconcile(order);
+      const canCompleteApprovedPayment =
+        result.paymentState === "approved" &&
+        config.chargingApproved &&
+        (await store.canCompleteApprovedPayment(identity, order));
+      return { ...result, order: dto(result.order), canCompleteApprovedPayment };
     },
     async refund(headers, id, input) {
       if (!config.refundsApproved) throw new CheckoutHttpError(503, "REFUNDS_NOT_RELEASED");

@@ -12,6 +12,7 @@ export type GuestCallbacks = {
   onComplete(): void;
   onCancel(): void;
   onError(error: unknown): void;
+  onWarn?(warning: unknown): void;
 };
 export type CardFieldType = "number" | "expiry" | "cvv";
 export type HostedField = HTMLElement & { destroy?: () => void | Promise<void> };

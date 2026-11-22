@@ -537,6 +537,48 @@ export function createCheckoutStore(pool: Pool) {
         return order;
       });
     },
+    async canCompleteApprovedPayment(actor: CheckoutActor, expected: CheckoutOrder) {
+      return transaction(pool, async (c) => {
+        await authority(c, actor);
+        const order = await row(c, expected.id);
+        if (order.userId !== actor.userId) fail(404, "ORDER_NOT_FOUND");
+        if (
+          (order.kind !== "promotion" && order.kind !== "quote") ||
+          (order.kind === "promotion" && !order.businessId) ||
+          (order.kind === "quote" && !order.quoteId) ||
+          !["guest", "sdk", "card-fields"].includes(paypalOrderFlow(order.offerVersion)) ||
+          order.status !== "provider_created" ||
+          !order.providerOrderId ||
+          order.providerOrderId !== expected.providerOrderId ||
+          order.version !== expected.version ||
+          order.captureId ||
+          order.refundedMinor !== 0 ||
+          order.refundTotalUnknown
+        )
+          return false;
+        try {
+          await requireCurrentPromotionBusiness(c, order, actor);
+        } catch (error) {
+          if (
+            error instanceof CheckoutStoreError &&
+            ["QUOTE_NOT_PAYABLE", "BUSINESS_CHANGED"].includes(error.code)
+          )
+            return false;
+          throw error;
+        }
+        if (
+          order.environment === "live" &&
+          order.businessId &&
+          (await hasActiveWalletPromotion(c, order.businessId))
+        )
+          return false;
+        const available = await c.query(
+          "SELECT id FROM paypal_checkout_order WHERE id=$1 AND expires_at>clock_timestamp() AND (capture_lease_until IS NULL OR capture_lease_until<clock_timestamp())",
+          [order.id],
+        );
+        return Boolean(available.rowCount);
+      });
+    },
     async cancelPromotion(
       actor: CheckoutActor,
       id: string,

@@ -62,7 +62,7 @@ export function createPayPalCardFlow(options: {
 }) {
   const controller = new AbortController();
   let creating: Promise<string> | null = null;
-  let approved = false;
+  let approval: { providerOrderId: string; promise: Promise<void> } | null = null;
   let current: { order: CardOrder; providerOrderId: string } | null = null;
   let acquired = false;
   let revision = 0;
@@ -79,7 +79,7 @@ export function createPayPalCardFlow(options: {
       if (acquired || !options.acquire()) return false;
       acquired = true;
       revision++;
-      approved = false;
+      approval = null;
       creating = null;
       current = null;
       return true;
@@ -157,42 +157,54 @@ export function createPayPalCardFlow(options: {
       })();
       return creating;
     },
-    async approve(providerOrderId: string) {
-      alive();
-      if (approved) return;
+    approve(providerOrderId: string): Promise<void> {
+      try {
+        alive();
+      } catch (error) {
+        return Promise.reject(error);
+      }
+      if (approval && approval.providerOrderId === providerOrderId) return approval.promise;
       if (!acquired || !current || current.providerOrderId !== providerOrderId)
-        throw new Error(
-          "Odobrenje ne odgovara ovoj narudžbi ili je već obrađeno. Osvježi status uplate.",
+        return Promise.reject(
+          new Error(
+            "Odobrenje ne odgovara ovoj narudžbi ili je već obrađeno. Osvježi status uplate.",
+          ),
         );
-      approved = true;
       const generation = revision;
       const expected = current.order;
-      try {
-        const result = await options.send(
-          `orders/${encodeURIComponent(expected.id)}/capture`,
-          {},
-          controller.signal,
-        );
-        alive();
-        if (generation !== revision || !result.order || !sameOrder(result.order, expected))
-          throw new Error("Odgovor nije potvrđen. Osvježi status sačuvane narudžbe.");
-        options.onOrder(result.order);
-        if (result.pending || result.order.status !== "captured")
-          throw new Error(
-            "Uplata još nije potvrđena. Osvježi status sačuvane narudžbe; ne plaćaj ponovo.",
+      // Every duplicate callback observes the same server result, including failure.
+      const promise = (async () => {
+        try {
+          const result = await options.send(
+            `orders/${encodeURIComponent(expected.id)}/capture`,
+            {},
+            controller.signal,
           );
-      } finally {
-        if (generation === revision) release();
-      }
+          alive();
+          if (generation !== revision || !result.order || !sameOrder(result.order, expected))
+            throw new Error("Odgovor nije potvrđen. Osvježi status sačuvane narudžbe.");
+          options.onOrder(result.order);
+          if (result.pending || result.order.status !== "captured")
+            throw new Error(
+              "Uplata još nije potvrđena. Osvježi status sačuvane narudžbe; ne plaćaj ponovo.",
+            );
+        } finally {
+          if (generation === revision) release();
+        }
+      })();
+      approval = { providerOrderId, promise };
+      return promise;
     },
     cancel() {
       revision++;
+      approval = null;
       current = null;
       creating = null;
       release();
     },
     dispose() {
       revision++;
+      approval = null;
       controller.abort();
       current = null;
       release();

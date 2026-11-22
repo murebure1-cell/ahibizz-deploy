@@ -71,6 +71,8 @@ export function PayPalCardButton(props: Props) {
     const controller = new AbortController();
     const current = () => !controller.signal.aborted && latest.current.userId === userId;
     let interaction = 0;
+    let guestState: "idle" | "open" | "approving" | "confirmed" | "unconfirmed" = "idle";
+    let guestApproval: { orderId: string; promise: Promise<void> } | null = null;
     let session: GuestSession | undefined;
     let container: HTMLElement | undefined;
     const flow = createPayPalCardFlow({
@@ -112,6 +114,7 @@ export function PayPalCardButton(props: Props) {
       if (!current()) return;
       interaction++;
       flow.cancel();
+      guestState = "unconfirmed";
       setStatus(message);
       setRetry(true);
     };
@@ -225,25 +228,60 @@ export function PayPalCardButton(props: Props) {
     }
     async function mountGuest(instance: CardSdkInstance) {
       selectedMode.current = "guest";
-      const created = await instance.createPayPalGuestOneTimePaymentSession({
-        onApprove: async ({ orderId }) => {
-          if (!current()) throw new Error("Kartični pokušaj je zatvoren.");
-          const pending = interaction;
-          try {
-            await flow.approve(orderId);
-            if (current()) setStatus("Uplata je potvrđena.");
-          } catch (error) {
-            if (pending === interaction)
-              showError(error instanceof Error ? error.message : "Provjeri status uplate.");
-            throw error;
-          }
-        },
-        // The capture response in onApprove is the authority on fulfillment.
-        onComplete: () => {},
-        onCancel: () => {
-          if (!current()) return;
+      const pendingMessage =
+        "Čekam potvrdu naplate. Ne pokreći novu uplatu; provjeri status sačuvane narudžbe.";
+      function endedWithoutConfirmation() {
+        if (!current()) return;
+        if (guestState === "approving") {
+          setStatus(pendingMessage);
+        } else if (guestState === "open") {
           interaction++;
           flow.cancel();
+          guestState = "unconfirmed";
+          setStatus(
+            "Kartični prozor je završen bez potvrde naplate. Osvježi status sačuvane narudžbe prije novog pokušaja.",
+          );
+          setRetry(false);
+        }
+      }
+      const created = await instance.createPayPalGuestOneTimePaymentSession({
+        onApprove: ({ orderId }) => {
+          if (!current()) return Promise.reject(new Error("Kartični pokušaj je zatvoren."));
+          if (guestApproval) {
+            if (guestApproval.orderId === orderId) return guestApproval.promise;
+            return Promise.reject(new Error("Odobrenje ne odgovara ovoj narudžbi."));
+          }
+          const pending = interaction;
+          guestState = "approving";
+          setStatus(pendingMessage);
+          const promise = flow.approve(orderId).then(
+            () => {
+              if (current() && pending === interaction) {
+                guestState = "confirmed";
+                setStatus("Uplata je potvrđena.");
+              }
+            },
+            (error: unknown) => {
+              if (pending === interaction)
+                showError(error instanceof Error ? error.message : "Provjeri status uplate.");
+              throw error;
+            },
+          );
+          guestApproval = { orderId, promise };
+          return promise;
+        },
+        // The capture response in onApprove is the authority on fulfillment.
+        onComplete: endedWithoutConfirmation,
+        onCancel: () => {
+          if (!current()) return;
+          if (guestState === "confirmed") return;
+          if (guestState === "approving") {
+            setStatus(pendingMessage);
+            return;
+          }
+          interaction++;
+          flow.cancel();
+          guestState = "unconfirmed";
           if (!latest.current.savedOrder) latest.current.onOrderRecoveryNeeded?.();
           setStatus(
             latest.current.savedOrder
@@ -253,7 +291,18 @@ export function PayPalCardButton(props: Props) {
                 : "Unos kartice je zatvoren. Provjeri status uplate prije novog pokušaja.",
           );
         },
-        onError: () => showError("Kartični pokušaj nije završen. Provjeri status narudžbe."),
+        onError: () => {
+          if (!current()) return;
+          if (guestState === "confirmed") return;
+          if (guestState === "approving") setStatus(pendingMessage);
+          else showError("Kartični pokušaj nije završen. Provjeri status narudžbe.");
+        },
+        onWarn: () => {
+          if (current() && guestState === "open")
+            setStatus(
+              "PayPal traži provjeru unosa u otvorenom kartičnom obrascu. Ispravi podatke tamo i pokušaj ponovo. Uplata još nije potvrđena.",
+            );
+        },
       });
       if (!current() || !host.current) {
         destroySession(created);
@@ -267,7 +316,9 @@ export function PayPalCardButton(props: Props) {
         () => {
           if (!current() || !flow.click()) return;
           const pending = ++interaction;
-          setStatus("");
+          guestState = "open";
+          guestApproval = null;
+          setStatus("Čekam odgovor iz kartičnog obrasca…");
           setRetry(false);
           const order = flow.create().then((orderId) => ({ orderId }));
           void order.catch((error: unknown) => {
@@ -276,9 +327,13 @@ export function PayPalCardButton(props: Props) {
           });
           void Promise.resolve()
             .then(() => created.start({ presentationMode: "auto", targetElement: button }, order))
+            .then(() => {
+              if (pending === interaction) endedWithoutConfirmation();
+            })
             .catch(() => {
-              if (pending === interaction)
-                showError("Kartični obrazac se nije otvorio. Provjeri status narudžbe.");
+              if (pending !== interaction || !current() || guestState === "confirmed") return;
+              if (guestState === "approving") setStatus(pendingMessage);
+              else showError("Kartični obrazac se nije otvorio. Provjeri status narudžbe.");
             });
         },
         { signal: controller.signal },

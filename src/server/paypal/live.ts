@@ -82,6 +82,28 @@ function orderUnit(value: unknown, expected: LiveOrder) {
   return { order, unit };
 }
 
+function hasNoOrderPayments(unit: Json) {
+  if (unit.payments === undefined) return true;
+  const { captures, authorizations } = record(unit.payments);
+  return [captures, authorizations].every(
+    (entries) => entries === undefined || (Array.isArray(entries) && entries.length === 0),
+  );
+}
+
+const captureIssues = new Map([
+  ["ORDER_NOT_APPROVED", "PAYMENT_NOT_APPROVED"],
+  ["PAYER_ACTION_REQUIRED", "PAYPAL_PAYER_ACTION_REQUIRED"],
+  ["INSTRUMENT_DECLINED", "PAYPAL_CARD_DECLINED"],
+  ["CARD_EXPIRED", "PAYPAL_CARD_EXPIRED"],
+]);
+
+function captureIssue(body: unknown) {
+  const details = record(body).details;
+  if (!Array.isArray(details) || details.length !== 1) return undefined;
+  const issue = record(details[0]).issue;
+  return typeof issue === "string" ? captureIssues.get(issue) : undefined;
+}
+
 function verifyCardAuthentication(order: Json) {
   const card = record(record(order.payment_source).card);
   // SCA_WHEN_REQUIRED can approve a card without any 3D Secure challenge.
@@ -142,8 +164,13 @@ export function verifyLiveOrder(
 export function verifyLiveOrder(value: unknown, expected: LiveOrder, requireCaptured = true) {
   const { order, unit } = orderUnit(value, expected);
   if (!requireCaptured) {
+    if (order.status === "PAYER_ACTION_REQUIRED")
+      throw new PayPalLiveError("PAYPAL_PAYER_ACTION_REQUIRED");
+    if (order.status === "VOIDED") throw new PayPalLiveError("PAYPAL_ORDER_VOIDED");
     if (order.status !== "APPROVED" && order.status !== "COMPLETED")
       throw new PayPalLiveError("PAYMENT_NOT_APPROVED");
+    if (order.status === "APPROVED" && !hasNoOrderPayments(unit))
+      throw new PayPalLiveError("PAYPAL_CAPTURE_PENDING");
     return { status: String(order.status), captureId: null };
   }
   const captures = record(unit.payments).captures;
@@ -265,7 +292,16 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
       cache: "no-store",
       signal: AbortSignal.timeout(20000),
     });
-    if (!response.ok) throw new PayPalLiveError("PAYPAL_REQUEST_FAILED");
+    if (!response.ok) {
+      const issue =
+        response.status === 422 && method === "POST" && path.endsWith("/capture")
+          ? await response
+              .json()
+              .then(captureIssue)
+              .catch(() => undefined)
+          : undefined;
+      throw new PayPalLiveError(issue ?? "PAYPAL_REQUEST_FAILED");
+    }
     return record(await response.json());
   }
   async function readOrder(order: LiveOrder, includePaymentSource = false) {
@@ -376,34 +412,32 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
     async canResumeCard(order: LiveOrder) {
       const data = await readOrder(order);
       const { unit } = orderUnit(data, order);
-      const captures = unit.payments === undefined ? undefined : record(unit.payments).captures;
       return (
         ["CREATED", "SAVED", "PAYER_ACTION_REQUIRED"].includes(String(data.status)) &&
-        (captures === undefined || (Array.isArray(captures) && captures.length === 0))
+        hasNoOrderPayments(unit)
       );
     },
     async isUnpaidForCancellation(order: LiveOrder) {
       const data = await readOrder(order);
       const { unit } = orderUnit(data, order);
-      if (data.status !== "CREATED") return false;
-      if (unit.payments === undefined) return true;
-      const { captures, authorizations } = record(unit.payments);
-      return [captures, authorizations].every(
-        (entries) => entries === undefined || (Array.isArray(entries) && entries.length === 0),
-      );
+      return (data.status === "CREATED" || data.status === "VOIDED") && hasNoOrderPayments(unit);
     },
     async inspect(order: LiveOrder) {
       const data = await readOrder(order);
-      if (
-        ["CREATED", "SAVED", "PAYER_ACTION_REQUIRED", "VOIDED", "APPROVED"].includes(
-          String(data.status),
-        )
-      )
-        return { status: "UNPAID" as const };
       const { unit } = orderUnit(data, order);
+      if (data.status !== "COMPLETED" && hasNoOrderPayments(unit)) {
+        if (data.status === "APPROVED") return { status: "APPROVED" as const };
+        if (data.status === "PAYER_ACTION_REQUIRED") return { status: "ACTION_REQUIRED" as const };
+        if (data.status === "VOIDED") return { status: "VOIDED" as const };
+        if (data.status === "CREATED" || data.status === "SAVED")
+          return { status: "UNPAID" as const };
+        return { status: "UNKNOWN" as const };
+      }
       const captures = record(unit.payments).captures;
-      if (!Array.isArray(captures) || captures.length !== 1)
+      if (!Array.isArray(captures) || captures.length !== 1) {
+        if (data.status !== "COMPLETED") return { status: "PENDING" as const };
         throw new PayPalLiveError("CAPTURE_MISMATCH");
+      }
       const id = providerId(record(captures[0]).id);
       const capture = await request(`/v2/payments/captures/${id}`);
       if (
@@ -418,7 +452,7 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
       if (capture.status === "PARTIALLY_REFUNDED")
         return { status: "PARTIALLY_REFUNDED" as const, ...facts, refundedMinor: null };
       if (["DECLINED", "FAILED"].includes(String(capture.status)))
-        return { status: "REVERSED" as const, ...facts, refundedMinor: order.amountMinor };
+        return { status: "REVERSED" as const, ...facts, refundedMinor: 0 };
       if (capture.status !== "COMPLETED") return { status: "PENDING" as const, ...facts };
       return { status: "COMPLETED" as const, ...facts };
     },

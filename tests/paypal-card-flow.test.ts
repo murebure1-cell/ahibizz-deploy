@@ -126,6 +126,61 @@ test("SDK click creates once with stable server request and captures only exact 
   assert.deepEqual(t.calls[1]?.body, {});
   assert.equal(t.locks(), 0);
 });
+test("duplicate SDK approval waits for the same verified capture and rejects another provider ID", async () => {
+  const capture = Promise.withResolvers<{ order: CardOrder }>();
+  const t = setup(async (path) =>
+    path === "orders" ? { order, providerOrderId } : capture.promise,
+  );
+  assert.equal(t.flow.click(), true);
+  await t.flow.create();
+
+  const first = t.flow.approve(providerOrderId);
+  const duplicate = t.flow.approve(providerOrderId);
+  let confirmed = false;
+  void duplicate.then(() => {
+    confirmed = true;
+  });
+  await assert.rejects(t.flow.approve("OTHERORDER12345"), /ne odgovara/);
+  assert.equal(duplicate, first);
+  assert.equal(confirmed, false);
+  assert.equal(t.updates.at(-1)?.status, "created");
+  assert.equal(t.locks(), 1);
+
+  capture.resolve({ order: { ...order, status: "captured" } });
+  await Promise.all([first, duplicate]);
+  assert.equal(confirmed, true);
+  assert.equal(t.flow.approve(providerOrderId), first);
+  assert.equal(t.updates.at(-1)?.status, "captured");
+  assert.equal(t.calls.filter((call) => call.path.endsWith("/capture")).length, 1);
+  assert.equal(t.locks(), 0);
+});
+test("repeating an approval retains its failed or pending outcome without capturing again", async () => {
+  for (const outcome of ["failed", "pending"] as const) {
+    const capture = Promise.withResolvers<{ order: CardOrder; pending?: boolean }>();
+    const t = setup(async (path) =>
+      path === "orders" ? { order, providerOrderId } : capture.promise,
+    );
+    assert.equal(t.flow.click(), true);
+    await t.flow.create();
+    const original = t.flow.approve(providerOrderId);
+    assert.equal(t.flow.approve(providerOrderId), original);
+    const expected = outcome === "failed" ? /fixture capture unavailable/ : /još nije potvrđena/;
+    const rejected = assert.rejects(original, expected);
+    if (outcome === "failed") capture.reject(new Error("fixture capture unavailable"));
+    else capture.resolve({ order: { ...order, status: "provider_created" }, pending: true });
+    await rejected;
+
+    const repeated = t.flow.approve(providerOrderId);
+    assert.equal(repeated, original);
+    await assert.rejects(repeated, expected);
+    assert.equal(t.calls.filter((call) => call.path.endsWith("/capture")).length, 1);
+    assert.equal(
+      t.updates.some((value) => value.status === "captured"),
+      false,
+    );
+    assert.equal(t.locks(), 0);
+  }
+});
 test("cancel and disposal cannot capture, and no mutation retry is automatic", async () => {
   const t = setup();
   t.flow.click();
@@ -280,26 +335,58 @@ test("failed or mismatched guest recovery cannot issue a new create, retain a pr
 });
 
 test("late capture response after cancel cannot release or complete a later card attempt", async () => {
-  let finish!: (value: { order: CardOrder }) => void;
-  const t = setup(async (path) =>
-    path.endsWith("/capture")
-      ? new Promise((r) => {
-          finish = r;
-        })
-      : { order, providerOrderId },
-  );
+  const capture = Promise.withResolvers<{ order: CardOrder }>();
+  const nextOrder = { ...order, id: "new-order", requestId: "new-request" };
+  const nextProviderId = "LATERORDER123456";
+  let created = 0;
+  const t = setup(async (path) => {
+    if (path === "orders")
+      return created++ === 0
+        ? { order, providerOrderId }
+        : { order: nextOrder, providerOrderId: nextProviderId };
+    return path === "orders/internal-id/capture"
+      ? capture.promise
+      : { order: { ...nextOrder, status: "captured" } };
+  });
   t.flow.click();
   await t.flow.create();
   const first = t.flow.approve(providerOrderId);
+  const duplicate = t.flow.approve(providerOrderId);
+  assert.equal(duplicate, first);
+  const stale = assert.rejects(first);
   t.flow.cancel();
   t.flow.click();
   await t.flow.create();
-  finish({ order: { ...order, status: "captured" } });
-  await assert.rejects(first);
+  capture.resolve({ order: { ...order, status: "captured" } });
+  await stale;
+  await assert.rejects(t.flow.approve(providerOrderId), /ne odgovara/);
   assert.equal(t.locks(), 1);
   assert.equal(
     t.updates.some((o) => o.status === "captured"),
     false,
   );
+  await t.flow.approve(nextProviderId);
+  assert.equal(t.updates.at(-1)?.id, nextOrder.id);
+  assert.equal(t.updates.at(-1)?.status, "captured");
+  assert.equal(t.locks(), 0);
   t.flow.dispose();
+});
+
+test("a capture response after disposal rejects both approvals without updating the order", async () => {
+  const capture = Promise.withResolvers<{ order: CardOrder }>();
+  const t = setup(async (path) =>
+    path === "orders" ? { order, providerOrderId } : capture.promise,
+  );
+  assert.equal(t.flow.click(), true);
+  await t.flow.create();
+  const first = t.flow.approve(providerOrderId);
+  assert.equal(t.flow.approve(providerOrderId), first);
+  const stale = assert.rejects(first, { name: "AbortError" });
+  t.flow.dispose();
+  capture.resolve({ order: { ...order, status: "captured" } });
+  await stale;
+  await assert.rejects(t.flow.approve(providerOrderId), { name: "AbortError" });
+  assert.equal(t.updates.at(-1)?.status, "created");
+  assert.equal(t.calls.filter((call) => call.path.endsWith("/capture")).length, 1);
+  assert.equal(t.locks(), 0);
 });
