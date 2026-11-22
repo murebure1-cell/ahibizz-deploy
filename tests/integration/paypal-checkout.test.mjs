@@ -551,6 +551,63 @@ test("durable checkout isolated PostgreSQL authority, replay, rights and refunds
         );
       },
     );
+    await t.test(
+      "verified decline closes only an idle exact order, preserving late capture review",
+      async () => {
+        const pending = await attach(await make());
+        const proof = {
+          captureId: "CAPTUREDECLINE123",
+          providerOrderId: pending.providerOrderId,
+          merchantId: pending.merchantId,
+          amountMinor: pending.amountMinor,
+          currency: "EUR",
+          completedAt: new Date().toISOString(),
+        };
+        const event = "EVENT-DECLINE";
+        await assert.rejects(
+          store.closeDeclinedPromotion(pending, { ...proof, amountMinor: 512 }, event),
+          /DECLINE_MISMATCH/,
+        );
+        await store.prepareCapture(user, pending.id);
+        const leased = await store.read(user, pending.id);
+        await assert.rejects(
+          store.closeDeclinedPromotion(leased, proof, event),
+          /DECLINE_CONFIRMATION_PENDING/,
+        );
+        await pool.query(
+          "UPDATE paypal_checkout_order SET capture_lease_until=now()-interval '61 seconds' WHERE id=$1",
+          [pending.id],
+        );
+        await assert.rejects(
+          store.closeDeclinedPromotion(leased, proof, event),
+          /DECLINE_CONFIRMATION_PENDING/,
+        );
+        const eligible = await store.read(user, pending.id);
+        const closed = await store.closeDeclinedPromotion(eligible, proof, event);
+        assert.equal(closed.status, "cancelled");
+        assert.equal(closed.captureId, null);
+        assert.equal(closed.captureLeaseUntil, null);
+        assert.equal(closed.refundedMinor, 0);
+        assert.equal(
+          (await store.closeDeclinedPromotion(eligible, proof, event)).version,
+          closed.version,
+        );
+        assert.equal(
+          (
+            await pool.query(
+              "SELECT count(*)::int AS count FROM paypal_checkout_event WHERE order_id=$1 AND action='cancelled_declined'",
+              [pending.id],
+            )
+          ).rows[0].count,
+          1,
+        );
+        await assert.rejects(store.prepareCapture(user, pending.id), /ORDER_NOT_PAYABLE/);
+        const late = await capture(pending, "EVENT-LATE-CAPTURE");
+        assert.notEqual(late.captureId, proof.captureId);
+        assert.equal(late.status, "review");
+        assert.equal(await visible(pending.businessId), false);
+      },
+    );
     await t.test("capture lease, verified amount and exactly one grant", async () => {
       first = await attach(first);
       await store.prepareCapture(user, first.id);

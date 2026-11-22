@@ -1,7 +1,14 @@
 import type { PayPalOrderFlow } from "../../lib/paypal-order-flow";
 
 /** Server-only transport. Durable authorization/order persistence belongs to the checkout service. */
-export class PayPalLiveError extends Error {}
+export class PayPalLiveError extends Error {
+  constructor(
+    message: string,
+    readonly providerStatus?: number,
+  ) {
+    super(message);
+  }
+}
 export type LiveOrder = {
   id: string;
   purpose: "promotion" | "support" | "quote";
@@ -32,6 +39,10 @@ export type VerifiedCapture = {
   merchantId: string;
   providerOrderId: string;
 };
+export type VerifiedDecline = Pick<
+  VerifiedCapture,
+  "captureId" | "amountMinor" | "currency" | "merchantId" | "providerOrderId"
+>;
 function record(value: unknown): Json {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new PayPalLiveError("INVALID_PROVIDER_RESPONSE");
@@ -41,6 +52,30 @@ function providerId(value: unknown): string {
   if (typeof value !== "string" || !/^[A-Z0-9]{10,32}$/.test(value))
     throw new PayPalLiveError("INVALID_PROVIDER_ID");
   return value;
+}
+export function providerOrderReference(
+  relatedId: unknown,
+  links: unknown,
+  environment: "sandbox" | "live",
+) {
+  const ids = new Set<string>();
+  if (relatedId !== undefined) {
+    if (typeof relatedId !== "string" || !/^[A-Z0-9]{10,32}$/.test(relatedId)) return undefined;
+    ids.add(relatedId);
+  }
+  const pattern =
+    environment === "sandbox"
+      ? /^https:\/\/(?:api|api-m)\.sandbox\.paypal\.com\/v2\/checkout\/orders\/([A-Z0-9]{10,32})$/
+      : /^https:\/\/(?:api|api-m)\.paypal\.com\/v2\/checkout\/orders\/([A-Z0-9]{10,32})$/;
+  if (Array.isArray(links)) {
+    for (const value of links) {
+      if (!value || typeof value !== "object" || value.rel !== "up") continue;
+      const id = typeof value.href === "string" ? pattern.exec(value.href)?.[1] : undefined;
+      if (!id) return undefined;
+      ids.add(id);
+    }
+  }
+  return ids.size === 1 ? [...ids][0] : undefined;
 }
 export function liveAmount(minor: number): string {
   if (!Number.isSafeInteger(minor) || minor < 1 || minor > 51129188)
@@ -94,8 +129,27 @@ const captureIssues = new Map([
   ["ORDER_NOT_APPROVED", "PAYMENT_NOT_APPROVED"],
   ["PAYER_ACTION_REQUIRED", "PAYPAL_PAYER_ACTION_REQUIRED"],
   ["INSTRUMENT_DECLINED", "PAYPAL_CARD_DECLINED"],
+  ["TRANSACTION_REFUSED", "PAYPAL_CARD_DECLINED"],
   ["CARD_EXPIRED", "PAYPAL_CARD_EXPIRED"],
 ]);
+const declineOrderStates = new Set(["APPROVED", "COMPLETED", "VOIDED"]);
+export function isDeclinedCaptureStatus(status: unknown) {
+  return status === "DECLINED" || status === "DENIED" || status === "FAILED";
+}
+
+function declineFitsOrder(data: Json, unit: Json) {
+  if (typeof data.status !== "string" || !declineOrderStates.has(data.status)) return false;
+  if (unit.payments === undefined) return data.status !== "COMPLETED";
+  const { captures, authorizations } = record(unit.payments);
+  if (authorizations !== undefined && (!Array.isArray(authorizations) || authorizations.length > 0))
+    return false;
+  if (captures === undefined) return data.status !== "COMPLETED";
+  return (
+    Array.isArray(captures) &&
+    (data.status !== "COMPLETED" || captures.length > 0) &&
+    captures.every((entry) => isDeclinedCaptureStatus(record(entry).status))
+  );
+}
 
 function captureIssue(body: unknown) {
   const details = record(body).details;
@@ -174,9 +228,11 @@ export function verifyLiveOrder(value: unknown, expected: LiveOrder, requireCapt
     return { status: String(order.status), captureId: null };
   }
   const captures = record(unit.payments).captures;
-  if (order.status !== "COMPLETED" || !Array.isArray(captures) || captures.length !== 1)
+  if (order.status !== "COMPLETED" || !Array.isArray(captures))
     throw new PayPalLiveError("PAYMENT_NOT_COMPLETED");
-  const capture = record(captures[0]);
+  const active = captures.map(record).filter((capture) => !isDeclinedCaptureStatus(capture.status));
+  if (active.length !== 1) throw new PayPalLiveError("PAYMENT_NOT_COMPLETED");
+  const capture = record(active[0]);
   if (capture.status !== "COMPLETED") throw new PayPalLiveError("CAPTURE_MISMATCH");
   return { status: "COMPLETED" as const, ...captureFacts(capture, expected) };
 }
@@ -300,7 +356,7 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
               .then(captureIssue)
               .catch(() => undefined)
           : undefined;
-      throw new PayPalLiveError(issue ?? "PAYPAL_REQUEST_FAILED");
+      throw new PayPalLiveError(issue ?? "PAYPAL_REQUEST_FAILED", response.status);
     }
     return record(await response.json());
   }
@@ -310,7 +366,55 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
     orderUnit(data, order);
     return data;
   }
+  async function readDeclinedCapture(order: LiveOrder, id: string) {
+    let capture: Json | null = null;
+    try {
+      capture = await request(`/v2/payments/captures/${providerId(id)}`);
+    } catch (error) {
+      if (!(error instanceof PayPalLiveError) || error.providerStatus !== 404) throw error;
+    }
+    // Read the order last so pending or successful activity always takes precedence.
+    const data = await readOrder(order);
+    const { unit } = orderUnit(data, order);
+    if (!declineFitsOrder(data, unit)) return null;
+    if (!capture) {
+      const values = unit.payments === undefined ? undefined : record(unit.payments).captures;
+      if (!Array.isArray(values)) return null;
+      const exact = values.map(record).filter((entry) => entry.id === id);
+      if (exact.length !== 1) return null;
+      capture = exact[0] ?? null;
+    } else {
+      const related =
+        capture.supplementary_data === undefined
+          ? undefined
+          : record(capture.supplementary_data).related_ids;
+      const relatedOrder = related === undefined ? undefined : record(related).order_id;
+      if (
+        providerOrderReference(relatedOrder, capture.links, environment) !== order.providerOrderId
+      )
+        return null;
+    }
+    if (
+      !capture ||
+      capture.id !== id ||
+      !isDeclinedCaptureStatus(capture.status) ||
+      (capture.payee !== undefined && record(capture.payee).merchant_id !== order.merchantId) ||
+      (capture.custom_id !== undefined && capture.custom_id !== order.id)
+    )
+      return null;
+    const amount = record(capture.amount);
+    if (amount.value !== liveAmount(order.amountMinor) || amount.currency_code !== order.currency)
+      throw new PayPalLiveError("CAPTURE_MISMATCH");
+    return {
+      captureId: id,
+      amountMinor: order.amountMinor,
+      currency: order.currency,
+      merchantId: order.merchantId,
+      providerOrderId: providerId(order.providerOrderId),
+    };
+  }
   return {
+    readDeclinedCapture,
     async create(order: LiveOrder, flow: PayPalOrderFlow = "redirect") {
       if (
         !["redirect", "sdk", "guest", "card-fields"].includes(flow) ||
@@ -434,11 +538,20 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
         return { status: "UNKNOWN" as const };
       }
       const captures = record(unit.payments).captures;
-      if (!Array.isArray(captures) || captures.length !== 1) {
+      if (!Array.isArray(captures) || captures.length === 0) {
         if (data.status !== "COMPLETED") return { status: "PENDING" as const };
         throw new PayPalLiveError("CAPTURE_MISMATCH");
       }
-      const id = providerId(record(captures[0]).id);
+      const entries = captures.map(record);
+      const active = entries.filter((entry) => !isDeclinedCaptureStatus(entry.status));
+      if (order.purpose === "promotion" && active.length === 0) {
+        const latest = entries.at(-1);
+        const proof = latest && (await readDeclinedCapture(order, providerId(latest.id)));
+        return proof ? { status: "DECLINED" as const, ...proof } : { status: "PENDING" as const };
+      }
+      if (active.length > 1 || (active.length === 0 && entries.length !== 1))
+        throw new PayPalLiveError("CAPTURE_MISMATCH");
+      const id = providerId((active[0] ?? entries[0])?.id);
       const capture = await request(`/v2/payments/captures/${id}`);
       if (
         capture.id !== id ||
@@ -451,8 +564,13 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
         return { status: "REFUNDED" as const, ...facts, refundedMinor: order.amountMinor };
       if (capture.status === "PARTIALLY_REFUNDED")
         return { status: "PARTIALLY_REFUNDED" as const, ...facts, refundedMinor: null };
-      if (["DECLINED", "FAILED"].includes(String(capture.status)))
+      if (isDeclinedCaptureStatus(capture.status)) {
+        if (order.purpose === "promotion") {
+          const proof = await readDeclinedCapture(order, id);
+          return proof ? { status: "DECLINED" as const, ...proof } : { status: "PENDING" as const };
+        }
         return { status: "REVERSED" as const, ...facts, refundedMinor: 0 };
+      }
       if (capture.status !== "COMPLETED") return { status: "PENDING" as const, ...facts };
       return { status: "COMPLETED" as const, ...facts };
     },

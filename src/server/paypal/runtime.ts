@@ -7,7 +7,13 @@ import {
   createCheckoutHttpHandler,
   providerOrder,
 } from "./http";
-import { createLivePayPal, type LiveConfiguration, PayPalLiveError } from "./live";
+import {
+  createLivePayPal,
+  isDeclinedCaptureStatus,
+  type LiveConfiguration,
+  PayPalLiveError,
+  providerOrderReference,
+} from "./live";
 import { type CheckoutActor, type CheckoutOrder, createCheckoutStore } from "./store";
 
 export type CheckoutConfiguration = LiveConfiguration & {
@@ -143,7 +149,7 @@ export function createCheckoutService({
     if (order.environment !== config.environment || order.merchantId !== config.merchantId)
       throw new CheckoutHttpError(409, "CHECKOUT_CONFIGURATION_MISMATCH");
   }
-  async function reconcile(order: CheckoutOrder, eventId?: string) {
+  async function reconcile(order: CheckoutOrder, eventId?: string, captureOnly = false) {
     matching(order);
     const status = await provider.inspect(providerOrder(order));
     if (status.status === "COMPLETED" && status.captureId && status.completedAt) {
@@ -160,6 +166,15 @@ export function createCheckoutService({
         eventId,
       );
       return { order: settled, paymentState: "confirmed" as const };
+    }
+    if (status.status === "DECLINED") {
+      if (captureOnly || order.kind !== "promotion")
+        return { order, paymentState: "pending" as const };
+      const closed = await store.closeDeclinedPromotion(order, status, eventId);
+      return {
+        order: closed,
+        paymentState: closed.status === "cancelled" ? ("declined" as const) : ("pending" as const),
+      };
     }
     if (
       (status.status === "REFUNDED" ||
@@ -424,11 +439,50 @@ export function createCheckoutService({
         event_type?: string;
         resource?: {
           id?: string;
+          status?: string;
           links?: unknown;
           supplementary_data?: { related_ids?: { order_id?: string; capture_id?: string } };
         };
       };
       const related = event.resource?.supplementary_data?.related_ids;
+      if (
+        event.event_type === "PAYMENT.CAPTURE.DECLINED" ||
+        event.event_type === "PAYMENT.CAPTURE.DENIED"
+      ) {
+        const captureId = event.resource?.id;
+        const providerOrderId = providerOrderReference(
+          related?.order_id,
+          event.resource?.links,
+          config.environment,
+        );
+        if (
+          !providerOrderId ||
+          typeof captureId !== "string" ||
+          !/^[A-Z0-9]{10,32}$/.test(captureId) ||
+          (event.resource?.status !== undefined && !isDeclinedCaptureStatus(event.resource.status))
+        )
+          return { received: true, matched: false };
+        const order = await store.findByProvider(config.environment, { providerOrderId });
+        if (!order) return { received: true, matched: false };
+        matching(order);
+        if (order.kind !== "promotion") {
+          await reconcile(order, event.id);
+          return { received: true, matched: true };
+        }
+        if (order.status === "cancelled" || order.captureId)
+          return { received: true, matched: true };
+        const proof = await provider.readDeclinedCapture(providerOrder(order), captureId);
+        if (proof) {
+          const closed = await store.closeDeclinedPromotion(order, proof, event.id);
+          if (closed.status === "cancelled" || closed.captureId)
+            return { received: true, matched: true };
+        } else {
+          // A later verified capture takes precedence over this older decline.
+          const present = await reconcile(order, undefined, true);
+          if (present.order.captureId) return { received: true, matched: true };
+        }
+        throw new CheckoutHttpError(409, "DECLINE_CONFIRMATION_PENDING");
+      }
       if (
         event.event_type === "PAYMENT.REFUND.FAILED" ||
         event.event_type === "PAYMENT.REFUND.PENDING"

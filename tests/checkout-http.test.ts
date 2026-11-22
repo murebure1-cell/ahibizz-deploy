@@ -801,3 +801,76 @@ test("capture returns only controlled error codes and treats transport uncertain
   await assert.rejects(f.service.capture(new Headers(), id), /PAYPAL_CAPTURE_PENDING/);
   assert.ok(!f.calls.includes("settle"));
 });
+test("only signed correlated decline events can close the checked promotion", async () => {
+  const f = serviceFixture();
+  const captureId = "CAPTUREDECLINED01";
+  const event = {
+    id: "WH-EXACT-DECLINE",
+    event_type: "PAYMENT.CAPTURE.DECLINED",
+    resource: {
+      id: captureId,
+      status: "DECLINED",
+      supplementary_data: { related_ids: { order_id: "ORDER12345678" } },
+    },
+  };
+  const proof = {
+    captureId,
+    providerOrderId: "ORDER12345678",
+    merchantId: "merchant",
+    currency: "EUR" as const,
+    amountMinor: 511,
+    completedAt: "2026-11-22T06:00:00Z",
+  };
+  let closed = 0;
+  f.provider.readDeclinedCapture = async (expected, declineId) => {
+    assert.equal(expected.id, id);
+    assert.equal(expected.providerOrderId, proof.providerOrderId);
+    assert.equal(declineId, captureId);
+    return proof;
+  };
+  f.store.closeDeclinedPromotion = async (order, confirmed, eventId) => {
+    assert.equal(order.id, id);
+    assert.equal(eventId, event.id);
+    assert.deepEqual(confirmed, proof);
+    closed++;
+    return { ...order, status: "cancelled" };
+  };
+  const conflicting = {
+    ...event,
+    resource: {
+      ...event.resource,
+      links: [{ rel: "up", href: "https://api-m.paypal.com/v2/checkout/orders/ANOTHERORDER123" }],
+    },
+  };
+  assert.deepEqual(await f.service.webhook(new Headers(), conflicting), {
+    received: true,
+    matched: false,
+  });
+  assert.equal(closed, 0);
+  f.provider.verifyWebhook = async () => false;
+  await assert.rejects(f.service.webhook(new Headers(), event), /INVALID_WEBHOOK_SIGNATURE/);
+  assert.equal(closed, 0);
+  f.provider.verifyWebhook = async () => true;
+  assert.deepEqual(await f.service.webhook(new Headers(), event), {
+    received: true,
+    matched: true,
+  });
+  assert.equal(closed, 1);
+  f.provider.readDeclinedCapture = async () => null;
+  f.provider.inspect = async () => ({ status: "APPROVED" });
+  await assert.rejects(f.service.webhook(new Headers(), event), /DECLINE_CONFIRMATION_PENDING/);
+  assert.equal(closed, 1);
+  f.provider.inspect = async () => ({ ...proof, status: "COMPLETED", captureId: "OTHERPAID123" });
+  const order = await f.store.read({ userId: "buyer", id: "", token: "" }, id);
+  f.store.settleCapture = async (_id, actual) => {
+    assert.equal(actual.captureId, "OTHERPAID123");
+    f.calls.push("settle");
+    return { ...order, status: "captured", captureId: actual.captureId };
+  };
+  assert.deepEqual(
+    await f.service.webhook(new Headers(), { ...event, event_type: "PAYMENT.CAPTURE.DENIED" }),
+    { received: true, matched: true },
+  );
+  assert.ok(f.calls.includes("settle"));
+  assert.equal(closed, 1);
+});

@@ -214,7 +214,7 @@ test("guest capture reads approval and emits only whitelisted PayPal rejection c
   await assert.rejects(client.capture(order, "guest"), /PAYPAL_REQUEST_FAILED/);
   assert.equal(captureRequests, 2);
 });
-test("a declined or failed capture is not reported as an actual refund", async () => {
+test("a declined or failed promotion capture is distinguished from a refund", async () => {
   const detail = provider();
   const capture = detail.purchase_units[0]?.payments.captures[0];
   assert.ok(capture);
@@ -235,10 +235,81 @@ test("a declined or failed capture is not reported as an actual refund", async (
   for (const status of ["DECLINED", "FAILED", "REFUNDED"]) {
     capture.status = status;
     const result = await client.inspect(order);
-    assert.equal(result.status, status === "REFUNDED" ? "REFUNDED" : "REVERSED");
-    assert.ok("refundedMinor" in result);
-    assert.equal(result.refundedMinor, status === "REFUNDED" ? 511 : 0);
+    assert.equal(result.status, status === "REFUNDED" ? "REFUNDED" : "DECLINED");
+    if (result.status === "REFUNDED") assert.equal(result.refundedMinor, 511);
+    else assert.equal("refundedMinor" in result, false);
   }
+});
+test("detached decline proof must bind exact provider identities and current absence of payment", async () => {
+  const detail = provider();
+  const unit = detail.purchase_units[0];
+  const capture = unit?.payments.captures[0];
+  assert.ok(unit && capture);
+  capture.id = "CAPTUREDECLINED01";
+  capture.status = "DECLINED";
+  Reflect.deleteProperty(capture, "create_time");
+  Reflect.deleteProperty(capture, "final_capture");
+  detail.status = "APPROVED";
+  Reflect.deleteProperty(unit, "payments");
+  let missing = false;
+  let related = order.providerOrderId;
+  let merchant: string | undefined;
+  const client = createLivePayPal(config, async (url, init) => {
+    if (String(url).endsWith("/v1/oauth2/token")) return Response.json({ access_token: "fixture" });
+    assert.equal(init?.method, "GET");
+    if (String(url).endsWith(`/v2/payments/captures/${capture.id}`)) {
+      if (missing) return Response.json({}, { status: 404 });
+      return Response.json({
+        ...capture,
+        ...(merchant ? { payee: { merchant_id: merchant } } : {}),
+        supplementary_data: { related_ids: { order_id: related } },
+      });
+    }
+    return Response.json(detail);
+  });
+  assert.equal((await client.readDeclinedCapture(order, capture.id))?.captureId, capture.id);
+  merchant = "DIFFERENT_MERCHANT";
+  assert.equal(await client.readDeclinedCapture(order, capture.id), null);
+  merchant = undefined;
+  related = "DIFFERENTORDER123";
+  assert.equal(await client.readDeclinedCapture(order, capture.id), null);
+  related = order.providerOrderId;
+  capture.amount.value = "5.12";
+  await assert.rejects(client.readDeclinedCapture(order, capture.id), /CAPTURE_MISMATCH/);
+  capture.amount.value = "5.11";
+  Object.assign(unit, { payments: { captures: [], authorizations: [{ id: "AUTHORIZE123" }] } });
+  assert.equal(await client.readDeclinedCapture(order, capture.id), null);
+  Reflect.deleteProperty(unit, "payments");
+  missing = true;
+  assert.equal(await client.readDeclinedCapture(order, capture.id), null);
+  Object.assign(unit, { payments: { captures: [capture] } });
+  detail.status = "COMPLETED";
+  assert.equal((await client.readDeclinedCapture(order, capture.id))?.captureId, capture.id);
+  unit.payments.captures.push({ ...capture, id: "LATEPAYMENT123", status: "PENDING" });
+  assert.equal(await client.readDeclinedCapture(order, capture.id), null);
+});
+test("a completed capture is reconciled when only definitively failed captures accompany it", async () => {
+  const detail = provider();
+  const captures = detail.purchase_units[0]?.payments.captures;
+  const completed = captures?.[0];
+  assert.ok(captures && completed);
+  completed.id = "CAPTUREPAID123";
+  captures.unshift({ ...completed, id: "PREVIOUSDECLINE123", status: "DECLINED" });
+  const client = createLivePayPal(config, async (url) => {
+    if (String(url).endsWith("/v1/oauth2/token")) return Response.json({ access_token: "fixture" });
+    if (String(url).endsWith(`/v2/payments/captures/${completed.id}`))
+      return Response.json({
+        ...completed,
+        payee: { merchant_id: order.merchantId },
+        supplementary_data: { related_ids: { order_id: order.providerOrderId } },
+      });
+    return Response.json(detail);
+  });
+  assert.equal((await client.inspect(order)).status, "COMPLETED");
+  assert.equal(verifyLiveOrder(detail, order).captureId, completed.id);
+  captures.push({ ...completed, id: "OTHERPENDING123", status: "PENDING" });
+  await assert.rejects(client.inspect(order), /CAPTURE_MISMATCH/);
+  assert.throws(() => verifyLiveOrder(detail, order), /PAYMENT_NOT_COMPLETED/);
 });
 test("completed live order is re-read without a second capture", async () => {
   const calls: string[] = [];

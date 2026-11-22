@@ -52,6 +52,8 @@ const messages: Record<string, string> = {
   PAYPAL_CARD_EXPIRED: "Kartica je istekla. Provjeri sačuvanu narudžbu prije novog pokušaja.",
   CARD_AUTHENTICATION_NOT_APPROVED: "Banka još nije potvrdila karticu. Provjeri status narudžbe.",
   PAYPAL_CAPTURE_PENDING: "Ishod naplate još nije potvrđen. Osvježi status ove narudžbe.",
+  DECLINE_CONFIRMATION_PENDING:
+    "PayPal je prijavio odbijanje. Osvježi status prije pokretanja nove uplate.",
   CHECKOUT_UNAVAILABLE: "Plaćanje trenutno nije dostupno. Pokušaj ponovo.",
   ORDER_NOT_FOUND: "Narudžba nije pronađena na ovom nalogu.",
   QUOTE_NOT_PAYABLE: "Ova ponuda više nije dostupna za plaćanje. Provjeri je u svom nalogu.",
@@ -66,6 +68,7 @@ const confirmationMessages: Record<string, string> = {
   unpaid: "PayPal nema potvrđenu naplatu za ovu narudžbu.",
   voided: "PayPal je zatvorio ovaj pokušaj. Provjeri možeš li sigurno zatvoriti narudžbu.",
   pending: "Naplata se još obrađuje. Osvježi status prije ponovnog plaćanja.",
+  declined: "PayPal je odbio naplatu i narudžba je zatvorena.",
   unknown: "Status naplate još nije dostupan. Osvježi status prije ponovnog plaćanja.",
 };
 function isSavedCardPayment(order: Order | null) {
@@ -769,7 +772,11 @@ export function Checkout({
           {order.status === "cancelled" ? (
             <div role="status">
               <h3>Narudžba je stornirana</h3>
-              <p>Nije izvršena naplata.</p>
+              <p>
+                {cardCheck?.state === "declined"
+                  ? confirmationMessages.declined
+                  : "Nije izvršena naplata."}
+              </p>
               <a
                 href={restartHref ?? (order.kind === "quote" ? "/nalog" : "/naplata")}
                 onClick={(event) => {

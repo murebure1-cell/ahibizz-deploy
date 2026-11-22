@@ -8,6 +8,7 @@ import {
   reconcileProductionSale,
   settleOnlineQuote,
 } from "../marketing/online-quote";
+import type { VerifiedDecline } from "./live";
 
 export type CheckoutActor = {
   userId: string;
@@ -43,6 +44,7 @@ export type CheckoutOrder = {
   endsAt: string | null;
   expiresAt: string;
   capturedAt: string | null;
+  captureLeaseUntil: string | null;
   version: number;
 };
 type HeldQuote = {
@@ -67,7 +69,7 @@ const uuid = (v: string) => {
     fail(400, "INVALID_CHECKOUT_ID");
   return v;
 };
-const columns = `id,user_id AS "userId",request_id AS "requestId",environment,kind,quote_id AS "quoteId",business_id AS "businessId",category_id AS "categoryId",business_title AS "businessTitle",offer_version AS "offerVersion",original_bam_minor AS "originalBamMinor",amount_minor AS "amountMinor",currency,merchant_id AS "merchantId",status,provider_order_id AS "providerOrderId",approval_url AS "approvalUrl",capture_id AS "captureId",create_request_id AS "createRequestId",capture_request_id AS "captureRequestId",refunded_minor AS "refundedMinor",refund_total_unknown AS "refundTotalUnknown",starts_at::text AS "startsAt",ends_at::text AS "endsAt",expires_at::text AS "expiresAt",captured_at::text AS "capturedAt",version`;
+const columns = `id,user_id AS "userId",request_id AS "requestId",environment,kind,quote_id AS "quoteId",business_id AS "businessId",category_id AS "categoryId",business_title AS "businessTitle",offer_version AS "offerVersion",original_bam_minor AS "originalBamMinor",amount_minor AS "amountMinor",currency,merchant_id AS "merchantId",status,provider_order_id AS "providerOrderId",approval_url AS "approvalUrl",capture_id AS "captureId",create_request_id AS "createRequestId",capture_request_id AS "captureRequestId",refunded_minor AS "refundedMinor",refund_total_unknown AS "refundTotalUnknown",starts_at::text AS "startsAt",ends_at::text AS "endsAt",expires_at::text AS "expiresAt",captured_at::text AS "capturedAt",capture_lease_until::text AS "captureLeaseUntil",version`;
 
 export function promotionSql(alias = "b", includePayPal = true) {
   if (!/^[a-z][a-z0-9_]*$/i.test(alias)) throw new Error("Invalid SQL alias");
@@ -573,7 +575,7 @@ export function createCheckoutStore(pool: Pool) {
         )
           return false;
         const available = await c.query(
-          "SELECT id FROM paypal_checkout_order WHERE id=$1 AND expires_at>clock_timestamp() AND (capture_lease_until IS NULL OR capture_lease_until<clock_timestamp())",
+          "SELECT id FROM paypal_checkout_order WHERE id=$1 AND expires_at>clock_timestamp() AND (capture_lease_until IS NULL OR (kind<>'promotion' AND capture_lease_until<clock_timestamp()))",
           [order.id],
         );
         return Boolean(available.rowCount);
@@ -609,6 +611,57 @@ export function createCheckoutStore(pool: Pool) {
         if (!cancelled.rowCount) fail(409, "ORDER_CANCELLATION_UNAVAILABLE");
         await audit(c, id, "cancelled_unpaid", {});
         return row(c, id);
+      });
+    },
+    async closeDeclinedPromotion(
+      expected: CheckoutOrder,
+      proof: VerifiedDecline,
+      eventId?: string,
+    ) {
+      return transaction(pool, async (c) => {
+        const order = await row(c, expected.id);
+        if (
+          order.kind !== "promotion" ||
+          !order.businessId ||
+          order.environment !== expected.environment ||
+          order.merchantId !== proof.merchantId ||
+          order.providerOrderId !== expected.providerOrderId ||
+          order.providerOrderId !== proof.providerOrderId ||
+          order.currency !== proof.currency ||
+          order.amountMinor !== proof.amountMinor ||
+          !/^[A-Z0-9]{10,32}$/.test(proof.captureId)
+        )
+          fail(409, "DECLINE_MISMATCH");
+        if (order.status === "cancelled") {
+          await event(c, order, eventId);
+          return order;
+        }
+        if (
+          order.status !== "provider_created" ||
+          order.captureId ||
+          order.capturedAt ||
+          order.startsAt ||
+          order.endsAt ||
+          order.refundedMinor !== 0 ||
+          order.refundTotalUnknown
+        )
+          return order;
+        // The capture path can outlast its 60s lease; allow the 105s maximum transport
+        // time to elapse and reject any reservation that changed during PayPal reads.
+        const eligible = await c.query(
+          `SELECT id FROM paypal_checkout_order
+           WHERE id=$1 AND version=$2 AND capture_lease_until IS NOT DISTINCT FROM $3::timestamptz
+             AND (capture_lease_until IS NULL OR capture_lease_until<clock_timestamp()-interval '60 seconds')`,
+          [order.id, expected.version, expected.captureLeaseUntil],
+        );
+        if (!eligible.rowCount) fail(409, "DECLINE_CONFIRMATION_PENDING");
+        if (!(await event(c, order, eventId))) return order;
+        await c.query(
+          "UPDATE paypal_checkout_order SET status='cancelled',capture_lease_until=NULL,updated_at=now(),version=version+1 WHERE id=$1",
+          [order.id],
+        );
+        await audit(c, order.id, "cancelled_declined", { declinedCaptureId: proof.captureId });
+        return row(c, order.id);
       });
     },
     async prepareCapture(actor: CheckoutActor, id: string) {
