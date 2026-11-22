@@ -20,9 +20,9 @@ const fixtureConfiguration = (currency) =>
       bank: {
         id: "fixture-bank",
         label: "Fixture bank transfer",
-        name: "Wise",
+        name: "N26",
         currency,
-        iban: "GB82 WEST 1234 5698 7654 32",
+        iban: "DE89 3704 0044 0532 0130 00",
       },
     }),
   });
@@ -142,6 +142,7 @@ test("bank credit topups reuse the immutable ledger and exact bank settlement wi
         assert.equal(first.instructionsAvailable, true);
         assert.match(first.paymentReference, /^AHI-[A-F0-9]{32}$/);
         assert.equal(first.bank.purpose, "Dopuna Ahi kredita");
+        assert.equal(first.bank.name, "N26");
         assert.equal(await balance(user), 0);
         await assert.rejects(
           service.create(headers(user), { ...firstInput, id: randomUUID() }),

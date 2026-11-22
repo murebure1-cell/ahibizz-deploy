@@ -29,6 +29,7 @@ test("commercial transfer config is absent by default and never falls back to do
     { ...fixture, commercialConfirmed: false },
     { ...fixture, extra: true },
     { ...fixture, bank: { ...fixture.bank, name: "Unconfirmed bank" } },
+    { ...fixture, bank: { ...fixture.bank, name: "N26 Personal" } },
     { ...fixture, bank: { ...fixture.bank, currency: "BAM" } },
     { ...fixture, bank: { ...fixture.bank, iban: "invalid" } },
     { ...fixture, recipient: "bad\nreceiver" },
@@ -50,6 +51,31 @@ test("commercial transfer config is absent by default and never falls back to do
       AHIBIZZ_CREDIT_BANK_TRANSFER: JSON.stringify({ ...fixture, recipient: "Different merchant" }),
     })?.fingerprint,
   );
+});
+
+test("N26 commercial EUR configuration requires an explicit confirmation and valid IBAN", () => {
+  // Public IBAN format example, never real receiving instructions.
+  const n26 = {
+    ...fixture,
+    bank: { ...fixture.bank, name: "N26", iban: "DE89 3704 0044 0532 0130 00" },
+  };
+  const configuration = (value: unknown) =>
+    readCreditBankConfiguration({ AHIBIZZ_CREDIT_BANK_TRANSFER: JSON.stringify(value) });
+  const active = configuration(n26);
+  assert.ok(active);
+  assert.equal(active.bank.name, "N26");
+  assert.equal(active.bank.currency, "EUR");
+  assert.equal(active.bank.iban, "DE89370400440532013000");
+  for (const value of [
+    { ...n26, commercialConfirmed: false },
+    { ...n26, commercialConfirmed: undefined },
+    { ...n26, bank: { ...n26.bank, currency: "BAM" } },
+    { ...n26, bank: { ...n26.bank, name: "n26" } },
+    { ...n26, bank: { ...n26.bank, iban: "DE00 3704 0044 0532 0130 00" } },
+    { ...n26, bank: { ...n26.bank, iban: undefined, accountNumber: "1234567890" } },
+    { ...n26, bank: { ...n26.bank, iban: "invalid", accountNumber: "1234567890" } },
+  ])
+    assert.equal(configuration(value), null);
 });
 test("bank commands reject unknown fields, amounts, currencies and controls in statement IDs", () => {
   assert.deepEqual(

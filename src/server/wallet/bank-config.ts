@@ -39,7 +39,7 @@ export function readCreditBankConfiguration(
           ].includes(key),
       ) ||
       input.bank.currency !== "EUR" ||
-      input.bank.name !== "Wise" ||
+      !["Wise", "N26"].includes(input.bank.name) ||
       typeof input.bank.iban !== "string" ||
       !input.bank.iban.trim()
     )

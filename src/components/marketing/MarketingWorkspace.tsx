@@ -653,7 +653,7 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
                           checked={method === "bank"}
                           onChange={() => setChosenMethod("bank")}
                         />
-                        Uplata na Wise
+                        Uplata na {receiver.name}
                       </label>
                     )}
                   </fieldset>
