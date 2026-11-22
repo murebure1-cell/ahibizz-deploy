@@ -92,6 +92,23 @@
   padding-block: 12px;
   cursor: pointer;
 }
+.orderRecovery {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface);
+}
+.orderRecovery p {
+  margin: 0;
+  color: var(--ui-text-secondary);
+  line-height: 1.5;
+}
+.orderRecovery button {
+  justify-self: start;
+}
 .page h1 {
   font-size: clamp(28px, 5vw, 40px);
   line-height: 1.2;

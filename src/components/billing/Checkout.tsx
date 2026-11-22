@@ -2,6 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { readCheckoutOrder } from "../../lib/checkout-order-read";
+import {
+  canCancelPromotionOrder,
+  cancelPromotionOrder,
+  findPendingPromotion,
+  promotionRestartHref,
+} from "../../lib/checkout-promotion-recovery";
 import { categoryPromotionPriceBamMinor } from "../../lib/marketing";
 import {
   canOfferPayPalCard,
@@ -22,7 +28,7 @@ type Catalog = {
 };
 const messages: Record<string, string> = {
   CHECKOUT_FLOW_MISMATCH:
-    "Već postoji narudžba za drugi način plaćanja. Nastavi isti kartični pokušaj ili učitaj prethodno sačuvanu narudžbu; ne otvaraj novu.",
+    "Postoji narudžba za drugi način plaćanja. Provjeri prethodnu narudžbu prije nove uplate.",
   LIVE_SUPPORT_NOT_RELEASED:
     "Podrška putem ove naplate nije uključena. Koristi postojeću stranicu Podrži AhiBizz.",
   CHECKOUT_NOT_RELEASED: "Plaćanje još nije uključeno.",
@@ -34,7 +40,10 @@ const messages: Record<string, string> = {
     "Narudžba se obrađuje ili je istekla. Osvježi status prije novog pokušaja.",
   AUTHENTICATION_REQUIRED: "Prijavi se da nastaviš.",
   ACCOUNT_IDENTITY_CHANGED: "Nalog je promijenjen. Ponovo učitaj stranicu.",
-  PAYPAL_PENDING: "PayPal još nije vratio odgovor. Sačuvana narudžba se može ponovo provjeriti.",
+  PAYPAL_PENDING:
+    "PayPal još nije potvrdio ishod. Ne pokreći novu uplatu ni drugi način plaćanja; osvježi status sačuvane narudžbe.",
+  ORDER_CANCELLATION_UNAVAILABLE:
+    "Narudžba se još obrađuje ili provjerava. Osvježi njen status prije odustajanja ili drugog načina plaćanja.",
   PAYMENT_NOT_COMPLETED: "Uplata još nije potvrđena.",
   CHECKOUT_UNAVAILABLE: "Plaćanje trenutno nije dostupno. Pokušaj ponovo.",
   ORDER_NOT_FOUND: "Narudžba nije pronađena na ovom nalogu.",
@@ -92,6 +101,9 @@ export function Checkout({
   const [wallet, setWallet] = useState<{ balance: number; priceMinor: number } | null>(null);
   const [paidWithCreditsUntil, setPaidWithCreditsUntil] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [findExisting, setFindExisting] = useState(false);
+  const [cancellingOrder, setCancellingOrder] = useState(false);
+  const [cancellationUncertain, setCancellationUncertain] = useState(false);
   const [error, setError] = useState(
     cancelled
       ? "Odustali ste na PayPalu. Odustajanje nije dokaz naplate; provjerite status narudžbe."
@@ -99,22 +111,37 @@ export function Checkout({
   );
   const key = useRef<string | null>(null);
   const locked = useRef(false);
+  const currentUser = useRef(userId);
+  currentUser.current = userId;
+  const recoveryRequest = useRef<AbortController | null>(null);
   const headers = {
     "Content-Type": "application/json",
     ...(userId ? { "X-AhiBizz-Account-ID": userId } : {}),
   };
-  async function request(path: string, body?: unknown) {
+  async function request(path: string, body?: unknown, signal?: AbortSignal) {
     const response = await fetch(`/api/checkout/${path}`, {
       method: body === undefined ? "GET" : "POST",
       headers,
       cache: "no-store",
+      ...(signal ? { signal } : {}),
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     const value = await response.json();
-    if (!response.ok)
+    if (!response.ok) {
+      const recoveryNeeded =
+        kind === "promotion" &&
+        ["CHECKOUT_FLOW_MISMATCH", "PROMOTION_ALREADY_RESERVED", "PAYPAL_PENDING"].includes(
+          value.code,
+        );
+      if (recoveryNeeded && currentUser.current === userId && !signal?.aborted)
+        setFindExisting(true);
       throw new Error(
-        messages[value.code] ?? "Zahtjev nije završen. Provjeri status prije ponovnog plaćanja.",
+        recoveryNeeded && value.code === "CHECKOUT_FLOW_MISMATCH"
+          ? "Odaberi „Pronađi otvorenu narudžbu“ prije nove uplate."
+          : (messages[value.code] ??
+              "Zahtjev nije završen. Provjeri status prije ponovnog plaćanja."),
       );
+    }
     return value;
   }
   useEffect(() => {
@@ -128,6 +155,9 @@ export function Checkout({
     setBusinesses([]);
     setWallet(null);
     setPaidWithCreditsUntil(null);
+    setFindExisting(false);
+    setCancellingOrder(false);
+    setCancellationUncertain(false);
     fetch("/api/checkout/catalog", { cache: "no-store" })
       .then((r) => r.json())
       .then((value) => {
@@ -190,6 +220,8 @@ export function Checkout({
     return () => {
       active = false;
       controller.abort();
+      recoveryRequest.current?.abort();
+      recoveryRequest.current = null;
     };
   }, [userId, initialQuoteId, initialOrderId, initialBusinessId]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: An explicit retry refreshes the account-bound quote.
@@ -316,6 +348,8 @@ export function Checkout({
       }
       if (value.order) {
         setOrder(value.order);
+        if (action === "reconcile" && value.order.id === order?.id && !value.pending)
+          setCancellationUncertain(false);
         window.history.replaceState(null, "", `/naplata?narudzba=${value.order.id}`);
       }
       if (value.order && action === "create" && !order && value.order.requestId !== key.current) {
@@ -343,6 +377,72 @@ export function Checkout({
     } finally {
       locked.current = false;
       setBusy(false);
+    }
+  }
+  async function recoverPromotion(action: "find" | "cancel") {
+    if (
+      locked.current ||
+      !userId ||
+      orderLoading ||
+      (action === "cancel" &&
+        (!order || !canCancelPromotionOrder(order) || cancellationUncertain)) ||
+      (action === "find" && (order || initialOrderId || kind !== "promotion" || !businessId))
+    )
+      return;
+    const account = userId;
+    const controller = new AbortController();
+    recoveryRequest.current = controller;
+    const current = () =>
+      !controller.signal.aborted &&
+      recoveryRequest.current === controller &&
+      currentUser.current === account;
+    locked.current = true;
+    setBusy(true);
+    setCancellingOrder(action === "cancel");
+    setError("");
+    try {
+      const send = (path: string, body?: unknown) =>
+        request(
+          path,
+          body,
+          AbortSignal.any([
+            controller.signal,
+            AbortSignal.timeout(action === "cancel" ? 50000 : 30000),
+          ]),
+        );
+      const next =
+        action === "find"
+          ? await findPendingPromotion(businessId, send)
+          : order
+            ? await cancelPromotionOrder(order, send)
+            : null;
+      if (!current()) return;
+      if (!next) {
+        setError("Otvorena neplaćena narudžba nije pronađena. Provjeri isticanje u svom nalogu.");
+        return;
+      }
+      setOrder(next);
+      setKind("promotion");
+      setFindExisting(false);
+      setCancellationUncertain(false);
+      window.history.replaceState(null, "", `/naplata?narudzba=${encodeURIComponent(next.id)}`);
+    } catch (cause) {
+      if (!current()) return;
+      if (action === "cancel") setCancellationUncertain(true);
+      setError(
+        cause instanceof Error && Object.values(messages).includes(cause.message)
+          ? cause.message
+          : action === "cancel"
+            ? "Odustajanje nije potvrđeno. Osvježi status ove narudžbe; ne biraj drugi način plaćanja."
+            : "Otvorenu narudžbu trenutno nije moguće učitati. Pokušaj ponovo ili provjeri Moj nalog.",
+      );
+    } finally {
+      if (current()) {
+        recoveryRequest.current = null;
+        locked.current = false;
+        setBusy(false);
+        setCancellingOrder(false);
+      }
     }
   }
   async function payWithCredits() {
@@ -397,6 +497,7 @@ export function Checkout({
     catalog?.available &&
     catalog.paypalClientId &&
     canOfferPayPalCard(order, review, kind);
+  const restartHref = promotionRestartHref(order);
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <a className={styles.accountLink} href="/nalog">
@@ -547,6 +648,7 @@ export function Checkout({
                       value={businessId}
                       onChange={(e) => {
                         setBusinessId(e.target.value);
+                        setFindExisting(false);
                         key.current = null;
                       }}
                     >
@@ -630,8 +732,22 @@ export function Checkout({
             <div role="status">
               <h3>Narudžba je stornirana</h3>
               <p>Nije izvršena naplata.</p>
-              <a href={order.kind === "quote" ? "/nalog" : "/naplata"}>
-                {order.kind === "quote" ? "Moj nalog" : "Novi pokušaj"}
+              <a
+                href={restartHref ?? (order.kind === "quote" ? "/nalog" : "/naplata")}
+                onClick={(event) => {
+                  if (locked.current) {
+                    event.preventDefault();
+                    return;
+                  }
+                  key.current = null;
+                }}
+                aria-disabled={busy}
+              >
+                {restartHref
+                  ? "Ponovo odaberi način plaćanja"
+                  : order.kind === "quote"
+                    ? "Moj nalog"
+                    : "Novi pokušaj"}
               </a>
             </div>
           ) : order.status === "captured" ? (
@@ -793,6 +909,9 @@ export function Checkout({
                           `/naplata?narudzba=${value.id}`,
                         );
                       }}
+                      onOrderRecoveryNeeded={
+                        kind === "promotion" ? () => setFindExisting(true) : undefined
+                      }
                     />
                   )}
                 </div>
@@ -828,6 +947,42 @@ export function Checkout({
           )}
         </section>
       ) : null}
+      {findExisting &&
+        userId &&
+        kind === "promotion" &&
+        businessId &&
+        !order &&
+        !initialOrderId && (
+          <section className={styles.orderRecovery} aria-label="Otvorena narudžba">
+            <p>Prvo provjeri postojeću narudžbu za ovu djelatnost. Time ne pokrećeš novu uplatu.</p>
+            <button
+              type="button"
+              disabled={busy || orderLoading}
+              onClick={() => recoverPromotion("find")}
+            >
+              Pronađi otvorenu narudžbu
+            </button>
+          </section>
+        )}
+      {userId && canCancelPromotionOrder(order) && (
+        <section
+          className={styles.orderRecovery}
+          aria-label="Odustajanje od narudžbe"
+          aria-busy={cancellingOrder}
+        >
+          <p>
+            Za drugi način plaćanja prvo zatvori ovu neplaćenu narudžbu. Nastaviti možeš tek kada je
+            odustajanje potvrđeno.
+          </p>
+          <button
+            type="button"
+            disabled={busy || orderLoading || cancellationUncertain}
+            onClick={() => recoverPromotion("cancel")}
+          >
+            {cancellingOrder ? "Zatvaram narudžbu…" : "Odustani od narudžbe"}
+          </button>
+        </section>
+      )}
       {order && openCardOrder && (
         <details className={styles.orderDetails}>
           <summary>Detalji narudžbe</summary>

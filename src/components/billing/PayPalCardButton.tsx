@@ -26,12 +26,15 @@ type Props = {
   onOrder: (order: CardOrder) => void;
   acquire: () => boolean;
   release: () => void;
+  onOrderRecoveryNeeded?: () => void;
 };
 
 const failure = "Kartični obrazac se nije učitao. Pokušaj ponovo.";
 const errors: Record<string, string> = {
   CHECKOUT_FLOW_MISMATCH:
-    "Postoji otvorena narudžba s drugim načinom plaćanja. Provjeri njen status.",
+    "Postoji otvorena narudžba s drugim načinom plaćanja. Provjeri njen status prije nove uplate.",
+  PAYPAL_PENDING:
+    "PayPal još nije potvrdio ishod. Provjeri sačuvanu narudžbu prije drugog načina plaćanja.",
   ACCOUNT_IDENTITY_CHANGED: "Nalog je promijenjen. Ponovo učitaj stranicu.",
   AUTHENTICATION_REQUIRED: "Prijavi se za nastavak plaćanja.",
   ORDER_BUSY_OR_EXPIRED: "Narudžba se obrađuje ili je istekla. Osvježi njen status.",
@@ -90,8 +93,18 @@ export function PayPalCardButton(props: Props) {
           signal: AbortSignal.any([signal, AbortSignal.timeout(30000)]),
         });
         const result = await response.json();
-        if (!response.ok)
-          throw new Error(errors[result.code] ?? "Provjeri status narudžbe pa pokušaj ponovo.");
+        if (!response.ok) {
+          const recoveryNeeded =
+            current() &&
+            latest.current.onOrderRecoveryNeeded &&
+            ["CHECKOUT_FLOW_MISMATCH", "PAYPAL_PENDING"].includes(result.code);
+          if (recoveryNeeded) latest.current.onOrderRecoveryNeeded?.();
+          throw new Error(
+            recoveryNeeded && result.code === "CHECKOUT_FLOW_MISMATCH"
+              ? "Postoji narudžba za drugi način plaćanja. Odaberi „Pronađi otvorenu narudžbu“ ispod obrasca; ne pokreći novu uplatu."
+              : (errors[result.code] ?? "Provjeri status narudžbe pa pokušaj ponovo."),
+          );
+        }
         return result;
       },
     });
@@ -177,8 +190,8 @@ export function PayPalCardButton(props: Props) {
                 flow.cancel();
                 setStatus(
                   result.state === "canceled"
-                    ? "Potvrda kartice je prekinuta."
-                    : "Kartica nije potvrđena. Provjeri unesene podatke.",
+                    ? "Potvrda kartice je prekinuta. Narudžba time nije otkazana; provjeri njen status prije drugog načina plaćanja."
+                    : "Kartica nije potvrđena. Provjeri status sačuvane narudžbe prije novog pokušaja.",
                 );
                 return;
               }
@@ -231,7 +244,14 @@ export function PayPalCardButton(props: Props) {
           if (!current()) return;
           interaction++;
           flow.cancel();
-          setStatus("Unos kartice je zatvoren.");
+          if (!latest.current.savedOrder) latest.current.onOrderRecoveryNeeded?.();
+          setStatus(
+            latest.current.savedOrder
+              ? "Unos kartice je zatvoren. Time narudžba nije otkazana; osvježi njen status prije drugog načina plaćanja."
+              : latest.current.onOrderRecoveryNeeded
+                ? "Unos kartice je zatvoren. Odaberi Pronađi otvorenu narudžbu prije drugog načina plaćanja."
+                : "Unos kartice je zatvoren. Provjeri status uplate prije novog pokušaja.",
+          );
         },
         onError: () => showError("Kartični pokušaj nije završen. Provjeri status narudžbe."),
       });

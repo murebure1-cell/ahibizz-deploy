@@ -382,6 +382,16 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
         (captures === undefined || (Array.isArray(captures) && captures.length === 0))
       );
     },
+    async isUnpaidForCancellation(order: LiveOrder) {
+      const data = await readOrder(order);
+      const { unit } = orderUnit(data, order);
+      if (data.status !== "CREATED") return false;
+      if (unit.payments === undefined) return true;
+      const { captures, authorizations } = record(unit.payments);
+      return [captures, authorizations].every(
+        (entries) => entries === undefined || (Array.isArray(entries) && entries.length === 0),
+      );
+    },
     async inspect(order: LiveOrder) {
       const data = await readOrder(order);
       if (

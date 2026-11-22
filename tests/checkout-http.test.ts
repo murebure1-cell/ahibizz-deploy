@@ -27,6 +27,10 @@ function fixture() {
       calls.push("read");
       return {};
     },
+    readPendingPromotion: async (_headers, businessId) => {
+      calls.push(`pending:${businessId}`);
+      return { order: null };
+    },
     resumeCard: async () => {
       calls.push("card-session");
       return {};
@@ -34,6 +38,10 @@ function fixture() {
     create: async () => {
       calls.push("create");
       return {};
+    },
+    cancel: async (_headers, orderId) => {
+      calls.push(`cancel:${orderId}`);
+      return { order: { status: "cancelled" } };
     },
     capture: async () => {
       calls.push("capture");
@@ -127,6 +135,26 @@ test("guest card session accepts only a same-origin empty POST for the existing 
   assert.deepEqual(f.calls, []);
   assert.equal((await f.handle(request(path, {}))).status, 200);
   assert.deepEqual(f.calls, ["card-session"]);
+});
+test("promotion cancellation accepts only a same-origin empty POST and pending lookup is read-only", async () => {
+  const f = fixture();
+  const path = `orders/${id}/cancel`;
+  const pendingPath = `pending-promotion/${id}`;
+  assert.equal((await f.handle(new Request(`${origin}/api/checkout/${path}`))).status, 404);
+  assert.equal(
+    (await f.handle(request(path, {}, { origin: "https://other.invalid" }))).status,
+    403,
+  );
+  assert.equal((await f.handle(request(path, { unpaid: true }))).status, 400);
+  assert.equal((await f.handle(request(pendingPath, {}))).status, 404);
+  assert.deepEqual(f.calls, []);
+  const pending = await f.handle(new Request(`${origin}/api/checkout/${pendingPath}`));
+  assert.equal(pending.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await pending.json(), { order: null });
+  const cancelled = await f.handle(request(path, {}));
+  assert.equal(cancelled.status, 200);
+  assert.deepEqual(await cancelled.json(), { order: { status: "cancelled" } });
+  assert.deepEqual(f.calls, [`pending:${id}`, `cancel:${id}`]);
 });
 test("refund requires UUID, cents and reason", async () => {
   const f = fixture();
@@ -699,4 +727,30 @@ test("inline recovery exposes only an eligible saved provider ID and rechecks ow
     return true;
   };
   await assert.rejects(f.service.resumeCard(new Headers(), id), /BUSINESS_CHANGED/);
+});
+test("cancellation verifies the matching provider order and fails closed on provider errors", async () => {
+  const f = serviceFixture({ enabled: false });
+  const raw = await f.store.read({ userId: "buyer", id: "session", token: "fixture" }, id);
+  f.calls.length = 0;
+  f.store.cancelPromotion = async (actor, orderId, isUnpaid) => {
+    assert.equal(actor.userId, "buyer");
+    assert.equal(orderId, id);
+    f.calls.push("cancellation-store");
+    assert.equal(await isUnpaid(raw), true);
+    return { ...raw, status: "cancelled" };
+  };
+  f.provider.isUnpaidForCancellation = async (expected) => {
+    assert.equal(expected.id, id);
+    assert.equal(expected.providerOrderId, raw.providerOrderId);
+    f.calls.push("cancellation-provider");
+    return true;
+  };
+  const result = (await f.service.cancel(new Headers(), id)) as { order: { status: string } };
+  assert.equal(result.order.status, "cancelled");
+  assert.equal(Object.hasOwn(result.order, "providerOrderId"), false);
+  assert.deepEqual(f.calls, ["authenticate", "cancellation-store", "cancellation-provider"]);
+  f.provider.isUnpaidForCancellation = async () => {
+    throw new Error("PAYPAL_REQUEST_FAILED");
+  };
+  await assert.rejects(f.service.cancel(new Headers(), id), /ORDER_CANCELLATION_UNAVAILABLE/);
 });

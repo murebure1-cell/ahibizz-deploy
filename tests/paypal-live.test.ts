@@ -94,6 +94,37 @@ test("guest card resume reads and validates the saved PayPal order without creat
   unit.amount.value = "5.12";
   await assert.rejects(client.canResumeCard(order), /ORDER_MISMATCH/);
 });
+test("cancellation requires a matched CREATED order with no captures or authorizations", async () => {
+  const detail = provider();
+  const unit = detail.purchase_units[0];
+  assert.ok(unit);
+  const client = createLivePayPal(config, async (url, init) => {
+    if (String(url).endsWith("/v1/oauth2/token")) return Response.json({ access_token: "fixture" });
+    assert.equal(
+      String(url),
+      `https://api-m.paypal.com/v2/checkout/orders/${order.providerOrderId}`,
+    );
+    assert.equal(init?.method, "GET");
+    return Response.json(detail);
+  });
+  detail.status = "CREATED";
+  assert.equal(await client.isUnpaidForCancellation(order), false);
+  Object.assign(unit, { payments: { authorizations: [{ id: "AUTHORIZATION" }] } });
+  assert.equal(await client.isUnpaidForCancellation(order), false);
+  Object.assign(unit, { payments: { captures: [], authorizations: [] } });
+  assert.equal(await client.isUnpaidForCancellation(order), true);
+  Object.assign(unit, { payments: { authorizations: null } });
+  assert.equal(await client.isUnpaidForCancellation(order), false);
+  Reflect.deleteProperty(unit, "payments");
+  assert.equal(await client.isUnpaidForCancellation(order), true);
+  for (const status of ["APPROVED", "SAVED", "PAYER_ACTION_REQUIRED", "COMPLETED", "VOIDED", ""]) {
+    detail.status = status;
+    assert.equal(await client.isUnpaidForCancellation(order), false);
+  }
+  detail.status = "CREATED";
+  unit.amount.value = "5.12";
+  await assert.rejects(client.isUnpaidForCancellation(order), /ORDER_MISMATCH/);
+});
 test("live endpoint cannot accept sandbox redirects or non-HTTPS callbacks", () => {
   assert.equal(
     liveApprovalUrl("https://www.paypal.com/checkoutnow?token=fixture"),

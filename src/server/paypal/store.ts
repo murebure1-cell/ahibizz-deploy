@@ -149,6 +149,27 @@ async function business(c: PoolClient, id: string) {
     )
   ).rows[0];
 }
+async function cancellationCandidate(c: PoolClient, actor: CheckoutActor, id: string) {
+  await authority(c, actor);
+  const order = await row(c, id);
+  if (order.userId !== actor.userId) fail(404, "ORDER_NOT_FOUND");
+  if (
+    order.kind !== "promotion" ||
+    !order.businessId ||
+    !order.providerOrderId ||
+    order.captureId ||
+    order.capturedAt ||
+    order.startsAt ||
+    order.endsAt ||
+    order.refundedMinor !== 0 ||
+    order.refundTotalUnknown ||
+    !["provider_created", "cancelled"].includes(order.status)
+  )
+    fail(409, "ORDER_CANCELLATION_UNAVAILABLE");
+  const owned = await business(c, order.businessId);
+  if (owned?.owner_user_id !== actor.userId) fail(409, "ORDER_CANCELLATION_UNAVAILABLE");
+  return order;
+}
 async function audit(c: PoolClient, id: string, action: string, details: unknown) {
   await c.query(
     "INSERT INTO paypal_checkout_event(id,order_id,action,details) VALUES($1,$2,$3,$4::jsonb)",
@@ -466,6 +487,29 @@ export function createCheckoutStore(pool: Pool) {
         return o;
       });
     },
+    async readPendingPromotion(
+      actor: CheckoutActor,
+      businessId: string,
+      environment: CheckoutEnvironment,
+      merchantId: string,
+    ) {
+      return transaction(pool, async (c) => {
+        await authority(c, actor);
+        const owned = await business(c, businessId);
+        if (owned?.owner_user_id !== actor.userId) fail(404, "BUSINESS_NOT_FOUND");
+        const active = await c.query<CheckoutOrder>(
+          `SELECT ${columns} FROM paypal_checkout_order
+           WHERE business_id=$1 AND user_id=$2 AND environment=$3 AND merchant_id=$4
+             AND kind='promotion' AND status IN ('created','provider_created')
+             AND capture_id IS NULL AND refunded_minor=0 AND refund_total_unknown=false
+             AND expires_at>clock_timestamp()
+           ORDER BY id LIMIT 2`,
+          [businessId, actor.userId, environment, merchantId],
+        );
+        if (active.rows.length !== 1) return null;
+        return active.rows[0] ?? null;
+      });
+    },
     async readPendingGuestCard(actor: CheckoutActor, id: string) {
       return transaction(pool, async (c) => {
         await authority(c, actor);
@@ -491,6 +535,38 @@ export function createCheckoutStore(pool: Pool) {
         );
         if (!available.rowCount) fail(409, "ORDER_BUSY_OR_EXPIRED");
         return order;
+      });
+    },
+    async cancelPromotion(
+      actor: CheckoutActor,
+      id: string,
+      isUnpaid: (order: CheckoutOrder) => Promise<boolean>,
+    ) {
+      const pending = await transaction(pool, async (c) => {
+        const order = await cancellationCandidate(c, actor, id);
+        if (order.status === "cancelled") return order;
+        const idle = await c.query(
+          "SELECT id FROM paypal_checkout_order WHERE id=$1 AND capture_lease_until IS NULL",
+          [id],
+        );
+        if (!idle.rowCount) fail(409, "ORDER_CANCELLATION_UNAVAILABLE");
+        return order;
+      });
+      if (pending.status === "cancelled") return pending;
+      if (!(await isUnpaid(pending))) fail(409, "ORDER_CANCELLATION_UNAVAILABLE");
+
+      // Check ownership and state again after PayPal I/O. Even an expired capture lease
+      // means that a charge may still be in flight or waiting to be reconciled.
+      return transaction(pool, async (c) => {
+        const current = await cancellationCandidate(c, actor, id);
+        if (current.status === "cancelled") return current;
+        const cancelled = await c.query(
+          "UPDATE paypal_checkout_order SET status='cancelled',updated_at=now(),version=version+1 WHERE id=$1 AND version=$2 AND capture_lease_until IS NULL RETURNING id",
+          [id, pending.version],
+        );
+        if (!cancelled.rowCount) fail(409, "ORDER_CANCELLATION_UNAVAILABLE");
+        await audit(c, id, "cancelled_unpaid", {});
+        return row(c, id);
       });
     },
     async prepareCapture(actor: CheckoutActor, id: string) {
@@ -590,6 +666,7 @@ export function createCheckoutStore(pool: Pool) {
         let eligible = Boolean(
           !o.refundTotalUnknown &&
             o.status !== "review" &&
+            o.status !== "cancelled" &&
             u &&
             u.approval === "approved" &&
             u.emailVerified &&
@@ -998,7 +1075,14 @@ export function createCheckoutStore(pool: Pool) {
       if (!Number.isInteger(limit) || limit < 1 || limit > 100) fail(400, "INVALID_LIMIT");
       return (
         await pool.query<CheckoutOrder>(
-          `SELECT ${columns} FROM paypal_checkout_order WHERE environment=$1 AND provider_order_id IS NOT NULL AND status NOT IN ('refunded','reversed','cancelled') AND ($3::uuid IS NULL OR id>$3::uuid) ORDER BY id LIMIT $2`,
+          // PayPal permits up to 72 hours to capture an order. Manual and webhook
+          // reconciliation still resolve cancelled orders by their saved identity.
+          `SELECT ${columns} FROM paypal_checkout_order
+           WHERE environment=$1 AND provider_order_id IS NOT NULL
+             AND status NOT IN ('refunded','reversed')
+             AND (status<>'cancelled' OR updated_at>=now()-interval '72 hours')
+             AND ($3::uuid IS NULL OR id>$3::uuid)
+           ORDER BY id LIMIT $2`,
           [environment, limit, afterId ?? null],
         )
       ).rows;

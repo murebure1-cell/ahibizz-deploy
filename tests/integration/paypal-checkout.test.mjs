@@ -392,6 +392,152 @@ test("durable checkout isolated PostgreSQL authority, replay, rights and refunds
         assert.equal((await store.read(user, pending.id)).version, initialVersion);
       },
     );
+    await t.test(
+      "only the payer and current business owner can cancel an attached unpaid promotion",
+      async () => {
+        const origin = await make("promotion", "sandbox");
+        const merchant = origin.merchantId;
+        const find = (actor) =>
+          store.readPendingPromotion(actor, origin.businessId, "sandbox", merchant);
+        const unpaid = async (order) => {
+          assert.equal(order.id, origin.id);
+          return true;
+        };
+        const mustNotReadPayPal = async () => {
+          assert.fail("Unsafe order reached PayPal");
+        };
+        assert.equal((await find(user)).id, origin.id);
+        await assert.rejects(find(other), /BUSINESS_NOT_FOUND/);
+        assert.equal(
+          await store.readPendingPromotion(user, origin.businessId, "live", merchant),
+          null,
+        );
+        await assert.rejects(
+          store.cancelPromotion(user, origin.id, mustNotReadPayPal),
+          /ORDER_CANCELLATION_UNAVAILABLE/,
+        );
+        const pending = await attach(origin);
+        await assert.rejects(
+          store.cancelPromotion(other, pending.id, mustNotReadPayPal),
+          /ORDER_NOT_FOUND/,
+        );
+        await assert.rejects(
+          store.cancelPromotion({ ...user, token: "wrong" }, pending.id, mustNotReadPayPal),
+          /AUTHENTICATION_REQUIRED/,
+        );
+        await assert.rejects(
+          store.cancelPromotion(user, pending.id, async () => false),
+          /ORDER_CANCELLATION_UNAVAILABLE/,
+        );
+        await assert.rejects(
+          store.cancelPromotion(user, pending.id, async () => {
+            await pool.query("UPDATE directory_business SET owner_user_id=$2 WHERE id=$1", [
+              pending.businessId,
+              other.userId,
+            ]);
+            return true;
+          }),
+          /ORDER_CANCELLATION_UNAVAILABLE/,
+        );
+        await pool.query("UPDATE directory_business SET owner_user_id=$2 WHERE id=$1", [
+          pending.businessId,
+          user.userId,
+        ]);
+        const results = await Promise.all([
+          store.cancelPromotion(user, pending.id, unpaid),
+          store.cancelPromotion(user, pending.id, unpaid),
+        ]);
+        for (const cancelled of results) {
+          assert.equal(cancelled.status, "cancelled");
+          assert.equal(cancelled.version, pending.version + 1);
+          assert.equal(cancelled.providerOrderId, pending.providerOrderId);
+        }
+        assert.equal(await find(user), null);
+        await assert.rejects(store.prepareCapture(user, pending.id), /ORDER_NOT_PAYABLE/);
+        const reconcileIds = async () =>
+          (await store.listReconciliation("sandbox")).map(({ id }) => id);
+        assert.ok((await reconcileIds()).includes(pending.id));
+        await pool.query(
+          "UPDATE paypal_checkout_order SET updated_at=now()-interval '73 hours' WHERE id=$1",
+          [pending.id],
+        );
+        assert.ok(!(await reconcileIds()).includes(pending.id));
+        assert.equal(
+          (await store.findByProvider("sandbox", { providerOrderId: pending.providerOrderId })).id,
+          pending.id,
+        );
+        assert.equal(
+          (
+            await pool.query(
+              "SELECT count(*)::int AS n FROM paypal_checkout_event WHERE order_id=$1 AND action='cancelled_unpaid'",
+              [pending.id],
+            )
+          ).rows[0].n,
+          1,
+        );
+        const replacement = await store.create(user, {
+          requestId: randomUUID(),
+          kind: "promotion",
+          businessId: pending.businessId,
+          amountMinor: pending.amountMinor,
+          merchantId: merchant,
+          environment: "sandbox",
+          offerVersion: "fixture-v1:guest",
+        });
+        assert.notEqual(replacement.id, pending.id);
+        assert.equal((await find(user)).id, replacement.id);
+        const late = await capture(pending);
+        assert.equal(late.status, "review");
+        assert.equal((await capture(pending)).status, "review");
+        const refunded = await store.settleRefundedCapture(
+          pending.id,
+          {
+            providerOrderId: late.providerOrderId,
+            captureId: late.captureId,
+            merchantId: late.merchantId,
+            amountMinor: late.amountMinor,
+            currency: "EUR",
+            completedAt: late.capturedAt,
+          },
+          { refundedMinor: late.amountMinor },
+        );
+        assert.equal(refunded.status, "refunded");
+        const rights = await pool.query(
+          "SELECT order_id FROM paypal_promotion_entitlement WHERE order_id=$1",
+          [pending.id],
+        );
+        assert.equal(rights.rowCount, 0);
+      },
+    );
+    await t.test(
+      "cancellation loses to capture even if the capture lease has expired",
+      async () => {
+        const pending = await attach(await make());
+        await assert.rejects(
+          store.cancelPromotion(user, pending.id, async () => {
+            await store.prepareCapture(user, pending.id);
+            await pool.query(
+              "UPDATE paypal_checkout_order SET capture_lease_until=clock_timestamp()-interval '1 second' WHERE id=$1",
+              [pending.id],
+            );
+            return true;
+          }),
+          /ORDER_CANCELLATION_UNAVAILABLE/,
+        );
+        await assert.rejects(
+          store.cancelPromotion(user, pending.id, async () =>
+            assert.fail("Capture may be in flight"),
+          ),
+          /ORDER_CANCELLATION_UNAVAILABLE/,
+        );
+        assert.equal((await store.read(user, pending.id)).status, "provider_created");
+        assert.equal((await capture(pending)).status, "captured");
+        await assert.rejects(
+          store.cancelPromotion(user, pending.id, async () => assert.fail("Already captured")),
+          /ORDER_CANCELLATION_UNAVAILABLE/,
+        );
+      },
+    );
     await t.test("capture lease, verified amount and exactly one grant", async () => {
       first = await attach(first);
       await store.prepareCapture(user, first.id);

@@ -243,6 +243,15 @@ export function createCheckoutService({
       matching(order);
       return dto(order);
     },
+    async readPendingPromotion(headers, businessId) {
+      const order = await store.readPendingPromotion(
+        await actor(headers),
+        businessId,
+        config.environment,
+        config.merchantId,
+      );
+      return { order: order ? dto(order) : null };
+    },
     async resumeCard(headers, id) {
       payable();
       const identity = await actor(headers);
@@ -289,6 +298,18 @@ export function createCheckoutService({
       } catch {
         return { order: dto(order), pending: true, code: "PAYPAL_PENDING" };
       }
+    },
+    async cancel(headers, id) {
+      const order = await store.cancelPromotion(await actor(headers), id, async (pending) => {
+        matching(pending);
+        try {
+          return await provider.isUnpaidForCancellation(providerOrder(pending));
+        } catch {
+          throw new CheckoutHttpError(409, "ORDER_CANCELLATION_UNAVAILABLE");
+        }
+      });
+      matching(order);
+      return { order: dto(order) };
     },
     async capture(headers, id) {
       payable();
