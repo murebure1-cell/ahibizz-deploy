@@ -5,6 +5,7 @@ import styles from "../../../components/marketing/ad-guide.module.css";
 import { volumeLabels } from "../../../lib/ad-pricing";
 import { IS_PLAY_EDITION } from "../../../lib/distribution";
 import { categoryPromotionPriceBamMinor } from "../../../lib/marketing";
+import { bosnianNumber } from "../../../lib/number-format";
 import { supportEmail } from "../../../lib/support-requests";
 import { formatCreditsFromBam } from "../../../lib/wallet";
 import { publicOptInAudience } from "../../../server/ad-audience-sample";
@@ -49,7 +50,7 @@ const targeting: { title: string; detail: string; icon: IconName }[] = [
     icon: "people",
   },
 ];
-const formatNumber = (value: number) => new Intl.NumberFormat("bs-BA").format(value);
+const formatNumber = (value: number) => bosnianNumber(value);
 const platformNames = { android: "Android", ios: "iOS", desktop: "Računar", other: "Ostalo" };
 
 export default async function PromotionPage() {

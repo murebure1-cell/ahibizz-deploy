@@ -8,6 +8,7 @@ import type {
   BankTopUpStatus,
   CreditBankCurrency,
 } from "../../lib/bank-credit-topup";
+import { bosnianFormatter } from "../../lib/number-format";
 import { CopyPaymentDetails } from "../support/CopyPaymentDetails";
 import styles from "./marketing.module.css";
 
@@ -30,7 +31,7 @@ const bankErrors: Record<string, string> = {
   ACCOUNT_IDENTITY_CHANGED: "Prijavi se ponovo i osvježi ovu stranicu.",
 };
 const endpoint = "/api/wallet/bank-topups";
-const number = new Intl.NumberFormat("bs-BA");
+const number = bosnianFormatter();
 
 export function marketingAmount(value: FormDataEntryValue | null) {
   const raw = String(value ?? "")

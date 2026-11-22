@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { authReturnLinks } from "../../lib/auth-return";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
+import { bosnianNumber } from "../../lib/number-format";
 import {
   createReviewsApi,
   type OwnReviewState,
@@ -352,7 +353,7 @@ export function BusinessReviews({
           {page.summary.count > 0 && (
             <p>
               <strong>
-                {(page.summary.sum / page.summary.count).toLocaleString("bs-BA", {
+                {bosnianNumber(page.summary.sum / page.summary.count, {
                   minimumFractionDigits: 1,
                   maximumFractionDigits: 1,
                 })}

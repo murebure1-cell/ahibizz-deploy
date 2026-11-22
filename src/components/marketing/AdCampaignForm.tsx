@@ -25,6 +25,7 @@ import {
   type Placement,
   type PlacementTarget,
 } from "../../lib/marketing";
+import { bosnianNumber } from "../../lib/number-format";
 import { formatCreditsFromBam } from "../../lib/wallet";
 import { CampaignGeoTime, countryLabel } from "./CampaignGeoTime";
 import styles from "./marketing.module.css";
@@ -32,7 +33,7 @@ import styles from "./marketing.module.css";
 const assetName = (a: BusinessMediaAsset) =>
   a.kind === "logo" ? "Logotip" : a.kind === "cover" ? "Naslovna slika" : `Fotografija ${a.slot}`;
 const assetKey = (a: BusinessMediaAsset) => `${a.kind}:${a.slot}:${a.version}`;
-const formatNumber = (n: number) => new Intl.NumberFormat("bs-BA").format(n);
+const formatNumber = (n: number) => bosnianNumber(n);
 function adAmount(minor: number, creditRate: number | null | undefined) {
   return creditRate === undefined ? billingMoney(minor) : formatCreditsFromBam(minor, creditRate);
 }

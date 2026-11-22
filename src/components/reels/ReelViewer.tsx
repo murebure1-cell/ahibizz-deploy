@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { businessMediaUrl } from "../../lib/business-media";
 import { messageLink } from "../../lib/messaging";
+import { bosnianFormatter } from "../../lib/number-format";
 import { reelPath } from "../../lib/reel-navigation";
 import {
   type PublicReel,
@@ -17,7 +18,7 @@ import { BusinessLogo } from "../directory/BusinessLogo";
 import { Icon } from "../Icon";
 import styles from "./reel-viewer.module.css";
 
-const numbers = new Intl.NumberFormat("bs-BA");
+const numbers = bosnianFormatter();
 
 async function reelRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`/api/reels/${path}`, {

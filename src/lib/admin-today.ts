@@ -24,6 +24,12 @@ export const adminQueues = [
     href: "/administracija?odjeljak=transakcije",
     icon: "card",
   },
+  {
+    id: "bankTopUps",
+    title: "Bankovne dopune na čekanju",
+    href: "/administracija/oglasi",
+    icon: "card",
+  },
 ] as const;
 
 export type AdminQueueId = (typeof adminQueues)[number]["id"];

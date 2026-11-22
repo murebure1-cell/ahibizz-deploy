@@ -1,3 +1,5 @@
+import { bosnianMoney } from "./number-format";
+
 export function bamToEuroMinor(bamMinor: number) {
   return Math.round((bamMinor * 100000) / 195583);
 }
@@ -199,5 +201,5 @@ export function billingAllocation({
 }
 export function billingMoney(minor: number): string {
   if (!Number.isSafeInteger(minor)) return "—";
-  return `${(minor / 100).toLocaleString("bs-BA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KM`;
+  return `${bosnianMoney(minor)} KM`;
 }

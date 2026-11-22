@@ -18,12 +18,12 @@ import {
 } from "../../lib/ad-catalog";
 import { type AdPricing, estimateAdCampaign, getAdRate } from "../../lib/ad-pricing";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
+import { bosnianNumber } from "../../lib/number-format";
 import { formatCreditsFromBam } from "../../lib/wallet";
 import { Icon } from "../Icon";
 import styles from "./ad-guide.module.css";
 
-const km = (minor: number) =>
-  `${new Intl.NumberFormat("bs-BA", { maximumFractionDigits: 2 }).format(minor / 100)} KM`;
+const km = (minor: number) => `${bosnianNumber(minor / 100)} KM`;
 const positionNames: Record<AdFormatPlacement["position"], string> = {
   top: "Iznad sadržaja",
   inline: "Unutar sadržaja",

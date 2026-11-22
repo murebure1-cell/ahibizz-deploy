@@ -10,6 +10,7 @@ import {
   promotionRestartHref,
 } from "../../lib/checkout-promotion-recovery";
 import { categoryPromotionPriceBamMinor } from "../../lib/marketing";
+import { bosnianMoney, bosnianNumber } from "../../lib/number-format";
 import {
   canOfferPayPalCard,
   checkoutEuro as money,
@@ -766,7 +767,7 @@ export function Checkout({
                       ) : (
                         <>
                           <strong>{money(offer.amountMinor)}</strong>
-                          <small>{(offer.originalBamMinor / 100).toLocaleString("bs-BA")} KM</small>
+                          <small>{bosnianMoney(offer.originalBamMinor)} KM</small>
                         </>
                       ))}
                   </div>
@@ -1089,7 +1090,7 @@ export function Checkout({
             {walletAvailable && method === "credits" && wallet && (
               <div id="ahi-novcanik" className={styles.walletPanel}>
                 <p>
-                  Stanje: <strong>{wallet.balance.toLocaleString("bs-BA")} Ahi kredita</strong>
+                  Stanje: <strong>{bosnianNumber(wallet.balance)} Ahi kredita</strong>
                 </p>
                 {Math.round(wallet.balance * 100) >= wallet.priceMinor ? (
                   <button

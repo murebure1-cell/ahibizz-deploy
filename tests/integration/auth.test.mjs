@@ -1591,6 +1591,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             assert.equal(result.response.status, 200);
             assert.deepEqual(result.data.queues.map((row) => row.id).sort(), [
               "accounts",
+              "bankTopUps",
               "businesses",
               "receipts",
               "reports",

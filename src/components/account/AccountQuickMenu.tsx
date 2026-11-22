@@ -8,11 +8,12 @@ import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { HeaderMenuAccount } from "../../lib/header-access";
 import type { NavigationDestination } from "../../lib/header-navigation";
 import { clearBrowserMessagingRecovery } from "../../lib/messaging-recovery-storage";
+import { bosnianFormatter } from "../../lib/number-format";
 import { useAppAppearance } from "../appearance/AppAppearance";
 import { Icon } from "../Icon";
 import styles from "./account-quick-menu.module.css";
 
-const number = new Intl.NumberFormat("bs-BA", { maximumFractionDigits: 2 });
+const number = bosnianFormatter({ maximumFractionDigits: 2 });
 const appearanceOptions = [
   ["system", "Uređaj"],
   ["light", "Svijetla"],
