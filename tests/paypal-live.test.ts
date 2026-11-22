@@ -737,3 +737,13 @@ test("owner pilot does not create a provider order for members or in sandbox", a
   assert.equal((await paypal.create(topUp, "sdk", "owner")).approvalUrl, null);
   assert.equal(calls, 2);
 });
+
+test("bank-only mode blocks credit order creation before contacting PayPal", async () => {
+  const paypal = createLivePayPal(
+    { ...config, chargingApproved: true, creditCardTopUps: true, creditTopUpBankOnly: true },
+    async () => assert.fail("New PayPal credit orders are blocked"),
+  );
+  const topUp: LiveOrder = { ...order, purpose: "quote", creditTopUp: true };
+  for (const flow of ["redirect", "sdk", "guest", "card-fields"] as const)
+    await assert.rejects(paypal.create(topUp, flow, "owner"), /CREDIT_TOP_UP_BANK_ONLY/);
+});

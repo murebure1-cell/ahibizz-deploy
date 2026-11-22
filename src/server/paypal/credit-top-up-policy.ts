@@ -1,7 +1,12 @@
 export type CreditCardTopUpPolicy = {
   creditCardTopUps?: boolean;
   creditCardTopUpsPilotOwner?: boolean;
+  creditTopUpBankOnly?: boolean;
 };
+
+export function readCreditTopUpBankOnly(env: Record<string, string | undefined> = process.env) {
+  return env.AHIBIZZ_CREDIT_TOP_UP_BANK_ONLY === "true";
+}
 
 export function creditCardTopUpsAvailable(
   policy: CreditCardTopUpPolicy,
@@ -9,7 +14,8 @@ export function creditCardTopUpsAvailable(
   role?: string,
 ): boolean {
   return (
-    policy.creditCardTopUps === true ||
-    (environment === "live" && policy.creditCardTopUpsPilotOwner === true && role === "owner")
+    policy.creditTopUpBankOnly !== true &&
+    (policy.creditCardTopUps === true ||
+      (environment === "live" && policy.creditCardTopUpsPilotOwner === true && role === "owner"))
   );
 }

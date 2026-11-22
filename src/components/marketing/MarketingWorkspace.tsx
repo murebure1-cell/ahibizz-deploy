@@ -53,6 +53,7 @@ const messages: Record<string, string> = {
   CREDIT_RATE_CHANGED: "Vrijednost kredita je promijenjena. Provjeri novi iznos.",
   CREDIT_RATE_REQUIRED: "Vrijednost kredita još nije postavljena.",
   CREDIT_BUNDLE_CHANGED: "Cijena dopune je promijenjena. Osvježi prikaz.",
+  CREDIT_TOP_UP_BANK_ONLY: "Ahi krediti se dopunjuju uplatom na račun.",
   INVALID_CREDIT_BUNDLE: "Odaberi jednu od ponuđenih dopuna.",
   ACTIVE_BANNER: "Oglas na ovom mjestu već traje.",
   LOCATION_REQUIRED: "Prvo označi lokaciju djelatnosti na mapi.",
@@ -70,6 +71,7 @@ function OfferCard({
   order,
   admin,
   checkoutAvailable,
+  creditTopUpBankOnly,
   balance,
   submit,
   busy,
@@ -79,11 +81,13 @@ function OfferCard({
   order: MarketingOrder;
   admin: boolean;
   checkoutAvailable: boolean;
+  creditTopUpBankOnly: boolean;
   balance: number;
   submit: (command: MarketingCommand) => void;
   busy: boolean;
   refresh: () => void;
 }) {
+  const bankOnlyTopUp = order.kind === "credits" && creditTopUpBankOnly;
   const [benefit, setBenefit] = useState<"" | "advance" | "welcome">("");
   const suggested = order.campaign
     ? benefit === "advance"
@@ -175,12 +179,18 @@ function OfferCard({
           do {new Date(order.endsAt).toLocaleDateString("bs-BA")}
         </p>
       )}
-      {!admin && order.status === "quoted" && checkoutAvailable && (
-        <Link className={styles.primaryLink} href={`/naplata?ponuda=${order.id}`}>
-          {order.onlinePending ? "Nastavi otvorenu uplatu" : "Plati ponudu"}
-        </Link>
-      )}
-      {order.status === "quoted" && !order.onlinePending && (
+      {!admin &&
+        order.status === "quoted" &&
+        ((checkoutAvailable && !bankOnlyTopUp) || (bankOnlyTopUp && order.onlinePending)) && (
+          <Link className={styles.primaryLink} href={`/naplata?ponuda=${order.id}`}>
+            {bankOnlyTopUp
+              ? "Provjeri otvorenu uplatu"
+              : order.onlinePending
+                ? "Nastavi otvorenu uplatu"
+                : "Plati ponudu"}
+          </Link>
+        )}
+      {order.status === "quoted" && !order.onlinePending && (admin || !bankOnlyTopUp) && (
         <div className={styles.instructions}>
           <strong>{isProductionService(order.kind) ? "Detalji ponude" : "Upute za uplatu"}</strong>
           <p>{order.instructions}</p>
@@ -345,13 +355,15 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
     ? bankTopUps.data?.offers.find((offer) => offer.quantity === bundle.quantity)
     : null;
   const pendingBank = bankTopUps.data?.requests.find((request) => request.status === "pending");
-  const cardAvailable = data?.checkoutAvailable === true && data.creditCardTopUps === true;
+  const bankOnly = data?.creditTopUpBankOnly === true;
+  const paypalAvailable = !bankOnly && data?.checkoutAvailable === true;
+  const cardAvailable = paypalAvailable && data?.creditCardTopUps === true;
   const method =
-    receiver && chosenMethod === "bank"
+    receiver && (bankOnly || chosenMethod === "bank")
       ? "bank"
       : cardAvailable && chosenMethod !== "paypal"
         ? "card"
-        : data?.checkoutAvailable
+        : paypalAvailable
           ? "paypal"
           : receiver
             ? "bank"
@@ -612,6 +624,21 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
           <h2>Dopuni kredite</h2>
           {pendingBank ? (
             <CreditBankTransfer request={pendingBank} workspace={bankTopUps} />
+          ) : bankOnly && !receiver ? (
+            <div role="status">
+              <p>
+                {bankTopUps.failed
+                  ? "Podatke za bankovnu uplatu trenutno nije moguće učitati."
+                  : bankTopUps.data
+                    ? "Bankovna dopuna trenutno nije dostupna."
+                    : "Učitavam podatke za bankovnu uplatu…"}
+              </p>
+              {bankTopUps.failed && (
+                <button type="button" onClick={bankTopUps.reread}>
+                  Pokušaj ponovo
+                </button>
+              )}
+            </div>
           ) : (
             <form className={styles.form} onSubmit={topUp}>
               <fieldset
@@ -638,42 +665,44 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
               </fieldset>
               {method ? (
                 <>
-                  <fieldset className={styles.paymentMethods} disabled={topUpInProgress}>
-                    <legend>Način dopune</legend>
-                    {cardAvailable && (
-                      <label className={styles.paymentOption}>
-                        <input
-                          type="radio"
-                          name="nacin"
-                          checked={method === "card"}
-                          onChange={() => setChosenMethod("card")}
-                        />
-                        Kartica
-                      </label>
-                    )}
-                    {data.checkoutAvailable && (
-                      <label className={styles.paymentOption}>
-                        <input
-                          type="radio"
-                          name="nacin"
-                          checked={method === "paypal"}
-                          onChange={() => setChosenMethod("paypal")}
-                        />
-                        PayPal nalog
-                      </label>
-                    )}
-                    {receiver && (
-                      <label className={styles.paymentOption}>
-                        <input
-                          type="radio"
-                          name="nacin"
-                          checked={method === "bank"}
-                          onChange={() => setChosenMethod("bank")}
-                        />
-                        Uplata na {receiver.name}
-                      </label>
-                    )}
-                  </fieldset>
+                  {!bankOnly && (
+                    <fieldset className={styles.paymentMethods} disabled={topUpInProgress}>
+                      <legend>Način dopune</legend>
+                      {cardAvailable && (
+                        <label className={styles.paymentOption}>
+                          <input
+                            type="radio"
+                            name="nacin"
+                            checked={method === "card"}
+                            onChange={() => setChosenMethod("card")}
+                          />
+                          Kartica
+                        </label>
+                      )}
+                      {paypalAvailable && (
+                        <label className={styles.paymentOption}>
+                          <input
+                            type="radio"
+                            name="nacin"
+                            checked={method === "paypal"}
+                            onChange={() => setChosenMethod("paypal")}
+                          />
+                          PayPal nalog
+                        </label>
+                      )}
+                      {receiver && (
+                        <label className={styles.paymentOption}>
+                          <input
+                            type="radio"
+                            name="nacin"
+                            checked={method === "bank"}
+                            onChange={() => setChosenMethod("bank")}
+                          />
+                          Uplata na {receiver.name}
+                        </label>
+                      )}
+                    </fieldset>
+                  )}
                   <button
                     type="submit"
                     disabled={topUpInProgress || (method === "bank" && !bankOffer)}
@@ -683,7 +712,7 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
                       : method === "paypal"
                         ? `Nastavi na PayPal · ${billingMoney(bundle.amountMinor)}`
                         : bankOffer && receiver
-                          ? `Prikaži upute · ${creditBankAmount(bankOffer.amountMinor, receiver.currency)}`
+                          ? `Upute za uplatu · ${creditBankAmount(bankOffer.amountMinor, receiver.currency)}`
                           : "Prikaži upute za uplatu"}
                   </button>
                 </>
@@ -832,6 +861,7 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
             order={order}
             refresh={() => setRefresh((v) => v + 1)}
             checkoutAvailable={data.checkoutAvailable}
+            creditTopUpBankOnly={bankOnly}
             balance={data.balance}
             admin={mode === "admin"}
             busy={busy}

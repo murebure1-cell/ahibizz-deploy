@@ -38,7 +38,7 @@ test("eligible card selection opens locally and PayPal account checkout redirect
   assert.match(checkout, /\(cardOpen \|\| order\) && \(\s*<PayPalCardButton/);
   assert.match(
     checkout,
-    /const cardAvailable = canOfferPayPalCard\(\s*order,\s*review,\s*kind,\s*offer\?\.kind,\s*catalog\?\.creditCardTopUps === true,\s*\)/,
+    /const cardAvailable =\s*!bankOnlyTopUp &&\s*canOfferPayPalCard\(order, review, kind, offer\?\.kind, catalog\?\.creditCardTopUps === true\)/,
   );
   assert.match(checkout, /catalog\.paypalClientId && cardAvailable && \(\s*<button/);
   assert.match(checkout, /cardAvailable && \(\s*<div id="karticni-obrazac"/);
@@ -56,12 +56,30 @@ test("eligible card selection opens locally and PayPal account checkout redirect
 test("wallet card selection stays on the top-up quote and is exposed by the server flag", () => {
   const wallet = readFileSync("src/components/marketing/MarketingWorkspace.tsx", "utf8");
   const entry = readFileSync("src/components/billing/CheckoutEntry.tsx", "utf8");
-  assert.match(wallet, /data\?\.checkoutAvailable === true && data\.creditCardTopUps === true/);
+  assert.match(wallet, /const paypalAvailable = !bankOnly && data\?\.checkoutAvailable === true/);
+  assert.match(
+    wallet,
+    /const cardAvailable = paypalAvailable && data\?\.creditCardTopUps === true/,
+  );
   assert.match(
     wallet,
     /router\.push\(`\/naplata\?ponuda=\$\{result\.id\}\$\{cardTopUp \? "&nacin=kartica" : ""\}`\)/,
   );
   assert.match(entry, /initialCard=\{Boolean\(quote && query\.nacin === "kartica"\)\}/);
+});
+test("bank-only credit top-ups hide new online checkout and retain existing order status", () => {
+  const checkout = readFileSync("src/components/billing/Checkout.tsx", "utf8");
+  const wallet = readFileSync("src/components/marketing/MarketingWorkspace.tsx", "utf8");
+  assert.match(checkout, /creditTopUp && catalog\?\.creditTopUpBankOnly === true/);
+  assert.match(checkout, /action === "create" && creditTopUp && \(!catalog \|\| bankOnlyTopUp\)/);
+  assert.match(
+    checkout,
+    /bankOnlyTopUp && offer && !order && !initialOrderId && \([\s\S]*?href="\/nalog\?odjeljak=krediti"/,
+  );
+  assert.match(checkout, /onClick=\{\(\) => act\("reconcile"\)\}/);
+  assert.match(wallet, /receiver && \(bankOnly \|\| chosenMethod === "bank"\)/);
+  assert.match(wallet, /!bankOnly && \(\s*<fieldset className=\{styles\.paymentMethods\}/);
+  assert.match(wallet, /bankOnlyTopUp && order\.onlinePending/);
 });
 test("AhiBizz uses a theme-aware card surface and keeps hosted controls visible", () => {
   assert.match(css, /\.cardMethod\s*\{[^}]*background: var\(--ui-surface\)/);

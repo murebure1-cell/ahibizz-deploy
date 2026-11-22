@@ -551,6 +551,84 @@ test("bank credit topups reuse the immutable ledger and exact bank settlement wi
         assert.ok(approved.requests.every((r) => r.status === "approved"));
       },
     );
+    await t.test(
+      "bank-only restricts new PayPal attempts and safely reuses a compatible cancelled quote",
+      async () => {
+        const actor = await fixture();
+        const quote = await marketing.command(headers(actor), {
+          action: "topUp",
+          id: randomUUID(),
+          quantity: 60,
+          expectedAmountMinor: 1500,
+        });
+        const original = quoteInput(quote.id);
+        const saved = await paypal.create(actor, original);
+        await paypal.attachProvider(saved.id, {
+          providerOrderId: "BANKONLYFIXTUREORDER",
+          approvalUrl: "https://www.paypal.com/checkoutnow?token=BANKONLYFIXTUREORDER",
+        });
+        const bankOnly = createCheckoutStore(pool, {
+          creditTopUpBankOnly: true,
+          creditCardTopUps: true,
+          creditCardTopUpsPilotOwner: true,
+        });
+        const priorPolicy = process.env.AHIBIZZ_CREDIT_TOP_UP_BANK_ONLY;
+        process.env.AHIBIZZ_CREDIT_TOP_UP_BANK_ONLY = "true";
+        try {
+          const wallet = await marketing.read(headers(actor), "credits", 0);
+          assert.equal(wallet.creditTopUpBankOnly, true);
+          assert.equal(wallet.creditCardTopUps, false);
+          await assert.rejects(
+            marketing.command(headers(actor), {
+              action: "topUp",
+              id: randomUUID(),
+              quantity: 60,
+              expectedAmountMinor: 1500,
+            }),
+            deny("CREDIT_TOP_UP_BANK_ONLY"),
+          );
+          await assert.rejects(bankOnly.create(actor, original), deny("CREDIT_TOP_UP_BANK_ONLY"));
+          for (const method of ["redirect", "sdk", "guest", "card-fields"]) {
+            await assert.rejects(
+              bankOnly.create(actor, {
+                ...quoteInput(quote.id),
+                offerVersion: `marketing-quote-v1:${method}`,
+              }),
+              deny("CREDIT_TOP_UP_BANK_ONLY"),
+            );
+          }
+          const savedAttempt = await bankOnly.read(actor, saved.id);
+          assert.equal(savedAttempt.status, "provider_created");
+          assert.equal(await paypal.canCompleteApprovedPayment(actor, savedAttempt), false);
+          assert.equal(await bankOnly.canCompleteApprovedPayment(actor, savedAttempt), true);
+          const bankInput = input();
+          await assert.rejects(
+            service.create(headers(actor), bankInput),
+            deny("QUOTE_PAYMENT_PENDING"),
+          );
+          await assert.rejects(
+            bankOnly.cancelPromotion(actor, saved.id, async () => false),
+            deny("ORDER_CANCELLATION_UNAVAILABLE"),
+          );
+          assert.equal(await balance(actor), 0);
+          assert.equal(
+            (await bankOnly.cancelPromotion(actor, saved.id, async () => true)).status,
+            "cancelled",
+          );
+          assert.equal(await bankOnly.canCompleteApprovedPayment(actor, savedAttempt), false);
+          const bank = (await service.create(headers(actor), bankInput)).request;
+          assert.equal(bank.orderId, quote.id);
+          assert.equal(bank.status, "pending");
+          assert.equal(await balance(actor), 0);
+          await service.approve(headers(owner), bank.id, approve(bank));
+          await service.approve(headers(owner), bank.id, approve(bank));
+          assert.equal(await balance(actor), 60);
+        } finally {
+          if (priorPolicy === undefined) delete process.env.AHIBIZZ_CREDIT_TOP_UP_BANK_ONLY;
+          else process.env.AHIBIZZ_CREDIT_TOP_UP_BANK_ONLY = priorPolicy;
+        }
+      },
+    );
   } finally {
     if (pool) await pool.end();
     if (created) await admin.query(`DROP SCHEMA "${schema}" CASCADE`);

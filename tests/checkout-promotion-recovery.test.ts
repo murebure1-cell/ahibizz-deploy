@@ -197,3 +197,30 @@ test("credit card recovery requires the same linked top-up and no PayPal redirec
   );
   assert.equal(promotionRestartHref(cancelled), `/naplata?ponuda=${credit.quoteId}&nacin=kartica`);
 });
+
+test("bank-only checkout permits safe cancellation of an existing credit PayPal redirect", async () => {
+  const credit: CardOrder = {
+    ...order,
+    kind: "quote",
+    quoteKind: "credits",
+    quoteId: order.businessId,
+    businessId: null,
+    businessTitle: null,
+    flow: "redirect",
+  };
+  const cancelled = { ...credit, status: "cancelled" };
+  assert.equal(canCancelPromotionOrder(credit), false);
+  assert.equal(canCancelPromotionOrder(credit, true), true);
+  assert.equal(canCancelPromotionOrder({ ...credit, status: "captured" }, true), false);
+  assert.deepEqual(
+    await cancelPromotionOrder(
+      credit,
+      async (path) => {
+        assert.equal(path, `orders/${credit.id}/cancel`);
+        return { order: cancelled };
+      },
+      true,
+    ),
+    cancelled,
+  );
+});

@@ -74,6 +74,7 @@ export type MarketingData = {
   included: { id: string; title: string; kind: "featured" | "nearby"; endsAt: string }[];
   checkoutAvailable: boolean;
   creditCardTopUps?: boolean;
+  creditTopUpBankOnly?: boolean;
 };
 export type MarketingCommand =
   | { action: "topUp"; id: string; quantity: number; expectedAmountMinor: number }

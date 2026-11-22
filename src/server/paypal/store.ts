@@ -158,22 +158,28 @@ async function business(c: PoolClient, id: string) {
     )
   ).rows[0];
 }
-function canRecoverUnpaidOrder(order: CheckoutOrder) {
+function canRecoverUnpaidOrder(order: CheckoutOrder, allowCreditRedirect = false) {
+  const flow = paypalOrderFlow(order.offerVersion);
   return (
     (order.kind === "promotion" && Boolean(order.businessId)) ||
     (order.kind === "quote" &&
       order.quoteKind === "credits" &&
       Boolean(order.quoteId) &&
       order.businessId === null &&
-      paypalOrderFlow(order.offerVersion) === "sdk")
+      (flow === "sdk" || (allowCreditRedirect && flow === "redirect")))
   );
 }
-async function cancellationCandidate(c: PoolClient, actor: CheckoutActor, id: string) {
+async function cancellationCandidate(
+  c: PoolClient,
+  actor: CheckoutActor,
+  id: string,
+  allowCreditRedirect: boolean,
+) {
   await authority(c, actor);
   const order = await row(c, id);
   if (order.userId !== actor.userId) fail(404, "ORDER_NOT_FOUND");
   if (
-    !canRecoverUnpaidOrder(order) ||
+    !canRecoverUnpaidOrder(order, allowCreditRedirect) ||
     !order.providerOrderId ||
     order.captureId ||
     order.capturedAt ||
@@ -390,6 +396,11 @@ export function createCheckoutStore(pool: Pool, policy: CreditCardTopUpPolicy = 
           paypalOrderFlow(input.offerVersion),
           creditCardTopUpsAvailable(policy, input.environment, role),
         );
+        const creditFlowError = policy.creditTopUpBankOnly
+          ? "CREDIT_TOP_UP_BANK_ONLY"
+          : creditFlowAllowed
+            ? null
+            : "CREDIT_TOP_UP_PAYPAL_REQUIRED";
         const existing = (
           await c.query<CheckoutOrder & { fingerprint: string }>(
             `SELECT ${columns},fingerprint FROM paypal_checkout_order WHERE user_id=$1 AND request_id=$2 FOR UPDATE`,
@@ -398,16 +409,14 @@ export function createCheckoutStore(pool: Pool, policy: CreditCardTopUpPolicy = 
         ).rows[0];
         if (existing) {
           if (existing.fingerprint !== fingerprint) fail(409, "COMMAND_CONFLICT");
-          if (existing.quoteKind === "credits" && !creditFlowAllowed)
-            fail(409, "CREDIT_TOP_UP_PAYPAL_REQUIRED");
+          if (existing.quoteKind === "credits" && creditFlowError) fail(409, creditFlowError);
           return existing;
         }
         const quote = input.quoteId
           ? await payableQuote(c, actor.userId, input.quoteId, true)
           : null;
         if (input.quoteId && !quote) fail(409, "QUOTE_NOT_PAYABLE");
-        if (quote?.kind === "credits" && !creditFlowAllowed)
-          fail(409, "CREDIT_TOP_UP_PAYPAL_REQUIRED");
+        if (quote?.kind === "credits" && creditFlowError) fail(409, creditFlowError);
         const price = quote?.amountMinor ?? input.amountMinor;
         if (price === undefined) fail(400, "INVALID_CHECKOUT_INPUT");
         if (quote) {
@@ -545,7 +554,13 @@ export function createCheckoutStore(pool: Pool, policy: CreditCardTopUpPolicy = 
         await authority(c, actor);
         const order = await row(c, id);
         if (order.userId !== actor.userId) fail(404, "ORDER_NOT_FOUND");
-        if (order.quoteKind === "credits") fail(409, "CREDIT_TOP_UP_PAYPAL_REQUIRED");
+        if (order.quoteKind === "credits")
+          fail(
+            409,
+            policy.creditTopUpBankOnly
+              ? "CREDIT_TOP_UP_BANK_ONLY"
+              : "CREDIT_TOP_UP_PAYPAL_REQUIRED",
+          );
         if (
           (order.kind !== "promotion" && order.kind !== "quote") ||
           (order.kind === "promotion" && !order.businessId) ||
@@ -573,11 +588,15 @@ export function createCheckoutStore(pool: Pool, policy: CreditCardTopUpPolicy = 
         await authority(c, actor);
         const order = await row(c, expected.id);
         if (order.userId !== actor.userId) fail(404, "ORDER_NOT_FOUND");
+        const canCompleteRedirect =
+          policy.creditTopUpBankOnly === true &&
+          order.kind === "quote" &&
+          order.quoteKind === "credits";
         if (
           (order.kind !== "promotion" && order.kind !== "quote") ||
           (order.kind === "promotion" && !order.businessId) ||
           (order.kind === "quote" && !order.quoteId) ||
-          !["guest", "sdk", "card-fields"].includes(paypalOrderFlow(order.offerVersion)) ||
+          (paypalOrderFlow(order.offerVersion) === "redirect" && !canCompleteRedirect) ||
           order.status !== "provider_created" ||
           !order.providerOrderId ||
           order.providerOrderId !== expected.providerOrderId ||
@@ -615,8 +634,9 @@ export function createCheckoutStore(pool: Pool, policy: CreditCardTopUpPolicy = 
       id: string,
       isUnpaid: (order: CheckoutOrder) => Promise<boolean>,
     ) {
+      const allowCreditRedirect = policy.creditTopUpBankOnly === true;
       const pending = await transaction(pool, async (c) => {
-        const order = await cancellationCandidate(c, actor, id);
+        const order = await cancellationCandidate(c, actor, id, allowCreditRedirect);
         if (order.status === "cancelled") return order;
         const idle = await c.query(
           "SELECT id FROM paypal_checkout_order WHERE id=$1 AND capture_lease_until IS NULL",
@@ -631,7 +651,7 @@ export function createCheckoutStore(pool: Pool, policy: CreditCardTopUpPolicy = 
       // Check ownership and state again after PayPal I/O. Even an expired capture lease
       // means that a charge may still be in flight or waiting to be reconciled.
       return transaction(pool, async (c) => {
-        const current = await cancellationCandidate(c, actor, id);
+        const current = await cancellationCandidate(c, actor, id, allowCreditRedirect);
         if (current.status === "cancelled") return current;
         const cancelled = await c.query(
           "UPDATE paypal_checkout_order SET status='cancelled',updated_at=now(),version=version+1 WHERE id=$1 AND version=$2 AND capture_lease_until IS NULL RETURNING id",

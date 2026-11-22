@@ -208,6 +208,18 @@ test("configuration is absent by default and all sales gates are required", () =
     ).creditCardTopUps,
     true,
   );
+  const bankOnly = checkoutCatalog(
+    checkoutConfiguration({
+      ...enabled,
+      AHIBIZZ_CREDIT_TOP_UP_BANK_ONLY: "true",
+      PAYPAL_CREDIT_CARD_TOPUPS_ENABLED: "true",
+      PAYPAL_CREDIT_CARD_TOPUPS_PILOT_OWNER: "true",
+    }),
+    "owner",
+  );
+  assert.equal(bankOnly.creditTopUpBankOnly, true);
+  assert.equal(bankOnly.creditCardTopUps, false);
+  assert.equal(bankOnly.available, true);
 });
 test("disabled service cannot reach store, auth or provider", async () => {
   let touched = false;

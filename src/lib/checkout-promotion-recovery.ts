@@ -15,7 +15,7 @@ function responseOrder(value: unknown): unknown {
   return (value as { order: unknown }).order;
 }
 
-function recoverableOrder(value: unknown): value is CardOrder {
+function recoverableOrder(value: unknown, bankOnlyTopUp = false): value is CardOrder {
   if (!value || typeof value !== "object") return false;
   const order = value as CardOrder;
   return (
@@ -28,7 +28,7 @@ function recoverableOrder(value: unknown): value is CardOrder {
       uuid.test(order.businessId)) ||
       (order.kind === "quote" &&
         order.quoteKind === "credits" &&
-        order.flow === "sdk" &&
+        (order.flow === "sdk" || (bankOnlyTopUp && order.flow === "redirect")) &&
         order.businessId === null &&
         typeof order.quoteId === "string" &&
         uuid.test(order.quoteId))) &&
@@ -44,18 +44,22 @@ function recoverableOrder(value: unknown): value is CardOrder {
   );
 }
 
-export function canCancelPromotionOrder(order: CardOrder | null): boolean {
-  return recoverableOrder(order) && order.status === "provider_created";
+export function canCancelPromotionOrder(order: CardOrder | null, bankOnlyTopUp = false): boolean {
+  return recoverableOrder(order, bankOnlyTopUp) && order.status === "provider_created";
 }
 
 /** No retries: an uncertain cancellation must be reconciled before another attempt. */
-export async function cancelPromotionOrder(order: CardOrder, send: Send): Promise<CardOrder> {
-  if (!canCancelPromotionOrder(order))
+export async function cancelPromotionOrder(
+  order: CardOrder,
+  send: Send,
+  bankOnlyTopUp = false,
+): Promise<CardOrder> {
+  if (!canCancelPromotionOrder(order, bankOnlyTopUp))
     throw new Error("Ova narudžba nije dostupna za odustajanje.");
   const result = await send(`orders/${encodeURIComponent(order.id)}/cancel`, {});
   const next = responseOrder(result);
   if (
-    !recoverableOrder(next) ||
+    !recoverableOrder(next, bankOnlyTopUp) ||
     next.status !== "cancelled" ||
     next.id !== order.id ||
     next.requestId !== order.requestId ||

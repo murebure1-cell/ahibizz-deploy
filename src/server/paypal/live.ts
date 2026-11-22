@@ -424,6 +424,8 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
         ((flow === "guest" || flow === "card-fields") && order.purpose === "support")
       )
         throw new PayPalLiveError("INVALID_CHECKOUT_FLOW");
+      if (order.creditTopUp && config.creditTopUpBankOnly)
+        throw new PayPalLiveError("CREDIT_TOP_UP_BANK_ONLY");
       if (
         order.creditTopUp &&
         !supportsCreditTopUpFlow(flow, creditCardTopUpsAvailable(config, environment, actorRole))

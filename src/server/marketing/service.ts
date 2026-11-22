@@ -16,7 +16,7 @@ import { creditsForBamMinor, validCreditBalance } from "../../lib/wallet";
 import { AccountAccessError, accountTransaction, createAccountAccess } from "../auth/accounts";
 import { type AuthService, getAuthDatabasePool, getAuthService } from "../auth/service";
 import { syncProductionReceipt } from "../billing/service";
-import { creditCardTopUpsAvailable } from "../paypal/credit-top-up-policy";
+import { creditCardTopUpsAvailable, readCreditTopUpBankOnly } from "../paypal/credit-top-up-policy";
 import { checkoutConfiguration } from "../paypal/runtime";
 import { debitWallet, readCreditMovements, readWalletRate, walletBalance } from "../wallet/service";
 import { createCreditTopUp, lockWalletRate, setCreditRate } from "../wallet/topup";
@@ -308,6 +308,7 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           promotions: mode === "ads" ? await paidPromotions(client, actor.id) : [],
           included: mode === "ads" ? await packagePromotions(client, actor.id) : [],
           checkoutAvailable: config?.chargingApproved === true && config.environment === "live",
+          creditTopUpBankOnly: readCreditTopUpBankOnly(),
           creditCardTopUps:
             config?.chargingApproved === true &&
             config.environment === "live" &&
@@ -328,6 +329,7 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
         );
         if (command.action === "setCreditRate") return setCreditRate(client, actor.id, command);
         if (command.action === "topUp") {
+          if (readCreditTopUpBankOnly()) fail(409, "CREDIT_TOP_UP_BANK_ONLY");
           const result = await createCreditTopUp(client, actor.id, command);
           if (
             (

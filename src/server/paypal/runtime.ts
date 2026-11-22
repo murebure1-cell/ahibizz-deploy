@@ -1,7 +1,7 @@
 import { paypalOrderFlow } from "../../lib/paypal-order-flow";
 import { getAccountService } from "../auth/accounts";
 import { getAuthDatabasePool, getAuthService, readAuthConfiguration } from "../auth/service";
-import { creditCardTopUpsAvailable } from "./credit-top-up-policy";
+import { creditCardTopUpsAvailable, readCreditTopUpBankOnly } from "./credit-top-up-policy";
 import {
   CheckoutHttpError,
   type CheckoutHttpService,
@@ -56,6 +56,7 @@ export function checkoutConfiguration(
     chargingApproved: enabled && priceApproved && fulfillmentReady,
     creditCardTopUps: env.PAYPAL_CREDIT_CARD_TOPUPS_ENABLED === "true",
     creditCardTopUpsPilotOwner: env.PAYPAL_CREDIT_CARD_TOPUPS_PILOT_OWNER === "true",
+    creditTopUpBankOnly: readCreditTopUpBankOnly(env),
     refundsApproved: env.PAYPAL_CHECKOUT_REFUNDS_ENABLED === "true",
   };
 }
@@ -94,6 +95,7 @@ const captureFailureCodes = new Set([
 export function checkoutCatalog(config: CheckoutConfiguration | null, role?: string) {
   return {
     available: Boolean(config?.chargingApproved),
+    creditTopUpBankOnly: config?.creditTopUpBankOnly ?? readCreditTopUpBankOnly(),
     creditCardTopUps: Boolean(
       config?.chargingApproved && creditCardTopUpsAvailable(config, config.environment, role),
     ),

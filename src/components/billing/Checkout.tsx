@@ -22,12 +22,14 @@ import { PayPalCardButton } from "./PayPalCardButton";
 type Catalog = {
   paypalClientId?: string | null;
   creditCardTopUps?: boolean;
+  creditTopUpBankOnly?: boolean;
   available: boolean;
   environment: "sandbox" | "live" | null;
   promotion: { amountMinor: number; days: number };
   support: { available?: boolean; minMinor: number; maxMinor: number };
 };
 const messages: Record<string, string> = {
+  CREDIT_TOP_UP_BANK_ONLY: "Ahi krediti se dopunjuju uplatom na račun.",
   CREDIT_TOP_UP_PAYPAL_REQUIRED: "Za ovu dopunu nastavi preko PayPal računa.",
   CHECKOUT_FLOW_MISMATCH:
     "Postoji narudžba za drugi način plaćanja. Provjeri prethodnu narudžbu prije nove uplate.",
@@ -141,7 +143,14 @@ export function Checkout({
     canComplete: boolean;
   } | null>(null);
   const cardCheck = order && paymentCheck?.orderId === order.id ? paymentCheck : null;
-  const canCompleteCard = isSavedCardPayment(order) && cardCheck?.canComplete === true;
+  const creditTopUp = order
+    ? order.kind === "quote" && order.quoteKind === "credits"
+    : offer?.kind === "credits";
+  const bankOnlyTopUp = creditTopUp && catalog?.creditTopUpBankOnly === true;
+  const savedCreditRedirect =
+    bankOnlyTopUp && order?.status === "provider_created" && order.flow === "redirect";
+  const needsApprovedPayment = isSavedCardPayment(order) || savedCreditRedirect;
+  const canCompletePayment = needsApprovedPayment && cardCheck?.canComplete === true;
   const [error, setError] = useState(
     cancelled
       ? "Odustali ste na PayPalu. Odustajanje nije dokaz naplate; provjerite status narudžbe."
@@ -333,8 +342,9 @@ export function Checkout({
   }, [userId, initialOrderId, reloadOrder]);
   async function act(action: "create" | "capture" | "reconcile") {
     if (locked.current || !userId || (initialOrderId && !order) || orderLoading) return;
+    if (action === "create" && creditTopUp && (!catalog || bankOnlyTopUp)) return;
     if (action === "create" && order?.flow && order.flow !== "redirect") return;
-    if (action === "capture" && isSavedCardPayment(order) && !canCompleteCard) return;
+    if (action === "capture" && needsApprovedPayment && !canCompletePayment) return;
     if (action === "create" && (order?.kind ?? kind) === "quote" && !(order?.quoteId ?? offer?.id))
       return;
     if (order?.status === "cancelled" && action !== "reconcile") return;
@@ -393,7 +403,7 @@ export function Checkout({
         setOrder(value.order);
         if (action === "reconcile" && value.order.id === order?.id && !value.pending) {
           setCancellationUncertain(false);
-          if (isSavedCardPayment(order) && typeof value.paymentState === "string") {
+          if (needsApprovedPayment && typeof value.paymentState === "string") {
             setPaymentCheck({
               orderId: value.order.id,
               state: value.paymentState,
@@ -437,7 +447,7 @@ export function Checkout({
       !userId ||
       orderLoading ||
       (action === "cancel" &&
-        (!order || !canCancelPromotionOrder(order) || cancellationUncertain)) ||
+        (!order || !canCancelPromotionOrder(order, bankOnlyTopUp) || cancellationUncertain)) ||
       (action === "find" && (order || initialOrderId || kind !== "promotion" || !businessId))
     )
       return;
@@ -466,7 +476,7 @@ export function Checkout({
         action === "find"
           ? await findPendingPromotion(businessId, send)
           : order
-            ? await cancelPromotionOrder(order, send)
+            ? await cancelPromotionOrder(order, send, bankOnlyTopUp)
             : null;
       if (!current()) return;
       if (!next) {
@@ -529,14 +539,9 @@ export function Checkout({
     }
   }
   const walletAvailable = kind === "promotion" && wallet !== null && !initialOrderId && !order;
-  const creditTopUp = (order?.quoteKind ?? offer?.kind) === "credits";
-  const cardAvailable = canOfferPayPalCard(
-    order,
-    review,
-    kind,
-    offer?.kind,
-    catalog?.creditCardTopUps === true,
-  );
+  const cardAvailable =
+    !bankOnlyTopUp &&
+    canOfferPayPalCard(order, review, kind, offer?.kind, catalog?.creditCardTopUps === true);
   const missingCreditCard =
     creditTopUp &&
     cardOpen &&
@@ -563,7 +568,7 @@ export function Checkout({
     catalog?.available &&
     catalog.paypalClientId &&
     cardAvailable;
-  const restartHref = promotionRestartHref(order);
+  const restartHref = bankOnlyTopUp ? "/nalog?odjeljak=krediti" : promotionRestartHref(order);
   const checkoutPath = returned
     ? "/naplata/povratak"
     : cancelled
@@ -582,7 +587,7 @@ export function Checkout({
         ← Moj nalog
       </a>
       <header>
-        {catalog?.environment === "sandbox" && (
+        {catalog?.environment === "sandbox" && (!bankOnlyTopUp || order) && (
           <span className={styles.label}>PayPal · testni način</span>
         )}
         <h1>
@@ -595,7 +600,7 @@ export function Checkout({
               : "Podrži razvoj AhiBizza"}
         </h1>
       </header>
-      {catalog?.available === false && !walletAvailable && (
+      {catalog?.available === false && !walletAvailable && !bankOnlyTopUp && (
         <p role="status" className={styles.notice}>
           Naplata trenutno nije dostupna.
         </p>
@@ -646,144 +651,156 @@ export function Checkout({
           <a href="/nalog?odjeljak=oglasi">Moji oglasi</a>
         </section>
       )}
-      {!paidWithCreditsUntil && !order && !initialOrderId && (!initialQuoteId || offer) && (
-        <>
-          {!initialQuoteId && catalog?.environment === "sandbox" && (
-            <section className={styles.choices} aria-label="Namjena uplate">
-              <button
-                type="button"
-                disabled={busy}
-                aria-pressed={kind === "promotion"}
-                onClick={() => {
-                  setKind("promotion");
-                  setReview(false);
-                  setCardOpen(false);
-                  key.current = null;
-                }}
-              >
-                Isticanje profila
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                aria-pressed={kind === "support"}
-                onClick={() => {
-                  setKind("support");
-                  setReview(false);
-                  setCardOpen(false);
-                  key.current = null;
-                }}
-              >
-                Podrži razvoj AhiBizza
-              </button>
-            </section>
-          )}
-          <section className={styles.card}>
-            {kind === "quote" && offer ? (
-              <div className={styles.orderSummary}>
-                <div>
-                  <h2>{offer.title}</h2>
-                  <p>Jednokratna uplata po ponudi</p>
-                </div>
-                <div className={styles.orderPrice}>
-                  <strong>{money(offer.amountMinor)}</strong>
-                  <small>{(offer.originalBamMinor / 100).toLocaleString("bs-BA")} KM</small>
-                </div>
-              </div>
-            ) : kind === "promotion" ? (
-              <>
-                <div className={styles.orderSummary}>
-                  <div>
-                    <h2>Isticanje u kategoriji</h2>
-                    <p>{catalog?.promotion.days ?? 7} dana · jednokratno</p>
-                  </div>
-                  <div className={styles.orderPrice}>
-                    <strong>
-                      {walletAvailable && wallet && (!review || method === "credits")
-                        ? `${(wallet.priceMinor / 100).toLocaleString("bs-BA")} Ahi kredita`
-                        : money(selectedAmount)}
-                    </strong>
-                    {selectedAmount === 511 && (
-                      <small>
-                        {walletAvailable && (!review || method === "credits") ? "10 KM" : "≈ 10 KM"}
-                      </small>
-                    )}
-                  </div>
-                </div>
-                {review ? (
-                  <p className={styles.businessName}>
-                    <Icon name="shop" width={18} height={18} />
-                    {businesses.find((business) => business.id === businessId)?.title}
-                  </p>
-                ) : (
-                  <>
-                    <label htmlFor="checkout-business">Tvoja objavljena djelatnost</label>
-                    <select
-                      id="checkout-business"
-                      disabled={review || busy}
-                      value={businessId}
-                      onChange={(e) => {
-                        setBusinessId(e.target.value);
-                        setFindExisting(false);
-                        key.current = null;
-                      }}
-                    >
-                      <option value="">Odaberi djelatnost</option>
-                      {businesses.map((business) => (
-                        <option key={business.id} value={business.id}>
-                          {business.title}
-                        </option>
-                      ))}
-                    </select>
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <h2>Dobrovoljna podrška</h2>
-                <p>
-                  Podrška nije kupovina isticanja ili članstva i ne daje pravo na povrat kapitala
-                  ili dobit. Jednokratna uplata, bez obnove.
-                </p>
-                <label htmlFor="checkout-support">Iznos podrške u EUR</label>
-                <input
-                  id="checkout-support"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  value={support}
-                  disabled={review || busy}
-                  placeholder="Npr. 5,00"
-                  onChange={(e) => {
-                    setSupport(e.target.value);
+      {bankOnlyTopUp && offer && !order && !initialOrderId && (
+        <section className={styles.card}>
+          <p>Ahi krediti se dopunjuju uplatom na račun.</p>
+          <a href="/nalog?odjeljak=krediti">Dopuni Ahi kredite</a>
+        </section>
+      )}
+      {!paidWithCreditsUntil &&
+        !order &&
+        !initialOrderId &&
+        (!initialQuoteId || offer) &&
+        !bankOnlyTopUp && (
+          <>
+            {!initialQuoteId && catalog?.environment === "sandbox" && (
+              <section className={styles.choices} aria-label="Namjena uplate">
+                <button
+                  type="button"
+                  disabled={busy}
+                  aria-pressed={kind === "promotion"}
+                  onClick={() => {
+                    setKind("promotion");
+                    setReview(false);
+                    setCardOpen(false);
                     key.current = null;
                   }}
-                />
-                <p>Od 1 do 1.000 EUR. Iznos biraš samostalno.</p>
-              </>
+                >
+                  Isticanje profila
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  aria-pressed={kind === "support"}
+                  onClick={() => {
+                    setKind("support");
+                    setReview(false);
+                    setCardOpen(false);
+                    key.current = null;
+                  }}
+                >
+                  Podrži razvoj AhiBizza
+                </button>
+              </section>
             )}
-            {review && kind === "support" && (
-              <p>
-                <strong>Ukupno za plaćanje: {money(selectedAmount)}</strong>
-              </p>
-            )}
-            {!review && (
-              <button
-                type="button"
-                className={styles.primary}
-                disabled={!userId || !canReview || (!catalog?.available && !walletAvailable)}
-                onClick={() => {
-                  key.current ??= crypto.randomUUID();
-                  if (walletAvailable) setMethod("credits");
-                  else setCardOpen(kind !== "support" && Boolean(catalog?.paypalClientId));
-                  setReview(true);
-                }}
-              >
-                Odaberi način plaćanja
-              </button>
-            )}
-          </section>
-        </>
-      )}
+            <section className={styles.card}>
+              {kind === "quote" && offer ? (
+                <div className={styles.orderSummary}>
+                  <div>
+                    <h2>{offer.title}</h2>
+                    <p>Jednokratna uplata po ponudi</p>
+                  </div>
+                  <div className={styles.orderPrice}>
+                    <strong>{money(offer.amountMinor)}</strong>
+                    <small>{(offer.originalBamMinor / 100).toLocaleString("bs-BA")} KM</small>
+                  </div>
+                </div>
+              ) : kind === "promotion" ? (
+                <>
+                  <div className={styles.orderSummary}>
+                    <div>
+                      <h2>Isticanje u kategoriji</h2>
+                      <p>{catalog?.promotion.days ?? 7} dana · jednokratno</p>
+                    </div>
+                    <div className={styles.orderPrice}>
+                      <strong>
+                        {walletAvailable && wallet && (!review || method === "credits")
+                          ? `${(wallet.priceMinor / 100).toLocaleString("bs-BA")} Ahi kredita`
+                          : money(selectedAmount)}
+                      </strong>
+                      {selectedAmount === 511 && (
+                        <small>
+                          {walletAvailable && (!review || method === "credits")
+                            ? "10 KM"
+                            : "≈ 10 KM"}
+                        </small>
+                      )}
+                    </div>
+                  </div>
+                  {review ? (
+                    <p className={styles.businessName}>
+                      <Icon name="shop" width={18} height={18} />
+                      {businesses.find((business) => business.id === businessId)?.title}
+                    </p>
+                  ) : (
+                    <>
+                      <label htmlFor="checkout-business">Tvoja objavljena djelatnost</label>
+                      <select
+                        id="checkout-business"
+                        disabled={review || busy}
+                        value={businessId}
+                        onChange={(e) => {
+                          setBusinessId(e.target.value);
+                          setFindExisting(false);
+                          key.current = null;
+                        }}
+                      >
+                        <option value="">Odaberi djelatnost</option>
+                        {businesses.map((business) => (
+                          <option key={business.id} value={business.id}>
+                            {business.title}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h2>Dobrovoljna podrška</h2>
+                  <p>
+                    Podrška nije kupovina isticanja ili članstva i ne daje pravo na povrat kapitala
+                    ili dobit. Jednokratna uplata, bez obnove.
+                  </p>
+                  <label htmlFor="checkout-support">Iznos podrške u EUR</label>
+                  <input
+                    id="checkout-support"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    value={support}
+                    disabled={review || busy}
+                    placeholder="Npr. 5,00"
+                    onChange={(e) => {
+                      setSupport(e.target.value);
+                      key.current = null;
+                    }}
+                  />
+                  <p>Od 1 do 1.000 EUR. Iznos biraš samostalno.</p>
+                </>
+              )}
+              {review && kind === "support" && (
+                <p>
+                  <strong>Ukupno za plaćanje: {money(selectedAmount)}</strong>
+                </p>
+              )}
+              {!review && (
+                <button
+                  type="button"
+                  className={styles.primary}
+                  disabled={!userId || !canReview || (!catalog?.available && !walletAvailable)}
+                  onClick={() => {
+                    key.current ??= crypto.randomUUID();
+                    if (walletAvailable) setMethod("credits");
+                    else setCardOpen(kind !== "support" && Boolean(catalog?.paypalClientId));
+                    setReview(true);
+                  }}
+                >
+                  Odaberi način plaćanja
+                </button>
+              )}
+            </section>
+          </>
+        )}
       {order && openCardOrder && (
         <div className={styles.savedSummary}>
           <span>{order.businessTitle ?? "Isticanje u kategoriji"}</span>
@@ -823,11 +840,13 @@ export function Checkout({
                 }}
                 aria-disabled={busy}
               >
-                {restartHref
-                  ? "Ponovo odaberi način plaćanja"
-                  : order.kind === "quote"
-                    ? "Moj nalog"
-                    : "Novi pokušaj"}
+                {bankOnlyTopUp
+                  ? "Dopuni Ahi kredite"
+                  : restartHref
+                    ? "Ponovo odaberi način plaćanja"
+                    : order.kind === "quote"
+                      ? "Moj nalog"
+                      : "Novi pokušaj"}
               </a>
             </div>
           ) : order.status === "captured" ? (
@@ -860,13 +879,17 @@ export function Checkout({
                   ? "Vratio si se s PayPala. Povratak nije dokaz uplate."
                   : "Uplata još nije potvrđena. Ne otvaraj novu narudžbu za isti pokušaj."}
               </p>
-              {isSavedCardPayment(order) && cardCheck && (
-                <p role="status">{confirmationMessages[cardCheck.state]}</p>
+              {needsApprovedPayment && cardCheck && (
+                <p role="status">
+                  {savedCreditRedirect && cardCheck.state === "approved"
+                    ? "PayPal je odobrio uplatu. Čeka se potvrda naplate."
+                    : confirmationMessages[cardCheck.state]}
+                </p>
               )}
-              {creditTopUp && isSavedCardPayment(order) && !cardCheck && (
+              {creditTopUp && needsApprovedPayment && !cardCheck && (
                 <p>Prije nove dopune provjeri status ovog ranijeg pokušaja.</p>
               )}
-              {canCompleteCard ? (
+              {canCompletePayment ? (
                 <button
                   type="button"
                   disabled={busy || !catalog?.available}
@@ -874,7 +897,9 @@ export function Checkout({
                 >
                   Potvrdi naplatu iste narudžbe
                 </button>
-              ) : !order.flow || order.flow === "redirect" ? (
+              ) : (!order.flow || order.flow === "redirect") &&
+                (!creditTopUp || catalog) &&
+                !bankOnlyTopUp ? (
                 <button
                   type="button"
                   disabled={
@@ -894,7 +919,12 @@ export function Checkout({
           </button>
         </section>
       )}
-      {(review && !order && !initialOrderId && !paidWithCreditsUntil) || openCardOrder ? (
+      {(review &&
+        !order &&
+        !initialOrderId &&
+        !paidWithCreditsUntil &&
+        (!creditTopUp || (catalog && !bankOnlyTopUp))) ||
+      openCardOrder ? (
         <section className={styles.methodPanel} aria-label="Način plaćanja">
           <div className={styles.cardMethod}>
             {!order &&
@@ -1080,7 +1110,7 @@ export function Checkout({
           </section>
         )}
       {userId &&
-        canCancelPromotionOrder(order) &&
+        canCancelPromotionOrder(order, bankOnlyTopUp) &&
         !["approved", "pending"].includes(cardCheck?.state ?? "") && (
           <section
             className={styles.orderRecovery}
