@@ -31,7 +31,7 @@ export type SubscriptionProvider = {
     contract: SandboxRecord,
   ): Promise<{ id: string; status: string; approvalUrl: string | null }>;
   inspect(contract: SandboxRecord): Promise<Snapshot>;
-  cancel(contract: SandboxRecord): Promise<void>;
+  cancel(contract: SandboxRecord, unpaidOnly?: boolean): Promise<void>;
   verifyWebhook(headers: Headers, event: unknown, raw: string): Promise<boolean>;
 };
 function invalid(): never {
@@ -312,9 +312,17 @@ export function createSubscriptionProvider(
         lastPaymentAt,
       };
     },
-    async cancel(c) {
+    async cancel(c, unpaidOnly) {
       const d = await checkedSubscription(c);
       if (d.status === "CANCELLED" || d.status === "EXPIRED") return;
+      if (unpaidOnly) {
+        const billing = obj(d.billing_info);
+        const executed = Array.isArray(billing.cycle_executions)
+          ? billing.cycle_executions.some((cycle) => Number(obj(cycle).cycles_completed) > 0)
+          : false;
+        if (d.status !== "APPROVAL_PENDING" || billing.last_payment || executed)
+          throw new AccountAccessError(409, "SUBSCRIPTION_PENDING_CHANGED");
+      }
       await request(`${subPath(c)}/cancel`, "POST", {
         reason:
           environment === "live"

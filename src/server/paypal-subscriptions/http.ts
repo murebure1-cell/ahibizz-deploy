@@ -176,18 +176,27 @@ export async function handlePackageSubscriptions(
       if (!acceptingOrders) return reply({ code: "SUBSCRIPTIONS_UNAVAILABLE" }, 503);
       return reply(await service.create(request.headers, data), 201);
     }
+    const unpaidOnly =
+      platformCreditsOnly &&
+      action?.[2] === "cancel" &&
+      data &&
+      typeof data === "object" &&
+      !Array.isArray(data) &&
+      Object.keys(data).length === 1 &&
+      "unpaidOnly" in data &&
+      data.unpaidOnly === true;
     if (
       !data ||
       typeof data !== "object" ||
       Array.isArray(data) ||
-      Object.keys(data).length ||
+      (Object.keys(data).length && !unpaidOnly) ||
       !action?.[1]
     )
       return reply({ code: "INVALID_SUBSCRIPTION_INPUT" }, 400);
     return reply(
       action[2] === "refresh"
         ? await service.refresh(request.headers, action[1])
-        : await service.cancel(request.headers, action[1]),
+        : await service.cancel(request.headers, action[1], Boolean(unpaidOnly)),
     );
   } catch (e) {
     return e instanceof AccountAccessError || e instanceof CheckoutHttpError

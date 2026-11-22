@@ -93,6 +93,22 @@ export function readAccountNavigation(params: URLSearchParams): {
 export const productionRequestPath = "/nalog?odjeljak=oglasi&usluga=produkcija";
 export const accountNotificationsPath = activityInboxPath;
 
+export function creditTopUpReturn(value: unknown): string | null {
+  if (
+    typeof value !== "string" ||
+    !/^\/(?:naplata|paketi\/placanje|nalog\/reels)(?:\?|$)/.test(value)
+  )
+    return null;
+  const path = accountReturnPath(value);
+  return path === value ? path : null;
+}
+
+export function creditTopUpPath(returnTo: string): string {
+  const path = accountSectionPath("credits");
+  const next = creditTopUpReturn(returnTo);
+  return next ? `${path}&${new URLSearchParams({ nastavi: next })}` : path;
+}
+
 /** Only known in-app destinations survive login; never a caller-supplied origin or nested URL. */
 export function accountReturnPath(value: unknown): string {
   if (
@@ -128,6 +144,8 @@ export function accountReturnPath(value: unknown): string {
     return value;
   if (value.startsWith("/nalog?")) {
     const params = new URLSearchParams(value.slice(7));
+    const creditReturn = creditTopUpReturn(params.get("nastavi"));
+    if (creditReturn && value === creditTopUpPath(creditReturn)) return value;
     const campaign = readCampaignSelection(params);
     if (campaign && value === campaignPath(campaign)) return value;
     const placement = readPlacementTarget(params);
@@ -156,7 +174,7 @@ export function accountReturnPath(value: unknown): string {
   )
     return value;
   if (
-    /^\/paketi\/placanje(?:\?paket=(?:basic|business|premium)(?:&period=(?:monthly|annual))?(?:&ugovor=[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}(?:&odustao=1)?)?)?$/.test(
+    /^\/paketi\/placanje(?:\?paket=(?:basic|business|premium)(?:&period=(?:monthly|annual)(?:&djelatnost=[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})?)?(?:&ugovor=[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}(?:&odustao=1)?)?)?$/.test(
       value,
     )
   )

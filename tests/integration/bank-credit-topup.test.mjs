@@ -256,6 +256,15 @@ test("bank credit topups reuse the immutable ledger and exact bank settlement wi
         ]);
         assert.deepEqual(settled[0], settled[1]);
         assert.equal(settled[0].request.status, "approved");
+        const { bankTransactionReference, ...matched } = approve(first);
+        assert.deepEqual(
+          await service.approve(headers(owner), first.id, { ...matched, statementMatched: true }),
+          settled[0],
+        );
+        await assert.rejects(
+          service.approve(headers(owner), first.id, approve(first, "ANOTHER-STATEMENT-ID")),
+          deny("BANK_TOPUP_CHANGED"),
+        );
         assert.equal(await balance(user), 60);
         await assert.rejects(
           pool.query("UPDATE marketing_order SET bank_reference='CHANGED-RECEIPT' WHERE id=$1", [
@@ -276,7 +285,7 @@ test("bank credit topups reuse the immutable ledger and exact bank settlement wi
           (
             await pool.query(
               "SELECT count(*)::int n FROM marketing_bank_receipt_claim WHERE reference=$1",
-              [approve(first).bankTransactionReference.toUpperCase()],
+              [bankTransactionReference.toUpperCase()],
             )
           ).rows[0].n,
           1,
@@ -629,92 +638,263 @@ test("bank credit topups reuse the immutable ledger and exact bank settlement wi
         }
       },
     );
-    await t.test("one-click approval funds a credits-only production quote once", async () => {
-      const actor = await fixture();
-      const bank = (await service.create(headers(actor), input())).request;
-      const statement = {
-        expectedVersion: bank.version,
-        amountMinor: bank.amountMinor,
-        currency: bank.currency,
-        paymentReference: bank.paymentReference,
-        statementMatched: true,
-      };
-      await assert.rejects(
-        service.approve(headers(actor), bank.id, statement),
-        (e) => e.status === 403,
-      );
-      assert.equal(await balance(actor), 0);
-      await Promise.all([
-        service.approve(headers(owner), bank.id, statement),
-        service.approve(headers(owner), bank.id, statement),
-      ]);
-      assert.equal(await balance(actor), 60);
-      const category = randomUUID();
-      await pool.query(
-        "INSERT INTO directory_category(id,name,slug) VALUES($1,'Fixture photography','fixture-photography')",
-        [category],
-      );
-      const businessId = randomUUID();
-      const id = randomUUID();
-      await pool.query(
-        "INSERT INTO directory_business(id,owner_user_id,title,category_id,city) VALUES($1,$2,'Fixture studio',$3,'Tuzla')",
-        [businessId, actor.userId, category],
-      );
-      const priorPolicy = process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY;
-      process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY = "true";
-      try {
-        await marketing.command(headers(actor), {
-          action: "request",
-          id,
-          kind: "photo_video",
-          quantity: 1,
-          businessId,
-        });
-        const quote = {
-          action: "quote",
-          id,
-          creditPrice: 45,
-          instructions: "Fotografisanje i video",
+    await t.test(
+      "bank-only rejects generic credit quotes and manual cash confirmation",
+      async () => {
+        const actor = await fixture();
+        const first = randomUUID();
+        const second = randomUUID();
+        const creditRequest = { action: "request", kind: "credits", quantity: 60 };
+        const genericQuote = { action: "quote", amountMinor: 1500, instructions: "Manual" };
+        await marketing.command(headers(actor), { ...creditRequest, id: first });
+        await marketing.command(headers(owner), { ...genericQuote, id: first });
+        const otherBuyer = await fixture();
+        await marketing.command(headers(otherBuyer), { ...creditRequest, id: second });
+        const prior = process.env.AHIBIZZ_CREDIT_TOP_UP_BANK_ONLY;
+        process.env.AHIBIZZ_CREDIT_TOP_UP_BANK_ONLY = "true";
+        try {
+          await assert.rejects(
+            marketing.command(headers(owner), { ...genericQuote, id: second }),
+            deny("CREDIT_TOP_UP_BANK_ONLY"),
+          );
+          await assert.rejects(
+            marketing.command(headers(owner), {
+              action: "confirm",
+              id: first,
+              amountMinor: 1500,
+              reference: "FIXTURE-BANK-ONLY",
+            }),
+            deny("CREDIT_TOP_UP_BANK_ONLY"),
+          );
+          const bank = (await service.create(headers(actor), input())).request;
+          assert.equal(bank.orderId, first);
+          assert.equal(bank.status, "pending");
+          assert.equal(await balance(actor), 0);
+        } finally {
+          if (prior === undefined) delete process.env.AHIBIZZ_CREDIT_TOP_UP_BANK_ONLY;
+          else process.env.AHIBIZZ_CREDIT_TOP_UP_BANK_ONLY = prior;
+        }
+      },
+    );
+    await t.test(
+      "one-click approval funds featured, nearby and production offers in credits",
+      async () => {
+        const actor = await fixture();
+        const bank = (await service.create(headers(actor), input())).request;
+        const statement = {
+          expectedVersion: bank.version,
+          amountMinor: bank.amountMinor,
+          currency: bank.currency,
+          paymentReference: bank.paymentReference,
+          statementMatched: true,
         };
         await assert.rejects(
-          marketing.command(headers(owner), { ...quote, amountMinor: 450 }),
-          deny("PLATFORM_CREDITS_ONLY"),
+          service.approve(headers(actor), bank.id, statement),
+          (e) => e.status === 403,
         );
-        await marketing.command(headers(owner), quote);
-        assert.equal((await marketing.offer(headers(actor), id)).offer.creditPrice, 45);
-        await assert.rejects(
-          marketing.command(headers(owner), {
-            action: "confirm",
-            id,
-            amountMinor: 450,
-            reference: "FIXTURE-OLD-FLOW",
-          }),
-          deny("PLATFORM_CREDITS_ONLY"),
-        );
+        assert.equal(await balance(actor), 0);
         await Promise.all([
-          marketing.command(headers(actor), { action: "useCredits", id }),
-          marketing.command(headers(actor), { action: "useCredits", id }),
+          service.approve(headers(owner), bank.id, statement),
+          service.approve(headers(owner), bank.id, statement),
         ]);
-        assert.equal(await balance(actor), 15);
-        assert.equal(
-          (await pool.query("SELECT wallet_payment_id FROM marketing_order WHERE id=$1", [id]))
-            .rows[0].wallet_payment_id,
-          id,
+        assert.equal(await balance(actor), 60);
+        const history = (await marketing.read(headers(actor), "credits", 0)).orders.find(
+          (order) => order.id === bank.orderId,
         );
-        assert.equal(
-          (
-            await pool.query(
-              "SELECT count(*)::int AS n FROM billing_receipt WHERE production_order_id=$1",
-              [id],
-            )
-          ).rows[0].n,
-          0,
+        assert.equal(history.paidWithCredits, false);
+        assert.equal(history.paidCurrency, bank.currency);
+        assert.equal(history.paidAmountMinor, bank.amountMinor);
+        const category = randomUUID();
+        await pool.query(
+          "INSERT INTO directory_category(id,name,slug) VALUES($1,'Fixture photography','fixture-photography')",
+          [category],
         );
-      } finally {
-        if (priorPolicy === undefined) delete process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY;
-        else process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY = priorPolicy;
-      }
-    });
+        const businessId = randomUUID();
+        const id = randomUUID();
+        await pool.query(
+          "INSERT INTO directory_business(id,owner_user_id,title,category_id,city) VALUES($1,$2,'Fixture studio',$3,'Tuzla')",
+          [businessId, actor.userId, category],
+        );
+        const priorPolicy = process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY;
+        process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY = "true";
+        try {
+          await marketing.command(headers(actor), {
+            action: "request",
+            id,
+            kind: "photo_video",
+            quantity: 1,
+            businessId,
+          });
+          const quote = {
+            action: "quote",
+            id,
+            creditPrice: 45,
+            instructions: "Fotografisanje i video",
+          };
+          await assert.rejects(
+            marketing.command(headers(owner), { ...quote, amountMinor: 450 }),
+            deny("PLATFORM_CREDITS_ONLY"),
+          );
+          await marketing.command(headers(owner), quote);
+          assert.equal((await marketing.offer(headers(actor), id)).offer.creditPrice, 45);
+          await assert.rejects(
+            marketing.command(headers(owner), {
+              action: "confirm",
+              id,
+              amountMinor: 450,
+              reference: "FIXTURE-OLD-FLOW",
+            }),
+            deny("PLATFORM_CREDITS_ONLY"),
+          );
+          await Promise.all([
+            marketing.command(headers(actor), { action: "useCredits", id }),
+            marketing.command(headers(actor), { action: "useCredits", id }),
+          ]);
+          assert.equal(await balance(actor), 15);
+          const transaction = (await marketing.read(headers(actor), "ads", 0)).orders.find(
+            (order) => order.id === id,
+          );
+          assert.equal(transaction.paidWithCredits, true);
+          assert.equal(transaction.paidCurrency, null);
+          assert.equal(transaction.paidAmountMinor, null);
+          await pool.query(
+            "UPDATE directory_business SET status='archived',archived_at=now() WHERE id=$1",
+            [businessId],
+          );
+          assert.deepEqual(await marketing.command(headers(actor), { action: "useCredits", id }), {
+            id,
+          });
+          assert.equal(await balance(actor), 15);
+          assert.equal(
+            (await pool.query("SELECT wallet_payment_id FROM marketing_order WHERE id=$1", [id]))
+              .rows[0].wallet_payment_id,
+            id,
+          );
+          assert.equal(
+            (
+              await pool.query(
+                "SELECT count(*)::int AS n FROM billing_receipt WHERE production_order_id=$1",
+                [id],
+              )
+            ).rows[0].n,
+            0,
+          );
+          const listing = randomUUID();
+          await pool.query(
+            `INSERT INTO directory_business(id,owner_user_id,title,category_id,city,latitude,longitude,status,published_at)
+            VALUES($1,$2,'Fixture promotion',$3,'Tuzla',44.54,18.67,'published',now())`,
+            [listing, actor.userId, category],
+          );
+          let remaining = 15;
+          for (const kind of ["featured", "nearby", "photo", "video"]) {
+            const offerId = randomUUID();
+            await marketing.command(headers(actor), {
+              action: "request",
+              id: offerId,
+              kind,
+              quantity: 1,
+              businessId: listing,
+            });
+            await marketing.command(headers(owner), {
+              action: "quote",
+              id: offerId,
+              creditPrice: 2.25,
+              instructions: "Testna ponuda",
+            });
+            await marketing.command(headers(actor), { action: "useCredits", id: offerId });
+            remaining -= 2.25;
+            assert.equal(await balance(actor), remaining);
+            const paid = (await marketing.read(headers(actor), "ads", 0)).orders.find(
+              (order) => order.id === offerId,
+            );
+            assert.equal(paid.status, "paid");
+            assert.equal(paid.paidWithCredits, true);
+            assert.equal(paid.creditPrice, 2.25);
+            if (["featured", "nearby"].includes(kind)) {
+              assert.equal(Date.parse(paid.endsAt) - Date.parse(paid.startsAt), 86400000);
+            } else {
+              assert.equal(paid.endsAt, null);
+            }
+          }
+        } finally {
+          if (priorPolicy === undefined) delete process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY;
+          else process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY = priorPolicy;
+        }
+      },
+    );
+    await t.test(
+      "new credit-funded banners require a campaign and honor the price floor",
+      async () => {
+        const actor = await fixture();
+        for (let i = 0; i < 2; i++) {
+          const bank = (
+            await service.create(headers(actor), {
+              ...input(),
+              quantity: 3000,
+              expectedAmountMinor: 10737,
+            })
+          ).request;
+          await service.approve(headers(owner), bank.id, approve(bank));
+        }
+        assert.equal(await balance(actor), 6000);
+        const category = randomUUID();
+        const listing = randomUUID();
+        await pool.query(
+          "INSERT INTO directory_category(id,name,slug) VALUES($1,'Testni baneri','fixture-campaign-wallet')",
+          [category],
+        );
+        await pool.query(
+          `INSERT INTO directory_business(id,owner_user_id,title,category_id,city,status,published_at)
+          VALUES($1,$2,'Fixture banner',$3,'Tuzla','published',now())`,
+          [listing, actor.userId, category],
+        );
+        const bare = {
+          action: "request",
+          kind: "banner",
+          quantity: 2,
+          businessId: listing,
+          id: randomUUID(),
+        };
+        await marketing.command(headers(actor), bare);
+        const prior = process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY;
+        process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY = "true";
+        try {
+          assert.deepEqual(await marketing.command(headers(actor), bare), { id: bare.id });
+          await assert.rejects(
+            marketing.command(headers(actor), { ...bare, id: randomUUID() }),
+            deny("CAMPAIGN_REQUIRED"),
+          );
+          await marketing.command(headers(actor), { action: "close", id: bare.id });
+          const id = randomUUID();
+          await marketing.command(headers(actor), {
+            ...bare,
+            id,
+            campaign: {
+              device: "mobile",
+              page: "home",
+              format: "mobile_leaderboard",
+              impressionGoal: 100000,
+              destinationWebsite: false,
+            },
+          });
+          const quote = { action: "quote", id, instructions: "Baner", creditPrice: 4999 };
+          await assert.rejects(marketing.command(headers(owner), quote), deny("CAMPAIGN_MINIMUM"));
+          await marketing.command(headers(owner), { ...quote, creditPrice: 5000 });
+          await marketing.command(headers(actor), { action: "useCredits", id });
+          assert.equal(await balance(actor), 1000);
+          const paid = (await marketing.read(headers(actor), "ads", 0)).orders.find(
+            (item) => item.id === id,
+          );
+          assert.equal(paid.paidWithCredits, true);
+          assert.equal(paid.creditPrice, 5000);
+          assert.equal(paid.campaign.impressionGoal, 100000);
+          assert.equal(Date.parse(paid.endsAt) - Date.parse(paid.startsAt), 2 * 86400000);
+        } finally {
+          if (prior === undefined) delete process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY;
+          else process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY = prior;
+        }
+      },
+    );
   } finally {
     if (pool) await pool.end();
     if (created) await admin.query(`DROP SCHEMA "${schema}" CASCADE`);

@@ -118,6 +118,7 @@ export function AdExplorer({
 }) {
   const priceLabel = (amount: number) =>
     creditRate === undefined ? km(amount) : formatCreditsFromBam(amount, creditRate);
+  const minimum = pricing?.terms.minimumMinor ?? 0;
   const [device, setDevice] = useState<AdDevice>("mobile");
   const [page, setPage] = useState<AdPage>("home");
   const [chosen, setChosen] = useState<AdFormatId>("mobile_leaderboard");
@@ -295,12 +296,7 @@ export function AdExplorer({
                   </div>
                 )}
               </div>
-              {estimate?.belowMinimum && (
-                <p>
-                  Minimalni zakup banera iznosi {priceLabel(estimate.minimumMinor)}. Konačne uslove
-                  vidiš u ponudi.
-                </p>
-              )}
+              {minimum > 0 && <p>Minimalni zakup banera · {priceLabel(minimum)}</p>}
               {price !== null && !validVolume && (
                 <p id="broj-prikaza-greska">Unesi cijeli broj između 1.000 i 10.000.000 prikaza.</p>
               )}
@@ -341,7 +337,8 @@ export function AdExplorer({
           <table>
             <caption>
               Cijene u {creditRate === undefined ? "KM" : "Ahi kreditima"} za 1.000 prikaza (CPM).
-              Primjenjivi porez iskazuje se u ponudi.
+              {minimum > 0 && <> Minimalni zakup banera je {priceLabel(minimum)}.</>} Primjenjivi
+              porez iskazuje se u ponudi.
             </caption>
             <thead>
               <tr>

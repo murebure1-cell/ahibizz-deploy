@@ -103,6 +103,12 @@ export async function verifyMarketingOnlineQuotes(
       for (const replay of replays) assert.equal(replay.captureId, paid.captureId);
       assert.equal((await state(id)).online_checkout_id, paid.id);
       assert.equal((await state(id)).bank_reference, null);
+      const historical = (await marketing.read(headers(user), "credits", 0)).orders.find(
+        (item) => item.id === id,
+      );
+      assert.equal(historical.paidWithCredits, false);
+      assert.equal(historical.paidCurrency, "EUR");
+      assert.equal(historical.paidAmountMinor, paid.amountMinor);
       assert.equal(await balance(), baseline + 30);
       await assert.rejects(store.create(user, input(id)), /QUOTE_NOT_PAYABLE/);
       const refund = { captureId: paid.captureId, refundedMinor: paid.amountMinor };

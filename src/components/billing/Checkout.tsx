@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { creditTopUpPath } from "../../lib/account-return";
 import { readCheckoutOrder } from "../../lib/checkout-order-read";
 import {
   canCancelPromotionOrder,
@@ -678,6 +679,7 @@ export function Checkout({
           {offerError ? (
             <>
               <p role="alert">{offerError}</p>
+              {platformCreditsOnly && <a href="/nalog?odjeljak=oglasi">Moje ponude</a>}
               <button type="button" onClick={() => setOfferAttempt((n) => n + 1)}>
                 Pokušaj ponovo
               </button>
@@ -870,7 +872,15 @@ export function Checkout({
                           Plati {formatAhiCredits(quoteCreditMinor)}
                         </button>
                       ) : (
-                        <a href="/nalog?odjeljak=krediti">Dopuni Ahi kredite</a>
+                        <>
+                          <p>
+                            Nedostaje{" "}
+                            {formatAhiCredits(quoteCreditMinor - Math.round(quoteBalance * 100))}.
+                          </p>
+                          <a href={creditTopUpPath(`/naplata?ponuda=${offer.id}`)}>
+                            Dopuni Ahi kredite
+                          </a>
+                        </>
                       )}
                     </>
                   )}
@@ -1088,15 +1098,17 @@ export function Checkout({
                     disabled={busy}
                     onClick={payWithCredits}
                   >
-                    Plati {(wallet.priceMinor / 100).toLocaleString("bs-BA")} Ahi kredita
+                    Plati {formatAhiCredits(wallet.priceMinor)}
                   </button>
                 ) : (
                   <>
                     <p>
-                      Za isticanje je potrebno {(wallet.priceMinor / 100).toLocaleString("bs-BA")}{" "}
-                      kredita.
+                      Nedostaje{" "}
+                      {formatAhiCredits(wallet.priceMinor - Math.round(wallet.balance * 100))}.
                     </p>
-                    <a href="/nalog?odjeljak=krediti">Dopuni Ahi kredite</a>
+                    <a href={creditTopUpPath(`/naplata?djelatnost=${businessId}`)}>
+                      Dopuni Ahi kredite
+                    </a>
                   </>
                 )}
               </div>

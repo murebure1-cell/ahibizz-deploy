@@ -7,6 +7,8 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   type AccountSection,
   accountSectionPath,
+  creditTopUpPath,
+  creditTopUpReturn,
   readAccountNavigation,
 } from "../../lib/account-return";
 import { accountShortcuts } from "../../lib/account-shortcuts";
@@ -130,6 +132,10 @@ function AccountWorkspace({
     section === "businesses" &&
     searchParams?.getAll("novo").length === 1 &&
     searchParams.get("novo") === "1";
+  const purchaseReturn =
+    section === "credits" && searchParams?.getAll("nastavi").length === 1
+      ? creditTopUpReturn(searchParams.get("nastavi"))
+      : null;
   const returnPath = view.campaign
     ? campaignPath(view.campaign)
     : view.placementTarget
@@ -138,7 +144,9 @@ function AccountWorkspace({
         ? accountShortcuts.notificationSettings
         : startBusinessCreation
           ? accountShortcuts.newBusiness
-          : accountSectionPath(section);
+          : purchaseReturn
+            ? creditTopUpPath(purchaseReturn)
+            : accountSectionPath(section);
   const photo = personal ? profileImageUrl(personal, "photo") : null;
   const menu = accountMenu.filter((item) => !IS_PLAY_EDITION || !item.digital);
   const current = menu.find((item) => item.id === section);
@@ -407,6 +415,7 @@ function AccountWorkspace({
                   mode={section === "credits" ? "credits" : "ads"}
                   target={view.placementTarget}
                   campaign={view.campaign}
+                  returnTo={purchaseReturn}
                   promotionView={
                     searchParams?.getAll("prikaz").length === 1
                       ? searchParams.get("prikaz") === "aktivne"

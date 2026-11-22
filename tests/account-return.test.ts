@@ -5,9 +5,41 @@ import {
   accountReturnPath,
   accountSection,
   accountSectionPath,
+  creditTopUpPath,
+  creditTopUpReturn,
   readAccountNavigation,
 } from "../src/lib/account-return";
 import { reportUrl, supportTarget } from "../src/lib/support-requests";
+
+test("credit top-ups preserve only supported purchase destinations and their exact selection", () => {
+  const id = "2b97204a-7562-418e-8873-41020b6ff957";
+  for (const purchase of [
+    "/naplata",
+    `/naplata?ponuda=${id}`,
+    `/naplata?djelatnost=${id}`,
+    "/nalog/reels",
+    `/nalog/reels?djelatnost=${id}`,
+    `/paketi/placanje?paket=business&period=annual&djelatnost=${id}`,
+    `/paketi/placanje?paket=premium&period=monthly&djelatnost=${id}&ugovor=${id}`,
+  ]) {
+    const topUp = creditTopUpPath(purchase);
+    assert.equal(creditTopUpReturn(purchase), purchase);
+    assert.equal(new URL(topUp, "https://fixture.invalid").searchParams.get("nastavi"), purchase);
+    assert.equal(accountReturnPath(topUp), topUp);
+    assert.equal(accountReturnPath(`${topUp}&nastavi=/naplata`), "/nalog");
+  }
+  for (const invalid of [
+    "//outside.invalid/naplata",
+    "/administracija",
+    "/naplata?ponuda=unknown",
+    "/nalog/reels?next=https://outside.invalid",
+    `/paketi/placanje?paket=basic&period=monthly&djelatnost=${id}&djelatnost=${id}`,
+    creditTopUpPath("/naplata"),
+  ]) {
+    assert.equal(creditTopUpReturn(invalid), null);
+    assert.equal(creditTopUpPath(invalid), "/nalog?odjeljak=krediti");
+  }
+});
 
 test("Reel reporting survives login with an exact local report destination", () => {
   const reel = "2b97204a-7562-418e-8873-41020b6ff957";

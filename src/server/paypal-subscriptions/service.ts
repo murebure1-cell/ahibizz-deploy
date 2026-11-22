@@ -562,12 +562,26 @@ export function createPackageSubscriptions({
       });
     },
     refresh,
-    async cancel(h: Headers, id: string) {
+    async cancel(h: Headers, id: string, unpaidOnly = false) {
       if (!provider) return fail(503, "SUBSCRIPTIONS_UNAVAILABLE");
       const r = await owner(h, (c, u) => read(c, id, u));
       if (!r.providerId) return fail(409, "SUBSCRIPTION_REQUIRES_REVIEW");
-      if (r.status !== "CANCELLED" && r.status !== "EXPIRED") await provider.cancel(r);
-      return refresh(h, id);
+      if (r.status === "CANCELLED" || r.status === "EXPIRED") return refresh(h, id);
+      if (
+        unpaidOnly &&
+        (environment !== "live" ||
+          !readPlatformCreditsOnly() ||
+          r.paymentMethod !== "paypal" ||
+          r.status !== "APPROVAL_PENDING" ||
+          r.paidCycles > 0 ||
+          (r.reportedCycles ?? 0) > 0)
+      )
+        return fail(409, "SUBSCRIPTION_PENDING_CHANGED");
+      await provider.cancel(r, unpaidOnly);
+      const current = await refresh(h, id);
+      if (unpaidOnly && !["CANCELLED", "EXPIRED"].includes(current.contract.status))
+        return fail(409, "SUBSCRIPTION_PENDING_CHANGED");
+      return current;
     },
     async webhook(h: Headers, event: unknown, raw: string) {
       if (!provider) return fail(503, "SUBSCRIPTIONS_UNAVAILABLE");

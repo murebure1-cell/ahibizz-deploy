@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { creditTopUpPath } from "../../lib/account-return";
 import {
   type BillingPackageId,
   type BillingPeriod,
@@ -119,6 +120,8 @@ async function request<T>(
         throw new Error("Ova djelatnost već ima pravo na usluge odabranog paketa.");
       if (detail?.code === "SUBSCRIPTION_SETTLEMENT_PENDING")
         throw new Error("PayPal još obrađuje uplatu. Provjeri status postojeće pretplate.");
+      if (detail?.code === "SUBSCRIPTION_PENDING_CHANGED")
+        throw new Error("Zatvaranje još nije potvrđeno. Provjeri najnoviji status zahtjeva.");
       throw new Error("Za ovu djelatnost već postoji pretplata. Provjeri njen status ispod.");
     }
     throw new Error("Zahtjev nije završen. Provjeri status pretplate prije novog pokušaja.");
@@ -145,6 +148,7 @@ export function PackageCheckout({
   userId,
   initialPackage,
   initialContract,
+  initialBusinessId = null,
   abandoned,
 }: {
   environment?: "live" | "sandbox";
@@ -152,6 +156,7 @@ export function PackageCheckout({
   userId: string;
   initialPackage: BillingPackageId;
   initialContract: string | null;
+  initialBusinessId?: string | null;
   abandoned: boolean;
 }) {
   const sandbox = environment === "sandbox";
@@ -160,7 +165,7 @@ export function PackageCheckout({
   const contractsPath = `${api}/contracts`;
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [businessId, chooseBusiness] = useState("");
+  const [businessId, chooseBusiness] = useState(initialBusinessId ?? "");
   const [packageId, choosePackage] = useState(initialPackage);
   const [period, choosePeriod] = useState<BillingPeriod>(initialPeriod);
   const [accepted, accept] = useState(false);
@@ -205,15 +210,29 @@ export function PackageCheckout({
     ? requestedMethod
     : (methods[0] ?? requestedMethod);
   const chosenBusiness =
-    eligibleBusinesses.find((b) => b.id === businessId)?.id ?? eligibleBusinesses[0]?.id ?? "";
+    eligibleBusinesses.find((b) => b.id === businessId)?.id ??
+    (initialBusinessId ? "" : (eligibleBusinesses[0]?.id ?? ""));
+  const creditBalanceMinor = balance === null ? null : Math.round(balance * 100);
+  const missingCredits =
+    paymentMethod === "credits" && creditPrice !== null && creditBalanceMinor !== null
+      ? Math.max(creditPrice - creditBalanceMinor, 0)
+      : 0;
+  const topUpReturn = new URLSearchParams({ paket: packageId, period });
+  if (chosenBusiness) topUpReturn.set("djelatnost", chosenBusiness);
   const canSubmit = Boolean(
-    ready && chosenBusiness && quote && accepted && methods.includes(paymentMethod),
+    ready &&
+      chosenBusiness &&
+      quote &&
+      accepted &&
+      !missingCredits &&
+      methods.includes(paymentMethod),
   );
 
   useEffect(() => {
     const controller = new AbortController();
     const { signal } = controller;
     const params = new URLSearchParams({ paket: initialPackage, period: initialPeriod });
+    if (initialBusinessId) params.set("djelatnost", initialBusinessId);
     if (initialContract) params.set("ugovor", initialContract);
     if (abandoned) params.set("odustao", "1");
     window.history.replaceState(window.history.state, "", `${pagePath}?${params}`);
@@ -233,7 +252,10 @@ export function PackageCheckout({
         setCatalog(pricing);
         if (!pricing.walletRate) setPaymentMethod("paypal");
         setBusinesses(mine);
-        chooseBusiness((id) => mine.find((b) => b.id === id)?.id ?? mine[0]?.id ?? "");
+        chooseBusiness(
+          (id) =>
+            mine.find((b) => b.id === id)?.id ?? (initialBusinessId ? "" : (mine[0]?.id ?? "")),
+        );
         setContracts(history.contracts);
         setBalance(history.walletBalance ?? null);
         if (
@@ -271,6 +293,7 @@ export function PackageCheckout({
     initialPackage,
     initialPeriod,
     initialContract,
+    initialBusinessId,
     abandoned,
     sandbox,
   ]);
@@ -397,7 +420,7 @@ export function PackageCheckout({
   }
 
   async function perform(
-    action: "create" | "resume" | "refresh" | "cancel" | "pay-credits",
+    action: "create" | "resume" | "refresh" | "cancel" | "close-unpaid" | "pay-credits",
     existing?: SandboxPackageContract,
   ) {
     if (
@@ -418,12 +441,14 @@ export function PackageCheckout({
       } else {
         if (!existing) return;
         result = await request(
-          `${contractsPath}/${existing.id}/${action}`,
+          `${contractsPath}/${existing.id}/${action === "close-unpaid" ? "cancel" : action}`,
           userId,
           undefined,
           action === "pay-credits"
             ? { cycle: existing.paidCycles + 1, expectedCreditMinor: existing.cycleCreditMinor }
-            : {},
+            : action === "close-unpaid"
+              ? { unpaidOnly: true }
+              : {},
         );
       }
       remember(result.contract);
@@ -441,7 +466,8 @@ export function PackageCheckout({
       if (action === "refresh" && result.contract.id === initialContract)
         setReturnChecked(result.contract.id);
       setConfirmCancel("");
-      if (action === "cancel") pendingKey.current = null;
+      if (action === "cancel" || action === "close-unpaid") pendingKey.current = null;
+      if (action === "close-unpaid") setConfirmation("Stari pokušaj plaćanja je zatvoren.");
       if (result.approvalUrl) {
         const approval = new URL(result.approvalUrl);
         if (
@@ -555,6 +581,7 @@ export function PackageCheckout({
                     accept(false);
                   }}
                 >
+                  {!chosenBusiness && <option value="">Odaberi djelatnost</option>}
                   {eligibleBusinesses.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.title}
@@ -653,11 +680,16 @@ export function PackageCheckout({
                           : "Nastavi na PayPal"}
                     </button>
                     {paymentMethod === "credits" && balance !== null && (
-                      <p>Stanje · {formatAhiCredits(Math.round(balance * 100))}</p>
+                      <p>Stanje · {formatAhiCredits(creditBalanceMinor ?? 0)}</p>
                     )}
                     {paymentMethod === "credits" && (
-                      <a className={styles.secondary} href="/nalog?odjeljak=krediti">
-                        Dopuni kredite
+                      <a
+                        className={missingCredits > 0 ? styles.primary : styles.secondary}
+                        href={creditTopUpPath(`${pagePath}?${topUpReturn}`)}
+                      >
+                        {missingCredits > 0
+                          ? `Dopuni kredite · nedostaje ${formatAhiCredits(missingCredits)}`
+                          : "Dopuni kredite"}
                       </a>
                     )}
                   </div>
@@ -731,14 +763,50 @@ export function PackageCheckout({
                   Čekamo PayPalov zapis prve uplate.
                 </p>
               )}
-              {confirmCancel === c.id && c.period === "monthly" && c.paidCycles < c.totalCycles && (
-                <p className={styles.footnote}>
-                  PayPal će zaustaviti buduće automatske uplate. Pregled preostalih rata i dalje je
-                  dostupan u ugovoru.
-                </p>
-              )}
+              {confirmCancel === c.id &&
+                c.status !== "APPROVAL_PENDING" &&
+                c.period === "monthly" &&
+                c.paidCycles < c.totalCycles && (
+                  <p className={styles.footnote}>
+                    PayPal će zaustaviti buduće automatske uplate. Pregled preostalih rata i dalje
+                    je dostupan u ugovoru.
+                  </p>
+                )}
               <StoppedInstallments contract={c} />
               <div className={styles.actions}>
+                {creditsOnly &&
+                  c.paymentMethod === "paypal" &&
+                  c.status === "APPROVAL_PENDING" &&
+                  c.paidCycles === 0 &&
+                  (confirmCancel === c.id ? (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.danger}
+                        disabled={busy}
+                        onClick={() => void perform("close-unpaid", c)}
+                      >
+                        Potvrdi zatvaranje starog pokušaja
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.secondary}
+                        disabled={busy}
+                        onClick={() => setConfirmCancel("")}
+                      >
+                        Nazad
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.secondary}
+                      disabled={busy}
+                      onClick={() => setConfirmCancel(c.id)}
+                    >
+                      Zatvori stari pokušaj plaćanja
+                    </button>
+                  ))}
                 {!creditsOnly && (c.status === "CREATING" || c.status === "APPROVAL_PENDING") && (
                   <>
                     <button
@@ -772,15 +840,22 @@ export function PackageCheckout({
                   c.endsAt &&
                   c.cycleCreditMinor &&
                   (Date.parse(c.endsAt) <= Date.now() ? (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      className={styles.primary}
-                      onClick={() => void perform("pay-credits", c)}
-                    >
-                      Plati {c.paidCycles + 1}. ratu od {dueDate(c.endsAt)} ·{" "}
-                      {formatAhiCredits(c.cycleCreditMinor)}
-                    </button>
+                    creditBalanceMinor !== null && creditBalanceMinor < c.cycleCreditMinor ? (
+                      <a className={styles.primary} href={creditTopUpPath(contractPath(c))}>
+                        Dopuni kredite za ratu ·{" "}
+                        {formatAhiCredits(c.cycleCreditMinor - creditBalanceMinor)}
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className={styles.primary}
+                        onClick={() => void perform("pay-credits", c)}
+                      >
+                        Plati {c.paidCycles + 1}. ratu od {dueDate(c.endsAt)} ·{" "}
+                        {formatAhiCredits(c.cycleCreditMinor)}
+                      </button>
+                    )
                   ) : (
                     <p>Sljedeća rata · {dueDate(c.endsAt)}</p>
                   ))}

@@ -62,6 +62,7 @@ export function AdCampaignForm({
   const [validationError, setValidationError] = useState("");
   const pending = useRef<{ key: string; id: string } | null>(null);
   const creditRate = data.platformCreditsOnly ? (data.creditUnitBamMinor ?? null) : undefined;
+  const minimum = data.adPricing?.terms.minimumMinor ?? 0;
   const business = data.businesses.find((b) => b.id === businessId);
   const formats = adFormats.filter(
     (f) =>
@@ -243,17 +244,19 @@ export function AdCampaignForm({
                 onChange={(e) => setImpressions(e.target.value)}
               />
             </label>
-            {estimate && (
+            {(estimate || minimum > 0) && (
               <div className={styles.instructions}>
-                <strong>
-                  Procjena zakupa ·{" "}
-                  {adAmount(Math.max(estimate.netMinor, estimate.minimumMinor), creditRate)}
-                </strong>
-                {estimate.discountPercent > 0 && (
+                {estimate && (
+                  <strong>
+                    Procjena zakupa ·{" "}
+                    {adAmount(Math.max(estimate.netMinor, estimate.minimumMinor), creditRate)}
+                  </strong>
+                )}
+                {estimate && estimate.discountPercent > 0 && (
                   <span>Popust na prikaze {estimate.discountPercent}%</span>
                 )}
-                {estimate.belowMinimum && (
-                  <span>Minimalni zakup {adAmount(estimate.minimumMinor, creditRate)}</span>
+                {minimum > 0 && (
+                  <span>Minimalni zakup banera · {adAmount(minimum, creditRate)}</span>
                 )}
               </div>
             )}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { creditTopUpPath } from "../../lib/account-return";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
 import {
   type ManagedReel,
@@ -14,6 +15,7 @@ import {
   reelMedia,
   reelPartBytes,
 } from "../../lib/reels";
+import { formatAhiCredits } from "../../lib/wallet";
 import { previewFrame } from "./poster";
 import styles from "./reels.module.css";
 
@@ -65,7 +67,7 @@ function describe(code: string, admin: boolean) {
 }
 
 function formatCredits(amount: number) {
-  return `${amount.toLocaleString("bs-BA")} ${amount === 1 ? "Ahi kredit" : "Ahi kredita"}`;
+  return formatAhiCredits(Math.round(amount * 100));
 }
 
 export function ReelManager({
@@ -278,7 +280,13 @@ export function ReelManager({
                 {insufficient && (
                   <p className={styles.paymentWarning}>
                     Nemaš dovoljno Ahi kredita.{" "}
-                    <Link href="/nalog?odjeljak=krediti">Dopuni kredite</Link>
+                    <Link
+                      href={creditTopUpPath(
+                        selected ? `/nalog/reels?djelatnost=${selected}` : "/nalog/reels",
+                      )}
+                    >
+                      Dopuni kredite
+                    </Link>
                   </p>
                 )}
               </div>

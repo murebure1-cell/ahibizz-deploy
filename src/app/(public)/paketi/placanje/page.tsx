@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { PackageCheckout } from "../../../../components/billing/PackageCheckout";
 import { billingPackages } from "../../../../lib/billing";
+import { businessUuid } from "../../../../lib/business-today";
 import {
   AccountAccessError,
   getAccountService,
@@ -29,7 +30,9 @@ export default async function Page({
       : null;
   const abandoned = contractId !== null && query.odustao === "1";
   const period = query.period === "annual" ? "annual" : "monthly";
+  const businessId = businessUuid(query.djelatnost) ? query.djelatnost : null;
   const params = new URLSearchParams({ paket: packageId, period });
+  if (businessId) params.set("djelatnost", businessId);
   if (contractId) params.set("ugovor", contractId);
   if (abandoned) params.set("odustao", "1");
   let account: SafeAccountProfile | undefined;
@@ -48,6 +51,7 @@ export default async function Page({
         userId={account.id}
         initialPackage={packageId}
         initialContract={contractId}
+        initialBusinessId={businessId}
         abandoned={abandoned}
       />
     </main>

@@ -310,6 +310,13 @@ export function BankTopUpAdmin({ workspace }: { workspace: BankWorkspace }) {
                   <small>{[request.customer, request.email].filter(Boolean).join(" · ")}</small>
                 )}
                 <p>Referenca uplate: {request.paymentReference}</p>
+                {request.instructionsAvailable &&
+                  (request.bank.iban || request.bank.accountNumber) && (
+                    <p>
+                      {request.bank.name} · račun završava na{" "}
+                      {(request.bank.iban || request.bank.accountNumber)?.slice(-4)}
+                    </p>
+                  )}
                 {request.status !== "approved" && (
                   <>
                     <p>Odobri kad se iznos, valuta i referenca poklope s bankovnim izvodom.</p>

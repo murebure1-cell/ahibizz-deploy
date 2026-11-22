@@ -47,6 +47,8 @@ const validText = (v: unknown, max: number): v is string =>
   v.trim().length > 0 &&
   v.length <= max &&
   !/\p{Cc}/u.test(v.replace(/[\t\r\n]/g, ""));
+const paidWithCredits = `o.status='paid' AND (o.wallet_payment_id IS NOT NULL OR
+  (o.bank_reference IS NULL AND o.online_checkout_id IS NULL AND o.credit_price IS NOT NULL))`;
 
 export function parseMarketingCommand(v: unknown): MarketingCommand {
   if (!v || typeof v !== "object" || Array.isArray(v)) fail(400, "INVALID_OFFER");
@@ -241,12 +243,22 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           await client.query<MarketingOrder>(
             `
           SELECT o.id,o.kind,o.status,o.quantity,o.amount_minor AS "amountMinor",(o.wallet_price_minor::double precision/100) AS "creditPrice",
-            EXISTS (SELECT 1 FROM ahi_wallet_bank_topup bank WHERE bank.order_id=o.id) AS "bankTopUp",
+            (${paidWithCredits}) AS "paidWithCredits",bank.id IS NOT NULL AS "bankTopUp",
+            CASE WHEN o.status='paid' THEN
+              CASE WHEN paid_online.id IS NOT NULL THEN paid_online.currency
+                   WHEN o.bank_reference IS NOT NULL THEN COALESCE(bank.currency,'BAM') END
+            END AS "paidCurrency",
+            CASE WHEN o.status='paid' THEN
+              CASE WHEN paid_online.id IS NOT NULL THEN paid_online.amount_minor
+                   WHEN o.bank_reference IS NOT NULL THEN COALESCE(bank.amount_minor,o.amount_minor) END
+            END AS "paidAmountMinor",
             o.revoked_at::text AS "revokedAt",(o.status='quoted' AND EXISTS (SELECT 1 FROM paypal_checkout_order p WHERE p.quote_id=o.id AND p.environment='live'
               AND ${holdsQuotePayment})) AS "onlinePending",
             ${campaignProjection},o.instructions,b.title AS "businessTitle",u.name AS customer,o.starts_at::text AS "startsAt",
             CASE WHEN o.ends_at IS NOT NULL THEN LEAST(o.ends_at,o.revoked_at)::text END AS "endsAt",o.production_receipt_conflict AS "productionReceiptConflict"
           FROM marketing_order o JOIN auth_user u ON u.id=o.account_id LEFT JOIN directory_business b ON b.id=o.business_id
+          LEFT JOIN ahi_wallet_bank_topup bank ON bank.order_id=o.id
+          LEFT JOIN paypal_checkout_order paid_online ON paid_online.id=o.online_checkout_id
           LEFT JOIN marketing_campaign_brief c ON c.order_id=o.id
           LEFT JOIN directory_category dc ON dc.id=c.category_id
           LEFT JOIN marketing_ad_totals stats ON stats.order_id=o.id
@@ -374,6 +386,8 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
               fail(409, "OFFER_CHANGED");
             return { id: command.id };
           }
+          if (command.kind === "banner" && !command.campaign && readPlatformCreditsOnly())
+            fail(400, "CAMPAIGN_REQUIRED");
           if (
             command.businessId &&
             (await validBusiness(client, command.businessId, actor.id, command.kind))
@@ -411,13 +425,33 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
         }
         // Lock matching listing before the order, as the ownership trigger also locks in this order.
         const target = (
-          await client.query<LockedOrder>(
-            "SELECT business_id,account_id,kind FROM marketing_order WHERE id=$1",
+          await client.query<
+            Pick<LockedOrder, "business_id" | "account_id" | "kind"> & {
+              paid_with_credits: boolean;
+            }
+          >(
+            `SELECT o.business_id,o.account_id,o.kind,(${paidWithCredits}) AS paid_with_credits
+             FROM marketing_order o WHERE o.id=$1`,
             [command.id],
           )
         ).rows[0];
         if (!target || (actor.role !== "owner" && target.account_id !== actor.id))
           fail(404, "OFFER_NOT_FOUND");
+        // A successful debit can be replayed even if the listing became ineligible after payment.
+        if (
+          command.action === "useCredits" &&
+          target.account_id === actor.id &&
+          target.paid_with_credits
+        )
+          return { id: command.id };
+        if (command.action === "confirm" && target.account_id !== actor.id) {
+          const customer = await client.query(
+            `SELECT id FROM auth_user WHERE id=$1 AND approval='approved' AND "emailVerified"
+              AND role IN ('owner','member') AND erased_at IS NULL FOR UPDATE`,
+            [target.account_id],
+          );
+          if (!customer.rowCount) fail(409, "ACCOUNT_CHANGED");
+        }
         const includedUntil =
           target.business_id && command.action !== "close"
             ? await validBusiness(client, target.business_id, target.account_id, target.kind)
@@ -445,7 +479,8 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
         if (command.action === "quote") {
           if (includedUntil) fail(409, "INCLUDED_IN_PACKAGE");
           const creditsOnly = readPlatformCreditsOnly();
-          if (creditsOnly && order.kind === "credits") fail(409, "CREDIT_TOP_UP_BANK_ONLY");
+          if (order.kind === "credits" && readCreditTopUpBankOnly())
+            fail(409, "CREDIT_TOP_UP_BANK_ONLY");
           const creditPrice = command.creditPrice;
           if (creditsOnly && (command.amountMinor !== undefined || creditPrice === undefined))
             fail(409, "PLATFORM_CREDITS_ONLY");
@@ -499,11 +534,6 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
             [command.id],
           );
         } else {
-          const customer = await client.query(
-            `SELECT id FROM auth_user WHERE id=$1 AND approval='approved' AND "emailVerified" AND role IN ('owner','member') FOR UPDATE`,
-            [order.account_id],
-          );
-          if (!customer.rowCount) fail(409, "ACCOUNT_CHANGED");
           if (
             command.action === "useCredits" &&
             (actor.id !== order.account_id ||
@@ -523,11 +553,11 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           )
             return { id: command.id };
           if (order.status !== "quoted") fail(409, "OFFER_CHANGED");
-          if (command.action === "confirm" && readPlatformCreditsOnly())
-            fail(
-              409,
-              order.kind === "credits" ? "CREDIT_TOP_UP_BANK_ONLY" : "PLATFORM_CREDITS_ONLY",
-            );
+          if (command.action === "confirm") {
+            if (order.kind === "credits" && readCreditTopUpBankOnly())
+              fail(409, "CREDIT_TOP_UP_BANK_ONLY");
+            if (readPlatformCreditsOnly()) fail(409, "PLATFORM_CREDITS_ONLY");
+          }
           if (isPlacement(order.kind)) {
             const active = await client.query(
               "SELECT id FROM marketing_order WHERE business_id=$1 AND kind=$2 AND campaign_key IS NOT DISTINCT FROM $3::text AND status='paid' AND revoked_at IS NULL AND ends_at>clock_timestamp()",
@@ -536,13 +566,15 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
             if (active.rowCount) fail(409, "ACTIVE_BANNER");
           }
           try {
-            if (command.action === "useCredits")
-              await debitWallet(client, {
+            if (command.action === "useCredits") {
+              const debited = await debitWallet(client, {
                 accountId: actor.id,
                 purchaseId: command.id,
                 kind: "marketing",
                 creditMinor: Number(order.wallet_price_minor),
               });
+              if (!debited) fail(409, "WALLET_PAYMENT_CHANGED");
+            }
             await settleMarketingPayment(client, {
               id: command.id,
               actorId: actor.id,

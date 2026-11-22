@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { creditTopUpPath, creditTopUpReturn } from "../../lib/account-return";
 import { type CampaignSelection, campaignPath } from "../../lib/ad-brief";
 import type { BankTopUpCreate } from "../../lib/bank-credit-topup";
 import { billingMoney } from "../../lib/billing";
@@ -19,7 +20,12 @@ import {
   type PlacementTarget,
   productionServices,
 } from "../../lib/marketing";
-import { ahiCreditTopUps, creditsForBamMinor, formatAhiCredits } from "../../lib/wallet";
+import {
+  ahiCreditTopUps,
+  creditNumber as credits,
+  creditsForBamMinor,
+  formatAhiCredits,
+} from "../../lib/wallet";
 import { AdCampaignForm, CampaignDetails } from "./AdCampaignForm";
 import { AdCreativeManager } from "./AdCreativeManager";
 import { AdRateEditor } from "./AdRateEditor";
@@ -46,6 +52,7 @@ const messages: Record<string, string> = {
   CAMPAIGN_DATE_CHANGED: "Odaberi početak u narednih 12 mjeseci.",
   CAMPAIGN_BUDGET_EXCEEDED: "Ponuda prelazi budžet koji je oglašivač prihvatio.",
   CAMPAIGN_MINIMUM: "Ponuda je ispod minimalnog zakupa ove kampanje.",
+  CAMPAIGN_REQUIRED: "Za baner odaberi poziciju i format kampanje.",
   CAMPAIGN_BENEFIT_CHANGED: "Cijena više ne odgovara odabranom popustu.",
   CAMPAIGN_WELCOME_USED: "Oglašivač je već koristio popust dobrodošlice ili imao plaćenu kampanju.",
   CAMPAIGN_MANUAL_ONLY: "Posebni uslovi ciljanja zahtijevaju pojedinačni dogovor.",
@@ -65,7 +72,6 @@ const messages: Record<string, string> = {
   INVALID_OFFER: "Provjeri unesene podatke.",
   ACCOUNT_IDENTITY_CHANGED: "Prijavi se ponovo i osvježi ovu stranicu.",
 };
-const credits = (quantity: number) => new Intl.NumberFormat("bs-BA").format(quantity);
 
 function OfferCard({
   accountId,
@@ -93,6 +99,7 @@ function OfferCard({
   refresh: () => void;
 }) {
   const bankOnlyTopUp = order.kind === "credits" && creditTopUpBankOnly;
+  const showPaymentHistory = order.status === "paid" && platformCreditsOnly;
   const [benefit, setBenefit] = useState<"" | "advance" | "welcome">("");
   const suggested = order.campaign
     ? benefit === "advance"
@@ -173,26 +180,38 @@ function OfferCard({
           editable={order.status === "requested" && !admin}
         />
       )}
-      {order.amountMinor !== null && (
+      {showPaymentHistory ? (
         <p className={styles.amount}>
-          {platformCreditsOnly &&
-          order.kind !== "credits" &&
-          !order.onlinePending &&
-          (order.creditPrice !== null || order.status === "quoted") ? (
-            order.creditPrice !== null ? (
-              formatAhiCredits(Math.round(order.creditPrice * 100))
-            ) : (
-              "Cijena u kreditima nije dostupna"
-            )
-          ) : (
-            <>
-              {billingMoney(order.amountMinor)}
-              {!platformCreditsOnly && order.creditPrice !== null && (
-                <small> ili {credits(order.creditPrice)} kredita</small>
-              )}
-            </>
-          )}
+          {order.paidWithCredits
+            ? order.creditPrice !== null
+              ? `Plaćeno · ${formatAhiCredits(Math.round(order.creditPrice * 100))}`
+              : "Plaćeno Ahi kreditima"
+            : order.paidCurrency && order.paidAmountMinor != null
+              ? `Evidentirana uplata · ${creditBankAmount(order.paidAmountMinor, order.paidCurrency)}`
+              : "Uplata evidentirana"}
         </p>
+      ) : (
+        order.amountMinor !== null && (
+          <p className={styles.amount}>
+            {platformCreditsOnly &&
+            order.kind !== "credits" &&
+            !order.onlinePending &&
+            (order.creditPrice !== null || order.status === "quoted") ? (
+              order.creditPrice !== null ? (
+                formatAhiCredits(Math.round(order.creditPrice * 100))
+              ) : (
+                "Cijena u kreditima nije dostupna"
+              )
+            ) : (
+              <>
+                {billingMoney(order.amountMinor)}
+                {!platformCreditsOnly && order.creditPrice !== null && (
+                  <small> ili {credits(order.creditPrice)} kredita</small>
+                )}
+              </>
+            )}
+          </p>
+        )
       )}
       {admin && order.productionReceiptConflict && (
         <p role="status">
@@ -331,17 +350,25 @@ function OfferCard({
         !order.onlinePending &&
         (isPlacement(order.kind) || (platformCreditsOnly && isProductionService(order.kind))) &&
         order.creditPrice !== null &&
-        (balance >= order.creditPrice ? (
+        (Math.round(balance * 100) >= Math.round(order.creditPrice * 100) ? (
           <button
             type="button"
             disabled={busy}
             onClick={() => submit({ action: "useCredits", id: order.id })}
           >
-            Plati kreditima · {credits(order.creditPrice)}
+            Plati {formatAhiCredits(Math.round(order.creditPrice * 100))}
           </button>
         ) : (
-          <Link className={styles.primaryLink} href="/nalog?odjeljak=krediti">
-            Dopuni kredite · nedostaje {credits(order.creditPrice - balance)}
+          <Link
+            className={styles.primaryLink}
+            href={
+              platformCreditsOnly
+                ? creditTopUpPath(`/naplata?ponuda=${order.id}`)
+                : "/nalog?odjeljak=krediti"
+            }
+          >
+            Dopuni kredite · nedostaje{" "}
+            {formatAhiCredits(Math.round(order.creditPrice * 100) - Math.round(balance * 100))}
           </Link>
         ))}
       {["requested", "quoted"].includes(order.status) && !order.onlinePending && (
@@ -363,6 +390,7 @@ export function MarketingWorkspace({
   target,
   campaign,
   promotionView,
+  returnTo,
 }: MarketingProps) {
   return (
     <MarketingView
@@ -372,6 +400,7 @@ export function MarketingWorkspace({
       target={target}
       campaign={campaign}
       promotionView={promotionView}
+      returnTo={returnTo}
     />
   );
 }
@@ -381,8 +410,16 @@ type MarketingProps = {
   target?: PlacementTarget;
   campaign?: CampaignSelection;
   promotionView?: "aktivne" | "zakazane";
+  returnTo?: string | null;
 };
-function MarketingView({ accountId, mode, target, campaign, promotionView }: MarketingProps) {
+function MarketingView({
+  accountId,
+  mode,
+  target,
+  campaign,
+  promotionView,
+  returnTo,
+}: MarketingProps) {
   const router = useRouter();
   const [selectedQuantity, setSelectedQuantity] = useState<number>(ahiCreditTopUps[0].quantity);
   const [chosenMethod, setChosenMethod] = useState<"card" | "paypal" | "bank">();
@@ -410,6 +447,9 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
     ? bankTopUps.data?.offers.find((offer) => offer.quantity === bundle.quantity)
     : null;
   const pendingBank = bankTopUps.data?.requests.find((request) => request.status === "pending");
+  const bankHistory =
+    bankTopUps.data?.requests.filter((request) => request.status !== "pending") ?? [];
+  const purchaseReturn = creditTopUpReturn(returnTo);
   const platformCreditsOnly = data?.platformCreditsOnly === true;
   const bankOnly = platformCreditsOnly || data?.creditTopUpBankOnly === true;
   const paypalAvailable = !bankOnly && data?.checkoutAvailable === true;
@@ -424,6 +464,7 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
           : receiver
             ? "bank"
             : null;
+  const bundles = method === "bank" ? (bankTopUps.data?.offers ?? []) : ahiCreditTopUps;
   const running = useRef(false);
   const mounted = useRef(false);
   const placementForm = useRef<HTMLFormElement>(null);
@@ -629,7 +670,7 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
         <header className={styles.wallet}>
           <span>Raspoloživi krediti</span>
           <strong>{credits(data.balance)}</strong>
-          {unitPrice !== null && (
+          {!platformCreditsOnly && unitPrice !== null && (
             <span>Pri plaćanju: {credits(100 / unitPrice)} kredita za 1 KM</span>
           )}
         </header>
@@ -678,7 +719,10 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
       )}
       {mode === "credits" && (
         <article className={styles.order}>
-          <h2>Dopuni kredite</h2>
+          <header>
+            <h2>Dopuni kredite</h2>
+            {purchaseReturn && <Link href={purchaseReturn}>Vrati se na kupovinu</Link>}
+          </header>
           {pendingBank ? (
             <CreditBankTransfer request={pendingBank} workspace={bankTopUps} />
           ) : bankOnly && !receiver ? (
@@ -703,9 +747,13 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
                 aria-label="Odaberi dopunu"
                 disabled={topUpInProgress}
               >
-                {ahiCreditTopUps.map((option) => (
+                {bundles.map((option) => (
                   <label className={styles.bundle} key={option.quantity}>
-                    <span className={styles.bundlePrice}>{billingMoney(option.amountMinor)}</span>
+                    <span className={styles.bundlePrice}>
+                      {method === "bank" && receiver
+                        ? creditBankAmount(option.amountMinor, receiver.currency)
+                        : billingMoney(option.amountMinor)}
+                    </span>
                     <input
                       type="radio"
                       name="dopuna"
@@ -880,6 +928,32 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
         </article>
       )}
       {message && <p role="status">{message}</p>}
+      {mode === "credits" && bankHistory.length > 0 && (
+        <article className={styles.order}>
+          <h2>Bankovne uplate</h2>
+          <ul className={styles.bankList}>
+            {bankHistory.map((request) => (
+              <li className={styles.bankOrder} key={request.id}>
+                <strong>
+                  {formatAhiCredits(request.quantity * 100)} ·{" "}
+                  {creditBankAmount(request.amountMinor, request.currency)}
+                </strong>
+                <span>
+                  {request.status === "approved" ? "Uplata potvrđena" : "Zahtjev otkazan"} ·{" "}
+                  {new Date(request.approvedAt ?? request.createdAt).toLocaleDateString([
+                    "bs-BA",
+                    "hr-HR",
+                  ])}
+                </span>
+                <details>
+                  <summary>Referenca uplate</summary>
+                  <p>{request.paymentReference}</p>
+                </details>
+              </li>
+            ))}
+          </ul>
+        </article>
+      )}
       {mode === "credits" && Boolean(data.movements?.length) && (
         <article className={styles.order}>
           <h2>Promet kredita</h2>

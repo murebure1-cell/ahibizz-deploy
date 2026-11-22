@@ -47,6 +47,9 @@ export type MarketingOrder = {
   quantity: number;
   amountMinor: number | null;
   creditPrice: number | null;
+  paidWithCredits?: boolean;
+  paidCurrency?: "BAM" | "EUR" | null;
+  paidAmountMinor?: number | null;
   instructions: string | null;
   onlinePending?: boolean;
   bankTopUp?: boolean;

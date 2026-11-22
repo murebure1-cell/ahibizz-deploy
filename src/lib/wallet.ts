@@ -22,7 +22,11 @@ export function creditsForBamMinor(amountMinor: number, unitBamMinor: number): n
 }
 
 export function formatAhiCredits(creditMinor: number): string {
-  return `${(creditMinor / 100).toLocaleString("bs-BA", { maximumFractionDigits: 2 })} Ahi kredita`;
+  return `${creditNumber(creditMinor / 100)} ${creditMinor === 100 ? "Ahi kredit" : "Ahi kredita"}`;
+}
+
+export function creditNumber(value: number): string {
+  return new Intl.NumberFormat(["bs-BA", "hr-HR"], { maximumFractionDigits: 2 }).format(value);
 }
 
 export function formatCreditsFromBam(amountMinor: number, unitBamMinor: number | null): string {

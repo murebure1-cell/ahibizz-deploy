@@ -7,6 +7,7 @@ import {
 } from "../src/server/paypal-subscriptions/config";
 import {
   createSandboxProvider,
+  createSubscriptionProvider,
   sandboxSubscriptionApproval,
   subscriptionApproval,
   verifiedSandboxPayment,
@@ -69,6 +70,34 @@ const current = {
   status_update_time: new Date().toISOString(),
   start_time: new Date().toISOString(),
 };
+test("closing an unpaid PayPal attempt checks the provider status before writing", async () => {
+  let status = "APPROVAL_PENDING";
+  let billing: Record<string, unknown> = {};
+  let cancellations = 0;
+  const adapter = createSubscriptionProvider("live", config, async (input, init) => {
+    const url = new URL(String(input));
+    assert.equal(url.hostname, "api-m.paypal.com");
+    if (url.pathname.endsWith("/token"))
+      return Response.json({ access_token: "fixture", expires_in: 300 });
+    if (url.pathname.endsWith("/cancel")) {
+      assert.equal(init?.method, "POST");
+      cancellations++;
+      return new Response(null, { status: 204 });
+    }
+    return Response.json({ ...current, status, billing_info: billing });
+  });
+  billing = { cycle_executions: [{ cycles_completed: 1 }] };
+  await assert.rejects(adapter.cancel(record, true), { code: "SUBSCRIPTION_PENDING_CHANGED" });
+  billing = {};
+  status = "ACTIVE";
+  await assert.rejects(adapter.cancel(record, true), { code: "SUBSCRIPTION_PENDING_CHANGED" });
+  status = "CANCELLED";
+  await adapter.cancel(record, true);
+  assert.equal(cancellations, 0);
+  status = "APPROVAL_PENDING";
+  await adapter.cancel(record, true);
+  assert.equal(cancellations, 1);
+});
 test("sandbox gate uses only explicit sandbox configuration and six independently mapped finite plan IDs", () => {
   const env: NodeJS.ProcessEnv = {
     NODE_ENV: "test",

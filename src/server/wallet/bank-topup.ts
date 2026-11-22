@@ -292,7 +292,10 @@ export function createBankTopUpService(
         // The administrator matches the unique transfer memo and amount to the booked statement.
         const verifiedReference =
           command.bankTransactionReference ?? `MEMO:${row.payment_reference}`;
-        if (row.status === "paid" && row.bank_reference === verifiedReference)
+        if (
+          row.status === "paid" &&
+          (command.statementMatched === true || row.bank_reference === verifiedReference)
+        )
           return { request: dto(row, configuration(), true) };
         // Closed instructions may still receive a late bank transfer. Only an
         // administrator with the exact statement proof can reconcile that receipt.
