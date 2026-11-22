@@ -240,7 +240,7 @@ function Creative({ ad }: { ad: ServedAd }) {
             aria-label="Prethodna slika oglasa"
             onClick={() => setFrame((frame + count - 1) % count)}
           >
-            ‹
+            <Icon name="chevron" style={{ transform: "rotate(180deg)" }} />
           </button>
           <span aria-live="polite">
             {frame + 1} / {count}
@@ -250,7 +250,7 @@ function Creative({ ad }: { ad: ServedAd }) {
             aria-label="Sljedeća slika oglasa"
             onClick={() => setFrame((frame + 1) % count)}
           >
-            ›
+            <Icon name="chevron" />
           </button>
         </div>
       )}

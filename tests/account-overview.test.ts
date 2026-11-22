@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readOverview, readPlacements } from "../src/lib/account-overview";
-import { accountDate, messageDay } from "../src/lib/display-date";
+import { accountDate, bosnianDateTime } from "../src/lib/display-date";
 
-test("Sarajevo membership dates retain Bosnian month names across UTC midnight", () => {
-  assert.equal(accountDate("2026-11-18T23:30:00.000Z"), "19. novembra 2026.");
-  assert.equal(accountDate("2027-05-31T22:30:00.000Z"), "1. juna 2027.");
-  assert.equal(messageDay("2026-11-20T12:00:00"), "20. novembra");
+test("Bosnian dates are padded, zoned and safe for unavailable values", () => {
+  assert.equal(accountDate("2026-11-18T23:30:00.000Z"), "19. 11. 2026.");
+  assert.equal(accountDate("2027-05-31T22:30:00.000Z"), "01. 06. 2027.");
+  assert.equal(accountDate("invalid"), "—");
+  assert.equal(bosnianDateTime("2026-11-18T23:30:00Z"), "19. 11. 2026. 00:30");
+  assert.equal(bosnianDateTime("invalid"), "—");
+  assert.equal(accountDate("2026-11-18T23:30:00Z", "America/New_York"), "18. 11. 2026.");
 });
 
 test("private account reads reject foreign and malformed balances and placements", () => {

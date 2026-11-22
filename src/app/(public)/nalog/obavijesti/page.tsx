@@ -58,7 +58,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
       <header className={styles.header}>
         <div>
           <Link href="/nalog" className="text-link">
-            ← Moj nalog
+            Moj nalog
           </Link>
           <h1>Obavijesti</h1>
           {result && result.unread > 0 && (

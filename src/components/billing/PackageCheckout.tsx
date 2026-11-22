@@ -8,6 +8,7 @@ import {
   billingMoney,
   billingPackages,
 } from "../../lib/billing";
+import { accountDate, bosnianDateTime } from "../../lib/display-date";
 import type { PackageBenefitsCatalog } from "../../lib/package-benefits";
 import { checkoutEuro } from "../../lib/paypal-card-flow";
 import {
@@ -73,12 +74,7 @@ function StoppedInstallments({ contract }: { contract: SandboxPackageContract })
   );
 }
 function dueDate(value: string) {
-  return new Intl.DateTimeFormat(["bs-BA", "hr-HR"], {
-    day: "numeric",
-    month: "numeric",
-    year: "numeric",
-    timeZone: "Europe/Sarajevo",
-  }).format(new Date(value));
+  return accountDate(value);
 }
 
 async function request<T>(
@@ -514,7 +510,7 @@ export function PackageCheckout({
     <section className={styles.workspace}>
       <header className={styles.heading}>
         <h1>{sandbox ? "Probne pretplate" : "Plaćanje paketa"}</h1>
-        {sandbox && <span className={styles.badge}>PayPal Sandbox</span>}
+        {sandbox && <span className={styles.badge}>Probno plaćanje</span>}
       </header>
       {!sandbox && (
         <div className={styles.orderSummary}>
@@ -698,7 +694,7 @@ export function PackageCheckout({
                       {paymentMethod === "credits" && creditPrice
                         ? `Plati ${formatAhiCredits(creditPrice)}`
                         : sandbox
-                          ? "Odobri u PayPal Sandboxu"
+                          ? "Potvrdi probno plaćanje"
                           : "Nastavi na PayPal"}
                     </button>
                     {paymentMethod === "credits" && balance !== null && (
@@ -759,17 +755,7 @@ export function PackageCheckout({
                   <div>
                     <dt>Plaćeno do</dt>
                     <dd>
-                      <time dateTime={c.endsAt}>
-                        {new Intl.DateTimeFormat(["bs-BA", "hr-HR"], {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hourCycle: "h23",
-                          timeZone: "Europe/Sarajevo",
-                        }).format(new Date(c.endsAt))}
-                      </time>
+                      <time dateTime={c.endsAt}>{bosnianDateTime(c.endsAt)}</time>
                     </dd>
                   </div>
                 )}

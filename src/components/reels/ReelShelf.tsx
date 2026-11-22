@@ -87,8 +87,8 @@ async function Shelf({ businessId }: { businessId: string | null }) {
     >
       <header className={styles.sectionHeading}>
         <h2>{businessId ? "Reels" : "Reels djelatnosti"}</h2>
-        <Link href={listUrl} prefetch={false} aria-label="Pogledaj sve Reels objave">
-          Sve <Icon name="arrow" />
+        <Link href={listUrl} prefetch={false} aria-label="Sve Reels objave">
+          Sve objave
         </Link>
       </header>
       <ReelCards reels={reels} shelf businessScope={businessId} />

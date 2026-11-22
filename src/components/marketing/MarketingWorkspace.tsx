@@ -8,6 +8,7 @@ import { type CampaignSelection, campaignPath } from "../../lib/ad-brief";
 import type { BankTopUpCreate } from "../../lib/bank-credit-topup";
 import { billingMoney } from "../../lib/billing";
 import { creditTopUpStatusLabels, creditTopUpView } from "../../lib/credit-topup-view";
+import { accountDate, bosnianDateTime } from "../../lib/display-date";
 import {
   adPlacements,
   categoryPromotionPriceBamMinor,
@@ -115,7 +116,7 @@ function OfferCard({
     suggestedAmount !== null ? creditsForBamMinor(suggestedAmount, walletRate ?? 0) : null;
   const title =
     order.kind === "credits"
-      ? `${credits(order.quantity)} Ahi Credits`
+      ? `${credits(order.quantity)} Ahi krediti`
       : (order.businessTitle ?? "Baner djelatnosti");
   function quote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -223,9 +224,9 @@ function OfferCard({
       {order.endsAt && (
         <p>
           {order.startsAt && new Date(order.startsAt).getTime() > Date.now()
-            ? `Prikaz od ${new Date(order.startsAt).toLocaleDateString("bs-BA")} `
+            ? `Prikaz od ${accountDate(order.startsAt)} `
             : "Prikaz "}
-          do {new Date(order.endsAt).toLocaleDateString("bs-BA")}
+          do {accountDate(order.endsAt)}
         </p>
       )}
       {!admin &&
@@ -647,7 +648,7 @@ function MarketingView({
   const topUpInProgress = busy || bankTopUps.busy;
   return (
     <section className={styles.workspace}>
-      {mode !== "admin" && <h1>{mode === "ads" ? "Moji oglasi" : "Ahi Credits"}</h1>}
+      {mode !== "admin" && <h1>{mode === "ads" ? "Moji oglasi" : "Ahi krediti"}</h1>}
       {mode === "ads" && (
         <nav aria-label="Prikaz oglasa" className={styles.viewTabs}>
           <Link href="/nalog?odjeljak=oglasi" aria-current={!promotionView ? "page" : undefined}>
@@ -837,11 +838,7 @@ function MarketingView({
             <div key={`${item.id}:${item.kind}`}>
               <Link href={`/djelatnosti/${item.id}`}>{item.title}</Link>
               <p>
-                {adPlacements[item.kind]} · do{" "}
-                {new Date(item.endsAt).toLocaleString("bs-BA", {
-                  dateStyle: "short",
-                  timeStyle: "short",
-                })}
+                {adPlacements[item.kind]} · do {bosnianDateTime(item.endsAt)}
               </p>
             </div>
           ))}
@@ -863,7 +860,7 @@ function MarketingView({
           {data.promotions.map((item) => (
             <p key={item.id}>
               <Link href={`/djelatnosti/${item.id}`}>{item.title}</Link> · do{" "}
-              {new Date(item.endsAt).toLocaleDateString("bs-BA")}
+              {accountDate(item.endsAt)}
             </p>
           ))}
           {(platformCreditsOnly
@@ -942,8 +939,7 @@ function MarketingView({
                 </strong>
                 <span>
                   {creditTopUpStatusLabels[request.status]}
-                  {request.date &&
-                    ` · ${new Date(request.date).toLocaleDateString(["bs-BA", "hr-HR"])}`}
+                  {request.date && ` · ${accountDate(request.date)}`}
                 </span>
                 {request.paymentReference && <p>Referenca uplate: {request.paymentReference}</p>}
               </li>
@@ -959,9 +955,7 @@ function MarketingView({
               <li key={item.id}>
                 <div>
                   {item.label}
-                  <time dateTime={item.createdAt}>
-                    {new Date(item.createdAt).toLocaleDateString("bs-BA")}
-                  </time>
+                  <time dateTime={item.createdAt}>{accountDate(item.createdAt)}</time>
                 </div>
                 <strong>
                   {item.amount > 0 ? "+" : ""}

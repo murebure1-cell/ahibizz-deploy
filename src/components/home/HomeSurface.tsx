@@ -78,7 +78,7 @@ export function HomeListingsSection({
         </h2>
         {href && (
           <Link href={href} className={styles.subtleLink}>
-            Pogledaj sve <Icon name="chevron" />
+            Sve djelatnosti
           </Link>
         )}
       </div>
@@ -273,7 +273,7 @@ export function HomeSurface({
           a<span>c</span>
         </div>
         <div>
-          <span className={styles.kicker}>AHI CREDITS</span>
+          <span className={styles.kicker}>AHI KREDITI</span>
           <h2 id="credits-heading">{titles.credits || "Daj svom poslu\nviše prostora."}</h2>
         </div>
         {creditsHref ? (

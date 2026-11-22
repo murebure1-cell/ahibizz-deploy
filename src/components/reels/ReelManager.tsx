@@ -55,7 +55,7 @@ const problems: Record<string, string> = {
   REEL_BUSINESS_HIDDEN: "Djelatnost mora biti javno objavljena prije odobravanja reela.",
   REEL_BUSY: "Pregled snimka je trenutno zauzet. Pokušaj ponovo.",
   AUTHENTICATION_REQUIRED: "Prijavi se ponovo i pošalji reel.",
-  COMMUNITY_RULES_REQUIRED: "Prihvati pravila zajednice da bi mogao objaviti reel.",
+  COMMUNITY_RULES_REQUIRED: "Prihvati pravila zajednice za objavu reela.",
   ACCOUNT_IDENTITY_CHANGED: "Nalog je promijenjen. Osvježi stranicu.",
 };
 function describe(code: string, admin: boolean) {
@@ -330,8 +330,8 @@ export function ReelManager({
           </form>
         ) : (
           <p className={styles.empty}>
-            Objavi djelatnost da bi joj mogao dodati reel.{" "}
-            <Link href="/nalog?odjeljak=djelatnosti">Moje djelatnosti →</Link>
+            Objavi djelatnost prije dodavanja reela.{" "}
+            <Link href="/nalog?odjeljak=djelatnosti">Moje djelatnosti</Link>
           </p>
         ))}
       {progress !== null && (
@@ -444,7 +444,7 @@ export function ReelManager({
             ) : (
               <div className={styles.actions}>
                 {reel.status === "published" && (
-                  <Link href={`/reels/${reel.id}`}>Javna objava →</Link>
+                  <Link href={`/reels/${reel.id}`}>Javna objava</Link>
                 )}
                 <button
                   type="button"

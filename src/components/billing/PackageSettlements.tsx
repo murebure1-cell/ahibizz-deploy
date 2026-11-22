@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { accountDate } from "../../lib/display-date";
 import { checkoutEuro } from "../../lib/paypal-card-flow";
 import styles from "./billing.module.css";
 
@@ -79,9 +80,7 @@ export function PackageSettlements({
                     <h3>{sale.businessTitle}</h3>
                     <p>
                       {checkoutEuro(sale.amountEurMinor)} · {statusLabel[sale.status]} ·{" "}
-                      {new Intl.DateTimeFormat("bs-BA", { timeZone: "Europe/Sarajevo" }).format(
-                        new Date(sale.paidAt),
-                      )}
+                      {accountDate(sale.paidAt)}
                     </p>
                     <p>Referenca {sale.id}</p>
                     <p>

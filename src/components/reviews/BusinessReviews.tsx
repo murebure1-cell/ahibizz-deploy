@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { authReturnLinks } from "../../lib/auth-return";
+import { accountDate } from "../../lib/display-date";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
 import { bosnianNumber } from "../../lib/number-format";
 import {
@@ -416,13 +417,7 @@ export function BusinessReviews({
                 ) : (
                   <strong>{review.author.name}</strong>
                 )}
-                <time dateTime={review.createdAt}>
-                  {new Date(review.createdAt).toLocaleDateString("hr-HR", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "numeric",
-                  })}
-                </time>
+                <time dateTime={review.createdAt}>{accountDate(review.createdAt)}</time>
               </div>
               <span className={styles.stars} role="img" aria-label={`${review.rating} od 5`}>
                 {"★".repeat(review.rating)}

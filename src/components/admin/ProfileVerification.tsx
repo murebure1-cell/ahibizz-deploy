@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { accountDate } from "../../lib/display-date";
 import type { VerificationKind, VerificationSnapshot } from "../../lib/verification";
 import { Icon } from "../Icon";
 import shared from "./admin.module.css";
@@ -281,7 +282,7 @@ function DecisionDialog({
               <summary>Posljednja odluka</summary>
               <p>
                 {snapshot.lastDecision.verified ? "Oznaka dodijeljena" : "Oznaka povučena"} ·{" "}
-                {new Date(snapshot.lastDecision.at).toLocaleDateString("bs-BA")}
+                {accountDate(snapshot.lastDecision.at)}
               </p>
               {snapshot.lastDecision.actorName && <p>{snapshot.lastDecision.actorName}</p>}
               {snapshot.lastDecision.reason && <p>{snapshot.lastDecision.reason}</p>}

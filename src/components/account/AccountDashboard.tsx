@@ -69,7 +69,7 @@ const accountMenu = [
   { id: "settings", label: "Postavke", icon: "sliders", group: "Lični nalog" },
   { id: "advertising", label: "Moji oglasi", icon: "star", group: "Poslovanje" },
   { id: "membership", label: "Pretplate", icon: "crown", group: "Poslovanje" },
-  { id: "credits", label: "Ahi Credits", icon: "card", digital: true, group: "Poslovanje" },
+  { id: "credits", label: "Ahi krediti", icon: "card", digital: true, group: "Poslovanje" },
 ] as {
   id: AccountSection;
   label: string;

@@ -272,7 +272,7 @@ export function AccountSummary({
       count: result?.promotedBusinesses,
       pane: "advertising",
     },
-    { label: "Ahi Credits", icon: "card", count: result?.credits, pane: "credits" },
+    { label: "Ahi krediti", icon: "card", count: result?.credits, pane: "credits" },
   ];
   return (
     <div className={styles.workspace}>

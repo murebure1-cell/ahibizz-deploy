@@ -28,7 +28,7 @@ export default async function ReelModerationPage({
     <main id="glavni-sadrzaj" className={styles.page}>
       <header>
         <Link href="/administracija" className={styles.back}>
-          ← Administracija
+          Administracija
         </Link>
         <h1>Pregled reelova</h1>
       </header>
@@ -47,9 +47,9 @@ export default async function ReelModerationPage({
       )}
       {(page > 1 || (list?.hasMore && page < 999)) && (
         <nav className={styles.pagination} aria-label="Stranice za pregled reelova">
-          {page > 1 && <Link href={`/administracija/reels?stranica=${page - 1}`}>← Prethodna</Link>}
+          {page > 1 && <Link href={`/administracija/reels?stranica=${page - 1}`}>Prethodna</Link>}
           {list?.hasMore && page < 999 && (
-            <Link href={`/administracija/reels?stranica=${page + 1}`}>Sljedeća →</Link>
+            <Link href={`/administracija/reels?stranica=${page + 1}`}>Sljedeća</Link>
           )}
         </nav>
       )}

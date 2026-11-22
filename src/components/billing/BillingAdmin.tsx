@@ -15,6 +15,7 @@ import {
   billingPackages,
   billingRequest,
 } from "../../lib/billing";
+import { bosnianDateTime } from "../../lib/display-date";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
 import styles from "./billing.module.css";
 import {
@@ -668,7 +669,7 @@ function BillingWorkspace({
                         : amount(receipt.developmentMinor),
                     ],
                     ["Način primitka", sources[receipt.source]],
-                    ["Datum uplate", new Date(receipt.receivedAt).toLocaleString("bs-BA")],
+                    ["Datum uplate", bosnianDateTime(receipt.receivedAt)],
                     ...(receipt.serviceStartsOn
                       ? [["Period usluge", `${receipt.serviceStartsOn} – ${receipt.serviceEndsOn}`]]
                       : []),
@@ -723,7 +724,7 @@ function BillingWorkspace({
                   <strong>{billingMoney(entry.deltaMinor)}</strong>
                 </header>
                 <p className={styles.footnote}>
-                  {entry.reason} · {new Date(entry.createdAt).toLocaleString("bs-BA")}
+                  {entry.reason} · {bosnianDateTime(entry.createdAt)}
                 </p>
               </article>
             ))}

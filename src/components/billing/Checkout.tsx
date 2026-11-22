@@ -9,6 +9,7 @@ import {
   findPendingPromotion,
   promotionRestartHref,
 } from "../../lib/checkout-promotion-recovery";
+import { accountDate, bosnianDateTime } from "../../lib/display-date";
 import { categoryPromotionPriceBamMinor } from "../../lib/marketing";
 import { bosnianMoney, bosnianNumber } from "../../lib/number-format";
 import {
@@ -164,9 +165,7 @@ export function Checkout({
   const canCompletePayment =
     !platformCreditsOnly && needsApprovedPayment && cardCheck?.canComplete === true;
   const [error, setError] = useState(
-    cancelled
-      ? "Odustali ste na PayPalu. Odustajanje nije dokaz naplate; provjerite status narudžbe."
-      : "",
+    cancelled ? "Plaćanje na PayPalu je prekinuto. Provjeri status narudžbe." : "",
   );
   const key = useRef<string | null>(null);
   const locked = useRef(false);
@@ -628,12 +627,12 @@ export function Checkout({
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <a className={styles.accountLink} href="/nalog">
-        ← Moj nalog
+        Moj nalog
       </a>
       <header>
         {catalog?.environment === "sandbox" &&
           ((!platformCreditsOnly && !bankOnlyTopUp) || order) && (
-            <span className={styles.label}>PayPal · testni način</span>
+            <span className={styles.label}>Probno plaćanje</span>
           )}
         <h1>
           {kind === "quote"
@@ -695,7 +694,7 @@ export function Checkout({
           <h2>Isticanje je aktivno</h2>
           <p>
             {businesses.find((b) => b.id === businessId)?.title} · do{" "}
-            {new Date(paidWithCreditsUntil).toLocaleDateString("bs-BA")}
+            {accountDate(paidWithCreditsUntil)}
           </p>
           <a href="/nalog?odjeljak=oglasi">Moji oglasi</a>
         </section>
@@ -932,7 +931,7 @@ export function Checkout({
           <p className={styles.price}>{money(order.amountMinor)}</p>
           <p>Narudžba: {order.id}</p>
           {order.environment === "sandbox" && (
-            <p>Testna narudžba: nema stvarnog novca niti javnog isticanja.</p>
+            <p>Probna narudžba bez naplate i javnog isticanja.</p>
           )}
           {order.status === "cancelled" ? (
             <div role="status">
@@ -968,7 +967,7 @@ export function Checkout({
             <div role="status">
               <h3>Uplata je potvrđena</h3>
               {order.kind === "promotion" && order.endsAt ? (
-                <p>Isticanje važi do {new Date(order.endsAt).toLocaleString("bs-BA")}.</p>
+                <p>Isticanje važi do {bosnianDateTime(order.endsAt)}.</p>
               ) : creditTopUp && order.environment === "live" ? (
                 <>
                   <p>Ahi krediti su dodani na tvoj račun.</p>
@@ -991,7 +990,7 @@ export function Checkout({
             <>
               <p>
                 {returned
-                  ? "Vratio si se s PayPala. Povratak nije dokaz uplate."
+                  ? "Povratak s PayPala još ne potvrđuje uplatu."
                   : "Uplata još nije potvrđena. Ne otvaraj novu narudžbu za isti pokušaj."}
               </p>
               {needsApprovedPayment && cardCheck && (

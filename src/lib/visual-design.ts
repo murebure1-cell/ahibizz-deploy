@@ -94,7 +94,7 @@ export const designTargets: readonly DesignTarget[] = [
   target("home-newest", "Novi na AhiBizzu", "home"),
   target("home-nearby", "Djelatnosti u blizini", "home"),
   target("home-logos", "Traka logotipa", "home"),
-  target("home-credits", "Ahi Credits", "home"),
+  target("home-credits", "Ahi krediti", "home"),
   target("directory-card", "Kartica djelatnosti", "search"),
   target("search-form", "Pretraga i filteri", "search"),
   target("business-profile", "Poslovni profil", "business"),
@@ -146,7 +146,7 @@ export const homeSections = [
   { id: "nearby", label: "Djelatnosti u blizini" },
   { id: "promotion", label: "Poziv na isticanje" },
   { id: "logos", label: "Poslovna mreža" },
-  { id: "credits", label: "Ahi Credits" },
+  { id: "credits", label: "Ahi krediti" },
   { id: "featured", label: "Sve istaknute djelatnosti" },
 ] as const;
 const originalHomeSections = ["featured", "ad", "nearby", "logos", "credits"];
