@@ -49,6 +49,7 @@ export type MarketingOrder = {
   creditPrice: number | null;
   instructions: string | null;
   onlinePending?: boolean;
+  bankTopUp?: boolean;
   revokedAt?: string | null;
   productionReceiptConflict?: boolean;
   campaign?: CampaignSummary | null;

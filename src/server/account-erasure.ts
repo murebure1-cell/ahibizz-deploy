@@ -74,6 +74,9 @@ export function createAccountErasure(auth: AuthService, pool: Pool) {
                  refund_total_unknown OR status='review' OR capture_lease_until>now()
                  OR (status IN ('created','provider_created') AND expires_at>now())
               )
+            ) OR EXISTS (
+              SELECT 1 FROM ahi_wallet_bank_topup bank JOIN marketing_order sale ON sale.id=bank.order_id
+              WHERE bank.account_id=$1 AND sale.status IN ('requested','quoted')
             )) AS payment`,
           [target.id],
         )

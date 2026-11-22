@@ -27,6 +27,7 @@ export async function payableQuote(
     `SELECT o.id,o.kind,o.amount_minor,o.quantity,o.business_id,b.title
      FROM marketing_order o LEFT JOIN directory_business b ON b.id=o.business_id
      WHERE o.id=$1 AND o.account_id=$2 AND o.status='quoted'
+       AND NOT EXISTS (SELECT 1 FROM ahi_wallet_bank_topup bank WHERE bank.order_id=o.id)
        AND (o.kind='credits' OR (b.owner_user_id=o.account_id AND
          CASE WHEN o.kind IN ('photo','video','photo_video') THEN b.status<>'archived'
            ELSE b.status='published' AND package_allows_listing(b) AND

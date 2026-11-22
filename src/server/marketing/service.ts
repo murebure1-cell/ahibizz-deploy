@@ -31,6 +31,7 @@ import {
 import { buyCategoryPromotion } from "./category-promotion";
 import { holdsQuotePayment, payableQuote, pendingQuoteOrder } from "./online-quote";
 import { packagePromotions, paidPromotions } from "./read";
+import { settleMarketingPayment } from "./settlement";
 
 function fail(status: number, code: string): never {
   throw new AccountAccessError(status, code);
@@ -235,6 +236,7 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           await client.query<MarketingOrder>(
             `
           SELECT o.id,o.kind,o.status,o.quantity,o.amount_minor AS "amountMinor",(o.wallet_price_minor::double precision/100) AS "creditPrice",
+            EXISTS (SELECT 1 FROM ahi_wallet_bank_topup bank WHERE bank.order_id=o.id) AS "bankTopUp",
             o.revoked_at::text AS "revokedAt",(o.status='quoted' AND EXISTS (SELECT 1 FROM paypal_checkout_order p WHERE p.quote_id=o.id AND p.environment='live'
               AND ${holdsQuotePayment})) AS "onlinePending",
             ${campaignProjection},o.instructions,b.title AS "businessTitle",u.name AS customer,o.starts_at::text AS "startsAt",
@@ -320,7 +322,18 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
             command.action === "setCreditRate",
         );
         if (command.action === "setCreditRate") return setCreditRate(client, actor.id, command);
-        if (command.action === "topUp") return createCreditTopUp(client, actor.id, command);
+        if (command.action === "topUp") {
+          const result = await createCreditTopUp(client, actor.id, command);
+          if (
+            (
+              await client.query("SELECT 1 FROM ahi_wallet_bank_topup WHERE order_id=$1", [
+                result.id,
+              ])
+            ).rowCount
+          )
+            fail(409, "BANK_TOPUP_PENDING");
+          return result;
+        }
         if (command.action === "promoteCategory")
           return buyCategoryPromotion(client, actor.id, command);
         const quoteRate = command.action === "quote" ? await lockWalletRate(client) : null;
@@ -397,6 +410,14 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           ])
         ).rows[0];
         if (!order) fail(404, "OFFER_NOT_FOUND");
+        if (
+          (
+            await client.query("SELECT 1 FROM ahi_wallet_bank_topup WHERE order_id=$1", [
+              command.id,
+            ])
+          ).rowCount
+        )
+          fail(409, "BANK_TOPUP_REVIEW_REQUIRED");
         if (
           order.status === "quoted" &&
           command.action !== "quote" &&
@@ -485,18 +506,13 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
                 kind: "marketing",
                 creditMinor: Number(order.wallet_price_minor),
               });
-            await client.query(
-              `UPDATE marketing_order SET status='paid',settled_by=$2,bank_reference=$3,wallet_payment_id=$5,paid_at=now(),
-              starts_at=CASE WHEN kind IN ('banner','featured','nearby') THEN GREATEST(now(),$4::timestamptz) END,
-              ends_at=CASE WHEN kind IN ('banner','featured','nearby') THEN GREATEST(now(),$4::timestamptz)+quantity*interval '1 day' END WHERE id=$1`,
-              [
-                command.id,
-                actor.id,
-                reference,
-                includedUntil,
-                command.action === "useCredits" ? command.id : null,
-              ],
-            );
+            await settleMarketingPayment(client, {
+              id: command.id,
+              actorId: actor.id,
+              reference,
+              includedUntil,
+              walletPaymentId: command.action === "useCredits" ? command.id : null,
+            });
             if (isProductionService(order.kind)) await syncProductionReceipt(client, command.id);
           } catch (error) {
             if ((error as { code?: string }).code === "23505") fail(409, "REFERENCE_USED");

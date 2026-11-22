@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { type CampaignSelection, campaignPath } from "../../lib/ad-brief";
+import type { BankTopUpCreate } from "../../lib/bank-credit-topup";
 import { billingMoney } from "../../lib/billing";
 import {
   adPlacements,
@@ -21,6 +22,13 @@ import { ahiCreditTopUps } from "../../lib/wallet";
 import { AdCampaignForm, CampaignDetails } from "./AdCampaignForm";
 import { AdCreativeManager } from "./AdCreativeManager";
 import { AdRateEditor } from "./AdRateEditor";
+import {
+  BankTopUpAdmin,
+  CreditBankTransfer,
+  creditBankAmount,
+  marketingAmount,
+  useBankTopUps,
+} from "./CreditBankTransfers";
 import styles from "./marketing.module.css";
 
 const messages: Record<string, string> = {
@@ -56,14 +64,6 @@ const messages: Record<string, string> = {
   ACCOUNT_IDENTITY_CHANGED: "Prijavi se ponovo i osvježi ovu stranicu.",
 };
 const credits = (quantity: number) => new Intl.NumberFormat("bs-BA").format(quantity);
-function price(value: FormDataEntryValue | null) {
-  const raw = String(value ?? "")
-    .trim()
-    .replace(",", ".");
-  if (!/^\d{1,7}(?:\.\d{1,2})?$/.test(raw)) return 0;
-  const [units, fraction = ""] = raw.split(".");
-  return Number(units) * 100 + Number(fraction.padEnd(2, "0"));
-}
 
 function OfferCard({
   accountId,
@@ -103,7 +103,7 @@ function OfferCard({
     submit({
       id: order.id,
       action: "quote",
-      amountMinor: price(fields.get("price")),
+      amountMinor: marketingAmount(fields.get("price")),
       instructions: String(fields.get("instructions") ?? ""),
       ...(alternative > 0 ? { creditPrice: alternative } : {}),
       ...(order.campaign ? { expectedAssetVersion: order.campaign.assetVersion } : {}),
@@ -119,7 +119,7 @@ function OfferCard({
     submit({
       id: order.id,
       action: "confirm",
-      amountMinor: price(fields.get("received")),
+      amountMinor: marketingAmount(fields.get("received")),
       reference: String(fields.get("reference") ?? ""),
     });
   }
@@ -320,8 +320,10 @@ type MarketingProps = {
 function MarketingView({ accountId, mode, target, campaign, promotionView }: MarketingProps) {
   const router = useRouter();
   const [selectedQuantity, setSelectedQuantity] = useState<number>(ahiCreditTopUps[0].quantity);
+  const [chosenMethod, setChosenMethod] = useState<"paypal" | "bank">("paypal");
   const [rateInput, setRateInput] = useState("");
   const pendingTopUp = useRef<{ quantity: number; id: string } | null>(null);
+  const pendingBankTopUp = useRef<BankTopUpCreate | null>(null);
   const bundle =
     ahiCreditTopUps.find((option) => option.quantity === selectedQuantity) ?? ahiCreditTopUps[0];
   const [data, setData] = useState<MarketingData | null>(null),
@@ -330,6 +332,27 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [failed, setFailed] = useState(false);
+  const bankTopUps = useBankTopUps(
+    accountId,
+    mode === "credits" ? "mine" : mode === "admin" ? "admin" : null,
+    () => {
+      setPage(0);
+      setRefresh((value) => value + 1);
+    },
+  );
+  const receiver = bankTopUps.data?.available ? bankTopUps.data.bank : null;
+  const bankOffer = receiver
+    ? bankTopUps.data?.offers.find((offer) => offer.quantity === bundle.quantity)
+    : null;
+  const pendingBank = bankTopUps.data?.requests.find((request) => request.status === "pending");
+  const method =
+    receiver && chosenMethod === "bank"
+      ? "bank"
+      : data?.checkoutAvailable
+        ? "paypal"
+        : receiver
+          ? "bank"
+          : null;
   const running = useRef(false);
   const mounted = useRef(false);
   const placementForm = useRef<HTMLFormElement>(null);
@@ -451,6 +474,27 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
   }
   function topUp(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (busy || bankTopUps.busy || pendingBank || !method) return;
+    if (method === "bank") {
+      if (!receiver || !bankOffer) return;
+      const previous = pendingBankTopUp.current;
+      const command =
+        previous?.quantity === bundle.quantity &&
+        previous.expectedAmountMinor === bankOffer.amountMinor &&
+        previous.currency === receiver.currency
+          ? previous
+          : {
+              id: crypto.randomUUID(),
+              quantity: bundle.quantity,
+              expectedAmountMinor: bankOffer.amountMinor,
+              currency: receiver.currency,
+            };
+      pendingBankTopUp.current = command;
+      void bankTopUps.start(command).then((result) => {
+        if (result && pendingBankTopUp.current === command) pendingBankTopUp.current = null;
+      });
+      return;
+    }
     if (pendingTopUp.current?.quantity !== bundle.quantity) {
       pendingTopUp.current = { quantity: bundle.quantity, id: crypto.randomUUID() };
     }
@@ -482,6 +526,8 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
       </div>
     );
   const unitPrice = data.creditUnitBamMinor ?? null;
+  const orders = data.orders.filter((order) => !order.bankTopUp);
+  const topUpInProgress = busy || bankTopUps.busy;
   return (
     <section className={styles.workspace}>
       {mode !== "admin" && <h1>{mode === "ads" ? "Moji oglasi" : "Ahi Credits"}</h1>}
@@ -514,6 +560,7 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
         </header>
       )}
       {mode === "admin" && <AdRateEditor accountId={accountId} />}
+      {mode === "admin" && <BankTopUpAdmin workspace={bankTopUps} />}
       {mode === "admin" && (
         <details className={styles.order}>
           <summary>Vrijednost kredita pri plaćanju</summary>
@@ -557,30 +604,76 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
       {mode === "credits" && (
         <article className={styles.order}>
           <h2>Dopuni kredite</h2>
-          <form className={styles.form} onSubmit={topUp}>
-            <fieldset className={styles.bundles} aria-label="Odaberi dopunu">
-              {ahiCreditTopUps.map((option) => (
-                <label className={styles.bundle} key={option.quantity}>
-                  <span className={styles.bundlePrice}>{billingMoney(option.amountMinor)}</span>
-                  <input
-                    type="radio"
-                    name="dopuna"
-                    value={option.quantity}
-                    checked={bundle.quantity === option.quantity}
-                    onChange={() => setSelectedQuantity(option.quantity)}
-                  />
-                  <strong>{credits(option.quantity)} kredita</strong>
-                  <small>
-                    {credits(option.base)} + {credits(option.bonus)} bonus
-                  </small>
-                </label>
-              ))}
-            </fieldset>
-            <button type="submit" disabled={busy || !data.checkoutAvailable}>
-              Dopuni za {billingMoney(bundle.amountMinor)}
-            </button>
-            {!data.checkoutAvailable && <p>Online dopuna trenutno nije dostupna.</p>}
-          </form>
+          {pendingBank ? (
+            <CreditBankTransfer request={pendingBank} workspace={bankTopUps} />
+          ) : (
+            <form className={styles.form} onSubmit={topUp}>
+              <fieldset
+                className={styles.bundles}
+                aria-label="Odaberi dopunu"
+                disabled={topUpInProgress}
+              >
+                {ahiCreditTopUps.map((option) => (
+                  <label className={styles.bundle} key={option.quantity}>
+                    <span className={styles.bundlePrice}>{billingMoney(option.amountMinor)}</span>
+                    <input
+                      type="radio"
+                      name="dopuna"
+                      value={option.quantity}
+                      checked={bundle.quantity === option.quantity}
+                      onChange={() => setSelectedQuantity(option.quantity)}
+                    />
+                    <strong>{credits(option.quantity)} kredita</strong>
+                    <small>
+                      {credits(option.base)} + {credits(option.bonus)} bonus
+                    </small>
+                  </label>
+                ))}
+              </fieldset>
+              {method ? (
+                <>
+                  <fieldset className={styles.paymentMethods} disabled={topUpInProgress}>
+                    <legend>Način dopune</legend>
+                    {data.checkoutAvailable && (
+                      <label className={styles.paymentOption}>
+                        <input
+                          type="radio"
+                          name="nacin"
+                          checked={method === "paypal"}
+                          onChange={() => setChosenMethod("paypal")}
+                        />
+                        PayPal nalog
+                      </label>
+                    )}
+                    {receiver && (
+                      <label className={styles.paymentOption}>
+                        <input
+                          type="radio"
+                          name="nacin"
+                          checked={method === "bank"}
+                          onChange={() => setChosenMethod("bank")}
+                        />
+                        Uplata na Wise
+                      </label>
+                    )}
+                  </fieldset>
+                  <button
+                    type="submit"
+                    disabled={topUpInProgress || (method === "bank" && !bankOffer)}
+                  >
+                    {method === "paypal"
+                      ? `Nastavi na PayPal · ${billingMoney(bundle.amountMinor)}`
+                      : bankOffer && receiver
+                        ? `Prikaži upute · ${creditBankAmount(bankOffer.amountMinor, receiver.currency)}`
+                        : "Prikaži upute za uplatu"}
+                  </button>
+                </>
+              ) : (
+                <p>Dopuna kredita trenutno nije dostupna.</p>
+              )}
+            </form>
+          )}
+          {bankTopUps.message && <p role="status">{bankTopUps.message}</p>}
         </article>
       )}
       {mode === "ads" && promotionView !== "zakazane" && data.included.length > 0 && (
@@ -704,7 +797,7 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
                 ? "Zakazane kampanje"
                 : "Moji zahtjevi"}
         </h2>
-        {!data.orders.length && (
+        {!orders.length && (
           <p>
             {mode === "admin"
               ? "Nema zahtjeva."
@@ -713,7 +806,7 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
                 : "Još nemaš zahtjeva."}
           </p>
         )}
-        {data.orders.map((order) => (
+        {orders.map((order) => (
           <OfferCard
             key={order.id}
             accountId={accountId}
