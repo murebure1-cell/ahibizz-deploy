@@ -180,34 +180,11 @@ async function quota(
   if (user.role === "owner") return;
   const count = (
     await client.query<{ count: number }>(
-      "SELECT count(*)::integer AS count FROM directory_business b WHERE owner_user_id = $1 AND status <> 'archived' AND (package_access<>'subscription' OR NOT package_allows_listing(b))",
+      "SELECT count(*)::integer AS count FROM directory_business b WHERE owner_user_id = $1 AND status <> 'archived'",
       [user.id],
     )
   ).rows[0]?.count;
   if (count === undefined || count >= limit) fail(409, "BUSINESS_LIMIT_REACHED");
-}
-async function accessForNewListing(
-  client: PoolClient,
-  user: CurrentAuthUser,
-  limit: number,
-  allowPaidDraft: boolean,
-): Promise<"legacy" | "first_year" | "subscription"> {
-  if (user.role === "owner") return "legacy";
-  const { rows } = await client.query<{ previous: number; active: number; unpaid: boolean }>(
-    `SELECT count(*)::int AS previous,
-       count(*) FILTER (WHERE b.status<>'archived' AND b.package_access<>'subscription')::int AS active,
-       coalesce(bool_or(b.status='draft' AND b.package_access='subscription' AND NOT package_allows_listing(b)),false) AS unpaid
-     FROM directory_business b WHERE b.owner_user_id=$1`,
-    [user.id],
-  );
-  const usage = rows[0];
-  if (!usage) fail(503, "DIRECTORY_UNAVAILABLE");
-  if (usage.previous === 0) return "first_year";
-  if (limit > 1 && usage.active < limit) return "legacy";
-  // Older clients may still create a replacement draft after archiving; it has no new free year.
-  if (!allowPaidDraft && usage.active === 0 && !usage.unpaid) return "subscription";
-  if (!allowPaidDraft || usage.unpaid) fail(409, "BUSINESS_LIMIT_REACHED");
-  return "subscription";
 }
 async function save(
   client: PoolClient,
@@ -451,21 +428,11 @@ export function createDirectoryService({
           if (replay.fingerprint !== fingerprint) fail(409, "IDEMPOTENCY_CONFLICT");
           return business(client, replay.business_id);
         }
-        const packageAccess = await accessForNewListing(
-          client,
-          currentActor,
-          memberBusinessLimit,
-          headers.get("X-AhiBizz-Paid-Draft") === "1",
-        );
+        await quota(client, currentActor, memberBusinessLimit);
         await classify(client, value);
         const id = randomUUID(),
-          values = [id, currentActor.id, packageAccess, ...businessKeys.map((key) => value[key])];
-        const names = [
-          "id",
-          "owner_user_id",
-          "package_access",
-          ...businessKeys.map((key) => columnMap[key]),
-        ];
+          values = [id, currentActor.id, ...businessKeys.map((key) => value[key])];
+        const names = ["id", "owner_user_id", ...businessKeys.map((key) => columnMap[key])];
         await client.query(
           `INSERT INTO directory_business (${names.join(",")}) VALUES (${values.map((_, index) => `$${index + 1}`).join(",")})`,
           values,
@@ -566,7 +533,6 @@ export function createDirectoryService({
         current(before, expected);
         editable(before);
         eligible(businessOwner);
-        if (before.packagePaymentNeeded) fail(409, "PACKAGE_PAYMENT_REQUIRED");
         await classify(client, fields(before));
         if (before.status === "published") return before;
         const status = currentActor.role === "owner" ? "published" : "pending";
@@ -598,8 +564,6 @@ export function createDirectoryService({
         // Booking and sales creation take this same business lock before writing.
         const { rows } = await client.query<{
           bookings: boolean;
-          contract: boolean;
-          payments: boolean;
         }>(
           `SELECT
             (EXISTS (SELECT 1 FROM booking_entry WHERE business_id=$1 AND kind<>'block'
@@ -607,32 +571,12 @@ export function createDirectoryService({
               OR EXISTS (SELECT 1 FROM rental_booking WHERE business_id=$1 AND kind='customer'
                  AND status IN ('requested','confirmed') AND ends_at>now())
               OR EXISTS (SELECT 1 FROM stay_booking WHERE business_id=$1 AND kind='customer'
-                 AND status IN ('requested','confirmed') AND check_out>(now() AT TIME ZONE timezone)::date)) AS bookings,
-            (EXISTS (SELECT 1 FROM live_package_contract WHERE business_id=$1 AND
-                 ((status NOT IN ('CANCELLED','EXPIRED') AND NOT (payment_method='credits' AND paid_cycles=total_cycles AND ends_at IS NOT NULL AND ends_at<=now())) OR ends_at>now() OR settlement_hold_until>now()))
-              OR EXISTS (SELECT 1 FROM billing_receipt WHERE business_id=$1 AND kind='subscription'
-                 AND gross_minor>refunded_minor AND service_ends_on>(now() AT TIME ZONE 'Europe/Sarajevo')::date)) AS contract,
-            (EXISTS (SELECT 1 FROM marketing_order WHERE business_id=$1 AND
-                 (production_receipt_conflict OR
-                   (status='paid' AND revoked_at IS NULL AND ends_at>now())))
-              OR EXISTS (SELECT 1 FROM wallet_category_promotion w
-                 WHERE w.business_id=$1 AND w.revoked_at IS NULL AND w.ends_at>now())
-              OR EXISTS (SELECT 1 FROM paypal_promotion_entitlement e
-                 JOIN paypal_checkout_order p ON p.id=e.order_id AND p.environment='live'
-                 WHERE e.business_id=$1 AND e.revoked_at IS NULL AND e.ends_at>now())
-              OR EXISTS (SELECT 1 FROM paypal_checkout_order p
-                 LEFT JOIN marketing_order m ON m.id=p.quote_id
-                 WHERE (p.business_id=$1 OR m.business_id=$1) AND p.environment='live' AND
-                   (p.status='review' OR p.refund_total_unknown OR p.capture_lease_until>now()
-                    OR (p.status IN ('created','provider_created') AND p.expires_at>now())
-                    OR EXISTS (SELECT 1 FROM paypal_refund_command r WHERE r.order_id=p.id AND r.status='reserved')))) AS payments`,
+                 AND status IN ('requested','confirmed') AND check_out>(now() AT TIME ZONE timezone)::date)) AS bookings`,
           [key],
         );
         const obligations = rows[0];
         if (!obligations) fail(503, "DIRECTORY_UNAVAILABLE");
         if (obligations.bookings) fail(409, "BUSINESS_HAS_BOOKINGS");
-        if (obligations.contract) fail(409, "BUSINESS_HAS_CONTRACT");
-        if (obligations.payments) fail(409, "BUSINESS_HAS_PAYMENTS");
         await clearBusinessImageProposals(client, key);
         await client.query(
           `UPDATE directory_business SET deleted_at=now(), deleted_by=$2, status='archived',
@@ -651,19 +595,7 @@ export function createDirectoryService({
         const { businessOwner, before } = await lockedBusiness(client, identity, key);
         current(before, expected);
         if (before.status !== "archived") fail(409, "BUSINESS_NOT_ARCHIVED");
-        const access = (
-          await client.query<{ kind: string; anotherUnpaid: boolean }>(
-            `SELECT b.package_access AS kind,
-            EXISTS(SELECT 1 FROM directory_business other WHERE other.owner_user_id=b.owner_user_id AND other.id<>b.id
-              AND other.status='draft' AND other.package_access='subscription' AND NOT package_allows_listing(other)) AS "anotherUnpaid"
-            FROM directory_business b WHERE b.id=$1`,
-            [key],
-          )
-        ).rows[0];
-        if (access?.kind === "subscription") {
-          if (before.packagePaymentNeeded && access.anotherUnpaid)
-            fail(409, "BUSINESS_LIMIT_REACHED");
-        } else await quota(client, businessOwner, memberBusinessLimit);
+        await quota(client, businessOwner, memberBusinessLimit);
         await classify(client, fields(before));
         return save(client, before, fields(before), "draft");
       });
@@ -718,7 +650,6 @@ export function createDirectoryService({
           return business(client, key);
         }
         if (value.status === "published") {
-          if (before.packagePaymentNeeded) fail(409, "PACKAGE_PAYMENT_REQUIRED");
           eligible(businessOwner);
           await classify(client, fields(before));
         }

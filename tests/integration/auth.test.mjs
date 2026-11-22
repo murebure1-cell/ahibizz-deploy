@@ -712,6 +712,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0051_account_erasure.sql",
           "0052_bank_credit_topups.sql",
           "0053_production_credit_purchases.sql",
+          "0054_promotions.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -1193,7 +1194,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             businesses: 1,
             promotedBusinesses: 0,
             nextAppointment: null,
-            credits: 0,
             unreadThreads: 0,
           });
           assert.equal((await request("GET", "/api/account/overview")).response.status, 401);

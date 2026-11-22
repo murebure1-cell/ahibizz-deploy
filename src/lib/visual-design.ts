@@ -94,7 +94,6 @@ export const designTargets: readonly DesignTarget[] = [
   target("home-newest", "Novi na AhiBizzu", "home"),
   target("home-nearby", "Djelatnosti u blizini", "home"),
   target("home-logos", "Traka logotipa", "home"),
-  target("home-credits", "Ahi krediti", "home"),
   target("directory-card", "Kartica djelatnosti", "search"),
   target("search-form", "Pretraga i filteri", "search"),
   target("business-profile", "Poslovni profil", "business"),
@@ -124,7 +123,12 @@ export const designTargets: readonly DesignTarget[] = [
   target("business-photo", "Fotografija poslovne naslovnice", "business"),
 ];
 // Read and preserve older saved designs without offering retired sections in the editor.
-const retiredHomeTargetIds = ["home-category-featured", "home-local-featured", "home-community"];
+const retiredHomeTargetIds = [
+  "home-credits",
+  "home-category-featured",
+  "home-local-featured",
+  "home-community",
+];
 
 /** Inspect the closest editable element; an explicit name on that element wins. */
 export function findDesignTarget(element: Element, boundary: Element) {
@@ -146,11 +150,10 @@ export const homeSections = [
   { id: "nearby", label: "Djelatnosti u blizini" },
   { id: "promotion", label: "Poziv na isticanje" },
   { id: "logos", label: "Poslovna mreža" },
-  { id: "credits", label: "Ahi krediti" },
   { id: "featured", label: "Sve istaknute djelatnosti" },
 ] as const;
 const originalHomeSections = ["featured", "ad", "nearby", "logos", "credits"];
-const retiredHomeSections = ["categoryFeatured", "community"];
+const retiredHomeSections = ["categoryFeatured", "community", "credits"];
 const previousHomeSections = [...originalHomeSections, "promotion", ...retiredHomeSections];
 
 export type DesignProperty = {

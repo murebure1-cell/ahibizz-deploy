@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { AudienceNavigation } from "../components/account/AudienceNavigation";
 import { AppProviders } from "../components/design/AppProviders";
 import { appearanceBootstrap } from "../lib/appearance";
 import "./globals.css";
@@ -34,7 +33,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Preskoči na sadržaj
         </a>
         <AppProviders>{children}</AppProviders>
-        <AudienceNavigation />
       </body>
     </html>
   );

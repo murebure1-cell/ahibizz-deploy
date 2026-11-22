@@ -94,3 +94,9 @@ Objedinjeno 9 dokumenata sa 366 redova; sadržaj potreban timu čuva se u navede
 - `PreviewState`: uklonjeno demo čuvanje favorita/lokacije koje više niko ne poziva. Zadržani su memorijski adapteri stvarnog administratorskog simulatora.
 
 Provjera: svi JSX pozivi u `src`/`tests`, provjera tipova, postojeći transportni unit testovi i pregled konačnog diff-a. Nije mijenjana tabela niti zapis plaćanja.
+
+## 22. 11. 2026. — Uklanjanje stare naplate
+
+Po konačnoj odluci vlasnika uklonjeni su aplikacijski moduli za Ahi kredite, novčanik, dopune, pakete i pretplate, kartično i PayPal plaćanje, račune i raspodjelu razvojnog fonda, produkcijske ponude i stari oglasni sistem (kampanje, CPM, isporuka i publika). Uklonjeni su povezani ekrani, API rute, email primjeri, administracija, testovi i operativna dokumentacija. Donacije ostaju. Arhivske tabele, redovi i migracije nisu obrisani ni prepravljeni.
+
+Testni fajlovi uklonjeni u ovoj fazi: 35. Broj svih uklonjenih fajlova i linija navodi se u završnoj predaji prema Git diffu.

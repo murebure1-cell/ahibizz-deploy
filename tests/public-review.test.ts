@@ -66,22 +66,11 @@ test("a guest's own-review read is answered without an error status and read as 
   );
 });
 
-test("checkout sign-in returns to the checkout page only for exact checkout paths", async () => {
-  const { accountReturnPath } = await import("../src/lib/account-return");
-  assert.equal(accountReturnPath("/naplata"), "/naplata");
-  assert.equal(accountReturnPath(`/naplata?djelatnost=${id}`), `/naplata?djelatnost=${id}`);
-  assert.equal(accountReturnPath("/naplata?djelatnost=x"), "/nalog");
-  assert.equal(accountReturnPath(`/naplata?djelatnost=${id}&x=1`), "/nalog");
-});
-
 test("numbers and amounts use Bosnian separators regardless of runtime locale data", async () => {
   const { bosnianNumber, bosnianMoney } = await import("../src/lib/number-format");
-  const { billingMoney } = await import("../src/lib/billing");
   assert.equal(bosnianNumber(2000), "2.000");
   assert.equal(bosnianNumber(1234567.5), "1.234.567,5");
   assert.equal(bosnianMoney(1500), "15,00");
-  assert.equal(billingMoney(1500), "15,00 KM");
-  assert.equal(billingMoney(123456), "1.234,56 KM");
 });
 
 test("Bosnian phone numbers are grouped for reading and others are left as entered", () => {

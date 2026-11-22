@@ -114,7 +114,7 @@ export function HomeNearbySection({
   );
 }
 
-function HomeArtwork({ kind }: { kind: "promotion" | "credits" }) {
+function HomeArtwork({ kind }: { kind: "promotion" }) {
   return (
     <div className={styles.artwork} aria-hidden="true">
       <Image
@@ -146,7 +146,6 @@ export function HomeSurface({
   advertisingHref,
   banner,
   slots,
-  creditsHref,
   after,
 }: {
   design?: VisualDesign;
@@ -171,7 +170,6 @@ export function HomeSurface({
     floatingAd?: ReactNode;
     inlineAd?: (fallback: ReactNode) => ReactNode;
   };
-  creditsHref?: string;
   after?: ReactNode;
 }) {
   const titles = design.sectionTitles ?? {};
@@ -197,7 +195,7 @@ export function HomeSurface({
         {discovery}
       </div>
     ),
-    ad: !IS_PLAY_EDITION && (
+    ad: (Boolean(banner) || !IS_PLAY_EDITION) && (
       <section
         className={`${styles.container} ${styles.ad}`}
         aria-label="Oglasni prostor"
@@ -249,40 +247,13 @@ export function HomeSurface({
         aria-labelledby="promotion-heading"
       >
         <HomeArtwork kind="promotion" />
-        <Link
-          href="/oglasavanje"
-          className={styles.calloutLink}
-          aria-labelledby="promotion-heading"
-        >
+        <Link href="/istakni" className={styles.calloutLink} aria-labelledby="promotion-heading">
           <span aria-hidden="true" className={styles.calloutIcon}>
             <Icon name="star" />
           </span>
           <h2 id="promotion-heading">{titles.promotion || "Istakni svoju djelatnost"}</h2>
           <Icon name="chevron" className={styles.calloutArrow} />
         </Link>
-      </section>
-    ),
-    credits: !IS_PLAY_EDITION && (
-      <section
-        className={`${styles.container} ${styles.credits}`}
-        data-design="home-credits"
-        aria-labelledby="credits-heading"
-      >
-        <HomeArtwork kind="credits" />
-        <div className={styles.creditsIcon} aria-hidden="true">
-          a<span>c</span>
-        </div>
-        <div>
-          <span className={styles.kicker}>AHI KREDITI</span>
-          <h2 id="credits-heading">{titles.credits || "Daj svom poslu\nviše prostora."}</h2>
-        </div>
-        {creditsHref ? (
-          <Link href={creditsHref} className={styles.button}>
-            Moji krediti <Icon name="chevron" />
-          </Link>
-        ) : (
-          <span className={styles.preparing}>U pripremi</span>
-        )}
       </section>
     ),
   };

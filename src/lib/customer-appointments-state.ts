@@ -5,7 +5,6 @@ export type CustomerAppointmentPage = {
   key: string;
   entries: BookingEntry[];
   more: boolean;
-  credits: number | null;
 };
 
 export type CustomerAppointmentsState = {

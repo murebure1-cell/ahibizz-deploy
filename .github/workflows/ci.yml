@@ -99,18 +99,6 @@ jobs:
           CI: "true"
           AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
         run: node --import tsx --test tests/integration/account-erasure.test.mjs
-      - name: Test billing ledger against isolated PostgreSQL
-        timeout-minutes: 3
-        env:
-          CI: "true"
-          AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
-        run: node --import tsx --test tests/integration/billing.test.mjs
-      - name: Test bank credit top-ups against isolated PostgreSQL
-        timeout-minutes: 3
-        env:
-          CI: "true"
-          AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
-        run: node --import tsx --test tests/integration/bank-credit-topup.test.mjs
       - name: Test business details against isolated PostgreSQL
         timeout-minutes: 3
         env:
@@ -135,24 +123,18 @@ jobs:
           CI: "true"
           AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
         run: node --import tsx --test tests/integration/business-ownership.test.mjs
-      - name: Test durable PayPal checkout against isolated PostgreSQL
-        timeout-minutes: 3
-        env:
-          CI: "true"
-          AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
-        run: node --import tsx --test tests/integration/paypal-checkout.test.mjs
-      - name: Test sandbox package subscriptions against isolated PostgreSQL
-        timeout-minutes: 3
-        env:
-          CI: "true"
-          AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
-        run: node --import tsx --test tests/integration/paypal-subscriptions.test.mjs
       - name: Test Reel feed and engagement against isolated PostgreSQL
         timeout-minutes: 3
         env:
           CI: "true"
           AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
         run: node --import tsx --test tests/integration/reels.test.mjs
+      - name: Test promotions against isolated PostgreSQL
+        timeout-minutes: 3
+        env:
+          CI: "true"
+          AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
+        run: node --import tsx --test tests/integration/promotions.test.mjs
       - name: Build the production image
         run: docker build --pull --tag ahibizz:ci .
       - name: Scan the exact production image for high and critical vulnerabilities

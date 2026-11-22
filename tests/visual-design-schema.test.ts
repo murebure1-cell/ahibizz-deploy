@@ -10,16 +10,7 @@ import {
 
 test("a published design preserves the actual homepage order, plain text, and independent theme scopes", () => {
   const model = defaultVisualDesign();
-  model.homeOrder = [
-    "nearby",
-    "featured",
-    "ad",
-    "credits",
-    "logos",
-    "newest",
-    "reels",
-    "promotion",
-  ];
+  model.homeOrder = ["nearby", "featured", "ad", "logos", "newest", "reels", "promotion"];
   model.heroTitle = "Poslovi u Tuzli.";
   model.heroSubtitle = "Pronađi novu uslugu.";
   model.sectionTitles = { nearby: "U blizini" };
@@ -42,16 +33,7 @@ test("a published design preserves the actual homepage order, plain text, and in
 
 test("both previous homepage schemas read in the current order and retain active style and title customizations", () => {
   const base = defaultVisualDesign();
-  const expectedOrder = [
-    "ad",
-    "reels",
-    "newest",
-    "nearby",
-    "promotion",
-    "logos",
-    "credits",
-    "featured",
-  ];
+  const expectedOrder = ["ad", "reels", "newest", "nearby", "promotion", "logos", "featured"];
   assert.deepEqual(base.homeOrder, expectedOrder);
   for (const homeOrder of [
     ["nearby", "featured", "ad", "credits", "logos"],

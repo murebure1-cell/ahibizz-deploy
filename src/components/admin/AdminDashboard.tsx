@@ -13,8 +13,6 @@ import {
 } from "../../lib/admin-navigation";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
-import { BillingAdmin } from "../billing/BillingAdmin";
-import { PackageSettlements } from "../billing/PackageSettlements";
 import { BusinessManager } from "../directory/BusinessManager";
 import { Icon, type IconName } from "../Icon";
 import { ReviewsAdmin } from "../reviews/ReviewsAdmin";
@@ -49,12 +47,6 @@ const sections = [
     icon: "star",
     title: "Recenzije",
   },
-  {
-    id: "billing",
-    label: "Naplata i razvoj",
-    icon: "shop",
-    title: "Naplata i razvoj",
-  },
 ] as const satisfies readonly {
   id: string;
   label: string;
@@ -75,41 +67,33 @@ export function AdminDashboard({
   const section = useMemo(() => {
     const target =
       query === undefined ? initialSection : readAdminNavigation(new URLSearchParams(query));
-    return IS_PLAY_EDITION && target === "settlementQueue" ? "today" : target;
+    return target;
   }, [query, initialSection]);
   // Preserve mounted workspaces on unrelated tab changes; a focused queue explicitly starts a new filtered view.
   const [lastQueue, setLastQueue] = useState({
     accounts: false,
     businesses: false,
-    billing: false,
   });
   const accountsActive = section === "accounts" || section === "approvalQueue";
   const businessesActive = section === "businesses" || section === "businessQueue";
-  const billingActive = section === "billing" || section === "receiptQueue";
   const accountsQueue = accountsActive ? section === "approvalQueue" : lastQueue.accounts;
   const businessesQueue = businessesActive ? section === "businessQueue" : lastQueue.businesses;
-  const receiptsQueue = billingActive ? section === "receiptQueue" : lastQueue.billing;
   useEffect(() => {
     setLastQueue((last) =>
-      last.accounts === accountsQueue &&
-      last.businesses === businessesQueue &&
-      last.billing === receiptsQueue
+      last.accounts === accountsQueue && last.businesses === businessesQueue
         ? last
-        : { accounts: accountsQueue, businesses: businessesQueue, billing: receiptsQueue },
+        : { accounts: accountsQueue, businesses: businessesQueue },
     );
-  }, [accountsQueue, businessesQueue, receiptsQueue]);
+  }, [accountsQueue, businessesQueue]);
   const navigationToggle = useRef<HTMLButtonElement>(null);
   const [navigationOpen, setNavigationOpen] = useState(false);
   const [visited, setVisited] = useState({
     today: section === "today",
     approvalQueue: section === "approvalQueue",
     businessQueue: section === "businessQueue",
-    receiptQueue: section === "receiptQueue",
-    settlementQueue: section === "settlementQueue",
     accounts: section === "accounts",
     categories: section === "categories",
     businesses: section === "businesses",
-    billing: section === "billing",
     reviews: section === "reviews",
   });
   useEffect(() => {
@@ -128,8 +112,6 @@ export function AdminDashboard({
   const queues = {
     approvalQueue: { parent: "accounts", title: "Nalozi za odobrenje" },
     businessQueue: { parent: "businesses", title: "Djelatnosti i izmjene za pregled" },
-    receiptQueue: { parent: "billing", title: "Obračuni na čekanju" },
-    settlementQueue: { parent: "billing", title: "PayPal uplate za provjeru" },
   } as const;
   const queue = Object.hasOwn(queues, section) ? queues[section as keyof typeof queues] : null;
   const current = sections.find((item) => item.id === (queue?.parent ?? section)) ?? sections[0];
@@ -182,8 +164,8 @@ export function AdminDashboard({
               <Icon name="message" /> Zahtjevi i prijave
             </Link>
             {!IS_PLAY_EDITION && (
-              <Link href="/administracija/oglasi">
-                <Icon name="star" /> Oglašavanje i krediti
+              <Link href="/administracija/isticanja">
+                <Icon name="star" /> Isticanja
               </Link>
             )}
             <Link href="/administracija/reels">
@@ -217,9 +199,6 @@ export function AdminDashboard({
           )}
         </header>
         {section === "today" && <AdminToday key={initial.id} accountId={initial.id} />}
-        {section === "settlementQueue" && !IS_PLAY_EDITION && (
-          <PackageSettlements key={initial.id} accountId={initial.id} reviewOnly />
-        )}
         <div hidden={!accountsActive}>
           {(visited.accounts || visited.approvalQueue || accountsActive) && (
             <AccountApprovals
@@ -256,17 +235,6 @@ export function AdminDashboard({
               key={initial.id}
               expectedAccountId={initial.id}
               active={section === "reviews"}
-            />
-          )}
-        </div>
-        <div hidden={!billingActive}>
-          {(visited.billing || visited.receiptQueue || billingActive) && (
-            <BillingAdmin
-              key={`${initial.id}:${receiptsQueue}`}
-              expectedAccountId={initial.id}
-              pendingOnly={receiptsQueue}
-              active={billingActive}
-              embedded
             />
           )}
         </div>

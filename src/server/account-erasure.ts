@@ -43,7 +43,7 @@ export function createAccountErasure(auth: AuthService, pool: Pool) {
         throw new AccountAccessError(400, "INVALID_ERASURE_CONFIRMATION");
 
       const pending = (
-        await client.query<{ listing: boolean; booking: boolean; payment: boolean }>(
+        await client.query<{ listing: boolean; booking: boolean }>(
           `SELECT
             EXISTS (
               SELECT 1 FROM directory_business WHERE owner_user_id=$1 AND deleted_at IS NULL
@@ -61,27 +61,10 @@ export function createAccountErasure(auth: AuthService, pool: Pool) {
               WHERE s.status IN ('requested','confirmed') AND s.kind='customer'
                 AND s.check_out>=(now() AT TIME ZONE s.timezone)::date
                 AND (s.customer_id=$1 OR b.owner_user_id=$1)
-            )) AS booking,
-            (EXISTS (
-              SELECT 1 FROM live_package_contract
-              WHERE user_id=$1 AND (
-                (payment_method='paypal' AND status NOT IN ('CANCELLED','EXPIRED'))
-                OR (paid_cycles>0 AND ends_at>now())
-              )
-            ) OR EXISTS (
-              SELECT 1 FROM paypal_checkout_order
-              WHERE user_id=$1 AND environment='live' AND (
-                 refund_total_unknown OR status='review' OR capture_lease_until>now()
-                 OR (status IN ('created','provider_created') AND expires_at>now())
-              )
-            ) OR EXISTS (
-              SELECT 1 FROM ahi_wallet_bank_topup bank JOIN marketing_order sale ON sale.id=bank.order_id
-              WHERE bank.account_id=$1 AND sale.status IN ('requested','quoted')
-            )) AS payment`,
+            )) AS booking`,
           [target.id],
         )
       ).rows[0];
-      if (pending?.payment) throw new AccountAccessError(409, "ERASURE_PAYMENT_PENDING");
       if (pending?.booking) throw new AccountAccessError(409, "ERASURE_BOOKING_PENDING");
       if (pending?.listing) throw new AccountAccessError(409, "ERASURE_BUSINESS_PENDING");
 

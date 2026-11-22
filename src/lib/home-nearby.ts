@@ -86,6 +86,7 @@ export function readHomeCardPage(
       latitude: point?.latitude ?? null,
       longitude: point?.longitude ?? null,
       verified: row.verified,
+      featured: row.featured === true,
       localFeatured: row.localFeatured === true,
       details: row.details == null ? null : readBusinessDetails(row.details),
       reviews: row.reviews == null ? { count: 0, sum: 0 } : readReviewSummary(row.reviews),

@@ -70,8 +70,6 @@ export function createAccountHttpHandler({
             throw new AccountAccessError(400, "INVALID_ACCOUNT_QUERY");
           return reply(await service.businessToday(request.headers, id));
         }
-        if (pathname === "/api/account/placements" && !url.search)
-          return reply({ placements: await service.placements(request.headers) });
         if (pathname === "/api/admin/today" && !url.search)
           return reply({ queues: await service.adminToday(request.headers) });
         if (pathname === "/api/admin/accounts" || pathname === "/api/admin/accounts/ready") {

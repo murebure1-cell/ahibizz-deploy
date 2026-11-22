@@ -114,7 +114,6 @@ function AppointmentsWorkspace({
   const ready = result?.key === selection;
   const entries = ready ? result.entries : [];
   const more = ready && result.more;
-  const credits = ready ? result.credits : null;
   useEffect(() => {
     if (!active || requiresLogin) return;
     return listenForBookingResume(() => {
@@ -159,7 +158,6 @@ function AppointmentsWorkspace({
               key: `${view}:${page}`,
               entries: data.entries,
               more: data.hasMore,
-              credits: Number.isInteger(data.credits) ? data.credits : null,
             },
             cancellations.current.values(),
           ),
@@ -262,9 +260,6 @@ function AppointmentsWorkspace({
           </button>
         ))}
       </fieldset>
-      {credits !== null && credits > 0 && (
-        <p className={styles.credit}>Krediti kroz booking: {credits}</p>
-      )}
       {error && (
         <div role="alert" className={styles.error}>
           <p>{error}</p>

@@ -1,11 +1,9 @@
-import { IS_PLAY_EDITION } from "../../../../lib/distribution";
 import {
   AccountAccessError,
   accountTransaction,
   createAccountAccess,
 } from "../../../../server/auth/accounts";
 import { getAuthDatabasePool, getAuthService } from "../../../../server/auth/service";
-import { walletBalance } from "../../../../server/wallet/service";
 export const dynamic = "force-dynamic";
 function reply(body: unknown, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "private, no-store" } });
@@ -30,7 +28,6 @@ export async function GET(request: Request) {
         approval: user.approval,
         emailVerified: user.emailVerified,
         appearance: result.rows[0]?.appearance ?? "system",
-        balance: IS_PLAY_EDITION ? null : await walletBalance(client, user.id),
       };
     });
     return reply({ account: summary });

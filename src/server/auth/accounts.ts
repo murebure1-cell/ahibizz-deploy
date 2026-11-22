@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
-import { readOwnerOverview, readOwnerPlacements } from "../account-overview";
+import { readOwnerOverview } from "../account-overview";
 import { readAdminTodayQueues } from "../admin-today";
 import { readBusinessToday } from "../business-today";
 import { bootstrapInitialOwnerRecord, InitialOwnerError } from "./initial-owner";
@@ -291,13 +291,6 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
         const value = await readBusinessToday(client, actor.id, selected);
         if (!value) fail(404, "BUSINESS_NOT_FOUND");
         return value;
-      });
-    },
-    async placements(headers: Headers) {
-      const current = await session(headers);
-      return accountTransaction(pool, async (client) => {
-        const actor = await authority(client, current, false, "read");
-        return readOwnerPlacements(client, actor.id);
       });
     },
     async update(headers: Headers, input: unknown): Promise<SafeAccountProfile> {

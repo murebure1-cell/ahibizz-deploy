@@ -2,56 +2,13 @@
 
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
-import {
-  type AccountOverviewFacts,
-  readOverview,
-  readPlacements,
-} from "../../lib/account-overview";
+import { type AccountOverviewFacts, readOverview } from "../../lib/account-overview";
 import type { AccountSection } from "../../lib/account-return";
-import { billingPackages } from "../../lib/billing";
 import { accountDate } from "../../lib/display-date";
-import { IS_PLAY_EDITION } from "../../lib/distribution";
-import { type PackageContract, walletPackageStatus } from "../../lib/sandbox-subscriptions";
 import { Icon, type IconName } from "../Icon";
 import { BusinessToday } from "./BusinessToday";
 import { NextAppointmentCard } from "./NextAppointmentCard";
 import styles from "./overview.module.css";
-
-type MemberContract = PackageContract & { contractualEndsAt: string | null };
-const statuses: Record<PackageContract["status"], string> = {
-  CREATING: "U pripremi",
-  APPROVAL_PENDING: "Čeka odobrenje",
-  APPROVED: "Odobrena",
-  ACTIVE: "Aktivna",
-  SUSPENDED: "Pauzirana",
-  CANCELLED: "Otkazana",
-  EXPIRED: "Završena",
-};
-function ownContracts(value: unknown, id: string): MemberContract[] {
-  const data = value as { actor?: { id?: string }; contracts?: MemberContract[] } | null;
-  if (
-    !data ||
-    data.actor?.id !== id ||
-    !Array.isArray(data.contracts) ||
-    !data.contracts.every(
-      (row) =>
-        row &&
-        /^[a-f0-9-]{36}$/i.test(row.id) &&
-        Object.hasOwn(statuses, row.status) &&
-        billingPackages.some((plan) => plan.id === row.packageId) &&
-        ["annual", "monthly"].includes(row.period) &&
-        typeof row.businessTitle === "string" &&
-        Number.isSafeInteger(row.paidCycles) &&
-        row.paidCycles >= 0 &&
-        [row.contractualEndsAt, row.endsAt].every(
-          (date) =>
-            date === null || (typeof date === "string" && Number.isFinite(Date.parse(date))),
-        ),
-    )
-  )
-    throw new Error("Invalid membership response");
-  return data.contracts;
-}
 
 function useAccountRead<T>(
   path: string,
@@ -104,111 +61,6 @@ function ReadError({ retry }: { retry: () => void }) {
   );
 }
 
-export function MembershipOverview({
-  accountId,
-  active,
-  openPlans,
-}: {
-  accountId: string;
-  active: boolean;
-  openPlans?: () => void;
-}) {
-  const { result, error, retry } = useAccountRead(
-    "/api/account/memberships",
-    accountId,
-    active,
-    ownContracts,
-  );
-  const displayed = openPlans ? result?.slice(0, 2) : result;
-  return (
-    <section className={styles.contracts} aria-label="Moje pretplate">
-      <header>
-        <h2>Moje pretplate</h2>
-        {openPlans && (!IS_PLAY_EDITION || Boolean(result?.length)) && (
-          <button type="button" onClick={openPlans}>
-            {IS_PLAY_EDITION ? "Pregled" : "Paketi"} <Icon name="arrow" />
-          </button>
-        )}
-        {!openPlans && !IS_PLAY_EDITION && (
-          <Link href="/paketi" className={styles.manage}>
-            Pogledaj pakete <Icon name="arrow" />
-          </Link>
-        )}
-      </header>
-      {error ? (
-        <ReadError retry={retry} />
-      ) : result?.length === 0 ? (
-        <p className={styles.empty}>Još nemaš ugovoren paket.</p>
-      ) : (
-        displayed?.map((item) => (
-          <article key={item.id} className={styles.contract}>
-            <div className={styles.contractName}>
-              <span className={styles.mark}>
-                <Icon name="card" />
-              </span>
-              <div>
-                <h3>
-                  {billingPackages.find((plan) => plan.id === item.packageId)?.name} ·{" "}
-                  {item.businessTitle}
-                </h3>
-                <p>
-                  {item.period === "annual" ? "Godišnja uplata" : "Mjesečne uplate"} ·{" "}
-                  {item.status === "ACTIVE" && !item.paidCycles
-                    ? "Čeka uplatu"
-                    : (walletPackageStatus(item) ?? statuses[item.status])}
-                </p>
-              </div>
-            </div>
-            {(item.contractualEndsAt || item.endsAt) && (
-              <dl>
-                {item.contractualEndsAt && (
-                  <div>
-                    <dt>Ugovor do</dt>
-                    <dd>
-                      <time dateTime={item.contractualEndsAt}>
-                        {accountDate(item.contractualEndsAt)}
-                      </time>
-                    </dd>
-                  </div>
-                )}
-                {item.endsAt && (
-                  <div>
-                    <dt>Plaćeno do</dt>
-                    <dd>
-                      <time dateTime={item.endsAt}>{accountDate(item.endsAt)}</time>
-                    </dd>
-                  </div>
-                )}
-              </dl>
-            )}
-            {!IS_PLAY_EDITION && (
-              <Link
-                className={styles.manage}
-                href={`/paketi/placanje?paket=${item.packageId}&period=${item.period}&ugovor=${item.id}`}
-              >
-                Detalji ugovora <Icon name="chevron" />
-              </Link>
-            )}
-          </article>
-        ))
-      )}
-      {!error && result === null && (
-        <span
-          role="status"
-          className={styles.placeholder}
-          aria-label="Učitavanje pretplata"
-          aria-busy="true"
-        />
-      )}
-      {openPlans && result && result.length > 2 && (
-        <button type="button" className={styles.manage} onClick={openPlans}>
-          Sve pretplate <Icon name="arrow" />
-        </button>
-      )}
-    </section>
-  );
-}
-
 export function AccountOverview({
   accountId,
   active,
@@ -233,11 +85,6 @@ export function AccountOverview({
       {result && result.businesses > 0 && (
         <BusinessToday key={accountId} accountId={accountId} active={active} />
       )}
-      <MembershipOverview
-        accountId={accountId}
-        active={active}
-        openPlans={() => onSection("membership")}
-      />
     </AccountSummary>
   );
 }
@@ -266,13 +113,6 @@ export function AccountSummary({
       count: result?.unreadThreads,
       pane: "messages",
     },
-    {
-      label: "Aktivna isticanja",
-      icon: "star",
-      count: result?.promotedBusinesses,
-      pane: "advertising",
-    },
-    { label: "Ahi krediti", icon: "card", count: result?.credits, pane: "credits" },
   ];
   return (
     <div className={styles.workspace}>
@@ -304,11 +144,7 @@ export function AccountSummary({
               <span>{label}</span>
             </>
           );
-          return IS_PLAY_EDITION && pane === "credits" ? (
-            <div className={styles.metric} key={pane} data-design="account-metric">
-              {content}
-            </div>
-          ) : (
+          return (
             <button
               type="button"
               className={styles.metric}
@@ -324,52 +160,5 @@ export function AccountSummary({
       </div>
       {children}
     </div>
-  );
-}
-
-/** The Play edition displays previously acquired placements without creating a purchase. */
-export function CurrentPlacements({ accountId, active }: { accountId: string; active: boolean }) {
-  const { result, error, retry } = useAccountRead(
-    "/api/account/placements",
-    accountId,
-    active,
-    readPlacements,
-  );
-  return (
-    <section className={styles.contracts}>
-      <header>
-        <h2>Moji oglasi</h2>
-      </header>
-      {error && <ReadError retry={retry} />}
-      {result?.items.map((row) => (
-        <article key={row.kind + row.id} className={styles.contract}>
-          <h3>
-            <Link href={`/djelatnosti/${row.id}`}>{row.title}</Link>
-          </h3>
-          <p>
-            {
-              {
-                category: "Isticanje u kategoriji",
-                featured: "Istaknuto na početnoj",
-                nearby: "Istaknuto u blizini",
-                banner: "Baner",
-              }[row.kind]
-            }{" "}
-            · do <time dateTime={row.endsAt}>{accountDate(row.endsAt)}</time>
-          </p>
-        </article>
-      ))}
-      {result && !result.items.length && (
-        <p className={styles.empty}>Trenutno nema aktivnih oglasa.</p>
-      )}
-      {!error && !result && (
-        <span
-          className={styles.placeholder}
-          role="status"
-          aria-label="Učitavanje oglasa"
-          aria-busy="true"
-        />
-      )}
-    </section>
   );
 }

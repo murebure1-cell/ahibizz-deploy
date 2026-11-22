@@ -2,12 +2,9 @@ const adminSections = {
   danas: "today",
   odobrenja: "approvalQueue",
   pregled: "businessQueue",
-  obracuni: "receiptQueue",
-  transakcije: "settlementQueue",
   nalozi: "accounts",
   kategorije: "categories",
   djelatnosti: "businesses",
-  naplata: "billing",
   recenzije: "reviews",
 } as const;
 
@@ -17,12 +14,9 @@ const sectionQueries: Record<AdminSection, keyof typeof adminSections> = {
   today: "danas",
   approvalQueue: "odobrenja",
   businessQueue: "pregled",
-  receiptQueue: "obracuni",
-  settlementQueue: "transakcije",
   accounts: "nalozi",
   categories: "kategorije",
   businesses: "djelatnosti",
-  billing: "naplata",
   reviews: "recenzije",
 };
 
@@ -55,7 +49,7 @@ export function adminReturnPath(value: unknown): string | null {
     value === "/administracija/zahtjevi" ||
     value === "/administracija/blog" ||
     value === "/administracija/reels" ||
-    value === "/administracija/oglasi" ||
+    value === "/administracija/isticanja" ||
     value === businessImportPath ||
     value === businessLocationBatchPath ||
     value === adminMailPath

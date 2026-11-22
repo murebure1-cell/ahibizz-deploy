@@ -54,7 +54,7 @@ async function waitForLockWaiters(pool, applicationName, minimum = 2) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  test("real isolated booking, concurrent holds, cancellation and completion credits", {
+  test("real isolated booking, concurrent holds, cancellation and completion", {
     timeout: 120000,
   }, async (t) => {
     // No DATABASE_URL, PG* default or production host can enter this fixture.
@@ -152,6 +152,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0051_account_erasure.sql",
           "0052_bank_credit_topups.sql",
           "0053_production_credit_purchases.sql",
+          "0054_promotions.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -468,18 +469,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             [id],
           )
         ).rows;
-      const deniedCredit = (
-        entryId,
-        businessId = business.id,
-        recipientId = professional.user.id,
-      ) =>
-        assert.rejects(
-          pool.query(
-            "INSERT INTO booking_completion_credit (entry_id,business_id,recipient_user_id,amount) VALUES ($1,$2,$3,5)",
-            [entryId, businessId, recipientId],
-          ),
-          (error) => error.code === "23514",
-        );
       const action = (actor, entry, next, expectedVersion = entry.version) =>
         request("POST", `/entries/${entry.id}/action`, {
           actor,
@@ -678,7 +667,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
               next_version: 1,
             },
           ]);
-          await deniedCredit(winner.id);
           assert.equal(await count("booking_completion_credit"), 0);
           const held = await request(
             "GET",
@@ -889,7 +877,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           );
           assert.equal(calendar.status, 200);
           assert.equal(calendar.data.entries[0].id, winner.id);
-          assert.equal(calendar.data.earnedCredits, 0);
           const publicValue = JSON.stringify((await request("GET", publicPath)).data);
           for (const actor of actors) {
             assert.equal(publicValue.includes(actor.user.id), false);
@@ -1055,24 +1042,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           assert.equal(
             (await action(professional, completed.data.entry, "complete")).status,
             409,
-            "Repeating completion must not award again.",
+            "Repeating completion must not repeat a completed action.",
           );
-          const credits = (
-            await pool.query(
-              "SELECT entry_id, business_id, recipient_user_id, amount FROM booking_completion_credit ORDER BY entry_id",
-            )
-          ).rows;
-          assert.deepEqual(credits, [
-            {
-              entry_id: entry.id,
-              business_id: business.id,
-              recipient_user_id: professional.user.id,
-              amount: 5,
-            },
-          ]);
-          await deniedCredit(entry.id, business.id, operator.user.id);
-          await deniedCredit(entry.id, randomUUID(), professional.user.id);
-          assert.equal(await count("booking_completion_credit"), 1);
           assert.equal((await events(entry.id)).length, completed.data.entry.version);
           assert.deepEqual((await events(entry.id)).at(-1), {
             actor_user_id: professional.user.id,
@@ -1082,96 +1053,82 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             previous_version: 2,
             next_version: 3,
           });
-          assert.equal((await request("GET", "/mine", { actor: professional })).data.credits, 5);
-          assert.equal((await request("GET", "/mine", { actor: operator })).data.credits, 0);
-          assert.equal((await request("GET", "/mine", { actor: customer })).data.credits, 0);
         },
       );
 
-      await t.test(
-        "manual appointments and busy blocks use real occupancy but never create completion credits",
-        async () => {
-          const created = await request("POST", `${ownerPath}/entries`, {
-            actor: professional,
-            key: randomUUID(),
-            body: {
-              kind: "manual",
-              serviceId,
-              configurationVersion: settings.version,
-              startsAt: "2030-01-08T08:00:00.000Z",
-              clientName: "Offline fixture",
-              clientPhone: "+38761123456",
-            },
-          });
-          assert.equal(created.status, 201);
-          assert.equal(created.data.entry.status, "confirmed");
-          assert.equal(created.data.entry.kind, "manual");
-          assert.equal(created.data.entry.customerId, null);
-          clock = new Date(Date.parse(created.data.entry.endsAt) + 60_000);
-          assert.equal(
-            (await action(professional, created.data.entry, "complete")).data.entry.status,
-            "completed",
-          );
-          assert.equal(await count("booking_completion_credit"), 1);
-          await deniedCredit(created.data.entry.id);
-          assert.equal(
-            await count("booking_completion_credit"),
-            1,
-            "A directly inserted credit for a completed manual booking is forbidden too.",
-          );
-          const block = await request("POST", `${ownerPath}/entries`, {
-            actor: professional,
-            key: randomUUID(),
-            body: {
-              kind: "block",
-              configurationVersion: settings.version,
-              startsAt: "2030-01-08T10:00:00.000Z",
-              endsAt: "2030-01-08T11:00:00.000Z",
-            },
-          });
-          assert.equal(block.status, 201);
-          assert.equal(block.data.entry.kind, "block");
-          assert.equal(
-            (
-              await request("POST", `${publicPath}/requests`, {
-                actor: customer,
-                key: randomUUID(),
-                body: quote(serviceId, block.data.entry.startsAt),
-              })
-            ).status,
-            409,
-          );
-          assert.ok(
-            [400, 409].includes((await action(professional, block.data.entry, "complete")).status),
-          );
-          assert.equal(
-            (await action(professional, block.data.entry, "cancel")).data.entry.status,
-            "cancelled",
-          );
-          assert.equal(
-            (
-              await request("GET", `${publicPath}/slots?serviceId=${serviceId}&date=2030-01-08`)
-            ).data.slots.some((slot) => slot.startsAt === block.data.entry.startsAt),
-            true,
-          );
-          assert.equal(await count("booking_completion_credit"), 1);
-          for (const row of (
-            await pool.query("SELECT id,status,version FROM booking_entry ORDER BY id")
-          ).rows) {
-            const history = await events(row.id);
-            assert.equal(history.length, row.version);
-            assert.equal(history[0].action, "create");
-            assert.equal(history[0].previous_status, null);
-            assert.equal(history.at(-1).next_status, row.status);
-            for (const [index, event] of history.entries()) {
-              assert.equal(event.previous_version, index);
-              assert.equal(event.next_version, index + 1);
-              if (index) assert.equal(event.previous_status, history[index - 1].next_status);
-              assert.ok(actors.some((actor) => actor.user.id === event.actor_user_id));
-            }
+      await t.test("manual appointments and busy blocks use real occupancy", async () => {
+        const created = await request("POST", `${ownerPath}/entries`, {
+          actor: professional,
+          key: randomUUID(),
+          body: {
+            kind: "manual",
+            serviceId,
+            configurationVersion: settings.version,
+            startsAt: "2030-01-08T08:00:00.000Z",
+            clientName: "Offline fixture",
+            clientPhone: "+38761123456",
+          },
+        });
+        assert.equal(created.status, 201);
+        assert.equal(created.data.entry.status, "confirmed");
+        assert.equal(created.data.entry.kind, "manual");
+        assert.equal(created.data.entry.customerId, null);
+        clock = new Date(Date.parse(created.data.entry.endsAt) + 60_000);
+        assert.equal(
+          (await action(professional, created.data.entry, "complete")).data.entry.status,
+          "completed",
+        );
+        const block = await request("POST", `${ownerPath}/entries`, {
+          actor: professional,
+          key: randomUUID(),
+          body: {
+            kind: "block",
+            configurationVersion: settings.version,
+            startsAt: "2030-01-08T10:00:00.000Z",
+            endsAt: "2030-01-08T11:00:00.000Z",
+          },
+        });
+        assert.equal(block.status, 201);
+        assert.equal(block.data.entry.kind, "block");
+        assert.equal(
+          (
+            await request("POST", `${publicPath}/requests`, {
+              actor: customer,
+              key: randomUUID(),
+              body: quote(serviceId, block.data.entry.startsAt),
+            })
+          ).status,
+          409,
+        );
+        assert.ok(
+          [400, 409].includes((await action(professional, block.data.entry, "complete")).status),
+        );
+        assert.equal(
+          (await action(professional, block.data.entry, "cancel")).data.entry.status,
+          "cancelled",
+        );
+        assert.equal(
+          (
+            await request("GET", `${publicPath}/slots?serviceId=${serviceId}&date=2030-01-08`)
+          ).data.slots.some((slot) => slot.startsAt === block.data.entry.startsAt),
+          true,
+        );
+        for (const row of (
+          await pool.query("SELECT id,status,version FROM booking_entry ORDER BY id")
+        ).rows) {
+          const history = await events(row.id);
+          assert.equal(history.length, row.version);
+          assert.equal(history[0].action, "create");
+          assert.equal(history[0].previous_status, null);
+          assert.equal(history.at(-1).next_status, row.status);
+          for (const [index, event] of history.entries()) {
+            assert.equal(event.previous_version, index);
+            assert.equal(event.next_version, index + 1);
+            if (index) assert.equal(event.previous_status, history[index - 1].next_status);
+            assert.ok(actors.some((actor) => actor.user.id === event.actor_user_id));
           }
-        },
-      );
+        }
+      });
 
       await t.test(
         "online disable and timezone changes use current settings while historical entries keep their snapshot",
@@ -1447,7 +1404,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             assert.equal(declined.status, 200);
             assert.equal(declined.data.entry.status, "declined");
             assert.equal(declined.data.entry.version, entry.version + 1);
-            assert.equal(await count("booking_completion_credit"), 1);
           } finally {
             clock = beforeClock;
           }
@@ -1473,7 +1429,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           const cancelled = await action(customer, valid.data.entry, "cancel");
           assert.equal(cancelled.status, 200);
           assert.equal(cancelled.data.entry.status, "cancelled");
-          assert.equal(await count("booking_completion_credit"), 1);
         },
       );
 
@@ -1708,7 +1663,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             ).status,
             401,
           );
-          assert.equal(await count("booking_completion_credit"), 1);
           assert.equal(outboundAttempts, 0);
           assert.deepEqual(await outsideTables(administration, schema), outside);
         },

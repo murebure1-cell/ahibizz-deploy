@@ -18,8 +18,6 @@ import { Icon } from "../Icon";
 import { DevicePush } from "../pwa/DevicePush";
 import permissionStyles from "../pwa/permissions.module.css";
 import { AccountPassword } from "./AccountPassword";
-import { AdPreference } from "./AdPreference";
-import { AudienceSettings } from "./AudienceSettings";
 import styles from "./account.module.css";
 
 const choices = [
@@ -331,12 +329,6 @@ function SettingsWorkspace({
             <DevicePush actor={initial.id} />
           </div>
         </section>
-      )}
-      {active && !accessLost && request === accountSettingsRequest && (
-        <>
-          <AdPreference accountId={initial.id} />
-          <AudienceSettings accountId={initial.id} />
-        </>
       )}
       <section className={styles.settingsCard} aria-labelledby="privacy-heading">
         <h2 id="privacy-heading">Privatnost i podaci</h2>

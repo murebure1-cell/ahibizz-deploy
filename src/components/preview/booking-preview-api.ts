@@ -102,7 +102,6 @@ export function createBookingPreviewApi({ now = () => new Date() }: { now?: () =
   >();
   const entries = new Map<string, BookingEntry>();
   const receipts = new Map<string, { payload: string; entryId: string }>();
-  const credits = new Map<string, { businessId: string; recipient: string; amount: number }>();
   const listeners = new Set<() => void>();
   let revision = 0;
   function changed() {
@@ -439,14 +438,6 @@ export function createBookingPreviewApi({ now = () => new Date() }: { now?: () =
     }
     const entry = { ...before, status, version: before.version + 1 };
     entries.set(key, entry);
-    if (
-      status === "completed" &&
-      before.kind === "customer" &&
-      before.customerId &&
-      before.customerId !== OWNER &&
-      !credits.has(key)
-    )
-      credits.set(key, { businessId: before.businessId, recipient: OWNER, amount: 5 });
     changed();
     return { entry };
   }
@@ -513,9 +504,6 @@ export function createBookingPreviewApi({ now = () => new Date() }: { now?: () =
             entries: own.slice((page - 1) * 20, page * 20),
             page,
             hasMore: own.length > page * 20,
-            credits: [...credits.values()]
-              .filter((credit) => credit.recipient === actor)
-              .reduce((sum, credit) => sum + credit.amount, 0),
             ...(view ? { view, asOf } : {}),
           };
         } else if (pub?.[1] && !pub[2]) {
@@ -542,9 +530,6 @@ export function createBookingPreviewApi({ now = () => new Date() }: { now?: () =
                   entry.businessId === owner[1] && entry.startsAt < to && entry.endsAt > from,
               )
               .sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.id.localeCompare(b.id)),
-            earnedCredits: [...credits.values()]
-              .filter((credit) => credit.businessId === owner[1])
-              .reduce((sum, credit) => sum + credit.amount, 0),
           };
         } else reject(404, "NOT_FOUND");
       } else {

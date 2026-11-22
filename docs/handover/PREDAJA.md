@@ -27,7 +27,7 @@ Ako tim umjesto toga nastavlja u postojećem radnom prostoru, prvo treba sačuva
 
 - Inventura početnih 48 stranica, 47 handler ruta i 1.104 JSX mjesta; finalna aplikacija ima 42 stranice bez javnog demo prikaza.
 - Uklonjeno 47 zastarjelih kod/QA/demo fajlova sa 7.511 redova; devet dokumenata objedinjeno u ovaj skup. Dodatno su skraćene mrtve preview i sandbox UI grane. Ikone su premještene uz iste slike.
-- Popravljeni zastarjeli administratorski submit, ponavljanje zatvaranja prijave, utrka čitanja/čuvanja izbora oglasa i neispravan JSON u pregledu transakcija. Novi testovi prate ispravke.
+- Popravljeni zastarjeli administratorski submit, ponavljanje zatvaranja prijave, provjere privatnih odgovora. Novi testovi prate ispravke.
 - Ujednačeni tekstovi, datumi i prikaz iznosa. Kartice djelatnosti i mobilni meni nisu mijenjani; provjeren je prazan diff njihovih datoteka i zajedničkih stilova. Nisu mijenjani iznosi, ugovori, migracije ni `.env` datoteke.
 - Play izdanje ima usklađenu pomoć i stranice greške, manifest, postojeće provjerene ikone, offline put i siguran predložak povezivanja. Upute za TWA, potpisivanje, Data safety i testni nalog su u [GOOGLE-PLAY.md](GOOGLE-PLAY.md).
 
@@ -35,7 +35,7 @@ Ako tim umjesto toga nastavlja u postojećem radnom prostoru, prvo treba sačuva
 
 Tačne lokalne rezultate vidi u [PROVJERA.md](PROVJERA.md). Puni `pnpm check`/CI, PostgreSQL integracije, finalni build, svaki browser klik, fizički Android, potpisani APK/AAB i Play pregled ostaju zasebna provjera tima. Ne koristiti žive uplate, email ili push kao zamjenu za izolirane testove.
 
-Vlasnik mora odlučiti o cijenama u KM/kreditima i kursu dopuna, mjesečnoj obnovi, primaocu uplata, indeksiranju, Play naplati te vlasništvu 33 djelatnosti. Sve opcije i granice dokaza nalaze se u [OTVORENE-ODLUKE.md](OTVORENE-ODLUKE.md).
+Odluke o naplati zamijenjene su konačnim nalogom vlasnika od 22. 11. 2026. Vidi [OTVORENE-ODLUKE.md](OTVORENE-ODLUKE.md).
 
 ## Predloženi PR
 

@@ -12,7 +12,7 @@ test("guest menu contains public destinations and members can reach their inbox"
   );
   assert.deepEqual(
     guest.business.map((item) => item.href),
-    ["/oglasavanje", "/paketi"],
+    [],
   );
   for (const access of ["member", "owner"] as const) {
     const { primary, business } = headerDestinations(access, browser);
@@ -22,7 +22,7 @@ test("guest menu contains public destinations and members can reach their inbox"
     );
     assert.deepEqual(
       business.map((item) => item.href),
-      ["/oglasavanje", "/paketi"],
+      [],
     );
   }
   const unknown = headerDestinations("unknown", browser);
@@ -66,12 +66,9 @@ test("header selection follows profiles, account subsections and back navigation
     ["/nalog", "odjeljak=poruke&osoba=test", "/nalog?odjeljak=poruke"],
     ["/nalog", "odjeljak=poruke&odjeljak=postavke", "/nalog"],
     ["/nalog", "odjeljak=postavke", "/nalog?odjeljak=postavke"],
-    ["/nalog", "odjeljak=paketi", "/nalog?odjeljak=paketi"],
     ["/ljudi/test", "", "/ljudi"],
     ["/djelatnosti/test", "", "/pretraga"],
     ["/administracija/uvoz-prijava", "", "/administracija"],
-    ["/paketi/proba", "", "/paketi"],
-    ["/naplata/povratak", "", "/oglasavanje"],
     ["/privatnost", "", "/privatnost"],
   ] as const)
     assert.equal(headerCurrentDestination(path, new URLSearchParams(search)), selected);

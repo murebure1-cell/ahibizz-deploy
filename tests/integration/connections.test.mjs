@@ -133,6 +133,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0051_account_erasure.sql",
           "0052_bank_credit_topups.sql",
           "0053_production_credit_purchases.sql",
+          "0054_promotions.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {

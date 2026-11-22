@@ -3,7 +3,6 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import styles from "../../../../components/support/resources.module.css";
-import { billingMoney } from "../../../../lib/billing";
 import { helpTicketLabel } from "../../../../lib/help-center";
 import { reelPath } from "../../../../lib/reel-navigation";
 import { supportSubjects } from "../../../../lib/support-requests";
@@ -18,8 +17,6 @@ const route = "/administracija/zahtjevi";
 const erasureStatuses: Record<string, string> = {
   potvrda: "Email za potvrdu mora odgovarati nalogu iz zahtjeva.",
   zasticen: "Brisanje administratorskog naloga treba obraditi kroz podršku.",
-  naplata:
-    "Nalog ima otvorenu naplatu ili važeći plaćeni paket. Provjeri ga prije obrade zahtjeva.",
   termini: "Nalog ima buduće aktivne termine. Prvo dogovori njihovu obradu s učesnicima.",
   djelatnosti: "Prvo prenesi ili ukloni djelatnosti koje su još vezane za ovaj nalog.",
   zahtjev: "Zahtjev više nije otvoren. Provjeri red zahtjeva.",
@@ -27,7 +24,6 @@ const erasureStatuses: Record<string, string> = {
 const erasureErrorStatus: Record<string, string> = {
   INVALID_ERASURE_CONFIRMATION: "potvrda",
   ERASURE_PROTECTED_ACCOUNT: "zasticen",
-  ERASURE_PAYMENT_PENDING: "naplata",
   ERASURE_BOOKING_PENDING: "termini",
   ERASURE_BUSINESS_PENDING: "djelatnosti",
   ERASURE_REQUEST_CHANGED: "zahtjev",
@@ -141,17 +137,6 @@ export default async function SupportQueue({
                     {item.subject === "help" ? helpTicketLabel(item.reference) : item.reference}
                   </p>
                   <p>{item.details}</p>
-                  {item.packageReview && (
-                    <div>
-                      <strong>{item.packageReview.businessTitle}</strong>
-                      <p>
-                        Potvrđene rate {item.packageReview.paidCycles} od{" "}
-                        {item.packageReview.totalCycles} ·{" "}
-                        {billingMoney(item.packageReview.amountBamMinor)} po rati
-                      </p>
-                      <p>Ugovor {item.reference.slice("ugovor--".length)}</p>
-                    </div>
-                  )}
                   {item.subject === "reel" && (
                     <Link href={reelPath(item.reference)}>Otvori prijavljeni Reel</Link>
                   )}

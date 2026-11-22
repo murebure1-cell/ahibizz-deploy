@@ -17,16 +17,13 @@ export const helpTopics = {
     ],
   },
   djelatnost: {
-    label: "Djelatnost i oglasi",
+    label: "Moja djelatnost",
     icon: "shop",
-    question: "Kako da objavim ili istaknem djelatnost?",
-    keywords: ["djelat", "oglas", "istak", "kampanj", "marketing", "promoc", "preduz", "biznis"],
+    question: "Kako da objavim djelatnost?",
+    keywords: ["djelat", "preduz", "biznis"],
     answer:
-      "U nalogu otvori Djelatnosti i odaberi dodavanje. Unesi grad, opis, kontakt i fotografije. Za promociju postojećeg profila pregledaj dostupne pozicije i pošalji zahtjev za ponudu.",
-    links: [
-      { label: "Moje djelatnosti", href: "/nalog?odjeljak=djelatnosti" },
-      { label: "Pozicije za oglašavanje", href: "/oglasavanje" },
-    ],
+      "U nalogu otvori Djelatnosti i odaberi dodavanje. Unesi grad, opis, kontakt i fotografije. Objava djelatnosti je besplatna.",
+    links: [{ label: "Moje djelatnosti", href: "/nalog?odjeljak=djelatnosti" }],
   },
   rezervacije: {
     label: "Booking i termini",
@@ -38,28 +35,6 @@ export const helpTopics = {
     links: [
       { label: "Moji termini", href: "/nalog?odjeljak=termini" },
       { label: "Otvori poruke", href: "/nalog?odjeljak=poruke" },
-    ],
-  },
-  naplata: {
-    label: "Naplata i paketi",
-    icon: "card",
-    question: "Kako da platim paket ili provjerim uplatu?",
-    keywords: [
-      "kredit",
-      "paket",
-      "naplat",
-      "uplat",
-      "racun",
-      "kartic",
-      "paypal",
-      "plac",
-      "pretplat",
-    ],
-    answer:
-      "Paket se plaća Ahi kreditima: u nalogu dopuni kredite, zatim na stranici Paketi odaberi paket i djelatnost i potvrdi plaćanje. Stanje kredita i aktivni paket vidiš u nalogu. Ako se uplata ne vidi, u zahtjevu podršci navedi iznos, približno vrijeme uplate i oznaku narudžbe ako je imaš.",
-    links: [
-      { label: "Pregled paketa", href: "/paketi" },
-      { label: "Moj nalog", href: "/nalog" },
     ],
   },
   sigurnost: {
@@ -104,33 +79,14 @@ export function helpTopicContent(id: HelpTopicId, playEdition = false): HelpAnsw
   const topic = helpTopics[id];
   if (!playEdition) return topic;
   switch (id) {
-    case "naplata":
-      return {
-        ...topic,
-        label: "Moj paket",
-        question: "Gdje vidim svoj paket?",
-        answer:
-          "U nalogu možeš pregledati svoj paket i datum isteka. Kupovina i dopuna kredita nisu dostupne u ovoj aplikaciji. Ako podaci o tvom paketu nisu tačni, pošalji zahtjev podršci.",
-        links: [{ label: "Moj paket", href: accountSectionPath("membership") }],
-      };
     case "djelatnost":
       return {
         ...topic,
         label: "Moje djelatnosti",
         question: "Kako da dodam ili uredim djelatnost?",
         answer:
-          "U nalogu otvori Djelatnosti i odaberi dodavanje. Unesi grad, opis, kontakt i fotografije. Postojeće isticanje možeš pregledati u svom nalogu.",
-        links: [
-          { label: "Moje djelatnosti", href: accountSectionPath("businesses") },
-          { label: "Aktivna isticanja", href: accountSectionPath("advertising") },
-        ],
-      };
-    case "reels":
-      return {
-        ...topic,
-        question: "Gdje vidim svoje kratke videozapise?",
-        answer:
-          "U odjeljku Moji reels možeš pregledati svoje postojeće objave. Objavljivanje novog Reela nije dostupno u ovoj aplikaciji.",
+          "U nalogu otvori Djelatnosti i odaberi dodavanje. Unesi grad, opis, kontakt i fotografije. Objava djelatnosti je besplatna.",
+        links: [{ label: "Moje djelatnosti", href: accountSectionPath("businesses") }],
       };
     default:
       return topic;
@@ -159,18 +115,8 @@ export function matchHelpTopic(query: string): HelpTopicId | null {
 }
 
 export function helpTicketTopic(reference: string): HelpTicketTopic | null {
-  if (packageSupportContractId(reference)) return "naplata";
   const parts = /^([a-z]+)--[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.exec(reference);
   return parts?.[1] === "ostalo" ? "ostalo" : helpTopic(parts?.[1]);
-}
-
-export function packageSupportContractId(reference: unknown) {
-  if (typeof reference !== "string") return null;
-  return (
-    /^ugovor--([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/i
-      .exec(reference)?.[1]
-      ?.toLowerCase() ?? null
-  );
 }
 
 export function helpTicketLabel(reference: string) {

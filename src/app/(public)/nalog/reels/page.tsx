@@ -44,8 +44,6 @@ export default async function ManageReelsPage({ searchParams }: { searchParams: 
           businesses={list.businesses}
           businessId={selected}
           reels={list.reels}
-          priceCredits={list.priceCredits}
-          balance={list.balance}
           admin={false}
         />
       ) : (

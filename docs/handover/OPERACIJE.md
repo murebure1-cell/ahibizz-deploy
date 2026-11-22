@@ -13,9 +13,7 @@ Ovaj dokument opisuje kod, ne trenutno stanje produkcijskih postavki. Live prist
 
 ## Konfiguracija
 
-Nazivi i namjene su u inventuri; `.env.example` je primjer, a ne skup produkcijskih vrijednosti. Inventura je početni snapshot i uključuje imena uklonjenih probnih adaptera; ti adapteri više nemaju rutu. Preostale PayPal postavke mogu biti potrebne historijskim ugovorima, webhookovima i povratima. Ne uklanjati ih prema pretpostavci o živoj konfiguraciji.
-
-Docker runtime postavlja `AHIBIZZ_PLATFORM_CREDITS_ONLY=true`; operatorsko nadjačavanje nije provjereno. Nove komercijalne dopune koriste zasebnu potvrđenu bankovnu konfiguraciju. `AHIBIZZ_CREDIT_BANK_TRANSFER` se ne zamjenjuje podacima za dobrovoljnu podršku. Administrator potvrđuje dopunu nakon provjere izvoda; korisnički zahtjev nije potvrda prijema novca.
+Nazivi i namjene su u inventuri; `.env.example` je primjer, a ne skup produkcijskih vrijednosti. Tajne se ne verzioniraju. Donacije koriste zasebnu postojeću konfiguraciju.
 
 ## Ingress i granica povjerenja
 
@@ -34,12 +32,12 @@ Guard veže privatni Next proces na loopback. Javni parent provjerava peer, sint
 ## Kontrolna lista izdanja
 
 1. Fetch i pregled worktreeova/PR-ova; potvrdi tačan integration commit i jednog objavljivača.
-2. Pregled diff-a, tajni i finansijskih pravila; cijene/kurs/ugovore mijenja vlasnik odlukom.
+2. Pregled diff-a, tajni i finansijskih pravila; poslovna pravila mijenja vlasnik odlukom.
 3. `pnpm check`, odgovarajući izolirani PostgreSQL scenariji i CI. Posebno potvrdi oba web/Play builda ako se izdaju oba.
 4. Napravi i provjeri svjež backup aplikacije/baze prije objave. Sačuvaj identifikator i datum izvan Git-a.
 5. Prenesi pregledanu reviziju kroz `ahibizz-deploy` na OctaDeploy app 213; zapiši hash i image identitet.
 6. Potvrdi stvarno objavljenu reviziju, live i ready; zatim browser matricu iz `PROVJERA.md` kao gost, korisnik, vlasnik djelatnosti i administrator.
-7. Posebno zabilježi testove stvarnih poslovnih transakcija ako su odobreni. Ne poistovjećuj lokalni test, klik i bankovnu/PayPal potvrdu.
+7. Posebno zabilježi testove stvarnih poslovnih transakcija ako su odobreni. Ne poistovjećuj lokalni test, klik i potvrdu bankovne uplate.
 8. Ako provjere ne prođu, vrati prethodnu pregledanu verziju prema operatorskom planu. Ne vraćaj bazu napamet niti prepisuj historiju uplata.
 
 SIGTERM/SIGINT zatvaraju prihvat, dozvoljavaju ograničeno pražnjenje aktivnih zahtjeva i gase dijete. Neuspješan child zatvara listener; poslovne mutacije se ne ponavljaju automatski.

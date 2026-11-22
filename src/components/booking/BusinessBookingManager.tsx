@@ -321,7 +321,6 @@ function BookingWorkspace({
   const [month, setMonth] = useState("");
   const [day, setDay] = useState("");
   const [entries, setEntries] = useState<BookingEntry[] | null>(null);
-  const [credits, setCredits] = useState<number | null>(null);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState("");
   const [notice, setNotice] = useState("");
@@ -380,7 +379,6 @@ function BookingWorkspace({
     setSettings(null);
     setDraft(null);
     setEntries(null);
-    setCredits(null);
     setClientName("");
     setClientPhone("");
     setServiceId("");
@@ -474,16 +472,11 @@ function BookingWorkspace({
           epoch !== calendarEpoch.current
         )
           return;
-        if (
-          !Array.isArray(data.entries) ||
-          !integer(data.earnedCredits, 0, Number.MAX_SAFE_INTEGER)
-        )
-          throw new Error("invalid_calendar");
+        if (!Array.isArray(data.entries)) throw new Error("invalid_calendar");
         const rows = data.entries.map((row: unknown) => readEntry(row, businessId));
         if (new Set(rows.map((row: BookingEntry) => row.id)).size !== rows.length)
           throw new Error("duplicate_entry");
         setEntries(rows);
-        setCredits(data.earnedCredits);
       } catch (failure) {
         if (!live.current || generation !== authority.current) return;
         if (bookingAccessDenied(failure)) {
@@ -889,11 +882,6 @@ function BookingWorkspace({
                 : "Online booking je isključen"}
           </span>
           <span>{timezone}</span>
-          {credits !== null && (
-            <span>
-              Krediti kroz booking: <strong>{credits}</strong>
-            </span>
-          )}
         </div>
       )}
 
@@ -1432,9 +1420,7 @@ function BookingWorkspace({
                     Ponovi isti unos
                   </button>
                 )}
-                <p className={styles.help}>
-                  Vrijeme: {timezone}. Ručni unosi i blokade ne donose booking kredite.
-                </p>
+                <p className={styles.help}>Vrijeme: {timezone}.</p>
               </form>
             )}
 

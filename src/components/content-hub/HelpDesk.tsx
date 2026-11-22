@@ -22,12 +22,10 @@ export function HelpDesk({
   actor,
   requestId,
   initialTopic,
-  packageContract,
 }: {
   actor?: string;
   requestId?: string;
   initialTopic: HelpTopicId | null;
-  packageContract?: string;
 }) {
   const [question, setQuestion] = useState("");
   const [previous, setPrevious] = useState(
@@ -35,13 +33,7 @@ export function HelpDesk({
   );
   const [matched, setMatched] = useState<HelpTopicId | null>(initialTopic);
   const [topic, setTopic] = useState<HelpTicketTopic>(initialTopic ?? "ostalo");
-  const [detail, setDetail] = useState(
-    packageContract
-      ? IS_PLAY_EDITION
-        ? "Molim provjeru statusa mog paketa."
-        : "Molim provjeru preostalih rata nakon zaustavljanja PayPala."
-      : "",
-  );
+  const [detail, setDetail] = useState("");
   const detailsField = useRef<HTMLTextAreaElement>(null);
   const [result, action, pending] = useActionState(submitSupportRequest, {
     sent: false,
@@ -150,15 +142,7 @@ export function HelpDesk({
             <form action={action} className={resources.form}>
               <input type="hidden" name="actor" value={actor} />
               <input type="hidden" name="subject" value="help" />
-              <input
-                type="hidden"
-                name="reference"
-                value={
-                  packageContract && topic === "naplata"
-                    ? `ugovor--${packageContract}`
-                    : `${topic}--${requestId}`
-                }
-              />
+              <input type="hidden" name="reference" value={`${topic}--${requestId}`} />
               <label>
                 Tema
                 <select
