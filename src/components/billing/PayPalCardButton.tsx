@@ -326,10 +326,9 @@ export function PayPalCardButton(props: Props) {
               showError(error instanceof Error ? error.message : failure);
           });
           void Promise.resolve()
+            // start() can resolve while the provider overlay is still open.
+            // Only terminal SDK callbacks may end this payment attempt.
             .then(() => created.start({ presentationMode: "auto", targetElement: button }, order))
-            .then(() => {
-              if (pending === interaction) endedWithoutConfirmation();
-            })
             .catch(() => {
               if (pending !== interaction || !current() || guestState === "confirmed") return;
               if (guestState === "approving") setStatus(pendingMessage);
