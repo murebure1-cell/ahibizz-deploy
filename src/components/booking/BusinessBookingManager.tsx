@@ -24,6 +24,7 @@ import {
 import { addDays, dateKey, isTimeZone, localInstant } from "../../lib/booking-time";
 import { Icon } from "../Icon";
 import styles from "./booking.module.css";
+import { listenForBookingResume } from "./booking-resume";
 
 type Props = {
   initialDay?: string;
@@ -351,6 +352,7 @@ function BookingWorkspace({
     calendarEpoch = useRef(0);
   const settingsRead = useRef<AbortController | null>(null),
     calendarRead = useRef<AbortController | null>(null),
+    refreshAfterWrite = useRef(false),
     writeController = useRef<AbortController | null>(null);
   const intent = useRef<Intent | null>(null),
     sequence = useRef(0);
@@ -377,6 +379,7 @@ function BookingWorkspace({
     writeController.current?.abort();
     writeController.current = null;
     writing.current = false;
+    refreshAfterWrite.current = false;
     intent.current = recovery;
     settingsValue.current = null;
     setSettings(null);
@@ -454,16 +457,19 @@ function BookingWorkspace({
   );
 
   const loadCalendar = useCallback(
-    async (message = "") => {
+    async (message = "", preserveEntries = false) => {
       if (!api || !month || !isTimeZone(timezone)) return;
+      if (preserveEntries && calendarRead.current && !calendarRead.current.signal.aborted) return;
       calendarRead.current?.abort();
       const controller = new AbortController(),
         generation = authority.current,
         epoch = ++calendarEpoch.current;
       calendarRead.current = controller;
-      setCalendarLoading(true);
+      if (!preserveEntries) {
+        setCalendarLoading(true);
+        setEntries(null);
+      }
       setCalendarError(message);
-      setEntries(null);
       try {
         const from = localInstant(month, 0, timezone);
         const to = localInstant(nextMonth(month, 1), 0, timezone);
@@ -497,6 +503,7 @@ function BookingWorkspace({
         if (!controller.signal.aborted && epoch === calendarEpoch.current)
           setCalendarError([message, bookingError(failure)].filter(Boolean).join(" "));
       } finally {
+        if (calendarRead.current === controller) calendarRead.current = null;
         if (live.current && generation === authority.current && epoch === calendarEpoch.current)
           setCalendarLoading(false);
       }
@@ -538,6 +545,22 @@ function BookingWorkspace({
       calendarRead.current?.abort();
     };
   }, [active, loadCalendar, settings]);
+  useEffect(() => {
+    if (!active || !api || !settings || requiresLogin) return;
+    return listenForBookingResume(() => {
+      setNow(Date.now());
+      if (writing.current) {
+        refreshAfterWrite.current = true;
+      } else {
+        void loadCalendar("", true);
+      }
+    });
+  }, [active, api, settings, requiresLogin, loadCalendar]);
+  useEffect(() => {
+    if (!active || busy || !settings || !refreshAfterWrite.current) return;
+    refreshAfterWrite.current = false;
+    void loadCalendar("", true);
+  }, [active, busy, settings, loadCalendar]);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(timer);

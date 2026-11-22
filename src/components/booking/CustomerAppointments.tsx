@@ -22,6 +22,7 @@ import {
   readCustomerCancellation,
   reconcileCustomerCancellations,
 } from "../../lib/customer-appointments-state";
+import { listenForBookingResume } from "./booking-resume";
 import { AppointmentsEmpty, InventoryAppointments } from "./InventoryAppointments";
 import styles from "./public-booking.module.css";
 
@@ -116,9 +117,16 @@ function AppointmentsWorkspace({
   const entries = ready ? result.entries : [];
   const more = ready && result.more;
   const credits = ready ? result.credits : null;
+  useEffect(() => {
+    if (!active || requiresLogin || (preview && request === bookingRequest)) return;
+    return listenForBookingResume(() => {
+      // An in-flight cancellation refreshes the same list when it settles.
+      if (!writing.current) setRefresh((value) => value + 1);
+    });
+  }, [active, preview, request, requiresLogin]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: The refresh counter deliberately repeats the same read after a user action.
   useEffect(() => {
-    if (!active || (preview && request === bookingRequest)) return;
+    if (!active || writing.current || (preview && request === bookingRequest)) return;
     const current = ++revision.current,
       generation = authority.current,
       controller = new AbortController();

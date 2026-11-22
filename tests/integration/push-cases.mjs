@@ -74,6 +74,20 @@ export function pushAcceptance(auth, pool, actors) {
         [[member.subscription.endpoint, "test"]],
       );
       assert.equal((await call(member, "status")).test, "accepted");
+      const testId = sent[0].data.id;
+      await pool.query(
+        "UPDATE push_device SET test_requested_at=now()-interval '3 minutes' WHERE test_id=$1",
+        [testId],
+      );
+      assert.equal((await call(member, "status")).test, "unconfirmed");
+      const stored = await pool.query("SELECT test_state FROM push_device WHERE test_id=$1", [
+        testId,
+      ]);
+      assert.equal(stored.rows[0].test_state, "accepted");
+      await pool.query("UPDATE push_device SET test_state='shown' WHERE test_id=$1", [testId]);
+      assert.equal((await call(member, "status")).test, "shown");
+      await pool.query("UPDATE push_device SET test_state='opened' WHERE test_id=$1", [testId]);
+      assert.equal((await call(member, "status")).test, "opened");
       sent.length = 0;
     },
     async recipientOnly() {

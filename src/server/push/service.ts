@@ -137,7 +137,12 @@ export function createPushService(auth: AuthService, pool: Pool) {
       }
       const device = (
         await db.query<{ id: string; test_state: string | null }>(
-          `SELECT id,test_state FROM push_device WHERE ${owned} FOR UPDATE`,
+          // A provider acceptance proves handoff only. Keep the stored state so
+          // a device can still confirm the test after the initial waiting period.
+          `SELECT id,
+           CASE WHEN test_state='accepted' AND test_requested_at<=clock_timestamp()-interval '2 minutes'
+             THEN 'unconfirmed' ELSE test_state END AS test_state
+           FROM push_device WHERE ${owned} FOR UPDATE`,
           values,
         )
       ).rows[0];

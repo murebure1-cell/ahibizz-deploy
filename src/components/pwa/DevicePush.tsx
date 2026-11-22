@@ -17,6 +17,7 @@ const settings = "/nalog?odjeljak=postavke";
 const tests: Record<string, string> = {
   scheduled: "Zatvori aplikaciju. Probna obavijest je zakazana za 30 sekundi.",
   accepted: "Servis je preuzeo obavijest. Čekamo potvrdu uređaja.",
+  unconfirmed: "Servis je preuzeo obavijest. Uređaj još nije potvrdio prikaz.",
   shown: "Uređaj je prikazao probnu obavijest.",
   opened: "Probna obavijest je otvorena.",
   failed: "Slanje probne obavijesti nije uspjelo.",
@@ -51,19 +52,20 @@ export function DevicePush({
     [busy, setBusy] = useState(false),
     [reload, setReload] = useState(0);
   const lock = useRef(false),
-    epoch = useRef(0);
+    epoch = useRef(0),
+    revision = useRef(0);
+  const refreshTest = useRef<(() => void) | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a successful enrollment or retry starts a fresh read of device and server state.
   useEffect(() => {
     const current = ++epoch.current;
-    let revision = 0;
     lock.current = false;
     setBusy(false);
     setDevice(null);
     setStatus("loading");
-    async function read() {
+    async function read(background = false) {
       if (document.visibilityState === "hidden" || lock.current) return;
-      const ticket = ++revision;
-      const valid = () => epoch.current === current && revision === ticket && !lock.current;
+      const ticket = ++revision.current;
+      const valid = () => epoch.current === current && revision.current === ticket && !lock.current;
       const ios =
         /iPhone|iPad|iPod/.test(navigator.userAgent) ||
         (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
@@ -128,27 +130,38 @@ export function DevicePush({
         setStatus("ready");
       } catch (error) {
         if (!valid()) return;
-        setDevice(null);
-        setStatus(
+        const requiresLogin =
           error instanceof Error &&
-            ["AUTHENTICATION_REQUIRED", "ACCOUNT_IDENTITY_CHANGED"].includes(error.message)
-            ? "login"
-            : "error",
-        );
+          ["AUTHENTICATION_REQUIRED", "ACCOUNT_IDENTITY_CHANGED"].includes(error.message);
+        if (background && !requiresLogin) return;
+        setDevice(null);
+        setStatus(requiresLogin ? "login" : "error");
       }
     }
     const visible = () => {
       void read();
     };
+    refreshTest.current = () => void read(true);
     visible();
     window.addEventListener("focus", visible);
     document.addEventListener("visibilitychange", visible);
     return () => {
       epoch.current++;
+      refreshTest.current = null;
       window.removeEventListener("focus", visible);
       document.removeEventListener("visibilitychange", visible);
     };
   }, [actor, reload]);
+  const testPhase = device?.test;
+  useEffect(() => {
+    if (testPhase !== "scheduled" && testPhase !== "accepted") return;
+    const timer = window.setInterval(() => refreshTest.current?.(), 10000);
+    const stop = window.setTimeout(() => window.clearInterval(timer), 150000);
+    return () => {
+      window.clearInterval(timer);
+      window.clearTimeout(stop);
+    };
+  }, [testPhase]);
   const enabled = device?.enabled === true && status === "ready";
   useEffect(() => {
     onEnabled?.(enabled);
@@ -157,6 +170,7 @@ export function DevicePush({
   async function change(action: "enable" | "test" | "disable") {
     if (!device || lock.current) return;
     const current = epoch.current;
+    revision.current++;
     lock.current = true;
     setBusy(true);
     setNote("");
