@@ -1,3 +1,4 @@
+import { paypalOrderFlow } from "../../lib/paypal-order-flow";
 import type { LiveOrder } from "./live";
 
 export type CheckoutActor = {
@@ -11,6 +12,7 @@ export type CheckoutRecord = {
   userId: string;
   kind: "promotion" | "support" | "quote";
   quoteKind?: string | null;
+  offerVersion?: string;
   businessId: string | null;
   amountMinor: number;
   currency: "EUR";
@@ -59,7 +61,7 @@ type CheckoutCreateInput = {
   flow?: "sdk" | "guest" | "card-fields";
 };
 export interface CheckoutHttpService {
-  catalog(): unknown;
+  catalog(headers: Headers): unknown;
   reconcileBatch(
     headers: Headers,
     cursors?: { ordersAfter?: string | null; refundsAfter?: string | null },
@@ -205,7 +207,8 @@ export function createCheckoutHttpHandler(service: CheckoutHttpService, origin: 
         fail(400, "INVALID_CHECKOUT_INPUT");
       const path = url.pathname.slice("/api/checkout/".length);
       if (!url.pathname.startsWith("/api/checkout/")) return reply({ code: "NOT_FOUND" }, 404);
-      if (request.method === "GET" && path === "catalog") return reply(service.catalog());
+      if (request.method === "GET" && path === "catalog")
+        return reply(await service.catalog(request.headers));
       const pending = /^pending-promotion\/([a-f0-9-]{36})$/.exec(path);
       if (request.method === "GET" && pending)
         return reply(await service.readPendingPromotion(request.headers, requestId(pending[1])));
@@ -282,10 +285,14 @@ export function createCheckoutHttpHandler(service: CheckoutHttpService, origin: 
   };
 }
 export function providerOrder(order: CheckoutRecord): LiveOrder {
+  const creditTopUp = order.kind === "quote" && order.quoteKind === "credits";
   return {
     id: order.id,
     purpose: order.kind,
-    ...(order.kind === "quote" && order.quoteKind === "credits" ? { paypalAccountOnly: true } : {}),
+    ...(creditTopUp ? { creditTopUp: true } : {}),
+    ...(creditTopUp && order.offerVersion && paypalOrderFlow(order.offerVersion) === "sdk"
+      ? { creditTopUpCard: true }
+      : {}),
     amountMinor: order.amountMinor,
     currency: "EUR",
     merchantId: order.merchantId,

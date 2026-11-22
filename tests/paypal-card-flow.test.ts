@@ -21,8 +21,10 @@ const order: CardOrder = {
   flow: "sdk",
 };
 const providerOrderId = "TESTORDER123456";
-test("credit top-up never offers a new or previously saved direct card form", () => {
+test("credit top-up shows only the embedded card option when explicitly enabled", () => {
   assert.equal(canOfferPayPalCard(null, true, "quote", "credits"), false);
+  assert.equal(canOfferPayPalCard(null, false, "quote", "credits", true), false);
+  assert.equal(canOfferPayPalCard(null, true, "quote", "credits", true), true);
   for (const flow of ["sdk", "guest", "card-fields"] as const) {
     const saved = {
       ...order,
@@ -33,7 +35,60 @@ test("credit top-up never offers a new or previously saved direct card form", ()
       flow,
     };
     assert.equal(canOfferPayPalCard(saved, true, "quote"), false);
+    assert.equal(canOfferPayPalCard(saved, true, "quote", undefined, true), flow === "sdk");
     assert.equal(canOfferPayPalCard({ ...saved, quoteKind: "banner" }, true, "quote"), true);
+  }
+});
+test("an enabled credit top-up uses the exact quote and captures only once", async () => {
+  const quote: CardOrder = {
+    ...order,
+    kind: "quote",
+    quoteId: "top-up-quote",
+    quoteKind: "credits",
+    businessId: null,
+    amountMinor: 767,
+  };
+  for (const [enabled, method] of [
+    [false, "sdk"],
+    [true, "card-fields"],
+    [true, "sdk"],
+  ] as const) {
+    const calls: { path: string; body: unknown }[] = [];
+    const updates: CardOrder[] = [];
+    const flow = createPayPalCardFlow({
+      creditCardTopUps: enabled,
+      input: () => ({
+        requestId: "stable-key",
+        quoteId: "top-up-quote",
+        quoteKind: "credits",
+        amountMinor: 767,
+      }),
+      acquire: () => true,
+      release: () => {},
+      onOrder: (value) => updates.push(value),
+      send: async (path, body) => {
+        calls.push({ path, body });
+        return path === "orders"
+          ? { order: quote, providerOrderId }
+          : { order: { ...quote, status: "captured" } };
+      },
+    });
+    assert.equal(flow.click(), true);
+    if (!enabled || method !== "sdk") {
+      await assert.rejects(flow.create(method), /Kartična dopuna trenutno nije dostupna/);
+      assert.deepEqual(calls, []);
+      continue;
+    }
+    assert.equal(await flow.create(method), providerOrderId);
+    await Promise.all([flow.approve(providerOrderId), flow.approve(providerOrderId)]);
+    assert.deepEqual(calls, [
+      {
+        path: "orders",
+        body: { kind: "quote", quoteId: "top-up-quote", requestId: "stable-key", flow: "sdk" },
+      },
+      { path: "orders/internal-id/capture", body: {} },
+    ]);
+    assert.equal(updates.at(-1)?.status, "captured");
   }
 });
 test("an accepted quote binds SDK checkout to its server identity and price for creation, retry and capture", async () => {

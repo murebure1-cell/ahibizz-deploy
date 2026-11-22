@@ -1,4 +1,5 @@
-import type { PayPalOrderFlow } from "../../lib/paypal-order-flow";
+import { type PayPalOrderFlow, supportsCreditTopUpFlow } from "../../lib/paypal-order-flow";
+import { type CreditCardTopUpPolicy, creditCardTopUpsAvailable } from "./credit-top-up-policy";
 
 /** Server-only transport. Durable authorization/order persistence belongs to the checkout service. */
 export class PayPalLiveError extends Error {
@@ -12,7 +13,8 @@ export class PayPalLiveError extends Error {
 export type LiveOrder = {
   id: string;
   purpose: "promotion" | "support" | "quote";
-  paypalAccountOnly?: true;
+  creditTopUp?: true;
+  creditTopUpCard?: true;
   amountMinor: number;
   currency: "EUR";
   merchantId: string;
@@ -20,7 +22,7 @@ export type LiveOrder = {
   createRequestId: string;
   captureRequestId: string;
 };
-export type LiveConfiguration = {
+export type LiveConfiguration = CreditCardTopUpPolicy & {
   clientId: string;
   clientSecret: string;
   merchantId: string;
@@ -416,13 +418,16 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
   }
   return {
     readDeclinedCapture,
-    async create(order: LiveOrder, flow: PayPalOrderFlow = "redirect") {
+    async create(order: LiveOrder, flow: PayPalOrderFlow = "redirect", actorRole?: string) {
       if (
         !["redirect", "sdk", "guest", "card-fields"].includes(flow) ||
         ((flow === "guest" || flow === "card-fields") && order.purpose === "support")
       )
         throw new PayPalLiveError("INVALID_CHECKOUT_FLOW");
-      if (order.paypalAccountOnly && flow !== "redirect")
+      if (
+        order.creditTopUp &&
+        !supportsCreditTopUpFlow(flow, creditCardTopUpsAvailable(config, environment, actorRole))
+      )
         throw new PayPalLiveError("CREDIT_TOP_UP_PAYPAL_REQUIRED");
       canCharge(order);
       const returnUrl = `${origin.origin}/naplata/povratak?narudzba=${order.id}`;
@@ -439,9 +444,11 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
               description:
                 order.purpose === "promotion"
                   ? "AhiBizz: isticanje profila u kategoriji, 7 dana"
-                  : order.purpose === "quote"
-                    ? "AhiBizz: ponuda za oglase ili kredite"
-                    : "AhiBizz: dobrovoljna podrška razvoju",
+                  : order.creditTopUp
+                    ? "AhiBizz: dopuna Ahi kredita"
+                    : order.purpose === "quote"
+                      ? "AhiBizz: ponuda za oglase ili kredite"
+                      : "AhiBizz: dobrovoljna podrška razvoju",
               payee: { merchant_id: config.merchantId },
               amount: { currency_code: "EUR", value: liveAmount(order.amountMinor) },
             },
@@ -466,7 +473,7 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
                   payment_source: {
                     paypal: {
                       experience_context: {
-                        ...(order.paypalAccountOnly
+                        ...(order.creditTopUp
                           ? { landing_page: "LOGIN" }
                           : flow === "guest"
                             ? { landing_page: "GUEST_CHECKOUT" }
@@ -551,7 +558,8 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
       }
       const entries = captures.map(record);
       const active = entries.filter((entry) => !isDeclinedCaptureStatus(entry.status));
-      if (order.purpose === "promotion" && active.length === 0) {
+      const canCloseDecline = order.purpose === "promotion" || order.creditTopUpCard;
+      if (canCloseDecline && active.length === 0) {
         const latest = entries.at(-1);
         const proof = latest && (await readDeclinedCapture(order, providerId(latest.id)));
         return proof ? { status: "DECLINED" as const, ...proof } : { status: "PENDING" as const };
@@ -572,7 +580,7 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
       if (capture.status === "PARTIALLY_REFUNDED")
         return { status: "PARTIALLY_REFUNDED" as const, ...facts, refundedMinor: null };
       if (isDeclinedCaptureStatus(capture.status)) {
-        if (order.purpose === "promotion") {
+        if (canCloseDecline) {
           const proof = await readDeclinedCapture(order, id);
           return proof ? { status: "DECLINED" as const, ...proof } : { status: "PENDING" as const };
         }

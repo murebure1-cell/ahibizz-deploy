@@ -192,7 +192,20 @@ test("configuration is absent by default and all sales gates are required", () =
   assert.equal(config?.chargingApproved, false);
   assert.equal(checkoutCatalog(config).available, false);
   assert.equal(
+    checkoutCatalog(checkoutConfiguration({ ...vars, PAYPAL_CREDIT_CARD_TOPUPS_ENABLED: "true" }))
+      .creditCardTopUps,
+    false,
+  );
+  assert.equal(
     checkoutConfiguration({ ...vars, PAYPAL_CHECKOUT_FULFILLMENT_READY: "true" })?.chargingApproved,
+    true,
+  );
+  const enabled = { ...vars, PAYPAL_CHECKOUT_FULFILLMENT_READY: "true" };
+  assert.equal(checkoutCatalog(checkoutConfiguration(enabled)).creditCardTopUps, false);
+  assert.equal(
+    checkoutCatalog(
+      checkoutConfiguration({ ...enabled, PAYPAL_CREDIT_CARD_TOPUPS_ENABLED: "true" }),
+    ).creditCardTopUps,
     true,
   );
 });
@@ -648,6 +661,42 @@ test("SDK catalog exposes only public client ID when released", () => {
   assert.equal(JSON.stringify(catalog).includes("private-secret"), false);
   assert.equal(checkoutCatalog({ ...f.config, chargingApproved: false }).paypalClientId, null);
 });
+test("live owner pilot advertises card top-ups only to the matching signed-in owner", async () => {
+  const f = serviceFixture();
+  const config = { ...f.config, creditCardTopUpsPilotOwner: true };
+  const service = createCheckoutService({
+    config,
+    store: f.store,
+    provider: f.provider,
+    actor: async (headers, requireOwner) => {
+      assert.equal(requireOwner, true);
+      if (headers.get("cookie") !== "fixture=owner") throw new Error("OWNER_REQUIRED");
+      return {
+        userId: "owner",
+        id: "owner-session",
+        token: "fixture-token",
+        role: "owner",
+        expectedAccountId: headers.get("X-AhiBizz-Account-ID"),
+      };
+    },
+  });
+  const handle = createCheckoutHttpHandler(service, origin);
+  const catalog = async (headers?: Record<string, string>) => {
+    const response = await handle(new Request(`${origin}/api/checkout/catalog`, { headers }));
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("Cache-Control"), "no-store");
+    return (await response.json()).creditCardTopUps;
+  };
+  assert.equal(await catalog(), false);
+  assert.equal(await catalog({ cookie: "fixture=member", role: "owner" }), false);
+  assert.equal(await catalog({ cookie: "fixture=owner", "X-AhiBizz-Account-ID": "other" }), false);
+  assert.equal(await catalog({ cookie: "fixture=owner", "X-AhiBizz-Account-ID": "owner" }), true);
+  assert.equal(
+    checkoutCatalog({ ...config, environment: "sandbox" }, "owner").creditCardTopUps,
+    false,
+  );
+  assert.equal(checkoutCatalog({ ...config, creditCardTopUps: true }).creditCardTopUps, true);
+});
 for (const method of ["sdk", "guest", "card-fields"] as const) {
   test(`${method} persists mode before create and reads and resumes the same provider order`, async () => {
     const f = serviceFixture();
@@ -873,4 +922,57 @@ test("only signed correlated decline events can close the checked promotion", as
   );
   assert.ok(f.calls.includes("settle"));
   assert.equal(closed, 1);
+});
+
+test("verified credit card declines are reconciled even when new card orders are disabled", async () => {
+  const f = serviceFixture();
+  const raw = await f.store.read({ userId: "buyer", id: "session", token: "fixture" }, id);
+  const saved = {
+    ...raw,
+    kind: "quote" as const,
+    quoteId: "00000000-0000-4000-8000-000000000002",
+    quoteKind: "credits" as const,
+    businessId: null,
+    businessTitle: null,
+    offerVersion: "marketing-quote-v1:sdk",
+  };
+  const proof = {
+    captureId: "CREDITDECLINE01",
+    providerOrderId: saved.providerOrderId ?? "",
+    merchantId: saved.merchantId,
+    currency: "EUR" as const,
+    amountMinor: saved.amountMinor,
+  };
+  f.store.read = async () => saved;
+  f.store.findByProvider = async () => saved;
+  f.provider.inspect = async (expected) => {
+    assert.equal(expected.creditTopUpCard, true);
+    return { status: "DECLINED", ...proof };
+  };
+  f.provider.readDeclinedCapture = async (expected, captureId) => {
+    assert.equal(expected.creditTopUpCard, true);
+    assert.equal(captureId, proof.captureId);
+    return proof;
+  };
+  const closures: (string | undefined)[] = [];
+  f.store.closeDeclinedPromotion = async (pending, evidence, eventId) => {
+    assert.equal(pending.quoteId, saved.quoteId);
+    assert.equal(evidence.captureId, proof.captureId);
+    closures.push(eventId);
+    return { ...pending, status: "cancelled" };
+  };
+  const reconciled = (await f.service.reconcile(new Headers(), id)) as { paymentState: string };
+  assert.equal(reconciled.paymentState, "declined");
+  assert.deepEqual(
+    await f.service.webhook(new Headers(), {
+      id: "WH-DECLINED-TOPUP",
+      event_type: "PAYMENT.CAPTURE.DECLINED",
+      resource: {
+        id: proof.captureId,
+        supplementary_data: { related_ids: { order_id: saved.providerOrderId } },
+      },
+    }),
+    { received: true, matched: true },
+  );
+  assert.deepEqual(closures, [undefined, "WH-DECLINED-TOPUP"]);
 });

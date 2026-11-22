@@ -22,6 +22,7 @@ type Props = {
   amountMinor: number;
   userId: string;
   savedOrder?: CardOrder;
+  creditTopUp?: boolean;
   input: () => CardPurchaseInput;
   onOrder: (order: CardOrder) => void;
   acquire: () => boolean;
@@ -31,6 +32,7 @@ type Props = {
 
 const failure = "Kartični obrazac se nije učitao. Pokušaj ponovo.";
 const errors: Record<string, string> = {
+  CREDIT_TOP_UP_PAYPAL_REQUIRED: "Kartična dopuna trenutno nije dostupna.",
   CHECKOUT_FLOW_MISMATCH:
     "Postoji otvorena narudžba s drugim načinom plaćanja. Provjeri njen status prije nove uplate.",
   PAYPAL_PENDING:
@@ -64,7 +66,7 @@ export function PayPalCardButton(props: Props) {
       setAttempt((value) => value + 1);
     }
   }, [savedFlow]);
-  const { clientId, environment, userId } = props;
+  const { clientId, environment, userId, creditTopUp = false } = props;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Explicit retry recreates the hosted session without creating an order.
   useEffect(() => {
@@ -78,6 +80,7 @@ export function PayPalCardButton(props: Props) {
     const flow = createPayPalCardFlow({
       input: () => latest.current.input(),
       savedOrder: () => latest.current.savedOrder,
+      creditCardTopUps: creditTopUp,
       acquire: () => current() && latest.current.acquire(),
       release: () => {
         if (current()) latest.current.release();
@@ -99,7 +102,9 @@ export function PayPalCardButton(props: Props) {
           const recoveryNeeded =
             current() &&
             latest.current.onOrderRecoveryNeeded &&
-            ["CHECKOUT_FLOW_MISMATCH", "PAYPAL_PENDING"].includes(result.code);
+            ["CHECKOUT_FLOW_MISMATCH", "PAYPAL_PENDING", "QUOTE_PAYMENT_PENDING"].includes(
+              result.code,
+            );
           if (recoveryNeeded) latest.current.onOrderRecoveryNeeded?.();
           throw new Error(
             recoveryNeeded && result.code === "CHECKOUT_FLOW_MISMATCH"
@@ -133,18 +138,18 @@ export function PayPalCardButton(props: Props) {
       const sdk = await loadPayPalCardSdk(clientId, controller.signal, environment);
       if (!current()) return;
       const saved = latest.current.savedOrder;
-      const originalGuest = saved?.flow === "guest" || saved?.flow === "sdk";
+      const guestOnly = creditTopUp || saved?.flow === "guest" || saved?.flow === "sdk";
       let instance: CardSdkInstance;
       try {
         instance = await sdk.createInstance({
           clientId,
-          components: originalGuest
+          components: guestOnly
             ? ["paypal-guest-payments"]
             : ["card-fields", "paypal-guest-payments"],
           pageType: "checkout",
         });
       } catch (error) {
-        if (originalGuest || saved?.flow === "card-fields") throw error;
+        if (guestOnly || saved?.flow === "card-fields") throw error;
         instance = await sdk.createInstance({
           clientId,
           components: ["paypal-guest-payments"],
@@ -161,7 +166,7 @@ export function PayPalCardButton(props: Props) {
       if (!current()) return;
       const guestAvailable = methods.isEligible("card") && saved?.flow !== "card-fields";
       if (
-        !originalGuest &&
+        !guestOnly &&
         methods.isEligible("advanced_cards") &&
         instance.createCardFieldsOneTimePaymentSession
       ) {
@@ -348,7 +353,7 @@ export function PayPalCardButton(props: Props) {
       destroySession(session);
       container?.remove();
     };
-  }, [clientId, environment, userId, attempt]);
+  }, [clientId, environment, userId, attempt, creditTopUp]);
 
   return (
     <section className={styles.paymentFrame} aria-label="Kartica putem PayPala">

@@ -38,16 +38,30 @@ test("eligible card selection opens locally and PayPal account checkout redirect
   assert.match(checkout, /\(cardOpen \|\| order\) && \(\s*<PayPalCardButton/);
   assert.match(
     checkout,
-    /const cardAvailable = canOfferPayPalCard\(order, review, kind, offer\?\.kind\)/,
+    /const cardAvailable = canOfferPayPalCard\(\s*order,\s*review,\s*kind,\s*offer\?\.kind,\s*catalog\?\.creditCardTopUps === true,\s*\)/,
   );
   assert.match(checkout, /catalog\.paypalClientId && cardAvailable && \(\s*<button/);
   assert.match(checkout, /cardAvailable && \(\s*<div id="karticni-obrazac"/);
-  assert.match(checkout, /setMethod\(next\.kind === "credits" \? "paypal" : "card"\)/);
+  assert.match(
+    checkout,
+    /setMethod\(next\.kind === "credits" && !initialCard \? "paypal" : "card"\)/,
+  );
+  assert.match(checkout, /!cardOpen \|\| \(!creditTopUp && !catalog\?\.paypalClientId\)/);
   assert.match(
     checkout,
     /action === "create" && value.approvalUrl && value.order\?\.flow === "redirect"/,
   );
   assert.match(checkout, /onClick=\{\(\) => act\("create"\)\}/);
+});
+test("wallet card selection stays on the top-up quote and is exposed by the server flag", () => {
+  const wallet = readFileSync("src/components/marketing/MarketingWorkspace.tsx", "utf8");
+  const entry = readFileSync("src/components/billing/CheckoutEntry.tsx", "utf8");
+  assert.match(wallet, /data\?\.checkoutAvailable === true && data\.creditCardTopUps === true/);
+  assert.match(
+    wallet,
+    /router\.push\(`\/naplata\?ponuda=\$\{result\.id\}\$\{cardTopUp \? "&nacin=kartica" : ""\}`\)/,
+  );
+  assert.match(entry, /initialCard=\{Boolean\(quote && query\.nacin === "kartica"\)\}/);
 });
 test("AhiBizz uses a theme-aware card surface and keeps hosted controls visible", () => {
   assert.match(css, /\.cardMethod\s*\{[^}]*background: var\(--ui-surface\)/);

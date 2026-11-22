@@ -1,6 +1,7 @@
 import { paypalOrderFlow } from "../../lib/paypal-order-flow";
 import { getAccountService } from "../auth/accounts";
 import { getAuthDatabasePool, getAuthService, readAuthConfiguration } from "../auth/service";
+import { creditCardTopUpsAvailable } from "./credit-top-up-policy";
 import {
   CheckoutHttpError,
   type CheckoutHttpService,
@@ -53,6 +54,8 @@ export function checkoutConfiguration(
     priceApproved,
     fulfillmentReady,
     chargingApproved: enabled && priceApproved && fulfillmentReady,
+    creditCardTopUps: env.PAYPAL_CREDIT_CARD_TOPUPS_ENABLED === "true",
+    creditCardTopUpsPilotOwner: env.PAYPAL_CREDIT_CARD_TOPUPS_PILOT_OWNER === "true",
     refundsApproved: env.PAYPAL_CHECKOUT_REFUNDS_ENABLED === "true",
   };
 }
@@ -88,9 +91,12 @@ const captureFailureCodes = new Set([
   "PAYPAL_CARD_EXPIRED",
   "CARD_AUTHENTICATION_NOT_APPROVED",
 ]);
-export function checkoutCatalog(config: CheckoutConfiguration | null) {
+export function checkoutCatalog(config: CheckoutConfiguration | null, role?: string) {
   return {
     available: Boolean(config?.chargingApproved),
+    creditCardTopUps: Boolean(
+      config?.chargingApproved && creditCardTopUpsAvailable(config, config.environment, role),
+    ),
     environment: config?.environment ?? null,
     currency: "EUR",
     promotion: {
@@ -151,7 +157,8 @@ export function createCheckoutService({
   }
   async function reconcile(order: CheckoutOrder, eventId?: string, captureOnly = false) {
     matching(order);
-    const status = await provider.inspect(providerOrder(order));
+    const payment = providerOrder(order);
+    const status = await provider.inspect(payment);
     if (status.status === "COMPLETED" && status.captureId && status.completedAt) {
       const settled = await store.settleCapture(
         order.id,
@@ -168,7 +175,7 @@ export function createCheckoutService({
       return { order: settled, paymentState: "confirmed" as const };
     }
     if (status.status === "DECLINED") {
-      if (captureOnly || order.kind !== "promotion")
+      if (captureOnly || (payment.purpose !== "promotion" && !payment.creditTopUpCard))
         return { order, paymentState: "pending" as const };
       const closed = await store.closeDeclinedPromotion(order, status, eventId);
       return {
@@ -219,7 +226,23 @@ export function createCheckoutService({
     if (value.status === "FAILED" && order.status === "review") await reconcile(order, eventId);
   }
   return {
-    catalog: () => checkoutCatalog(config),
+    async catalog(headers) {
+      const catalog = checkoutCatalog(config);
+      if (
+        !catalog.available ||
+        catalog.creditCardTopUps ||
+        !creditCardTopUpsAvailable(config, config.environment, "owner")
+      )
+        return catalog;
+      try {
+        const identity = await actor(headers, true);
+        if (identity.expectedAccountId && identity.expectedAccountId !== identity.userId)
+          return catalog;
+        return checkoutCatalog(config, identity.role);
+      } catch {
+        return catalog;
+      }
+    },
     async reconcileBatch(headers, cursors = {}) {
       await actor(headers, true);
       let reconciled = 0,
@@ -307,7 +330,8 @@ export function createCheckoutService({
       chargePurpose(input.kind);
       if ((input.flow === "guest" || input.flow === "card-fields") && input.kind === "support")
         throw new CheckoutHttpError(400, "INVALID_CHECKOUT_FLOW");
-      let order = await store.create(await actor(headers), {
+      const identity = await actor(headers);
+      let order = await store.create(identity, {
         ...input,
         ...(input.kind === "quote"
           ? {}
@@ -323,7 +347,11 @@ export function createCheckoutService({
         if (!order.providerOrderId)
           order = await store.attachProvider(
             order.id,
-            await provider.create(providerOrder(order), paypalOrderFlow(order.offerVersion)),
+            await provider.create(
+              providerOrder(order),
+              paypalOrderFlow(order.offerVersion),
+              identity.role,
+            ),
           );
         return {
           order: dto(order),
@@ -465,13 +493,14 @@ export function createCheckoutService({
         const order = await store.findByProvider(config.environment, { providerOrderId });
         if (!order) return { received: true, matched: false };
         matching(order);
-        if (order.kind !== "promotion") {
+        const payment = providerOrder(order);
+        if (payment.purpose !== "promotion" && !payment.creditTopUpCard) {
           await reconcile(order, event.id);
           return { received: true, matched: true };
         }
         if (order.status === "cancelled" || order.captureId)
           return { received: true, matched: true };
-        const proof = await provider.readDeclinedCapture(providerOrder(order), captureId);
+        const proof = await provider.readDeclinedCapture(payment, captureId);
         if (proof) {
           const closed = await store.closeDeclinedPromotion(order, proof, event.id);
           if (closed.status === "cancelled" || closed.captureId)
@@ -550,7 +579,7 @@ export async function handleCheckoutRequest(request: Request) {
     if (!accounts || !auth || !pool) throw new Error("Checkout unavailable");
     const service = createCheckoutService({
       config,
-      store: createCheckoutStore(pool),
+      store: createCheckoutStore(pool, config),
       provider: createLivePayPal(config),
       actor: async (headers, owner = false) => {
         const profile = await accounts.read(headers);
@@ -570,6 +599,7 @@ export async function handleCheckoutRequest(request: Request) {
           id: signed.session.id,
           token: signed.session.token,
           expectedAccountId: headers.get("X-AhiBizz-Account-ID"),
+          role: profile.role,
         };
       },
     });

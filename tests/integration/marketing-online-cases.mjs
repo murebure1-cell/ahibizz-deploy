@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { readActiveBanner } from "../../src/server/marketing/read.ts";
 import { createMarketingService } from "../../src/server/marketing/service.ts";
+import { createCheckoutStore } from "../../src/server/paypal/store.ts";
 import { verifyWallet } from "./wallet-core-cases.mjs";
 
 export async function verifyMarketingOnlineQuotes(
@@ -111,6 +112,145 @@ export async function verifyMarketingOnlineQuotes(
       assert.equal(await balance(), baseline);
       await capture(attached);
       assert.equal(await balance(), baseline);
+    },
+  );
+
+  await t.test(
+    "verified embedded card payment credits the exact catalogue bundle once",
+    async () => {
+      const cardStore = createCheckoutStore(pool, { creditCardTopUps: true });
+      const baseline = await balance();
+      const terms = { action: "topUp", quantity: 60, expectedAmountMinor: 1500 };
+      const { id } = await command(user, { ...terms, id: randomUUID() });
+      const cardInput = { ...input(id), offerVersion: "marketing-quote-v1:sdk" };
+      await assert.rejects(cardStore.create(other, cardInput), /QUOTE_NOT_PAYABLE/);
+      const first = await cardStore.create(user, cardInput);
+      assert.equal(first.originalBamMinor, 1500);
+      assert.equal(first.amountMinor, 767);
+      assert.equal((await cardStore.create(user, cardInput)).id, first.id);
+      await assert.rejects(cardStore.create(user, input(id)), /CHECKOUT_FLOW_MISMATCH/);
+      const saved = await cardStore.attachProvider(first.id, {
+        providerOrderId: "FIXTURECARDTOPUP20261122",
+        approvalUrl: null,
+      });
+      await cardStore.prepareCapture(user, saved.id);
+      assert.equal(saved.approvalUrl, null);
+      assert.equal(await balance(), baseline);
+      await assert.rejects(bank(id, 1500), (error) => error.code === "QUOTE_PAYMENT_PENDING");
+      const [paid, replay] = await Promise.all([capture(saved), capture(saved)]);
+      assert.equal(paid.status, "captured");
+      assert.equal(replay.captureId, paid.captureId);
+      assert.equal((await state(id)).online_checkout_id, paid.id);
+      assert.equal(await balance(), baseline + 60);
+      await cardStore.reconcileRefund(paid.id, {
+        captureId: paid.captureId,
+        refundedMinor: paid.amountMinor,
+      });
+      assert.equal(await balance(), baseline);
+    },
+  );
+
+  await t.test(
+    "live pilot uses persisted platform-owner authority for marketing and payment creation",
+    async () => {
+      const env = process.env;
+      process.env = {
+        ...env,
+        PAYPAL_CHECKOUT_ENVIRONMENT: "live",
+        PAYPAL_LIVE_CLIENT_ID: "fixture",
+        PAYPAL_LIVE_CLIENT_SECRET: "fixture",
+        PAYPAL_LIVE_MERCHANT_ID: "FIXTURE_MERCHANT",
+        PAYPAL_LIVE_WEBHOOK_ID: "fixture",
+        PAYPAL_CHECKOUT_PUBLIC_ORIGIN: "https://checkout.invalid",
+        PAYPAL_CHECKOUT_ENABLED: "true",
+        PAYPAL_CHECKOUT_EUR_PRICE_APPROVED: "true",
+        PAYPAL_CHECKOUT_FULFILLMENT_READY: "true",
+        PAYPAL_CREDIT_CARD_TOPUPS_ENABLED: "false",
+        PAYPAL_CREDIT_CARD_TOPUPS_PILOT_OWNER: "true",
+      };
+      try {
+        const pilot = createCheckoutStore(pool, { creditCardTopUpsPilotOwner: true });
+        assert.equal((await marketing.read(headers(user), "credits", 0)).creditCardTopUps, false);
+        assert.equal((await marketing.read(headers(owner), "credits", 0)).creditCardTopUps, true);
+        const terms = { action: "topUp", quantity: 60, expectedAmountMinor: 1500 };
+        const memberTopUp = await command(user, { ...terms, id: randomUUID() });
+        const ownerTopUp = await command(owner, { ...terms, id: randomUUID() });
+        const cardTerms = (id, environment) => ({
+          ...input(id, environment),
+          offerVersion: "marketing-quote-v1:sdk",
+        });
+        await assert.rejects(
+          pilot.create({ ...user, role: "owner" }, cardTerms(memberTopUp.id, "live")),
+          /CREDIT_TOP_UP_PAYPAL_REQUIRED/,
+        );
+        await assert.rejects(
+          pilot.create(owner, cardTerms(ownerTopUp.id, "sandbox")),
+          /CREDIT_TOP_UP_PAYPAL_REQUIRED/,
+        );
+        const order = await pilot.create(owner, cardTerms(ownerTopUp.id, "live"));
+        assert.equal(order.userId, owner.userId);
+        assert.equal(order.quoteId, ownerTopUp.id);
+        await pilot.attachProvider(order.id, {
+          providerOrderId: "FIXTUREOWNERPILOT",
+          approvalUrl: null,
+        });
+        await pilot.cancelPromotion(owner, order.id, async () => true);
+        await command(owner, { action: "close", id: ownerTopUp.id });
+        await command(user, { action: "close", id: memberTopUp.id });
+      } finally {
+        process.env = env;
+      }
+    },
+  );
+
+  await t.test(
+    "unpaid or definitively declined embedded top-ups release only their linked quote",
+    async () => {
+      const cardStore = createCheckoutStore(pool, { creditCardTopUps: true });
+      const baseline = await balance();
+      const id = await quote("credits", 30, 1000);
+      const createCardOrder = async (providerOrderId) => {
+        const pending = await cardStore.create(user, {
+          ...input(id),
+          offerVersion: "marketing-quote-v1:sdk",
+        });
+        return cardStore.attachProvider(pending.id, { providerOrderId, approvalUrl: null });
+      };
+      const first = await createCardOrder("FIXTURECANCELTOPUP1");
+      await assert.rejects(
+        store.cancelPromotion(other, first.id, async () => assert.fail("Must verify the buyer")),
+        /ORDER_NOT_FOUND/,
+      );
+      await assert.rejects(
+        store.cancelPromotion(user, first.id, async () => false),
+        /ORDER_CANCELLATION_UNAVAILABLE/,
+      );
+      await assert.rejects(bank(id, 1000), (error) => error.code === "QUOTE_PAYMENT_PENDING");
+      const cancelled = await store.cancelPromotion(user, first.id, async () => true);
+      assert.equal(cancelled.status, "cancelled");
+      await assert.rejects(store.prepareCapture(user, cancelled.id), /ORDER_NOT_PAYABLE/);
+
+      const second = await createCardOrder("FIXTUREDECLINETOPUP2");
+      assert.notEqual(second.id, first.id);
+      const proof = {
+        captureId: "FIXTUREDECLINEDPAYMENT",
+        providerOrderId: second.providerOrderId,
+        merchantId: second.merchantId,
+        amountMinor: second.amountMinor,
+        currency: second.currency,
+      };
+      await assert.rejects(
+        store.closeDeclinedPromotion(second, { ...proof, providerOrderId: first.providerOrderId }),
+        /DECLINE_MISMATCH/,
+      );
+      assert.equal((await store.closeDeclinedPromotion(second, proof)).status, "cancelled");
+      assert.equal((await state(id)).online_checkout_id, null);
+      assert.equal(await balance(), baseline);
+      const third = await createCardOrder("FIXTURERETRYTOPUP3");
+      assert.notEqual(third.id, second.id);
+      assert.equal(third.quoteId, id);
+      await store.cancelPromotion(user, third.id, async () => true);
+      await command(user, { id, action: "close" });
     },
   );
 

@@ -15,7 +15,7 @@ function responseOrder(value: unknown): unknown {
   return (value as { order: unknown }).order;
 }
 
-function promotion(value: unknown): value is CardOrder {
+function recoverableOrder(value: unknown): value is CardOrder {
   if (!value || typeof value !== "object") return false;
   const order = value as CardOrder;
   return (
@@ -23,9 +23,15 @@ function promotion(value: unknown): value is CardOrder {
     uuid.test(order.id) &&
     typeof order.requestId === "string" &&
     uuid.test(order.requestId) &&
-    order.kind === "promotion" &&
-    typeof order.businessId === "string" &&
-    uuid.test(order.businessId) &&
+    ((order.kind === "promotion" &&
+      typeof order.businessId === "string" &&
+      uuid.test(order.businessId)) ||
+      (order.kind === "quote" &&
+        order.quoteKind === "credits" &&
+        order.flow === "sdk" &&
+        order.businessId === null &&
+        typeof order.quoteId === "string" &&
+        uuid.test(order.quoteId))) &&
     (order.businessTitle === null || typeof order.businessTitle === "string") &&
     Number.isSafeInteger(order.amountMinor) &&
     order.amountMinor > 0 &&
@@ -39,7 +45,7 @@ function promotion(value: unknown): value is CardOrder {
 }
 
 export function canCancelPromotionOrder(order: CardOrder | null): boolean {
-  return promotion(order) && order.status === "provider_created";
+  return recoverableOrder(order) && order.status === "provider_created";
 }
 
 /** No retries: an uncertain cancellation must be reconciled before another attempt. */
@@ -49,10 +55,13 @@ export async function cancelPromotionOrder(order: CardOrder, send: Send): Promis
   const result = await send(`orders/${encodeURIComponent(order.id)}/cancel`, {});
   const next = responseOrder(result);
   if (
-    !promotion(next) ||
+    !recoverableOrder(next) ||
     next.status !== "cancelled" ||
     next.id !== order.id ||
     next.requestId !== order.requestId ||
+    next.kind !== order.kind ||
+    next.quoteId !== order.quoteId ||
+    next.quoteKind !== order.quoteKind ||
     next.businessId !== order.businessId ||
     next.amountMinor !== order.amountMinor ||
     next.environment !== order.environment ||
@@ -72,7 +81,8 @@ export async function findPendingPromotion(
   const order = responseOrder(result);
   if (order === null) return null;
   if (
-    !promotion(order) ||
+    !recoverableOrder(order) ||
+    order.kind !== "promotion" ||
     !["created", "provider_created"].includes(order.status) ||
     order.businessId !== businessId
   )
@@ -82,7 +92,8 @@ export async function findPendingPromotion(
 
 /** A full navigation drops the old order URL, component state and idempotency key. */
 export function promotionRestartHref(order: CardOrder | null): string | null {
-  return promotion(order) && order.status === "cancelled"
-    ? `/naplata?djelatnost=${encodeURIComponent(order.businessId ?? "")}`
-    : null;
+  if (!recoverableOrder(order) || order.status !== "cancelled") return null;
+  return order.kind === "quote"
+    ? `/naplata?ponuda=${encodeURIComponent(order.quoteId ?? "")}&nacin=kartica`
+    : `/naplata?djelatnost=${encodeURIComponent(order.businessId ?? "")}`;
 }

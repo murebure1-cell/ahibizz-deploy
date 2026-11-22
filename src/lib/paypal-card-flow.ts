@@ -24,8 +24,19 @@ export function canOfferPayPalCard(
   reviewed: boolean,
   kind: string,
   quoteKind?: string,
+  creditCardTopUps = false,
 ): boolean {
-  if ((order?.quoteKind ?? quoteKind) === "credits") return false;
+  if ((order?.quoteKind ?? quoteKind) === "credits") {
+    return (
+      creditCardTopUps &&
+      (order
+        ? order.kind === "quote" &&
+          Boolean(order.quoteId) &&
+          order.flow === "sdk" &&
+          ["created", "provider_created"].includes(order.status)
+        : reviewed && kind === "quote")
+    );
+  }
   return order
     ? (order.kind === "promotion" || (order.kind === "quote" && Boolean(order.quoteId))) &&
         (((order.flow === "sdk" || order.flow === "card-fields") &&
@@ -35,7 +46,7 @@ export function canOfferPayPalCard(
 }
 export type CardPurchaseInput =
   | { requestId: string; businessId: string }
-  | { requestId: string; quoteId: string; amountMinor: number };
+  | { requestId: string; quoteId: string; quoteKind?: string | null; amountMinor: number };
 
 function sameOrder(received: CardOrder, expected: CardOrder) {
   return (
@@ -45,6 +56,7 @@ function sameOrder(received: CardOrder, expected: CardOrder) {
     received.businessId === expected.businessId &&
     received.kind === expected.kind &&
     (received.quoteId ?? null) === (expected.quoteId ?? null) &&
+    (received.quoteKind ?? null) === (expected.quoteKind ?? null) &&
     received.amountMinor === expected.amountMinor &&
     received.currency === expected.currency &&
     received.flow === expected.flow
@@ -59,6 +71,7 @@ export function createPayPalCardFlow(options: {
   ) => Promise<{ order?: CardOrder; providerOrderId?: string; pending?: boolean }>;
   input: () => CardPurchaseInput;
   savedOrder?: () => CardOrder | undefined;
+  creditCardTopUps?: boolean;
   onOrder: (order: CardOrder) => void;
   acquire: () => boolean;
   release: () => void;
@@ -96,6 +109,12 @@ export function createPayPalCardFlow(options: {
         try {
           const input = options.input();
           const { requestId } = input;
+          if (
+            "quoteId" in input &&
+            input.quoteKind === "credits" &&
+            (!options.creditCardTopUps || method !== "sdk")
+          )
+            throw new Error("Kartična dopuna trenutno nije dostupna.");
           const purchase =
             "quoteId" in input
               ? { kind: "quote" as const, quoteId: input.quoteId }
@@ -103,13 +122,14 @@ export function createPayPalCardFlow(options: {
           const matchesPurchase = (order: CardOrder) =>
             order.kind === purchase.kind &&
             ("quoteId" in input
-              ? order.quoteId === input.quoteId
+              ? order.quoteId === input.quoteId &&
+                (!input.quoteKind || order.quoteKind === input.quoteKind)
               : order.businessId === input.businessId);
           const amount = "quoteId" in input ? input.amountMinor : 511;
           const saved = options.savedOrder?.();
           if (
             saved &&
-            (!canOfferPayPalCard(saved, false, "promotion") ||
+            (!canOfferPayPalCard(saved, false, "promotion", undefined, options.creditCardTopUps) ||
               (saved.flow === "card-fields") !== (method === "card-fields") ||
               !matchesPurchase(saved) ||
               saved.amountMinor !== amount ||
@@ -144,7 +164,13 @@ export function createPayPalCardFlow(options: {
           options.onOrder(result.order);
           if (
             result.order.flow !== (saved?.flow ?? method) ||
-            !canOfferPayPalCard(result.order, false, "promotion") ||
+            !canOfferPayPalCard(
+              result.order,
+              false,
+              "promotion",
+              undefined,
+              options.creditCardTopUps,
+            ) ||
             !result.providerOrderId ||
             !/^[A-Z0-9]{10,32}$/.test(result.providerOrderId)
           )

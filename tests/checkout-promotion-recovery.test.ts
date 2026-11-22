@@ -163,3 +163,37 @@ test("restart is offered only after confirmed closure and retains only the same 
   assert.equal(target.searchParams.has("ponuda"), false);
   assert.equal(promotionRestartHref({ ...order, status: "cancelled", refundedMinor: 1 }), null);
 });
+
+test("credit card recovery requires the same linked top-up and no PayPal redirect flow", async () => {
+  const credit: CardOrder = {
+    ...order,
+    kind: "quote",
+    quoteKind: "credits",
+    quoteId: order.businessId,
+    businessId: null,
+    businessTitle: null,
+    flow: "sdk",
+  };
+  const cancelled = { ...credit, status: "cancelled" };
+  assert.equal(canCancelPromotionOrder(credit), true);
+  assert.equal(promotionRestartHref(credit), null);
+  for (const patch of [
+    { flow: "redirect" },
+    { flow: "guest" },
+    { quoteId: undefined },
+    { quoteId: "wrong" },
+    { quoteKind: "category" },
+    { businessId: order.businessId },
+  ] as Partial<CardOrder>[]) {
+    assert.equal(canCancelPromotionOrder({ ...credit, ...patch }), false);
+    assert.equal(promotionRestartHref({ ...cancelled, ...patch }), null);
+  }
+  await assert.rejects(
+    cancelPromotionOrder(credit, async () => ({ order: { ...cancelled, quoteId: order.id } })),
+  );
+  assert.deepEqual(
+    await cancelPromotionOrder(credit, async () => ({ order: cancelled })),
+    cancelled,
+  );
+  assert.equal(promotionRestartHref(cancelled), `/naplata?ponuda=${credit.quoteId}&nacin=kartica`);
+});

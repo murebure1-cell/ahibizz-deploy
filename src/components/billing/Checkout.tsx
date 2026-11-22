@@ -21,6 +21,7 @@ import { PayPalCardButton } from "./PayPalCardButton";
 
 type Catalog = {
   paypalClientId?: string | null;
+  creditCardTopUps?: boolean;
   available: boolean;
   environment: "sandbox" | "live" | null;
   promotion: { amountMinor: number; days: number };
@@ -91,6 +92,7 @@ export function Checkout({
   initialOrderId,
   initialQuoteId,
   initialBusinessId,
+  initialCard = false,
   returned = false,
   cancelled = false,
 }: {
@@ -98,6 +100,7 @@ export function Checkout({
   initialOrderId?: string;
   initialQuoteId?: string;
   initialBusinessId?: string;
+  initialCard?: boolean;
   returned?: boolean;
   cancelled?: boolean;
 }) {
@@ -294,15 +297,16 @@ export function Checkout({
       )
         throw new Error("Podaci za plaćanje ove ponude nisu dostupni.");
       setOffer(next);
+      setFindExisting(false);
       setReview(true);
-      setMethod(next.kind === "credits" ? "paypal" : "card");
+      setMethod(next.kind === "credits" && !initialCard ? "paypal" : "card");
     }
     void loadOffer().catch((cause) => {
       if (!controller.signal.aborted)
         setOfferError(cause instanceof Error ? cause.message : "Ponuda se nije učitala.");
     });
     return () => controller.abort();
-  }, [initialQuoteId, userId, offerAttempt]);
+  }, [initialQuoteId, initialCard, userId, offerAttempt]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Manual reload generation deliberately restarts this read-only effect.
   useEffect(() => {
     if (!userId || !initialOrderId) return;
@@ -470,7 +474,7 @@ export function Checkout({
         return;
       }
       setOrder(next);
-      setKind("promotion");
+      setKind(next.kind);
       setFindExisting(false);
       setCancellationUncertain(false);
       window.history.replaceState(null, "", `/naplata?narudzba=${encodeURIComponent(next.id)}`);
@@ -526,7 +530,18 @@ export function Checkout({
   }
   const walletAvailable = kind === "promotion" && wallet !== null && !initialOrderId && !order;
   const creditTopUp = (order?.quoteKind ?? offer?.kind) === "credits";
-  const cardAvailable = canOfferPayPalCard(order, review, kind, offer?.kind);
+  const cardAvailable = canOfferPayPalCard(
+    order,
+    review,
+    kind,
+    offer?.kind,
+    catalog?.creditCardTopUps === true,
+  );
+  const missingCreditCard =
+    creditTopUp &&
+    cardOpen &&
+    catalog &&
+    (!catalog.available || !catalog.paypalClientId || !catalog.environment || !cardAvailable);
   const selectedAmount =
     order?.amountMinor ??
     (kind === "quote"
@@ -549,6 +564,18 @@ export function Checkout({
     catalog.paypalClientId &&
     cardAvailable;
   const restartHref = promotionRestartHref(order);
+  const checkoutPath = returned
+    ? "/naplata/povratak"
+    : cancelled
+      ? "/naplata/odustajanje"
+      : "/naplata";
+  const checkoutQuery = new URLSearchParams();
+  if (initialOrderId) checkoutQuery.set("narudzba", initialOrderId);
+  else if (initialQuoteId) {
+    checkoutQuery.set("ponuda", initialQuoteId);
+    if (initialCard) checkoutQuery.set("nacin", "kartica");
+  } else if (initialBusinessId) checkoutQuery.set("djelatnost", initialBusinessId);
+  const loginReturn = checkoutQuery.size ? `${checkoutPath}?${checkoutQuery}` : checkoutPath;
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <a className={styles.accountLink} href="/nalog">
@@ -575,11 +602,7 @@ export function Checkout({
       )}
       {!userId && (
         <p>
-          <a
-            href={`/prijava?nastavi=${encodeURIComponent(`/naplata${returned ? "/povratak" : cancelled ? "/odustajanje" : ""}${initialOrderId ? `?narudzba=${initialOrderId}` : initialQuoteId ? `?ponuda=${initialQuoteId}` : initialBusinessId ? `?djelatnost=${initialBusinessId}` : ""}`)}`}
-          >
-            Prijavi se za nastavak
-          </a>
+          <a href={`/prijava?nastavi=${encodeURIComponent(loginReturn)}`}>Prijavi se za nastavak</a>
         </p>
       )}
       {initialOrderId && userId && !order && (
@@ -812,6 +835,11 @@ export function Checkout({
               <h3>Uplata je potvrđena</h3>
               {order.kind === "promotion" && order.endsAt ? (
                 <p>Isticanje važi do {new Date(order.endsAt).toLocaleString("bs-BA")}.</p>
+              ) : creditTopUp && order.environment === "live" ? (
+                <>
+                  <p>Ahi krediti su dodani na tvoj račun.</p>
+                  <a href="/nalog?odjeljak=krediti">Prikaži Ahi kredite</a>
+                </>
               ) : order.kind === "quote" ? (
                 <a href="/nalog">Vrati se u moj nalog</a>
               ) : (
@@ -946,6 +974,7 @@ export function Checkout({
                       environment={catalog.environment}
                       amountMinor={selectedAmount}
                       savedOrder={order ?? undefined}
+                      creditTopUp={creditTopUp}
                       key={userId}
                       clientId={catalog.paypalClientId}
                       userId={userId}
@@ -956,6 +985,7 @@ export function Checkout({
                           ? {
                               requestId,
                               quoteId: order?.quoteId ?? offer?.id ?? "",
+                              quoteKind: order?.quoteKind ?? offer?.kind,
                               amountMinor: selectedAmount,
                             }
                           : { requestId, businessId: order?.businessId ?? businessId };
@@ -980,7 +1010,9 @@ export function Checkout({
                         );
                       }}
                       onOrderRecoveryNeeded={
-                        kind === "promotion" ? () => setFindExisting(true) : undefined
+                        kind === "promotion" || creditTopUp
+                          ? () => setFindExisting(true)
+                          : undefined
                       }
                     />
                   )}
@@ -989,17 +1021,24 @@ export function Checkout({
           </div>
           {!order && (
             <div className={styles.methodFooter}>
-              {method !== "credits" && (!cardOpen || !catalog?.paypalClientId) && (
-                <button
-                  type="button"
-                  id="paypal-novcanik"
-                  className={styles.payWallet}
-                  disabled={busy || !catalog?.available || !userId}
-                  onClick={() => act("create")}
-                >
-                  Nastavi na PayPal
-                </button>
+              {missingCreditCard && (
+                <p role="status">
+                  Kartična dopuna trenutno nije dostupna.{" "}
+                  <a href="/nalog?odjeljak=krediti">Odaberi drugi način dopune</a>
+                </p>
               )}
+              {method !== "credits" &&
+                (!cardOpen || (!creditTopUp && !catalog?.paypalClientId)) && (
+                  <button
+                    type="button"
+                    id="paypal-novcanik"
+                    className={styles.payWallet}
+                    disabled={busy || !catalog?.available || !userId}
+                    onClick={() => act("create")}
+                  >
+                    Nastavi na PayPal
+                  </button>
+                )}
               {!initialQuoteId && (
                 <button
                   type="button"
@@ -1019,16 +1058,22 @@ export function Checkout({
       ) : null}
       {findExisting &&
         userId &&
-        kind === "promotion" &&
-        businessId &&
+        ((kind === "promotion" && businessId) || (creditTopUp && offer)) &&
         !order &&
         !initialOrderId && (
           <section className={styles.orderRecovery} aria-label="Otvorena narudžba">
-            <p>Prvo provjeri postojeću narudžbu za ovu djelatnost. Time ne pokrećeš novu uplatu.</p>
+            <p>
+              {creditTopUp
+                ? "Prvo provjeri postojeću narudžbu za ovu dopunu."
+                : "Prvo provjeri postojeću narudžbu za ovu djelatnost. Time ne pokrećeš novu uplatu."}
+            </p>
             <button
               type="button"
               disabled={busy || orderLoading}
-              onClick={() => recoverPromotion("find")}
+              onClick={() => {
+                if (creditTopUp) setOfferAttempt((value) => value + 1);
+                else void recoverPromotion("find");
+              }}
             >
               Pronađi otvorenu narudžbu
             </button>

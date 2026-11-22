@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import type { MarketingOrder } from "../../lib/marketing";
-import { paypalOrderFlow } from "../../lib/paypal-order-flow";
+import { paypalOrderFlow, supportsCreditTopUpFlow } from "../../lib/paypal-order-flow";
 import { hasActiveWalletPromotion } from "../marketing/category-promotion";
 import {
   payableQuote,
@@ -9,6 +9,7 @@ import {
   reconcileProductionSale,
   settleOnlineQuote,
 } from "../marketing/online-quote";
+import { type CreditCardTopUpPolicy, creditCardTopUpsAvailable } from "./credit-top-up-policy";
 import type { VerifiedDecline } from "./live";
 
 export type CheckoutActor = {
@@ -16,6 +17,7 @@ export type CheckoutActor = {
   id: string;
   token: string;
   expectedAccountId?: string | null;
+  role?: "member" | "owner";
 };
 export type CheckoutEnvironment = "sandbox" | "live";
 export type CheckoutOrder = {
@@ -130,6 +132,7 @@ async function authority(c: PoolClient, a: CheckoutActor, owner = false) {
     [a.id, a.userId, a.token],
   );
   if (session.rowCount !== 1) fail(401, "AUTHENTICATION_REQUIRED");
+  return user.role;
 }
 async function row(c: PoolClient, id: string, lock = true) {
   const result = (
@@ -155,13 +158,22 @@ async function business(c: PoolClient, id: string) {
     )
   ).rows[0];
 }
+function canRecoverUnpaidOrder(order: CheckoutOrder) {
+  return (
+    (order.kind === "promotion" && Boolean(order.businessId)) ||
+    (order.kind === "quote" &&
+      order.quoteKind === "credits" &&
+      Boolean(order.quoteId) &&
+      order.businessId === null &&
+      paypalOrderFlow(order.offerVersion) === "sdk")
+  );
+}
 async function cancellationCandidate(c: PoolClient, actor: CheckoutActor, id: string) {
   await authority(c, actor);
   const order = await row(c, id);
   if (order.userId !== actor.userId) fail(404, "ORDER_NOT_FOUND");
   if (
-    order.kind !== "promotion" ||
-    !order.businessId ||
+    !canRecoverUnpaidOrder(order) ||
     !order.providerOrderId ||
     order.captureId ||
     order.capturedAt ||
@@ -172,8 +184,12 @@ async function cancellationCandidate(c: PoolClient, actor: CheckoutActor, id: st
     !["provider_created", "cancelled"].includes(order.status)
   )
     fail(409, "ORDER_CANCELLATION_UNAVAILABLE");
-  const owned = await business(c, order.businessId);
-  if (owned?.owner_user_id !== actor.userId) fail(409, "ORDER_CANCELLATION_UNAVAILABLE");
+  if (order.businessId) {
+    const owned = await business(c, order.businessId);
+    if (owned?.owner_user_id !== actor.userId) fail(409, "ORDER_CANCELLATION_UNAVAILABLE");
+  } else if (order.status !== "cancelled") {
+    await requireCurrentPromotionBusiness(c, order, actor);
+  }
   return order;
 }
 async function audit(c: PoolClient, id: string, action: string, details: unknown) {
@@ -323,7 +339,7 @@ async function event(c: PoolClient, o: CheckoutOrder, eventId?: string) {
   if (old?.order_id !== o.id) fail(409, "WEBHOOK_ORDER_CONFLICT");
   return false;
 }
-export function createCheckoutStore(pool: Pool) {
+export function createCheckoutStore(pool: Pool, policy: CreditCardTopUpPolicy = {}) {
   return {
     async create(
       actor: CheckoutActor,
@@ -355,7 +371,6 @@ export function createCheckoutStore(pool: Pool) {
       if ((input.kind === "promotion") !== Boolean(input.businessId))
         fail(400, "INVALID_CHECKOUT_INPUT");
       if (input.quoteId) uuid(input.quoteId);
-      const cardCheckout = paypalOrderFlow(input.offerVersion) !== "redirect";
       const fingerprint = createHash("sha256")
         .update(
           JSON.stringify([
@@ -370,7 +385,11 @@ export function createCheckoutStore(pool: Pool) {
         )
         .digest("hex");
       return transaction(pool, async (c) => {
-        await authority(c, actor);
+        const role = await authority(c, actor);
+        const creditFlowAllowed = supportsCreditTopUpFlow(
+          paypalOrderFlow(input.offerVersion),
+          creditCardTopUpsAvailable(policy, input.environment, role),
+        );
         const existing = (
           await c.query<CheckoutOrder & { fingerprint: string }>(
             `SELECT ${columns},fingerprint FROM paypal_checkout_order WHERE user_id=$1 AND request_id=$2 FOR UPDATE`,
@@ -379,7 +398,7 @@ export function createCheckoutStore(pool: Pool) {
         ).rows[0];
         if (existing) {
           if (existing.fingerprint !== fingerprint) fail(409, "COMMAND_CONFLICT");
-          if (existing.quoteKind === "credits" && cardCheckout)
+          if (existing.quoteKind === "credits" && !creditFlowAllowed)
             fail(409, "CREDIT_TOP_UP_PAYPAL_REQUIRED");
           return existing;
         }
@@ -387,7 +406,8 @@ export function createCheckoutStore(pool: Pool) {
           ? await payableQuote(c, actor.userId, input.quoteId, true)
           : null;
         if (input.quoteId && !quote) fail(409, "QUOTE_NOT_PAYABLE");
-        if (quote?.kind === "credits" && cardCheckout) fail(409, "CREDIT_TOP_UP_PAYPAL_REQUIRED");
+        if (quote?.kind === "credits" && !creditFlowAllowed)
+          fail(409, "CREDIT_TOP_UP_PAYPAL_REQUIRED");
         const price = quote?.amountMinor ?? input.amountMinor;
         if (price === undefined) fail(400, "INVALID_CHECKOUT_INPUT");
         if (quote) {
@@ -630,8 +650,7 @@ export function createCheckoutStore(pool: Pool) {
       return transaction(pool, async (c) => {
         const order = await row(c, expected.id);
         if (
-          order.kind !== "promotion" ||
-          !order.businessId ||
+          !canRecoverUnpaidOrder(order) ||
           order.environment !== expected.environment ||
           order.merchantId !== proof.merchantId ||
           order.providerOrderId !== expected.providerOrderId ||

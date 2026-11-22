@@ -39,6 +39,7 @@ export async function CheckoutEntry({
       initialOrderId={id}
       initialQuoteId={quote}
       initialBusinessId={business}
+      initialCard={Boolean(quote && query.nacin === "kartica")}
       returned={returned}
       cancelled={cancelled}
     />

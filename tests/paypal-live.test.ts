@@ -214,7 +214,7 @@ test("guest capture reads approval and emits only whitelisted PayPal rejection c
   await assert.rejects(client.capture(order, "guest"), /PAYPAL_REQUEST_FAILED/);
   assert.equal(captureRequests, 2);
 });
-test("a declined or failed promotion capture is distinguished from a refund", async () => {
+test("a declined or failed promotion or credit card capture is distinguished from a refund", async () => {
   const detail = provider();
   const capture = detail.purchase_units[0]?.payments.captures[0];
   assert.ok(capture);
@@ -232,12 +232,20 @@ test("a declined or failed promotion capture is distinguished from a refund", as
         : detail,
     );
   });
-  for (const status of ["DECLINED", "FAILED", "REFUNDED"]) {
-    capture.status = status;
-    const result = await client.inspect(order);
-    assert.equal(result.status, status === "REFUNDED" ? "REFUNDED" : "DECLINED");
-    if (result.status === "REFUNDED") assert.equal(result.refundedMinor, 511);
-    else assert.equal("refundedMinor" in result, false);
+  const credit: LiveOrder = {
+    ...order,
+    purpose: "quote",
+    creditTopUp: true,
+    creditTopUpCard: true,
+  };
+  for (const payment of [order, credit]) {
+    for (const status of ["DECLINED", "FAILED", "REFUNDED"]) {
+      capture.status = status;
+      const result = await client.inspect(payment);
+      assert.equal(result.status, status === "REFUNDED" ? "REFUNDED" : "DECLINED");
+      if (result.status === "REFUNDED") assert.equal(result.refundedMinor, 511);
+      else assert.equal("refundedMinor" in result, false);
+    }
   }
 });
 test("detached decline proof must bind exact provider identities and current absence of payment", async () => {
@@ -657,7 +665,7 @@ test("guest handoff requests the hosted card landing and keeps the same return U
   await assert.rejects(paypal.create(order, "guest"), /INVALID_APPROVAL_URL/);
 });
 
-test("credit top-up creates only an account login order at PayPal", async () => {
+test("credit top-up uses account login by default", async () => {
   let calls = 0;
   const provider = createLivePayPal({ ...config, chargingApproved: true }, async (url, init) => {
     calls++;
@@ -671,7 +679,7 @@ test("credit top-up creates only an account login order at PayPal", async () => 
       links: [{ rel: "payer-action", href: "https://www.paypal.com/checkoutnow?token=fixture" }],
     });
   });
-  const topUp: LiveOrder = { ...order, purpose: "quote", paypalAccountOnly: true };
+  const topUp: LiveOrder = { ...order, purpose: "quote", creditTopUp: true };
   for (const flow of ["sdk", "guest", "card-fields"] as const)
     await assert.rejects(provider.create(topUp, flow), /CREDIT_TOP_UP_PAYPAL_REQUIRED/);
   assert.equal(calls, 0);
@@ -679,5 +687,53 @@ test("credit top-up creates only an account login order at PayPal", async () => 
     (await provider.create(topUp)).approvalUrl,
     "https://www.paypal.com/checkoutnow?token=fixture",
   );
+  assert.equal(calls, 2);
+});
+
+test("enabled credit top-up uses embedded guest checkout without a PayPal approval link", async () => {
+  const paypal = createLivePayPal(
+    { ...config, chargingApproved: true, creditCardTopUps: true },
+    async (url, init) => {
+      if (String(url).endsWith("/token")) return Response.json({ access_token: "fixture" });
+      const body = JSON.parse(String(init?.body));
+      assert.equal(Object.hasOwn(body, "payment_source"), false);
+      assert.equal(body.purchase_units[0].amount.value, "7.67");
+      assert.equal(body.purchase_units[0].description, "AhiBizz: dopuna Ahi kredita");
+      assert.equal(body.purchase_units[0].payee.merchant_id, config.merchantId);
+      return Response.json({
+        ...provider(),
+        status: "CREATED",
+        purchase_units: body.purchase_units,
+      });
+    },
+  );
+  const topUp: LiveOrder = { ...order, purpose: "quote", creditTopUp: true, amountMinor: 767 };
+  for (const flow of ["guest", "card-fields"] as const)
+    await assert.rejects(paypal.create(topUp, flow), /CREDIT_TOP_UP_PAYPAL_REQUIRED/);
+  assert.deepEqual(await paypal.create(topUp, "sdk"), {
+    providerOrderId: "ORDER12345678",
+    approvalUrl: null,
+  });
+});
+
+test("owner pilot does not create a provider order for members or in sandbox", async () => {
+  let calls = 0;
+  const transport: typeof fetch = async (url) => {
+    calls++;
+    return Response.json(
+      String(url).endsWith("/token")
+        ? { access_token: "fixture" }
+        : { ...provider(), status: "CREATED", links: [] },
+    );
+  };
+  const live = { ...config, chargingApproved: true, creditCardTopUpsPilotOwner: true };
+  const paypal = createLivePayPal(live, transport);
+  const topUp: LiveOrder = { ...order, purpose: "quote", creditTopUp: true };
+  for (const role of [undefined, "member"])
+    await assert.rejects(paypal.create(topUp, "sdk", role), /CREDIT_TOP_UP_PAYPAL_REQUIRED/);
+  const sandbox = createLivePayPal({ ...live, environment: "sandbox" }, transport);
+  await assert.rejects(sandbox.create(topUp, "sdk", "owner"), /CREDIT_TOP_UP_PAYPAL_REQUIRED/);
+  assert.equal(calls, 0);
+  assert.equal((await paypal.create(topUp, "sdk", "owner")).approvalUrl, null);
   assert.equal(calls, 2);
 });

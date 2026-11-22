@@ -16,6 +16,7 @@ import { creditsForBamMinor, validCreditBalance } from "../../lib/wallet";
 import { AccountAccessError, accountTransaction, createAccountAccess } from "../auth/accounts";
 import { type AuthService, getAuthDatabasePool, getAuthService } from "../auth/service";
 import { syncProductionReceipt } from "../billing/service";
+import { creditCardTopUpsAvailable } from "../paypal/credit-top-up-policy";
 import { checkoutConfiguration } from "../paypal/runtime";
 import { debitWallet, readCreditMovements, readWalletRate, walletBalance } from "../wallet/service";
 import { createCreditTopUp, lockWalletRate, setCreditRate } from "../wallet/topup";
@@ -307,6 +308,10 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           promotions: mode === "ads" ? await paidPromotions(client, actor.id) : [],
           included: mode === "ads" ? await packagePromotions(client, actor.id) : [],
           checkoutAvailable: config?.chargingApproved === true && config.environment === "live",
+          creditCardTopUps:
+            config?.chargingApproved === true &&
+            config.environment === "live" &&
+            creditCardTopUpsAvailable(config, config.environment, actor.role),
         };
       });
     },

@@ -320,7 +320,7 @@ type MarketingProps = {
 function MarketingView({ accountId, mode, target, campaign, promotionView }: MarketingProps) {
   const router = useRouter();
   const [selectedQuantity, setSelectedQuantity] = useState<number>(ahiCreditTopUps[0].quantity);
-  const [chosenMethod, setChosenMethod] = useState<"paypal" | "bank">("paypal");
+  const [chosenMethod, setChosenMethod] = useState<"card" | "paypal" | "bank">();
   const [rateInput, setRateInput] = useState("");
   const pendingTopUp = useRef<{ quantity: number; id: string } | null>(null);
   const pendingBankTopUp = useRef<BankTopUpCreate | null>(null);
@@ -345,14 +345,17 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
     ? bankTopUps.data?.offers.find((offer) => offer.quantity === bundle.quantity)
     : null;
   const pendingBank = bankTopUps.data?.requests.find((request) => request.status === "pending");
+  const cardAvailable = data?.checkoutAvailable === true && data.creditCardTopUps === true;
   const method =
     receiver && chosenMethod === "bank"
       ? "bank"
-      : data?.checkoutAvailable
-        ? "paypal"
-        : receiver
-          ? "bank"
-          : null;
+      : cardAvailable && chosenMethod !== "paypal"
+        ? "card"
+        : data?.checkoutAvailable
+          ? "paypal"
+          : receiver
+            ? "bank"
+            : null;
   const running = useRef(false);
   const mounted = useRef(false);
   const placementForm = useRef<HTMLFormElement>(null);
@@ -408,7 +411,7 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
       });
     return () => abort.abort();
   }, [accountId, mode, page, promotionView, refresh]);
-  async function submit(command: MarketingCommand) {
+  async function submit(command: MarketingCommand, cardTopUp = false) {
     if (running.current) return false;
     running.current = true;
     setBusy(true);
@@ -429,7 +432,7 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
           if (typeof result.id !== "string" || !/^[a-f0-9-]{36}$/i.test(result.id))
             throw new Error("INVALID_OFFER");
           pendingTopUp.current = null;
-          router.push(`/naplata?ponuda=${result.id}`);
+          router.push(`/naplata?ponuda=${result.id}${cardTopUp ? "&nacin=kartica" : ""}`);
         } else if (command.action === "setCreditRate") {
           setRateInput("");
           setMessage("Vrijednost kredita je sačuvana.");
@@ -498,12 +501,15 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
     if (pendingTopUp.current?.quantity !== bundle.quantity) {
       pendingTopUp.current = { quantity: bundle.quantity, id: crypto.randomUUID() };
     }
-    void submit({
-      action: "topUp",
-      id: pendingTopUp.current.id,
-      quantity: bundle.quantity,
-      expectedAmountMinor: bundle.amountMinor,
-    });
+    void submit(
+      {
+        action: "topUp",
+        id: pendingTopUp.current.id,
+        quantity: bundle.quantity,
+        expectedAmountMinor: bundle.amountMinor,
+      },
+      method === "card",
+    );
   }
   if (failed)
     return (
@@ -634,6 +640,17 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
                 <>
                   <fieldset className={styles.paymentMethods} disabled={topUpInProgress}>
                     <legend>Način dopune</legend>
+                    {cardAvailable && (
+                      <label className={styles.paymentOption}>
+                        <input
+                          type="radio"
+                          name="nacin"
+                          checked={method === "card"}
+                          onChange={() => setChosenMethod("card")}
+                        />
+                        Kartica
+                      </label>
+                    )}
                     {data.checkoutAvailable && (
                       <label className={styles.paymentOption}>
                         <input
@@ -661,11 +678,13 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
                     type="submit"
                     disabled={topUpInProgress || (method === "bank" && !bankOffer)}
                   >
-                    {method === "paypal"
-                      ? `Nastavi na PayPal · ${billingMoney(bundle.amountMinor)}`
-                      : bankOffer && receiver
-                        ? `Prikaži upute · ${creditBankAmount(bankOffer.amountMinor, receiver.currency)}`
-                        : "Prikaži upute za uplatu"}
+                    {method === "card"
+                      ? `Plati karticom · ${billingMoney(bundle.amountMinor)}`
+                      : method === "paypal"
+                        ? `Nastavi na PayPal · ${billingMoney(bundle.amountMinor)}`
+                        : bankOffer && receiver
+                          ? `Prikaži upute · ${creditBankAmount(bankOffer.amountMinor, receiver.currency)}`
+                          : "Prikaži upute za uplatu"}
                   </button>
                 </>
               ) : (
