@@ -42,7 +42,7 @@ export const helpTopics = {
   naplata: {
     label: "Naplata i paketi",
     icon: "card",
-    question: "Kako da provjerim uplatu ili svoj paket?",
+    question: "Kako da platim paket ili provjerim uplatu?",
     keywords: [
       "kredit",
       "paket",
@@ -55,7 +55,7 @@ export const helpTopics = {
       "pretplat",
     ],
     answer:
-      "U nalogu provjeri trenutno članstvo i stanje Ahi kredita. Ako se uplata ne vidi, u zahtjevu podršci navedi iznos, približno vrijeme uplate i oznaku narudžbe ako je imaš.",
+      "Paket se plaća Ahi kreditima: u nalogu dopuni kredite, zatim na stranici Paketi odaberi paket i djelatnost i potvrdi plaćanje. Stanje kredita i aktivni paket vidiš u nalogu. Ako se uplata ne vidi, u zahtjevu podršci navedi iznos, približno vrijeme uplate i oznaku narudžbe ako je imaš.",
     links: [
       { label: "Pregled paketa", href: "/paketi" },
       { label: "Moj nalog", href: "/nalog" },

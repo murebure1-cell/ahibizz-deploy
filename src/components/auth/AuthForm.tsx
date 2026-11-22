@@ -4,14 +4,13 @@ import Link from "next/link";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { accountReturnPath } from "../../lib/account-return";
 import { authReturnLinks } from "../../lib/auth-return";
-import { IS_PLAY_EDITION } from "../../lib/distribution";
 import { Icon } from "../Icon";
 import styles from "./auth.module.css";
 
 export type AuthMode = "sign-in" | "sign-up" | "reset-request" | "reset-password";
 const text = {
   "sign-in": {
-    title: "Dobro došao nazad.",
+    title: "Lijepo te je opet vidjeti.",
     intro: "Prijavi se u svoj AhiBizz.",
     action: "Prijavi se",
   },
@@ -74,7 +73,8 @@ export function AuthForm({
   const passwordField = useRef<HTMLInputElement>(null);
   const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationSent, setVerificationSent] = useState(false);
-  const hasPassword = mode === "sign-in" || mode === "sign-up" || mode === "reset-password";
+  const hasPassword =
+    mode === "sign-in" || mode === "sign-up" || (mode === "reset-password" && Boolean(token));
   const copy = text[mode];
   const links = authReturnLinks(returnTo);
   function suggestPassword() {
@@ -309,9 +309,14 @@ export function AuthForm({
               </div>
             )}
             {verificationFeedback}
-            {mode === "sign-up" && <Link href="/privatnost">Privatnost na AhiBizzu</Link>}
-            {mode === "sign-up" && IS_PLAY_EDITION && (
-              <Link href="/pravila-zajednice">Pravila zajednice</Link>
+            {mode === "sign-up" && (
+              <label className={styles.remember}>
+                <input name="terms" type="checkbox" required disabled={!available || busy} />
+                <span>
+                  Prihvatam <Link href="/pravila-zajednice">pravila zajednice</Link> i{" "}
+                  <Link href="/privatnost">privatnost na AhiBizzu</Link>.
+                </span>
+              </label>
             )}
             <button
               className={styles.submit}

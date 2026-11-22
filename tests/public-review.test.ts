@@ -57,6 +57,23 @@ test("the favorite client reports an anonymous answer as signed out", async () =
   );
 });
 
+test("a guest's own-review read is answered without an error status and read as signed out", async () => {
+  const { createReviewsApi, ReviewsClientError } = await import("../src/lib/reviews");
+  const api = createReviewsApi(async () => Response.json({ anonymous: true }));
+  await assert.rejects(
+    () => api.own(id),
+    (error) => error instanceof ReviewsClientError && error.status === 401,
+  );
+});
+
+test("checkout sign-in returns to the checkout page only for exact checkout paths", async () => {
+  const { accountReturnPath } = await import("../src/lib/account-return");
+  assert.equal(accountReturnPath("/naplata"), "/naplata");
+  assert.equal(accountReturnPath(`/naplata?djelatnost=${id}`), `/naplata?djelatnost=${id}`);
+  assert.equal(accountReturnPath("/naplata?djelatnost=x"), "/nalog");
+  assert.equal(accountReturnPath(`/naplata?djelatnost=${id}&x=1`), "/nalog");
+});
+
 test("Bosnian phone numbers are grouped for reading and others are left as entered", () => {
   assert.equal(displayPhone("+38761938694"), "+387 61 938 694");
   assert.equal(displayPhone("061 938 694"), "+387 61 938 694");

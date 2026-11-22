@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { businessUuid } from "../../lib/business-today";
 import { getAccountService } from "../../server/auth/accounts";
 import { Checkout } from "./Checkout";
@@ -31,6 +32,12 @@ export async function CheckoutEntry({
     userId = (await getAccountService()?.read(await headers()))?.id ?? null;
   } catch {
     /* Show login without leaking account details. */
+  }
+  // A guest starting a new promotion is sent to sign in and back. Provider returns, orders and
+  // quotes stay reachable without a session (guest PayPal confirmation flows).
+  if (!userId && !id && !quote && !returned && !cancelled) {
+    const back = business ? `/naplata?djelatnost=${business}` : "/naplata";
+    redirect(`/prijava?nastavi=${encodeURIComponent(back)}`);
   }
   return (
     <Checkout

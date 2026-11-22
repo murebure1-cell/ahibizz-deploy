@@ -784,9 +784,24 @@ export function createBookingService({
           before.customerId &&
           before.customerId !== before.businessOwnerId
         ) {
+          // At most one award per customer and business per local day, so repeated bookings
+          // between the same two accounts cannot be used to mint credits.
           await client.query(
-            "INSERT INTO booking_completion_credit (entry_id,business_id,recipient_user_id,amount,created_at) VALUES ($1,$2,$3,5,$4) ON CONFLICT (entry_id) DO NOTHING",
-            [id, before.businessId, before.businessOwnerId, instant.toISOString()],
+            `INSERT INTO booking_completion_credit (entry_id,business_id,recipient_user_id,amount,created_at)
+             SELECT $1,$2,$3,5,$4
+             WHERE NOT EXISTS (
+               SELECT 1 FROM booking_completion_credit c JOIN booking_entry e ON e.id=c.entry_id
+               WHERE c.business_id=$2 AND e.customer_user_id=$5
+                 AND (c.created_at AT TIME ZONE 'Europe/Sarajevo')::date=($4::timestamptz AT TIME ZONE 'Europe/Sarajevo')::date
+             )
+             ON CONFLICT (entry_id) DO NOTHING`,
+            [
+              id,
+              before.businessId,
+              before.businessOwnerId,
+              instant.toISOString(),
+              before.customerId,
+            ],
           );
         }
         return entryDto(await entry(client, id));

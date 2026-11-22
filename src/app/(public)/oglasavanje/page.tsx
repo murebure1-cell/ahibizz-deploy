@@ -62,6 +62,8 @@ export default async function PromotionPage() {
     publicOptInAudience(),
     pool ? readWalletRate(pool).catch(() => null) : null,
   ]);
+  // The audience section appears only once there are measured campaign results or an opt-in sample.
+  const hasAudience = Boolean((audience && audience.impressions > 0) || sample);
   const contactPhone =
     pricing?.contactPhone && /^\+[1-9]\d{6,14}$/.test(pricing.contactPhone)
       ? pricing.contactPhone
@@ -108,7 +110,7 @@ export default async function PromotionPage() {
         <a href="#pozicije">Pozicije</a>
         <a href="#cjenovnik">Cjenovnik</a>
         <a href="#ciljanje">Ciljanje</a>
-        <a href="#publika">Publika</a>
+        {hasAudience && <a href="#publika">Publika</a>}
         <a href="#uslovi">Uslovi</a>
       </nav>
       <AdExplorer pricing={pricing} creditRate={creditsOnly ? walletRate : undefined} />
@@ -124,113 +126,113 @@ export default async function PromotionPage() {
           ))}
         </div>
       </section>
-      <section className={styles.section} id="publika">
-        <h2>Publika AhiBizza</h2>
-        {audience && audience.impressions > 0 ? (
-          <>
-            <p className={styles.note}>
-              Izmjereni rezultati kampanja u posljednjih 30 dana. Jedna osoba može ostvariti više
-              prikaza.
-            </p>
-            <dl className={styles.metrics}>
-              {(
-                [
-                  ["Prikazi", audience.impressions],
-                  ["Klikovi", audience.clicks],
-                  ["Prikazi na telefonu", audience.mobile],
-                  ["Prikazi na računaru", audience.desktop],
-                ] as const
-              ).map(([label, total]) => (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>{formatNumber(total)}</dd>
+      {hasAudience && (
+        <section className={styles.section} id="publika">
+          <h2>Publika AhiBizza</h2>
+          {audience && audience.impressions > 0 ? (
+            <>
+              <p className={styles.note}>
+                Izmjereni rezultati kampanja u posljednjih 30 dana. Jedna osoba može ostvariti više
+                prikaza.
+              </p>
+              <dl className={styles.metrics}>
+                {(
+                  [
+                    ["Prikazi", audience.impressions],
+                    ["Klikovi", audience.clicks],
+                    ["Prikazi na telefonu", audience.mobile],
+                    ["Prikazi na računaru", audience.desktop],
+                  ] as const
+                ).map(([label, total]) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>{formatNumber(total)}</dd>
+                  </div>
+                ))}
+              </dl>
+              <h3>Prikazi prema platformi</h3>
+              <dl className={styles.platforms}>
+                {(
+                  [
+                    ["Android", audience.platforms.android],
+                    ["iOS", audience.platforms.ios],
+                    ["Desktop", audience.platforms.desktop],
+                    ["Ostalo", audience.platforms.other],
+                  ] as const
+                ).map(([label, total]) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>{formatNumber(total)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </>
+          ) : null}
+          {sample && (
+            <article className={styles.sample}>
+              <h3>Posjete AhiBizzu</h3>
+              <p>
+                Dobrovoljni uzorak korisnika koji su uključili statistiku tokom posljednjih 30 dana.
+              </p>
+              <dl className={styles.platforms}>
+                <div>
+                  <dt>Korisnici</dt>
+                  <dd>{formatNumber(sample.users)}</dd>
                 </div>
-              ))}
-            </dl>
-            <h3>Prikazi prema platformi</h3>
-            <dl className={styles.platforms}>
-              {(
-                [
-                  ["Android", audience.platforms.android],
-                  ["iOS", audience.platforms.ios],
-                  ["Desktop", audience.platforms.desktop],
-                  ["Ostalo", audience.platforms.other],
-                ] as const
-              ).map(([label, total]) => (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>{formatNumber(total)}</dd>
+                <div>
+                  <dt>Posjete</dt>
+                  <dd>{formatNumber(sample.visits)}</dd>
                 </div>
-              ))}
-            </dl>
-          </>
-        ) : (
-          <p>Za posljednjih 30 dana još nema dostupne statistike prikazivanja kampanja.</p>
-        )}
-        {sample && (
-          <article className={styles.sample}>
-            <h3>Posjete AhiBizzu</h3>
-            <p>
-              Dobrovoljni uzorak korisnika koji su uključili statistiku tokom posljednjih 30 dana.
-            </p>
-            <dl className={styles.platforms}>
-              <div>
-                <dt>Korisnici</dt>
-                <dd>{formatNumber(sample.users)}</dd>
-              </div>
-              <div>
-                <dt>Posjete</dt>
-                <dd>{formatNumber(sample.visits)}</dd>
-              </div>
-              <div>
-                <dt>Pregledi stranica</dt>
-                <dd>{formatNumber(sample.views)}</dd>
-              </div>
-            </dl>
-            {sample.platforms.length > 0 && (
-              <div className={styles.tableWrap}>
-                <table>
-                  <caption>
-                    Podaci po platformama iz dobrovoljnog uzorka. Jedna osoba može koristiti više
-                    uređaja.
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Platforma</th>
-                      <th scope="col">Korisnici</th>
-                      <th scope="col">Posjete</th>
-                      <th scope="col">Pregledi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sample.platforms.map((row) => (
-                      <tr key={row.platform}>
-                        <th scope="row">{platformNames[row.platform]}</th>
-                        <td>{formatNumber(row.users)}</td>
-                        <td>{formatNumber(row.visits)}</td>
-                        <td>{formatNumber(row.views)}</td>
+                <div>
+                  <dt>Pregledi stranica</dt>
+                  <dd>{formatNumber(sample.views)}</dd>
+                </div>
+              </dl>
+              {sample.platforms.length > 0 && (
+                <div className={styles.tableWrap}>
+                  <table>
+                    <caption>
+                      Podaci po platformama iz dobrovoljnog uzorka. Jedna osoba može koristiti više
+                      uređaja.
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Platforma</th>
+                        <th scope="col">Korisnici</th>
+                        <th scope="col">Posjete</th>
+                        <th scope="col">Pregledi</th>
                       </tr>
+                    </thead>
+                    <tbody>
+                      {sample.platforms.map((row) => (
+                        <tr key={row.platform}>
+                          <th scope="row">{platformNames[row.platform]}</th>
+                          <td>{formatNumber(row.users)}</td>
+                          <td>{formatNumber(row.visits)}</td>
+                          <td>{formatNumber(row.views)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {sample.regions.length > 0 && (
+                <>
+                  <h3>Regije koje su korisnici odabrali</h3>
+                  <dl className={styles.platforms}>
+                    {sample.regions.map((row) => (
+                      <div key={row.region}>
+                        <dt>{row.region}</dt>
+                        <dd>{formatNumber(row.users)}</dd>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {sample.regions.length > 0 && (
-              <>
-                <h3>Regije koje su korisnici odabrali</h3>
-                <dl className={styles.platforms}>
-                  {sample.regions.map((row) => (
-                    <div key={row.region}>
-                      <dt>{row.region}</dt>
-                      <dd>{formatNumber(row.users)}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </>
-            )}
-          </article>
-        )}
-      </section>
+                  </dl>
+                </>
+              )}
+            </article>
+          )}
+        </section>
+      )}
       <section id="uslovi" className={styles.section}>
         <h2>Uslovi oglašavanja</h2>
         <div className={styles.panels}>

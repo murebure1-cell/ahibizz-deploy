@@ -1,6 +1,7 @@
 import { AuthForm } from "../../../components/auth/AuthForm";
 import { authenticationAvailable } from "../../../server/auth-availability";
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Nova lozinka", robots: { index: false, follow: false } };
 export default async function ResetPage({
   searchParams,
 }: {
