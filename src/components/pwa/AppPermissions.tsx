@@ -22,11 +22,7 @@ export function AppPermissionPrompt() {
   const pathname = usePathname();
   const attempted = useRef(false);
   const [open, setOpen] = useState(false);
-  const excluded =
-    !pathname ||
-    pathname === "/instaliraj" ||
-    pathname === "/pregled" ||
-    pathname.startsWith("/pregled/");
+  const excluded = !pathname || pathname === "/instaliraj";
 
   useEffect(() => {
     if (!installed || excluded || attempted.current) return;

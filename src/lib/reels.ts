@@ -46,3 +46,10 @@ export function reelDuration(durationMs: number) {
   const seconds = Math.floor(durationMs / 1000);
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
+
+export function reelResubmissionNotice(admin: boolean, playEdition: boolean) {
+  if (admin) return "Vlasnik mora ponovo poslati reel uz potvrdu cijene.";
+  return playEdition
+    ? "Za provjeru ove objave obrati se podršci."
+    : "Povuci ovaj reel i pošalji ga ponovo uz potvrdu cijene.";
+}

@@ -1,3 +1,4 @@
+import { accountSectionPath } from "./account-return";
 import { contentSearchKey, searchInput } from "./content-hub";
 
 export const reportHelpPath = "/pomoc?tema=sigurnost";
@@ -90,6 +91,51 @@ export const helpTopics = {
 export type HelpTopicId = keyof typeof helpTopics;
 export type HelpTicketTopic = HelpTopicId | "ostalo";
 export const helpTopicIds = Object.keys(helpTopics) as HelpTopicId[];
+
+type HelpAnswer = {
+  label: string;
+  icon: (typeof helpTopics)[HelpTopicId]["icon"];
+  question: string;
+  answer: string;
+  links: readonly { label: string; href: string }[];
+};
+
+export function helpTopicContent(id: HelpTopicId, playEdition = false): HelpAnswer {
+  const topic = helpTopics[id];
+  if (!playEdition) return topic;
+  switch (id) {
+    case "naplata":
+      return {
+        ...topic,
+        label: "Moj paket",
+        question: "Gdje vidim svoj paket?",
+        answer:
+          "U nalogu možeš pregledati svoj paket i datum isteka. Kupovina i dopuna kredita nisu dostupne u ovoj aplikaciji. Ako podaci o tvom paketu nisu tačni, pošalji zahtjev podršci.",
+        links: [{ label: "Moj paket", href: accountSectionPath("membership") }],
+      };
+    case "djelatnost":
+      return {
+        ...topic,
+        label: "Moje djelatnosti",
+        question: "Kako da dodam ili uredim djelatnost?",
+        answer:
+          "U nalogu otvori Djelatnosti i odaberi dodavanje. Unesi grad, opis, kontakt i fotografije. Postojeće isticanje možeš pregledati u svom nalogu.",
+        links: [
+          { label: "Moje djelatnosti", href: accountSectionPath("businesses") },
+          { label: "Aktivna isticanja", href: accountSectionPath("advertising") },
+        ],
+      };
+    case "reels":
+      return {
+        ...topic,
+        question: "Gdje vidim svoje kratke videozapise?",
+        answer:
+          "U odjeljku Moji reels možeš pregledati svoje postojeće objave. Objavljivanje novog Reela nije dostupno u ovoj aplikaciji.",
+      };
+    default:
+      return topic;
+  }
+}
 
 export function helpTopic(value: unknown): HelpTopicId | null {
   return typeof value === "string" && Object.hasOwn(helpTopics, value)

@@ -8,8 +8,8 @@ import {
   type HelpTicketTopic,
   type HelpTopicId,
   helpTopic,
+  helpTopicContent,
   helpTopicIds,
-  helpTopics,
   matchHelpTopic,
 } from "../../lib/help-center";
 import { supportEmail } from "../../lib/support-requests";
@@ -30,18 +30,24 @@ export function HelpDesk({
   packageContract?: string;
 }) {
   const [question, setQuestion] = useState("");
-  const [previous, setPrevious] = useState(initialTopic ? helpTopics[initialTopic].question : "");
+  const [previous, setPrevious] = useState(
+    initialTopic ? helpTopicContent(initialTopic, IS_PLAY_EDITION).question : "",
+  );
   const [matched, setMatched] = useState<HelpTopicId | null>(initialTopic);
   const [topic, setTopic] = useState<HelpTicketTopic>(initialTopic ?? "ostalo");
   const [detail, setDetail] = useState(
-    packageContract ? "Molim provjeru preostalih rata nakon zaustavljanja PayPala." : "",
+    packageContract
+      ? IS_PLAY_EDITION
+        ? "Molim provjeru statusa mog paketa."
+        : "Molim provjeru preostalih rata nakon zaustavljanja PayPala."
+      : "",
   );
   const detailsField = useRef<HTMLTextAreaElement>(null);
   const [result, action, pending] = useActionState(submitSupportRequest, {
     sent: false,
     message: "",
   });
-  const answer = matched ? helpTopics[matched] : null;
+  const answer = matched ? helpTopicContent(matched, IS_PLAY_EDITION) : null;
 
   function ask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -82,12 +88,12 @@ export function HelpDesk({
               type="button"
               aria-pressed={matched === id}
               onClick={() => {
-                setPrevious(helpTopics[id].question);
+                setPrevious(helpTopicContent(id, IS_PLAY_EDITION).question);
                 setMatched(id);
               }}
             >
-              <Icon name={helpTopics[id].icon} />
-              {helpTopics[id].label}
+              <Icon name={helpTopicContent(id, IS_PLAY_EDITION).icon} />
+              {helpTopicContent(id, IS_PLAY_EDITION).label}
             </button>
           ))}
         </fieldset>
@@ -101,19 +107,13 @@ export function HelpDesk({
                     <strong>{answer.label}</strong>
                     <p>{answer.answer}</p>
                     <ul>
-                      {answer.links
-                        .filter(
-                          (link) =>
-                            !IS_PLAY_EDITION ||
-                            (link.href !== "/oglasavanje" && link.href !== "/paketi"),
-                        )
-                        .map((link) => (
-                          <li key={link.href}>
-                            <Link href={link.href} className={styles.inlineLink}>
-                              {link.label}
-                            </Link>
-                          </li>
-                        ))}
+                      {answer.links.map((link) => (
+                        <li key={link.href}>
+                          <Link href={link.href} className={styles.inlineLink}>
+                            {link.label}
+                          </Link>
+                        </li>
+                      ))}
                     </ul>
                   </>
                 ) : (
@@ -168,7 +168,7 @@ export function HelpDesk({
                   <option value="ostalo">Ostalo</option>
                   {helpTopicIds.map((id) => (
                     <option key={id} value={id}>
-                      {helpTopics[id].label}
+                      {helpTopicContent(id, IS_PLAY_EDITION).label}
                     </option>
                   ))}
                 </select>

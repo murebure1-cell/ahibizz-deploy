@@ -29,7 +29,7 @@ export function InstallPage() {
       <section className={styles.card} aria-labelledby="install-title">
         <Image
           className={styles.icon}
-          src="/preview-app/icons/icon-192.png"
+          src="/app-icons/icon-192.png"
           width={76}
           height={76}
           alt=""

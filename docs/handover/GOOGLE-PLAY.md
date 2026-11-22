@@ -1,0 +1,114 @@
+# Android i Google Play
+
+Stanje pregleda: 22. 11. 2026. Put je **Trusted Web Activity (TWA) kroz Bubblewrap**, oko posebnog web builda. Repo još nema generisan Android projekat, potpisani APK/AAB, potvrđenu Play domenu ni produkcijski potpis. Ovaj dokument priprema predaju; ne potvrđuje da je aplikacija objavljena ili da je Google odobrio aplikaciju.
+
+## Šta već postoji
+
+| Dio | Izvor i ponašanje |
+| --- | --- |
+| Android identitet | `src/lib/android-association.ts`: `com.ahibizz.app`; `.qa` se prepoznaje samo kao probno pokretanje, a nije objavljeni paket u assetlinks odgovoru. |
+| Play build | `next.config.ts` čita `AHIBIZZ_DISTRIBUTION=google-play` i ugrađuje `NEXT_PUBLIC_AHIBIZZ_DISTRIBUTION`; `src/lib/distribution.ts` izvozi `IS_PLAY_EDITION`. Vrijednost je zamrznuta tokom builda. |
+| Manifest | `public/app.webmanifest`: AhiBizz, `id=/`, `start_url=/?source=pwa`, `scope=/`, `standalone`, bosanski jezik, tema `#142c40`, pozadina `#f8f9f6`, PNG 192/512 i maskable 512 u `public/app-icons/`. Ikone su prenesene iz bivšeg preview foldera bez promjene slike. |
+| PWA | `src/components/pwa/AppPwa.tsx` registruje `/sw.js` na `/`; prepoznaje instalirani prikaz i Android referrer. Referrer je samo pomoć za izgled, nije ovlaštenje. |
+| Offline | `public/sw.js` i `public/app-offline.html`: mreža za navigaciju; pri prekidu veze neutralna poruka, bez podataka prethodnog naloga. API, RSC i korisnički mediji se ne pohranjuju u offline cache. Cache v2 zamjenjuje stare app/preview cacheove. |
+| Veza domene i aplikacije | `src/app/.well-known/assetlinks.json/route.ts`: u Play buildu objavljuje samo valjani `AHIBIZZ_PLAY_SIGNING_SHA256`. Bez potpisa vraća 404; placeholder se ne predstavlja kao valjano povezivanje. |
+| Oznaka distribucije | `/.well-known/ahibizz-distribution.json` vraća `google-play` ili `web`, bez podataka o nalogu. |
+| Privatnost i brisanje | `/privatnost` i `/brisanje-naloga` su javne stranice. Prijavljeni korisnik može poslati zahtjev u aplikaciji; dostupan je i email `podrska@ahibizz.com` bez ponovne instalacije. Stvarni pristup bez prijave kroz hosting i ingress tek treba potvrditi u browseru. |
+
+## Kupovina u Play izdanju
+
+Trenutni Play build je izdanje bez korisničke kupovine. Ne sadrži Google Play Billing integraciju. Ovo je opis postojećeg izbora, a ne nova odluka o cijenama ili načinu naplate.
+
+| Tok | Play ponašanje u kodu |
+| --- | --- |
+| Paketi, kupovina i dopuna | Rewrite u `next.config.ts` zatvara `/paketi`, `/naplata`, `/podrzi`, `/oglasavanje` i pripadajuće kupovne API putanje. Novčanik i bankovne dopune dodatno su skriveni/odbijeni kroz `IS_PLAY_EDITION`. Direktna navigacija prikazuje kratku stranicu s povratkom na početnu/pomoć; API i RSC dobijaju JSON 404. |
+| Postojeći paket | `/api/account/memberships` i pregled naloga prikazuju postojeći paket i trajanje. Link za novu kupovinu nije prikazan. |
+| Postojeće isticanje | Nalog prikazuje aktivne pozicije kroz `CurrentPlacements`; nema pokretanja kupovine. |
+| Objavljivanje Reela | Korisničko kreiranje i slanje na objavu su u Play izdanju zatvoreni. Pregled objavljenih videa i dozvoljene radnje na vlastitim postojećim videima ostaju. PUT za dijelove ranije započetog vlastitog nacrta ostaje ovlašten serverski tok; nije moguće napraviti novu objavu kroz taj poziv. Pomoć i obavijest za staru nepotpunu objavu ne upućuju Play korisnika na nedostupno ponovno slanje. |
+| Oglasi i mjerenje publike | Isporuka oglasa, upiti, mjerenje i postavke publike imaju Play zabrane. |
+| Administracija i historija | Administratorske evidencije i čitanje prošlih uplata ostaju. Skrivanje kupovine ne briše novčanik, ugovore ili historijske podatke. |
+
+Ahi krediti, paketi i plaćeno isticanje otključavaju digitalne mogućnosti. Za kupovinu takvih mogućnosti u Play aplikaciji polazi se od Google Play Billinga. Izuzeci i programi za alternativnu naplatu zavise od države, prijave u program i važećih uslova; bankovna uplata sama po sebi nije izuzetak. Link, uputa u pomoći ili preusmjeravanje na web kupovinu može biti dio zabranjenog usmjeravanja. Izvor: [Google Play Payments](https://support.google.com/googleplay/android-developer/answer/9858738).
+
+Odluke vlasnika prije objave:
+
+1. **Zadržati izdanje bez kupovine.** Zadržati sadašnje zabrane, provjeriti sve direktne URL-ove i tekstove pomoći. Googleu opisati da aplikacija prikazuje postojeća prava. Ne dodavati poziv na dopunu izvan aplikacije.
+2. **Uvesti Google Play Billing.** Poseban posao: proizvodi, potvrda kupovine na serveru, idempotentno dodjeljivanje prava/kredita, obnova, otkazivanje, povrat i usklađivanje stanja. Sam TWA omotač ne rješava naplatu.
+3. **Alternativni program ili distribucija izvan Playa.** Prvo utvrditi zemlje i podobnost te prihvatiti pravila odgovarajućeg programa. Ne pretpostavljati da pravila jedne države važe svuda.
+
+## Od izvornog koda do AAB-a
+
+Ove korake obavlja imenovani izdavač nakon odobrenja. Tokom ove predaje nije pokrenut deploy, Android build, registracija ni slanje u Play Console.
+
+1. Odabrati vlasnika Play Console naloga, potvrditi naziv pravnog lica/osobe i pristupe timu. Potvrditi trajni paket `com.ahibizz.app`, zemlje distribucije i model bez kupovine ili odobrenu alternativu. Paket ne mijenjati nakon prve objave.
+2. Izabrati trajni HTTPS origin za **Play build**. Web i Play imaju različito ugrađene mogućnosti: isti build se ne smije prebacivati između njih samo runtime varijablom. Na izabranoj domeni potvrditi kanonski origin, TLS, pristup pravilima privatnosti i brisanju bez prijave. Aplikacija i njeni API-ji moraju koristiti isti origin; ne uvoditi preusmjeravanje nazad na web kupovinu.
+3. Na Node 24 i pnpm 12.18.0 pokrenuti `pnpm install --frozen-lockfile`, `pnpm check` i CI integracijske testove sa izoliranom PostgreSQL bazom. Zabilježiti commit i rezultat. Sandbox `spawn EPERM` nije prolazan test.
+4. Napraviti zaseban Play build. Primjer za PowerShell, uz vraćanje ranije vrijednosti varijable:
+
+   ```powershell
+   $previousDistribution = $env:AHIBIZZ_DISTRIBUTION
+   try {
+     $env:AHIBIZZ_DISTRIBUTION = 'google-play'
+     pnpm build
+   } finally {
+     $env:AHIBIZZ_DISTRIBUTION = $previousDistribution
+   }
+   ```
+
+   Docker put: `docker build --build-arg AHIBIZZ_DISTRIBUTION=google-play --tag ahibizz:play .`. Lokalni Play build koristi zaseban radni/build folder kako `.next` ne bi zamijenio web build. Deploy ostaje `integration/ahibizz → ahibizz-deploy → OctaDeploy app 213`; domena i zaseban Play servis traže potvrdu vlasnika. Prije autorizovanog deploya napraviti svjež backup i potvrditi odabrani commit.
+5. Na pripremljenoj domeni provjeriti `/.well-known/ahibizz-distribution.json` (`google-play`), manifest, PNG ikone, `/sw.js`, `/privatnost`, `/brisanje-naloga` i sve kupovne zabrane. Običan web build sa skrivenim menijem nije Play build.
+6. U posebnom Android folderu, izvan aplikacijskog izvornog koda, instalirati pregledanu i zapisanu verziju `@bubblewrap/cli`. Bubblewrap treba JDK i Android SDK; instalaciju radi tim na svom build računaru. Ne instalirati PostgreSQL/Docker samo zbog omotača.
+7. Pokrenuti `bubblewrap init --manifest https://<PLAY_HOST>/app.webmanifest`. Potvrditi naziv AhiBizz, paket, HTTPS host i početni URL. U generisanom `twa-manifest.json` pregledati verziju, ikone, `display`, theme/background i target SDK. Prema trenutno objavljenom zahtjevu novi mobilni build treba Android 16 / API 36 ili više; prije predaje ponovo provjeriti [target API zahtjev](https://support.google.com/googleplay/android-developer/answer/11926878).
+8. Postaviti potpisivanje i uključiti Play App Signing. Keystore, lozinke, upload ključ, service-account JSON i privatne certifikate čuvati izvan Gita i izvan javnih exporta. Sačuvati oporavak pristupa i imenovati odgovornu osobu.
+9. U Play Console uzeti **SHA-256 certifikata App signing key**, ne samo upload ključa. Na Play serveru postaviti javni fingerprint u `AHIBIZZ_PLAY_SIGNING_SHA256` kroz odobrenu konfiguraciju. Više valjanih potpisa podržano je kao lista odvojena zarezom. Predložak je `assetlinks.example.json` u ovom folderu; zamijeniti njegov placeholder stvarnim javnim fingerprintom. U aplikaciji se odgovor generiše rutom, pa ne praviti drugi konkurentski javni `assetlinks.json`.
+10. Provjeriti `https://<PLAY_HOST>/.well-known/assetlinks.json`: status 200 bez prijave/preusmjeravanja, `application/json`, ispravan paket, relacija `delegate_permission/common.handle_all_urls` i stvarni potpis. Za lokalno potpisani probni APK njegov potpis mora takođe biti povezan ili koristiti zaseban probni host/paket. Dokumentacija: [TWA i Digital Asset Links](https://developer.chrome.com/docs/android/trusted-web-activity/quick-start).
+11. Pokrenuti `bubblewrap build`. Sačuvati izlazne `app-release-signed.apk` i `app-release-bundle.aab` izvan Gita, uz hash i commit web builda. Provjeriti stvarne nazive u korištenoj verziji alata. Opis alata i izlaza: [Bubblewrap CLI](https://github.com/GoogleChromeLabs/bubblewrap/tree/main/packages/cli).
+12. Instalirati APK na fizički Android za osnovnu provjeru. Nakon uploada AAB-a ponoviti instalaciju iz internog Play testa: taj build koristi Play potpis i stvarno provjerava povezivanje domene. Pojava browser trake znači da TWA povezivanje treba ispraviti, a ne sakriti.
+13. Popuniti Play Console stavke ispod, pokrenuti pre-launch report, riješiti nalaze i dostaviti podatke za pristup pregledniku aplikacije. Za lične naloge koji potpadaju pod pravilo novih naloga sada se traži najmanje 12 testera neprekidno 14 dana u zatvorenom testu; potvrditi zahtjev konkretnog naloga u [pravilu testiranja](https://support.google.com/googleplay/android-developer/answer/14151465).
+14. Tek nakon pregledanih nalaza zatražiti produkcijski pristup/objavu. Sačuvati odobreni AAB, verziju, potpis, commit, backup i ko je objavio. Nakon objave provjeriti instalaciju iz Playa, prijavu i povratak u aplikaciju.
+
+## Data safety: odgovori zasnovani na kodu
+
+Ovo je radni popis za vlasnika koji popunjava formular, ne već poslata deklaracija. Provjeriti stvarni Play build i konfiguraciju servera. Podaci poslani serveru jesu obrada podataka i kada se koriste kroz TWA; ne označavati cijelu aplikaciju kao aplikaciju bez prikupljanja. Definicije prikupljanja, dijeljenja i izuzetaka za obrađivače: [Data safety](https://support.google.com/googleplay/android-developer/answer/10787469).
+
+| Podatak / predložena kategorija | Nalaz u kodu | Namjena i izbor |
+| --- | --- | --- |
+| Ime, email, korisnički identifikator | `auth_user`, Better Auth, `src/server/auth`; profil, podrška i pristup nalogu | Upravljanje nalogom i funkcionalnost; potrebni za prijavljene tokove. Pregled imenika postoji i bez naloga. |
+| Telefon, adresa i dodatni podaci profila/djelatnosti | `personal_profile`, `directory_business`, `directory_business_details` | Opcionalan korisnički sadržaj; dio je javnog profila prema vidljivosti. Provjeriti kategorije Personal info u formularu. |
+| Precizna lokacija | `DeviceLocation`, `device-location`, `geocoding`, pretraga imenika | Opcionalna dozvola; koordinate putuju upitom za blizinu i mogu se koristiti za Photon obrnuto geokodiranje. Ne tvrditi da lokacija ostaje isključivo na uređaju. Tačan period zadržavanja logova nije utvrđen iz koda. |
+| Fotografije, video i korisnički sadržaj | `src/server/people/media.ts`, `business-media`, opisi, recenzije, `api/reels` | Opcionalno uređivanje profila/djelatnosti; javna objava prema vidljivosti/moderaciji. Novo kreiranje/slanje Reela zatvoreno je u Play izdanju; server i dalje prihvata autorizovan upload dijela ranije započetog nacrta. Ne deklarisati da se video nikada ne prikuplja samo zato što forma za novu objavu nije prikazana. |
+| Poruke, podrška i prijave sadržaja | `message_message`, `support_request` | Korisnička komunikacija, podrška i sigurnost; povezano s nalogom. Nisu SMS ni pristup imeniku telefona. |
+| Termini i podaci rezervacije | `booking_entry`, `rental_booking`, `stay_booking` | Opcionalno korištenje rezervacija; podatke vide učesnici i ovlaštena djelatnost. |
+| Historija kupovina i prava | Novčanik, ugovori, postojeće uplate i prikaz članstva | Postojeći zapisi se čitaju; Play build ne pokreće novu kupovinu. Čuvaju se radi pružanja postojećih prava i poslovnih evidencija. AhiBizz ne treba deklarisati da prikuplja puni broj kartice: kartični unos iz web toka je kod platnog servisa. |
+| Aktivnost u aplikaciji | Sačuvane pretrage, favoriti, veze/blokade, reakcije na reels, prihvatanje pravila | Funkcionalnost i sigurnost; zapisano uz nalog. Komercijalno mjerenje publike je posebno zatvoreno u Play izdanju. |
+| IP, user agent i uređaj za push | `auth_session` (`ipAddress`, `userAgent`), `push_device`, `push_delivery` | Sigurnost sesije i opcionalne obavijesti; push identitet povezan s nalogom/sesijom. Ne koristiti oglasni ID. Hosting logove dodatno provjerava tim. |
+| Lokalni podaci | Tema, dozvola lokacije, neposlane poruke i oznake pokušaja | Lokalno pamćenje samo po sebi nije slanje serveru. Sačuvana postavka naloga i poslata poruka jesu serverski podaci. SW ne čuva privatne stranice/API odgovore. |
+
+Vanjski primaoci u kodu su pružalac hostinga/baze, SMTP za email, browser push servis (npr. FCM), Photon za adrese i OpenStreetMap za karte. Povezivanje javnog profila ili slanje poruke takođe otkriva odabrane podatke drugim korisnicima. Da li neki prenos spada u izuzetak za obrađivača ili svjesnu korisničku radnju treba potvrditi prema stvarnom ugovoru i konfiguraciji; ne označavati automatski „nema dijeljenja“.
+
+TLS u produkciji, zadržavanje backupova/logova, stvarni SMTP/hosting obrađivači i rokovi brisanja nisu dokazani lokalnim pregledom. Za tvrdnju „šifrovano u prenosu“ izdavač mora potvrditi HTTPS i serverske veze. Kamera i mikrofon su zatvoreni web Permissions-Policy zaglavljem; upload izabranog fajla nije dokaz pristupa svim fotografijama uređaja.
+
+## Privatnost, brisanje, sadržaj i pristup za pregled
+
+- U Store listing upisati javne HTTPS URL-ove `/privatnost` i `/brisanje-naloga` na potvrđenom Play originu. Stranice moraju raditi izvan naloga i aplikacije. Izvor: [priprema aplikacije za pregled](https://support.google.com/googleplay/android-developer/answer/9859455).
+- Brisanje se pokreće iz Postavki ili javne stranice i obrađuje ovlaštena podrška. `src/server/account-erasure.ts` odbija neriješene rezervacije, aktivne/pripadajuće uplate i neprenesene djelatnosti. `erase_account_content` briše/rediguje sadržaj, a anonimizirani identitet i zakonske finansijske evidencije ostaju. Vlasnik treba odrediti i javno navesti razumni rok obrade, kontakt pravnog upravljača i rokove zakonskog zadržavanja. Ne obećavati trenutni potpuni nestanak svih zapisa. Izvor za dostupnost zahtjeva unutar i izvan aplikacije: [brisanje naloga](https://support.google.com/googleplay/android-developer/answer/13327111).
+- App content / Content rating: prijaviti korisničke profile, fotografije, tekstove, reels, recenzije i poruke među korisnicima. Postoje prijava sadržaja, blokiranje, moderacija i pravila zajednice. Ne izabrati „nema korisničkog sadržaja“ niti izmišljati dobnu ocjenu: odgovoriti IARC formularom prema stvarnim mogućnostima.
+- Ads: Play build zatvara reklamnu isporuku i mjerenje. Prije odgovora potvrditi da je stvarno objavljen taj build i da nijedan oglasni tok nije ostao. Target audience, zemlje, reklamiranje djeci i pravno lice ostaju odluke vlasnika.
+- U App access dostaviti poseban **odobren i email-potvrđen** pregledni nalog s važećom lozinkom i stabilnim podacima. Podatke dostaviti samo sigurnim Play Console poljem, nikada u Git/dokument. Pripremiti vlastitu probnu djelatnost ako pregled vlasničkih ekrana to zahtijeva; ne dati administratora nad živim korisničkim podacima. Navesti gostujući pristup, prijavu, odjeljke naloga, profile, rezervacije, prijavu sadržaja, blokiranje i zahtjev za brisanje; objasniti odsustvo kupovine u Play izdanju.
+
+## Provjera na uređaju prije predaje
+
+| Provjera | Očekivanje / dokaz koji tim zapisuje |
+| --- | --- |
+| Hladno pokretanje i deep link | Pokreće Play origin, bez browser trake; duboki link otvara postojeći ekran. |
+| Nazad | Android Back vraća prethodni ekran/navigacijsko stanje; zatvoreni modal ne napušta aplikaciju. Na početnoj se aplikacija može zatvoriti. Ponoviti za auth povratak, rezervaciju, poruke, kalendar i reels. Web kod ne uvodi opšti presretač Android Back dugmeta. |
+| Offline i povrat mreže | Poslije online instalacije prekid veze prikazuje neutralnu stranicu; „Pokušaj ponovo“ otvara početnu. Privatni sadržaj prethodnog naloga nije u cacheu. |
+| Dozvole | Odbijena lokacija/push ne sprečava osnovni pregled. Prvi zahtjev proizlazi iz korisničkog izbora, a promjena dozvole u Android postavkama se odrazi u aplikaciji. |
+| Vanjski linkovi | Interna navigacija ostaje na originu; telefon/email/mapa/korisnička web stranica otvaraju predviđenu aplikaciju/browser. Ne dodavati vanjsku kupovinu. |
+| Promjena naloga | Odjava uklanja pristup privatnim podacima; povratak, offline i ponovna prijava drugog korisnika ne pokažu prethodni sadržaj. |
+| Kupovne zabrane | Provjeriti ručno unesene `/paketi`, `/naplata`, `/oglasavanje`, `/podrzi` i njihove API-je, pomoć i direktne query linkove u nalog. Nema kupovne forme ni poziva na vanjsku dopunu. |
+| Javne informacije | Privatnost i brisanje rade bez prijave i poslije deinstalacije; tim prima i može obraditi zahtjev. |
+
+Lokalno su pokrenuti `tsc --noEmit`, PWA testovi (14/14) direktno Nodeom i testovi pomoći, Android povezivanja i Play ponašanja (11/11) pomoću privremenog Node loadera koji transformiše TypeScript bez subprocessa. To nisu standardni `pnpm test` ni Android/browser testovi. PWA test provjerava dimenzije PNG ikona i izolaciju cachea; maskable slika je dodatno vizuelno pregledana.
+
+Stvarni Android uređaj, Bubblewrap build, potpis, Play instalacija, browser klikovi i poslovne transakcije nisu provjereni u ovom lokalnom radu. Konačni status lokalnih testova vodi se u `PROVJERA.md`; bez ovih završnih dokaza ne označavati izdanje spremnim za objavu.

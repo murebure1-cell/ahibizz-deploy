@@ -1,4 +1,4 @@
-# AhiBizz preview application icons
+# AhiBizz application icons
 
 These icons use the existing three-path AhiBizz symbol from
 `public/brand/ahi-logo-white.svg`. The paths and their transforms are unchanged;
@@ -13,5 +13,5 @@ the wordmark is omitted so the symbol remains legible at launcher sizes.
 
 Rendered locally with the project's existing Sharp 0.35.5. No new dependency,
 external artwork, font, or replacement brand was used. The original logos remain
-unchanged. This is an icon asset set only; it does not make the preview installable
-without the manifest and other PWA setup.
+unchanged. The production manifest, service worker, launcher mark and install
+page use this set. `public/app.webmanifest` declares the launcher icons.

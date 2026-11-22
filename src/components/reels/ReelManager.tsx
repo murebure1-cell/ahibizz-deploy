@@ -14,6 +14,7 @@ import {
   reelMaxDuration,
   reelMedia,
   reelPartBytes,
+  reelResubmissionNotice,
 } from "../../lib/reels";
 import { formatAhiCredits } from "../../lib/wallet";
 import { previewFrame } from "./poster";
@@ -377,9 +378,7 @@ export function ReelManager({
             )}
             {reel.status === "pending" && reel.priceCredits === null && (
               <p className={styles.paymentWarning}>
-                {admin
-                  ? "Vlasnik mora ponovo poslati reel uz potvrdu cijene."
-                  : "Povuci ovaj reel i pošalji ga ponovo uz potvrdu cijene."}
+                {reelResubmissionNotice(admin, IS_PLAY_EDITION)}
               </p>
             )}
             {reel.caption && <p className={styles.caption}>{reel.caption}</p>}

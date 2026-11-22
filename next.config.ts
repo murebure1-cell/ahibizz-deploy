@@ -1,74 +1,69 @@
 import type { NextConfig } from "next";
 
-const distribution = process.env.AHIBIZZ_DISTRIBUTION ?? "web";
-if (distribution !== "web" && distribution !== "google-play") {
-  throw new Error("AHIBIZZ_DISTRIBUTION must be web or google-play.");
+export function createNextConfig(distribution: string): NextConfig {
+  if (distribution !== "web" && distribution !== "google-play") {
+    throw new Error("AHIBIZZ_DISTRIBUTION must be web or google-play.");
+  }
+
+  return {
+    env: { NEXT_PUBLIC_AHIBIZZ_DISTRIBUTION: distribution },
+    async rewrites() {
+      const webOnlyRoutes = [
+        "/paketi",
+        "/oglasavanje",
+        "/naplata",
+        "/podrzi",
+        "/api/checkout",
+        "/api/paketi",
+      ];
+      return {
+        beforeFiles:
+          distribution === "google-play"
+            ? webOnlyRoutes.map((path) => ({
+                source: `${path}/:path*`,
+                destination: "/store-unavailable",
+              }))
+            : [],
+        afterFiles: [],
+        fallback: [],
+      };
+    },
+    output: "standalone",
+    serverExternalPackages: ["nodemailer"],
+    poweredByHeader: false,
+    async headers() {
+      return [
+        {
+          source: "/sw.js",
+          headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }],
+        },
+        {
+          source: "/app.webmanifest",
+          headers: [{ key: "Cache-Control", value: "no-cache, must-revalidate" }],
+        },
+        {
+          source: "/:path*",
+          headers: [
+            { key: "X-Content-Type-Options", value: "nosniff" },
+            { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+            { key: "X-Frame-Options", value: "DENY" },
+            { key: "Permissions-Policy", value: "camera=(), microphone=()" },
+          ],
+        },
+        {
+          source: "/administracija/izgled/pregled",
+          headers: [
+            { key: "X-Frame-Options", value: "SAMEORIGIN" },
+            {
+              key: "Content-Security-Policy",
+              value: "frame-ancestors 'self'; form-action 'none'; connect-src 'none'",
+            },
+            { key: "Cache-Control", value: "private, no-store" },
+          ],
+        },
+      ];
+    },
+  };
 }
 
-const config: NextConfig = {
-  env: { NEXT_PUBLIC_AHIBIZZ_DISTRIBUTION: distribution },
-  async rewrites() {
-    const webOnlyRoutes = [
-      "/paketi",
-      "/oglasavanje",
-      "/naplata",
-      "/podrzi",
-      "/probna-naplata",
-      "/dodo-proba",
-      "/pregled",
-      "/api/checkout",
-      "/api/dodo-test",
-      "/api/paypal-sandbox",
-      "/api/test-paketi",
-      "/api/paketi",
-    ];
-    return {
-      beforeFiles:
-        distribution === "google-play"
-          ? webOnlyRoutes.map((path) => ({
-              source: `${path}/:path*`,
-              destination: "/store-unavailable",
-            }))
-          : [],
-      afterFiles: [],
-      fallback: [],
-    };
-  },
-  output: "standalone",
-  serverExternalPackages: ["nodemailer"],
-  poweredByHeader: false,
-  async headers() {
-    return [
-      {
-        source: "/sw.js",
-        headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }],
-      },
-      {
-        source: "/app.webmanifest",
-        headers: [{ key: "Cache-Control", value: "no-cache, must-revalidate" }],
-      },
-      {
-        source: "/:path*",
-        headers: [
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "X-Frame-Options", value: "DENY" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=()" },
-        ],
-      },
-      {
-        source: "/administracija/izgled/pregled",
-        headers: [
-          { key: "X-Frame-Options", value: "SAMEORIGIN" },
-          {
-            key: "Content-Security-Policy",
-            value: "frame-ancestors 'self'; form-action 'none'; connect-src 'none'",
-          },
-          { key: "Cache-Control", value: "private, no-store" },
-        ],
-      },
-    ];
-  },
-};
-
-export default config;
+export default createNextConfig(process.env.AHIBIZZ_DISTRIBUTION ?? "web");

@@ -4,7 +4,7 @@ import test from "node:test";
 import { runInNewContext } from "node:vm";
 
 const origin = "https://app.example";
-const currentCache = "ahibizz-app-static-v1";
+const currentCache = "ahibizz-app-static-v2";
 const offlinePath = "/app-offline.html";
 const workerSource = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
 
@@ -259,7 +259,7 @@ test("only allowlisted public assets are updated online and reused after a netwo
   for (const [url, type] of [
     ["/_next/static/chunks/app.js", "application/javascript"],
     ["/brand/ahi-logo-color.svg", "image/svg+xml"],
-    ["/preview-app/icons/icon-192.png", "image/png"],
+    ["/app-icons/icon-192.png", "image/png"],
   ]) {
     assert.ok(url && type);
     const app = worker();
@@ -362,10 +362,10 @@ test("installation precaches only the neutral offline document and public applic
     app.puts.map((url) => new URL(url).pathname).sort(),
     [
       offlinePath,
-      "/preview-app/icons/icon-192.png",
-      "/preview-app/icons/icon-512.png",
-      "/preview-app/icons/maskable-512.png",
-      "/preview-app/icons/apple-touch-icon.png",
+      "/app-icons/icon-192.png",
+      "/app-icons/icon-512.png",
+      "/app-icons/maskable-512.png",
+      "/app-icons/apple-touch-icon.png",
     ].sort(),
   );
   assert.equal(app.network.length, 5);
@@ -455,9 +455,9 @@ test("main manifest installs the real root application with stable identity and 
   );
   for (const icon of [
     ...icons,
-    { src: "/preview-app/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    { src: "/app-icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
   ]) {
-    assert.match(icon.src, /^\/preview-app\/icons\/[a-z0-9-]+\.png$/);
+    assert.match(icon.src, /^\/app-icons\/[a-z0-9-]+\.png$/);
     assert.equal(icon.type, "image/png");
     const bytes = readFileSync(new URL(`../public${icon.src}`, import.meta.url));
     assert.deepEqual([...bytes.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);

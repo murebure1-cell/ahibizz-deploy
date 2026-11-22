@@ -12,8 +12,8 @@ export const metadata: Metadata = {
   manifest: "/app.webmanifest",
   appleWebApp: { capable: true, title: "AhiBizz", statusBarStyle: "default" },
   icons: {
-    icon: "/preview-app/icons/icon-192.png",
-    apple: "/preview-app/icons/apple-touch-icon.png",
+    icon: "/app-icons/icon-192.png",
+    apple: "/app-icons/apple-touch-icon.png",
   },
 };
 
