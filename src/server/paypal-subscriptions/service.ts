@@ -96,7 +96,9 @@ function dto(r: SandboxRecord) {
       : {}),
     ...(r.paymentMethod === "credits"
       ? { paymentMethod: "credits" as const, cycleCreditMinor: Number(r.cycleCreditMinor) }
-      : {}),
+      : r.paymentMethod === "paypal"
+        ? { paymentMethod: "paypal" as const }
+        : {}),
     id,
     requestId,
     businessId,

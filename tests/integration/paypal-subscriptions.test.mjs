@@ -413,6 +413,7 @@ test("sandbox package lifecycle reconciles processor evidence without activating
           );
           const { contract, approvalUrl } = await live.create(person.headers, input);
           assert.equal(new URL(approvalUrl).hostname, "www.paypal.com");
+          assert.equal(contract.paymentMethod, "paypal");
           assert.equal(contract.totalCycles, period === "monthly" ? 12 : 1);
           assert.equal(contract.paidCycles, 0);
           assert.equal((await live.create(person.headers, input)).contract.id, contract.id);
