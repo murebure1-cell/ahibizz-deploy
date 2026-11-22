@@ -126,11 +126,11 @@ async function request<T>(
   return response.json() as Promise<T>;
 }
 
-async function ownedBusinesses(userId: string, signal: AbortSignal, sandbox: boolean) {
+async function ownedBusinesses(userId: string, signal: AbortSignal) {
   const businesses: Business[] = [];
   for (let page = 1; ; page++) {
     const result = await request<{ items: Business[]; hasMore: boolean }>(
-      `/api/directory/mine?page=${page}&pageSize=50${sandbox ? "&status=published" : ""}`,
+      `/api/directory/mine?page=${page}&pageSize=50`,
       userId,
       signal,
     );
@@ -140,7 +140,6 @@ async function ownedBusinesses(userId: string, signal: AbortSignal, sandbox: boo
 }
 
 export function PackageCheckout({
-  environment = "sandbox",
   initialPeriod = "monthly",
   userId,
   initialPackage,
@@ -148,7 +147,6 @@ export function PackageCheckout({
   initialBusinessId = null,
   abandoned,
 }: {
-  environment?: "live" | "sandbox";
   initialPeriod?: BillingPeriod;
   userId: string;
   initialPackage: BillingPackageId;
@@ -156,9 +154,8 @@ export function PackageCheckout({
   initialBusinessId?: string | null;
   abandoned: boolean;
 }) {
-  const sandbox = environment === "sandbox";
-  const api = sandbox ? "/api/test-paketi" : "/api/paketi";
-  const pagePath = sandbox ? "/paketi/proba" : "/paketi/placanje";
+  const api = "/api/paketi";
+  const pagePath = "/paketi/placanje";
   const contractsPath = `${api}/contracts`;
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -173,9 +170,7 @@ export function PackageCheckout({
   const [balance, setBalance] = useState<number | null>(null);
   const [confirmation, setConfirmation] = useState("");
   const [confirmCancel, setConfirmCancel] = useState("");
-  const [requestedMethod, setPaymentMethod] = useState<"card" | "paypal" | "credits">(
-    sandbox ? "paypal" : "credits",
-  );
+  const [requestedMethod, setPaymentMethod] = useState<"card" | "paypal" | "credits">("credits");
   const [cardResume, setCardResume] = useState("");
   const cardReturnPath = useRef("");
   const cardAttempt = useRef(0);
@@ -189,9 +184,8 @@ export function PackageCheckout({
   const benefit = catalog?.benefits[packageId];
   const eligibleBusinesses = businesses.filter(
     (b) =>
-      sandbox ||
-      ((!benefit?.nearbyDays || (b.latitude != null && b.longitude != null)) &&
-        (Boolean(benefit?.nearbyDays || benefit?.featuredDays) || b.packagePaymentNeeded)),
+      (!benefit?.nearbyDays || (b.latitude != null && b.longitude != null)) &&
+      (Boolean(benefit?.nearbyDays || benefit?.featuredDays) || b.packagePaymentNeeded),
   );
   const creditPrice = catalog?.walletRate
     ? creditsForBamMinor(monthly ? selected.monthlyMinor : selected.annualMinor, catalog.walletRate)
@@ -238,7 +232,7 @@ export function PackageCheckout({
       try {
         const [pricing, mine, history] = await Promise.all([
           request<Catalog>(`${api}/catalog`, userId, signal),
-          ownedBusinesses(userId, signal, sandbox),
+          ownedBusinesses(userId, signal),
           request<{ contracts: SandboxPackageContract[]; walletBalance?: number }>(
             contractsPath,
             userId,
@@ -304,8 +298,6 @@ export function PackageCheckout({
     void load();
     return () => controller.abort();
   }, [
-    api,
-    pagePath,
     contractsPath,
     userId,
     initialPackage,
@@ -313,7 +305,6 @@ export function PackageCheckout({
     initialContract,
     initialBusinessId,
     abandoned,
-    sandbox,
   ]);
 
   const pendingReturn =
@@ -377,7 +368,7 @@ export function PackageCheckout({
         period: existing?.period ?? period,
         accepted: true,
         ...(wallet ? { expectedCreditMinor: creditPrice } : {}),
-        ...(!sandbox ? { benefitsVersion: existing?.benefitsVersion ?? catalog?.version } : {}),
+        benefitsVersion: existing?.benefitsVersion ?? catalog?.version,
       },
     );
   }
@@ -425,7 +416,7 @@ export function PackageCheckout({
       <SubscriptionCardButton
         key={existing?.id ?? `${chosenBusiness}:${packageId}:${period}:${catalog.version}`}
         clientId={catalog.paypalClientId}
-        environment={environment}
+        environment="live"
         accepted={Boolean(existing) || accepted}
         create={() => startCard(existing)}
         approved={() => {
@@ -488,12 +479,7 @@ export function PackageCheckout({
       if (action === "close-unpaid") setConfirmation("Stari pokušaj plaćanja je zatvoren.");
       if (result.approvalUrl) {
         const approval = new URL(result.approvalUrl);
-        if (
-          approval.origin !==
-            (sandbox ? "https://www.sandbox.paypal.com" : "https://www.paypal.com") ||
-          approval.username ||
-          approval.password
-        )
+        if (approval.origin !== "https://www.paypal.com" || approval.username || approval.password)
           throw new Error("Adresa za odobravanje plaćanja nije ispravna.");
         window.history.replaceState(window.history.state, "", contractPath(result.contract));
         window.location.assign(approval.href);
@@ -509,10 +495,9 @@ export function PackageCheckout({
   return (
     <section className={styles.workspace}>
       <header className={styles.heading}>
-        <h1>{sandbox ? "Probne pretplate" : "Plaćanje paketa"}</h1>
-        {sandbox && <span className={styles.badge}>Probno plaćanje</span>}
+        <h1>Plaćanje paketa</h1>
       </header>
-      {!sandbox && (
+      {
         <div className={styles.orderSummary}>
           <h2>{selected.name}</h2>
           <p>{monthly ? "12 mjesečnih rata" : "Jedna uplata za 12 mjeseci"}</p>
@@ -534,7 +519,7 @@ export function PackageCheckout({
           )}
           <a href="/paketi">Promijeni paket</a>
         </div>
-      )}
+      }
       {abandoned && (
         <p className={styles.notice}>
           Odobravanje je prekinuto. Status pretplate možeš provjeriti ispod.
@@ -560,11 +545,9 @@ export function PackageCheckout({
       )}
       {catalog && !hasPayment && (
         <p className={styles.notice}>
-          {sandbox
-            ? "Probna naplata trenutno nije dostupna."
-            : creditsOnly
-              ? "Plaćanje paketa kreditima trenutno nije dostupno."
-              : "Online plaćanje paketa još nije uključeno."}
+          {creditsOnly
+            ? "Plaćanje paketa kreditima trenutno nije dostupno."
+            : "Online plaćanje paketa još nije uključeno."}
         </p>
       )}
       {hasPayment && !ready && (
@@ -572,11 +555,9 @@ export function PackageCheckout({
       )}
       {ready && !eligibleBusinesses.length && (
         <p className={styles.notice}>
-          {sandbox
-            ? "Za pretplatu trebaš objavljenu djelatnost."
-            : benefit?.nearbyDays && businesses.length
-              ? "Za prikaz u blizini prvo označi djelatnost na karti."
-              : "Prva djelatnost ima besplatnu godinu. Dodatnu djelatnost dodaj kao nacrt."}{" "}
+          {benefit?.nearbyDays && businesses.length
+            ? "Za prikaz u blizini prvo označi djelatnost na karti."
+            : "Prva djelatnost ima besplatnu godinu. Dodatnu djelatnost dodaj kao nacrt."}{" "}
           <a href="/nalog?odjeljak=djelatnosti">Moje djelatnosti</a>
         </p>
       )}
@@ -654,11 +635,9 @@ export function PackageCheckout({
                 checked={accepted}
                 onChange={(e) => accept(e.target.checked)}
               />{" "}
-              {sandbox
-                ? "Prihvatam odabrani raspored probnih uplata."
-                : monthly
-                  ? "Prihvatam ugovor na 12 mjeseci i 12 prikazanih mjesečnih rata."
-                  : "Prihvatam jednu uplatu za 12 mjeseci usluge."}
+              {monthly
+                ? "Prihvatam ugovor na 12 mjeseci i 12 prikazanih mjesečnih rata."
+                : "Prihvatam jednu uplatu za 12 mjeseci usluge."}
             </label>
             {!creditsOnly && (
               <fieldset className={styles.methodPicker}>
@@ -693,9 +672,7 @@ export function PackageCheckout({
                     <button type="submit" disabled={!canSubmit} className={styles.primary}>
                       {paymentMethod === "credits" && creditPrice
                         ? `Plati ${formatAhiCredits(creditPrice)}`
-                        : sandbox
-                          ? "Potvrdi probno plaćanje"
-                          : "Nastavi na PayPal"}
+                        : "Nastavi na PayPal"}
                     </button>
                     {paymentMethod === "credits" && balance !== null && (
                       <p>Stanje · {formatAhiCredits(creditBalanceMinor ?? 0)}</p>
@@ -716,11 +693,8 @@ export function PackageCheckout({
         </form>
       )}
       {contracts.length > 0 && (
-        <section
-          aria-label={sandbox ? "Moje probne pretplate" : "Moje pretplate"}
-          className={styles.list}
-        >
-          <h2>{sandbox ? "Moje probne pretplate" : "Moje pretplate"}</h2>
+        <section aria-label="Moje pretplate" className={styles.list}>
+          <h2>Moje pretplate</h2>
           {contracts.map((c) => (
             <article key={c.id} className={styles.receipt}>
               <div className={styles.receiptHeader}>

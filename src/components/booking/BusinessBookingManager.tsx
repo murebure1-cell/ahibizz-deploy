@@ -30,7 +30,6 @@ type Props = {
   initialDay?: string;
   businessId: string;
   businessTitle: string;
-  preview?: boolean;
   onBack?: () => void;
   request?: typeof bookingRequest;
   expectedAccountId?: string;
@@ -303,7 +302,6 @@ function BookingWorkspace({
   initialDay,
   businessId,
   businessTitle,
-  preview = false,
   onBack,
   request,
   expectedAccountId,
@@ -311,11 +309,8 @@ function BookingWorkspace({
   onAccessDenied,
 }: Props) {
   const api = useMemo(
-    () =>
-      preview && !request
-        ? null
-        : bookingActorRequest(expectedAccountId, request ?? bookingRequest),
-    [expectedAccountId, preview, request],
+    () => bookingActorRequest(expectedAccountId, request ?? bookingRequest),
+    [expectedAccountId, request],
   );
   const [settings, setSettings] = useState<BookingSettings | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -407,11 +402,6 @@ function BookingWorkspace({
 
   const loadSettings = useCallback(
     async (replaceDraft: boolean) => {
-      if (!api) {
-        setSettingsError("Probni kalendar nije povezan.");
-        setSettingsLoading(false);
-        return;
-      }
       settingsRead.current?.abort();
       const controller = new AbortController(),
         generation = authority.current,
@@ -458,7 +448,7 @@ function BookingWorkspace({
 
   const loadCalendar = useCallback(
     async (message = "", preserveEntries = false) => {
-      if (!api || !month || !isTimeZone(timezone)) return;
+      if (!month || !isTimeZone(timezone)) return;
       if (preserveEntries && calendarRead.current && !calendarRead.current.signal.aborted) return;
       calendarRead.current?.abort();
       const controller = new AbortController(),
@@ -546,7 +536,7 @@ function BookingWorkspace({
     };
   }, [active, loadCalendar, settings]);
   useEffect(() => {
-    if (!active || !api || !settings || requiresLogin) return;
+    if (!active || !settings || requiresLogin) return;
     return listenForBookingResume(() => {
       setNow(Date.now());
       if (writing.current) {
@@ -555,7 +545,7 @@ function BookingWorkspace({
         void loadCalendar("", true);
       }
     });
-  }, [active, api, settings, requiresLogin, loadCalendar]);
+  }, [active, settings, requiresLogin, loadCalendar]);
   useEffect(() => {
     if (!active || busy || !settings || !refreshAfterWrite.current) return;
     refreshAfterWrite.current = false;
@@ -567,7 +557,7 @@ function BookingWorkspace({
   }, []);
 
   function beginWrite(label: string) {
-    if (writing.current || !api || requiresLogin || !active) return null;
+    if (writing.current || requiresLogin || !active) return null;
     writing.current = true;
     calendarEpoch.current++;
     calendarRead.current?.abort();
@@ -602,7 +592,7 @@ function BookingWorkspace({
       return;
     }
     const controller = beginWrite("settings");
-    if (!controller || !api) return;
+    if (!controller) return;
     setSettingsError("");
     try {
       const data = await api(`${path}/settings`, {
@@ -642,7 +632,7 @@ function BookingWorkspace({
   async function changeEntry(entry: BookingEntry, action: BookingAction) {
     if (uncertain || calendarLoading) return;
     const controller = beginWrite(entry.id);
-    if (!controller || !api) return;
+    if (!controller) return;
     let message = "";
     try {
       const data = await api(`entries/${encodeURIComponent(entry.id)}/action`, {
@@ -682,7 +672,7 @@ function BookingWorkspace({
   }
   async function sendCreate(value: Intent) {
     const controller = beginWrite("create");
-    if (!controller || !api) return;
+    if (!controller) return;
     setCreateError("");
     let refresh = false;
     try {
@@ -858,11 +848,6 @@ function BookingWorkspace({
           {settingsOpen ? "Zatvori postavke" : "Usluge i raspored"}
         </button>
       </header>
-      {preview && (
-        <p className={styles.previewNote}>
-          Probni kalendar. Nijedan unos se ne šalje stvarnoj djelatnosti.
-        </p>
-      )}
       {notice && (
         <p className={styles.notice} role="status">
           {notice}

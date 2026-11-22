@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createAccountService } from "../../src/server/auth/accounts.ts";
 import { createMessagingService } from "../../src/server/messaging/service.ts";
 import { createSupportRequests } from "../../src/server/support-requests.ts";
+import { resolveSupportRequest } from "../../src/server/support-resolution.ts";
 import { verifyContentHub } from "./content-hub-cases.mjs";
 
 export async function verifySupportRequests({ auth, pool, owner, member, other }) {
@@ -134,7 +135,29 @@ export async function verifySupportRequests({ auth, pool, owner, member, other }
     ["review", reviewId],
   ]);
   await assert.rejects(inbox.resolve(member.headers, reports[0].id), (e) => e.status === 403);
-  for (const report of reports) await inbox.resolve(owner.headers, report.id);
+  // A queue left open under another administrator cannot close using the new session.
+  await assert.rejects(
+    resolveSupportRequest(inbox, owner.headers, other.user.id, reports[0].id),
+    (e) => e.status === 401 && e.code === "ACCOUNT_IDENTITY_CHANGED",
+  );
+  for (const report of reports) {
+    await resolveSupportRequest(inbox, owner.headers, owner.user.id, report.id);
+    const first = (
+      await pool.query("SELECT resolved_at,resolved_by FROM support_request WHERE id=$1", [
+        report.id,
+      ])
+    ).rows[0];
+    await resolveSupportRequest(inbox, owner.headers, owner.user.id, report.id);
+    assert.deepEqual(
+      (
+        await pool.query("SELECT resolved_at,resolved_by FROM support_request WHERE id=$1", [
+          report.id,
+        ])
+      ).rows[0],
+      first,
+    );
+    assert.equal(first.resolved_by, owner.user.id);
+  }
   assert.deepEqual(
     (await inbox.pending(owner.headers, 0)).requests.map((row) => row.subject),
     ["deletion"],

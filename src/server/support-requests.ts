@@ -148,7 +148,15 @@ export function createSupportRequests(auth: AuthService, pool: Pool) {
           "UPDATE support_request SET resolved_at=now(),resolved_by=$1 WHERE id=$2 AND subject<>'deletion' AND resolved_at IS NULL",
           [actor.id, id],
         );
-        if (!result.rowCount) throw new AccountAccessError(409, "REQUEST_CHANGED");
+        if (!result.rowCount) {
+          // A retry after a lost response must not turn a completed close into an error.
+          // Deletion requests still require the separate erasure transaction.
+          const closed = await client.query(
+            "SELECT 1 FROM support_request WHERE id=$1 AND subject<>'deletion' AND resolved_at IS NOT NULL",
+            [id],
+          );
+          if (!closed.rowCount) throw new AccountAccessError(409, "REQUEST_CHANGED");
+        }
       });
     },
   };

@@ -45,7 +45,6 @@ export default async function Page({
   return (
     <main id="glavni-sadrzaj" className="container" style={{ paddingBlock: "32px 64px" }}>
       <PackageCheckout
-        environment="live"
         initialPeriod={period}
         key={account.id}
         userId={account.id}

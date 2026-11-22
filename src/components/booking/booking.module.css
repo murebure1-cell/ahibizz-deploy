@@ -115,7 +115,6 @@
 .textButton:hover:not(:disabled) {
   background: var(--ui-surface-hover);
 }
-.previewNote,
 .notice,
 .error,
 .conflict {
@@ -126,10 +125,6 @@
   line-height: 1.6;
   margin-bottom: 16px;
   overflow-wrap: anywhere;
-}
-.previewNote {
-  color: var(--ui-warning);
-  background: var(--ui-warning-soft);
 }
 .notice {
   color: var(--ui-success);

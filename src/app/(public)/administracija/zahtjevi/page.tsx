@@ -10,6 +10,7 @@ import { supportSubjects } from "../../../../lib/support-requests";
 import { getAccountErasure } from "../../../../server/account-erasure";
 import { AccountAccessError } from "../../../../server/auth/accounts";
 import { getSupportRequests, type OpenSupportRequest } from "../../../../server/support-requests";
+import { resolveSupportRequest } from "../../../../server/support-resolution";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Zahtjevi i prijave" };
@@ -34,16 +35,17 @@ const erasureErrorStatus: Record<string, string> = {
 
 async function closeReport(form: FormData) {
   "use server";
-  const id = form.get("id");
-  const service = getSupportRequests();
-  if (service && typeof id === "string") {
-    try {
-      await service.resolve(await headers(), id);
-    } catch {
-      redirect(`${route}?status=provjeri`);
-    }
-    revalidatePath(route);
+  try {
+    await resolveSupportRequest(
+      getSupportRequests(),
+      await headers(),
+      form.get("operator"),
+      form.get("id"),
+    );
+  } catch {
+    redirect(`${route}?status=provjeri`);
   }
+  revalidatePath(route);
   redirect(route);
 }
 
@@ -161,6 +163,7 @@ export default async function SupportQueue({
                     </a>
                   )}
                   <form action={closeReport}>
+                    <input type="hidden" name="operator" value={data.operatorId} />
                     <input type="hidden" name="id" value={item.id} />
                     <button className="button button-navy" type="submit">
                       Označi kao obrađeno

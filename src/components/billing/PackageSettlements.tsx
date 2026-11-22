@@ -1,24 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { accountDate } from "../../lib/display-date";
+import {
+  type PackageSettlementPage,
+  packageSettlementStatusLabels,
+  readPackageSettlements,
+} from "../../lib/package-settlements";
 import { checkoutEuro } from "../../lib/paypal-card-flow";
 import styles from "./billing.module.css";
 
-const statusLabel: Record<string, string> = {
-  COMPLETED: "Potvrđena",
-  REFUNDED: "Vraćena",
-  REVERSED: "Stornirana",
-  PARTIALLY_REFUNDED: "Djelimično vraćena",
-};
-type Sale = {
-  id: string;
-  businessTitle: string;
-  paidAt: string;
-  amountEurMinor: number;
-  status: string;
-  needsReview: boolean;
-  recorded: boolean;
-};
 export function PackageSettlements({
   accountId,
   reviewOnly = false,
@@ -28,7 +18,7 @@ export function PackageSettlements({
 }) {
   const [open, setOpen] = useState(reviewOnly),
     [page, setPage] = useState(1),
-    [data, setData] = useState<{ page: number; more: boolean; items: Sale[] } | null>(null),
+    [data, setData] = useState<PackageSettlementPage | null>(null),
     [error, setError] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -43,7 +33,7 @@ export function PackageSettlements({
     })
       .then(async (res) => {
         if (!res.ok) throw Error();
-        return res.json();
+        return readPackageSettlements(await res.json(), page);
       })
       .then((result) => {
         if (!controller.signal.aborted) setData(result);
@@ -79,8 +69,8 @@ export function PackageSettlements({
                   <article className={styles.receipt} key={sale.id}>
                     <h3>{sale.businessTitle}</h3>
                     <p>
-                      {checkoutEuro(sale.amountEurMinor)} · {statusLabel[sale.status]} ·{" "}
-                      {accountDate(sale.paidAt)}
+                      {checkoutEuro(sale.amountEurMinor)} ·{" "}
+                      {packageSettlementStatusLabels[sale.status]} · {accountDate(sale.paidAt)}
                     </p>
                     <p>Referenca {sale.id}</p>
                     <p>
@@ -105,7 +95,7 @@ export function PackageSettlements({
                     <button
                       className={styles.secondary}
                       type="button"
-                      disabled={!data.more}
+                      disabled={!data.more || page >= 9999}
                       onClick={() => setPage((p) => p + 1)}
                     >
                       Sljedeća

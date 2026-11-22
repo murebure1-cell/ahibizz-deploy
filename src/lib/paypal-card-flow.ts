@@ -1,6 +1,7 @@
+import { bosnianMoney } from "./number-format";
 import type { PayPalOrderFlow } from "./paypal-order-flow";
 
-export const checkoutEuro = (minor: number) => `${(minor / 100).toFixed(2).replace(".", ",")} EUR`;
+export const checkoutEuro = (minor: number) => `${bosnianMoney(minor)} EUR`;
 
 /** Browser controller only. Orders, price, approval and fulfillment stay server-authoritative. */
 export type CardOrder = {
