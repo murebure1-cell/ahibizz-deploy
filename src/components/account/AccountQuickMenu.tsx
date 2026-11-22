@@ -22,11 +22,13 @@ const appearanceOptions = [
 export function AccountQuickMenu({
   account,
   currentHref,
+  supportAvailable,
   close,
   confirmed,
 }: {
   account: HeaderMenuAccount;
   currentHref: string | null;
+  supportAvailable: boolean;
   close: () => void;
   confirmed: (next: HeaderMenuAccount) => void;
 }) {
@@ -190,6 +192,9 @@ export function AccountQuickMenu({
         {link({ href: path.blocked, label: "Blokirani korisnici", icon: "shield" })}
         {link({ href: "/pomoc", label: "Centar za pomoć", icon: "message" })}
         {link({ href: "/blog", label: "AhiBizz blog", icon: "info" })}
+        {!IS_PLAY_EDITION &&
+          supportAvailable &&
+          link({ href: "/podrzi", label: "Doniraj", icon: "heart" })}
         {!IS_PLAY_EDITION &&
           link({ href: path.membership, label: "Moji paketi i ugovori", icon: "crown" })}
       </div>

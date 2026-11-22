@@ -197,6 +197,7 @@ export function SiteHeader({
               account={account}
               close={closeMenu}
               currentHref={currentHref}
+              supportAvailable={supportAvailable}
               confirmed={(next) =>
                 setSummary((current) =>
                   typeof current === "object" && current.id === next.id ? next : current,
