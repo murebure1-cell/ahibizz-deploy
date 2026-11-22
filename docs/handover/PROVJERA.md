@@ -1,5 +1,29 @@
 # Provjera ekrana i tokova
 
+## Završni lokalni rezultat — 22. 11. 2026.
+
+**787 jediničnih testova prošlo je u 123 fajla**, bez grešaka i otkazanih testova u tom prolazu. To je alternativni lokalni prolaz, ne potvrda standardnog CI-ja: TypeScript je emitovan u privremeni folder, Node `registerHooks` je učitavao emitovani JavaScript uz originalne URL-ove izvora, a svaki testni fajl pokrenut je zasebno bez child-process test izolacije. Testovi nisu mijenjani da bi se zaobišle provjere.
+
+Osam fajlova koji pokreću zasebne procese nije uključeno u taj uspješni prolaz: `ingress-observe`, `ingress-observe-start`, `ingress-start`, `initial-owner-command`, `reels-public-read`, `runtime-security`, `server-migrate`, `server-start` (sve `.test.ts`). Standardni `pnpm test` pokušava pokretanje svih fajlova, ali ga zaustavlja sandbox `spawn EPERM`. Ovi testovi i svi PostgreSQL scenariji ostaju obavezni u punom CI-ju.
+
+| Faza / komanda | Stvarni rezultat |
+| --- | --- |
+| Faze 1–6: `pnpm exec biome check .` | Prolazi; završni prolaz ima 14 postojećih upozorenja i 14 informativnih nalaza, bez grešaka. Privremena greška formatiranja tokom faze 2 ispravljena je prije faznog commita. |
+| Faze 1–6: `pnpm exec tsc --noEmit` | Prolazi. Emitovani TypeScript za alternativne testove također je kompajliran. |
+| Faze 1–6: `pnpm test` | Ne prolazi zbog `spawn EPERM`, bez izvršenja standardnog testnog skupa. |
+| Faza 2: izravni `node tests/pwa.test.ts` | 14/14 prošlo. |
+| Faza 3: `account-overview` i `next-appointment` preko privremenog runnera | 4/4 prošlo: format datuma, vremenske zone i kalendarski prikaz. |
+| Faza 4: ciljani support/ad-preference/settlements/display/booking/people/connections testovi | Svi izvršeni testovi prolaze; uključeni su i u širi prolaz od 787 testova. |
+| Faza 5: PWA, Android association, pomoć i Play ograničenja | 25/25 prošlo; web/Play rewrites i HTML/JSON 404 provjereni izvršenjem testova. |
+| Završni `pnpm check` | Biome i TypeScript prolaze; testni korak staje na `spawn EPERM`. |
+| `pnpm build` | Next konfiguracija učitana i produkcijska kompilacija završena; zasebni TypeScript proces zatim staje na `spawn EPERM`. Build nije završen i nije označen prolaznim. |
+| `git diff --check` i relativni Markdown linkovi | Prolaze; provjerenih deset Markdown dokumenata nema nepostojeći relativni link. |
+| Zaštićene datoteke | Prazan diff kartica djelatnosti, mobilnog menija, pripadajućih stilova/navigacije, `db/migrations` i `.env.example`. Aktivne ikone su premještene bez izmjene slikovnih bajtova. |
+
+Nije korištena živa baza niti su pokrenuti email, push, bankovni ili PayPal tokovi. Nema browser klikanja, fizičkog Android testa, generisanog/potpisanog APK/AAB-a, provjere produkcijskog potpisa ili objave.
+
+Čišćenje je dodatno uklonilo nepozvane `preview` propove iz šest stvarnih komponenti te sandbox UI granu `PackageCheckout`. Administratorski simulator zadržava svoje stvarno korištene memorijske adaptere. Cijene, ugovori i historijska čitanja nisu promijenjeni.
+
 ## Obim i značenje oznaka
 
 Početna [INVENTURA.md](INVENTURA.md) ima 48 `page.tsx` ruta i 1.104 statička interaktivna JSX mjesta. Uklonjeno je šest javnih demonstracijskih stranica pod `/pregled`, pa aplikacija ima 42 preostale stranice. Layouti, dinamičke instance kontrola i query pod-ekrani nisu nove `page.tsx` rute.

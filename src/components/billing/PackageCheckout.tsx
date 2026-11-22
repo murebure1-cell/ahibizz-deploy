@@ -497,29 +497,27 @@ export function PackageCheckout({
       <header className={styles.heading}>
         <h1>Plaćanje paketa</h1>
       </header>
-      {
-        <div className={styles.orderSummary}>
-          <h2>{selected.name}</h2>
-          <p>{monthly ? "12 mjesečnih rata" : "Jedna uplata za 12 mjeseci"}</p>
-          {catalog && (
-            <strong>
-              {creditsOnly
-                ? creditPrice !== null
-                  ? formatAhiCredits(creditPrice)
-                  : "Cijena trenutno nije dostupna"
-                : billingMoney(monthly ? selected.monthlyMinor : selected.annualMinor)}
-            </strong>
-          )}
-          {benefit && (
-            <p>
-              {benefit.nearbyDays || benefit.featuredDays
-                ? `${benefit.nearbyDays} dana u blizini · ${benefit.featuredDays} dana na početnoj po plaćenom mjesecu.`
-                : "Poslovni profil i zakazivanje termina."}
-            </p>
-          )}
-          <a href="/paketi">Promijeni paket</a>
-        </div>
-      }
+      <div className={styles.orderSummary}>
+        <h2>{selected.name}</h2>
+        <p>{monthly ? "12 mjesečnih rata" : "Jedna uplata za 12 mjeseci"}</p>
+        {catalog && (
+          <strong>
+            {creditsOnly
+              ? creditPrice !== null
+                ? formatAhiCredits(creditPrice)
+                : "Cijena trenutno nije dostupna"
+              : billingMoney(monthly ? selected.monthlyMinor : selected.annualMinor)}
+          </strong>
+        )}
+        {benefit && (
+          <p>
+            {benefit.nearbyDays || benefit.featuredDays
+              ? `${benefit.nearbyDays} dana u blizini · ${benefit.featuredDays} dana na početnoj po plaćenom mjesecu.`
+              : "Poslovni profil i zakazivanje termina."}
+          </p>
+        )}
+        <a href="/paketi">Promijeni paket</a>
+      </div>
       {abandoned && (
         <p className={styles.notice}>
           Odobravanje je prekinuto. Status pretplate možeš provjeriti ispod.

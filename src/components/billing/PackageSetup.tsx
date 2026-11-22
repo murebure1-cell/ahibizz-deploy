@@ -47,7 +47,7 @@ export function PackageSetup({ accountId }: { accountId: string }) {
           result.code === "PAYPAL_SUBSCRIPTIONS_PERMISSION"
             ? "PayPal nije odobrio pristup pretplatama za ovaj račun."
             : result.code === "PAYPAL_LIVE_CONFIG_UNAVAILABLE"
-              ? "Poveži produkcijski PayPal račun u postavkama servera."
+              ? "PayPal račun nije povezan. Zatraži povezivanje od osobe koja održava aplikaciju."
               : "Povezivanje nije potvrđeno. Provjeri ponovo.";
         throw Error(message);
       }

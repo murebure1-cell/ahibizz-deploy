@@ -135,7 +135,7 @@ export function AuthForm({
       if (mode === "sign-up") setVerificationEmail(email);
       setComplete(true);
     } catch {
-      setError("Nema veze sa serverom. Provjeri internet i pokušaj ponovo.");
+      setError("Veza je prekinuta. Provjeri internet i pokušaj ponovo.");
     } finally {
       setBusy(false);
     }

@@ -9,3 +9,7 @@
 - Fotografija je preuzeta s izvora, umanjena na 1920 × 1256 i komprimirana u WebP.
 - Dekorativna fotografija saradnje na poslu; nije fotografija AhiBizz tima niti dokaz članstva prikazanih osoba.
 - Poslužuje se s našeg servera bez vanjskog zahtjeva posjetiočevog preglednika.
+
+## Ikone aplikacije
+
+Aktivne ikone su u `public/app-icons`. Zadržan je postojeći simbol AhiBizza, bez novih vanjskih materijala. Opis izvora i proporcija je u `public/app-icons/README.md`.
