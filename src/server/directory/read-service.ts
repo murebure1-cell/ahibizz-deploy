@@ -189,8 +189,13 @@ export async function listDirectory(
   if (q) {
     const words = [...new Set(q.split(/\s+/).map(searchPattern))];
     const index = values.push(words);
+    // Public search also matches category names and published reel titles/captions, so a
+    // restaurant with a "Pizza" reel is found for "pizza", not only listings that spell it out.
     const searchable = publicOnly
-      ? "concat_ws(' ',b.title,b.city,b.description)"
+      ? "concat_ws(' ',b.title,b.city,b.description," +
+        "(SELECT c.name FROM directory_category c WHERE c.id=b.category_id)," +
+        "(SELECT c.name FROM directory_category c WHERE c.id=b.subcategory_id)," +
+        "(SELECT string_agg(concat_ws(' ',r.title,r.caption),' ') FROM business_reel r WHERE r.business_id=b.id AND r.status='published' AND r.submitted_by=b.owner_user_id))"
       : "concat_ws(' ',b.title,b.city,b.description,b.editorial_revision#>>'{fields,title}',b.editorial_revision#>>'{fields,city}',b.editorial_revision#>>'{fields,description}')";
     filters.push(`${foldedSearch(searchable)} ILIKE ALL ($${index}::text[])`);
     order = `(${foldedSearch("b.title")} ILIKE ALL ($${index}::text[])) DESC, ${order}`;

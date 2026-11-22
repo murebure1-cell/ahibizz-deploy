@@ -62,11 +62,13 @@ function fixture(options: { unavailable?: boolean; missing?: boolean } = {}) {
               if (options.unavailable)
                 throw new Error("private-fixture-database-url-and-driver-detail");
               return {
-                rows: sql.includes("FROM directory_category")
-                  ? [{ id: categoryId, name: "Fixture", slug: "fixture", parentId: null }]
-                  : options.missing
-                    ? []
-                    : [row],
+                rows:
+                  sql.includes("FROM directory_category") &&
+                  !sql.includes("FROM directory_business")
+                    ? [{ id: categoryId, name: "Fixture", slug: "fixture", parentId: null }]
+                    : options.missing
+                      ? []
+                      : [row],
               };
             },
             release() {},
@@ -178,6 +180,12 @@ test("public search retains prepared literal filters and page bounds", async () 
   assert.match(
     f.queries[0]?.sql ?? "",
     /ORDER BY .*ILIKE ALL .* DESC, b.created_at DESC, b.id DESC/s,
+  );
+  // Public search text also covers category names and the owner's published reels.
+  assert.match(f.queries[0]?.sql ?? "", /FROM directory_category c WHERE c.id=b.category_id/);
+  assert.match(
+    f.queries[0]?.sql ?? "",
+    /FROM business_reel r WHERE r.business_id=b.id AND r.status='published' AND r.submitted_by=b.owner_user_id/,
   );
 });
 

@@ -137,3 +137,11 @@ export function businessDirections(business: PublicBusinessView, mode: "driving"
   });
   return `https://www.google.com/maps/dir/?${parameters}`;
 }
+
+/** Groups a Bosnian number for reading (+387 61 938 694); other numbers are shown as entered. */
+export function displayPhone(value: string | null | undefined) {
+  const raw = value?.trim() ?? "";
+  const local = /^(?:\+387|00387|0)(\d{8,9})$/.exec(raw.replace(/[\s\-/().]/g, ""))?.[1];
+  if (!local) return raw;
+  return `+387 ${local.slice(0, 2)} ${local.slice(2, 5)} ${local.slice(5)}`;
+}

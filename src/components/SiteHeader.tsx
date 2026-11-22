@@ -161,6 +161,7 @@ export function SiteHeader({
             width={178}
             height={48}
             unoptimized
+            priority
           />
         </Link>
         <button

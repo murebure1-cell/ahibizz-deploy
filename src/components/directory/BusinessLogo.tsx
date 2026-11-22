@@ -17,11 +17,14 @@ export function BusinessLogo({
   alt,
   monogram,
   sizes = "72px",
+  priority = false,
 }: {
   src?: string;
   alt: string;
   monogram?: string;
   sizes?: string;
+  /** Load immediately when the logo is visible on first paint (e.g. a profile header). */
+  priority?: boolean;
 }) {
   const imageRef = useRef<HTMLImageElement>(null);
   // Identical server/client initial output prevents a cached logo causing hydration mismatch.
@@ -60,6 +63,7 @@ export function BusinessLogo({
           fill
           sizes={sizes}
           unoptimized
+          {...(priority ? { loading: "eager" as const, fetchPriority: "high" as const } : {})}
           onLoad={(event) => inspect(event.currentTarget)}
           onError={(event) => {
             if (

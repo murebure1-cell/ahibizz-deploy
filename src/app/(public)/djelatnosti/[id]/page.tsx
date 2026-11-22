@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Fragment, type ReactNode, Suspense } from "react";
+import { cache, Fragment, type ReactNode, Suspense } from "react";
 import { PublicBooking } from "../../../../components/booking/PublicBooking";
 import { PublicBusinessProfile } from "../../../../components/directory/PublicBusinessProfile";
 import profileStyles from "../../../../components/directory/public-profile.module.css";
@@ -24,7 +24,40 @@ import { getRentalService } from "../../../../server/rentals/service";
 import { getStayService } from "../../../../server/stays/service";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Poslovni profil" };
+
+const businessIdPattern =
+  /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+// Metadata and the page read the same public profile once per request.
+const readPublicBusiness = cache((id: string) => {
+  const service = getPublicDirectoryService();
+  return service ? service.readPublic(id) : Promise.resolve(null);
+});
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const fallback: Metadata = { title: "Poslovni profil" };
+  if (!businessIdPattern.test(id)) return fallback;
+  const business = await readPublicBusiness(id).catch(() => null);
+  if (!business?.title?.trim()) return fallback;
+  const title = business.city?.trim()
+    ? `${business.title.trim()} – ${business.city.trim()}`
+    : business.title.trim();
+  const summary = business.description?.replace(/\s+/g, " ").trim();
+  const description = summary
+    ? summary.length > 160
+      ? `${summary.slice(0, 157).trimEnd()}…`
+      : summary
+    : undefined;
+  return {
+    title,
+    ...(description ? { description } : {}),
+    openGraph: { title, ...(description ? { description } : {}) },
+  };
+}
 
 type Offer = {
   id: string;
@@ -69,13 +102,12 @@ export default async function PublicBusinessPage({
   searchParams: Promise<DirectorySearchParams>;
 }) {
   const [{ id }, search] = await Promise.all([params, searchParams]);
-  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id))
-    notFound();
+  if (!businessIdPattern.test(id)) notFound();
   try {
     const service = getPublicDirectoryService();
     if (service) {
       const [business, { categories }] = await Promise.all([
-        service.readPublic(id),
+        readPublicBusiness(id).then((value) => value ?? service.readPublic(id)),
         service.categories().catch(() => ({ categories: [] })),
       ]);
       const rentsCars = categories.some(
