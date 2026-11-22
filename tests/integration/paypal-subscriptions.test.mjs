@@ -835,6 +835,93 @@ test("sandbox package lifecycle reconciles processor evidence without activating
       },
     );
     await t.test(
+      "expired unpaid approval is checked and closed automatically before a new credit purchase",
+      async () => {
+        const person = await customer();
+        let checkedCancellations = 0;
+        const gateway = {
+          ...provider,
+          async create(contract) {
+            const reply = await provider.create(contract);
+            return {
+              ...reply,
+              approvalUrl: reply.approvalUrl.replace("www.sandbox.paypal.com", "www.paypal.com"),
+            };
+          },
+          async cancel(contract, unpaidOnly) {
+            assert.equal(unpaidOnly, true);
+            checkedCancellations++;
+            await provider.cancel(contract);
+          },
+        };
+        const live = createPackageSubscriptions({
+          environment: "live",
+          pool,
+          auth,
+          plans,
+          provider: gateway,
+        });
+        const benefits = await getPackageBenefits(pool);
+        const request = {
+          requestId: randomUUID(),
+          businessId: person.businessId,
+          packageId: "business",
+          period: "monthly",
+          accepted: true,
+          benefitsVersion: benefits.version,
+        };
+        const { contract } = await live.create(person.headers, request);
+        await pool.query(
+          "UPDATE live_package_contract SET created_at=now()-interval '73 hours' WHERE id=$1",
+          [contract.id],
+        );
+        await assert.rejects(live.refresh(stranger.headers, contract.id), { status: 404 });
+        await pool.query(
+          `INSERT INTO marketing_order(id,account_id,kind,quantity,status,amount_minor,instructions,quoted_by,quoted_at,settled_by,paid_at,bank_reference)
+           VALUES($1,$2,'credits',500,'paid',15000,'Test',$2,now(),$2,now(),$3)`,
+          [randomUUID(), person.id, randomUUID()],
+        );
+        const walletOrder = {
+          ...request,
+          requestId: randomUUID(),
+          expectedCreditMinor: 49000,
+        };
+        const prior = process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY;
+        process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY = "true";
+        try {
+          await pool.query("UPDATE live_package_contract SET reported_cycles=1 WHERE id=$1", [
+            contract.id,
+          ]);
+          await assert.rejects(live.create(person.headers, walletOrder, true), {
+            code: "SUBSCRIPTION_ALREADY_EXISTS",
+          });
+          assert.equal(checkedCancellations, 0);
+          await pool.query("UPDATE live_package_contract SET reported_cycles=0 WHERE id=$1", [
+            contract.id,
+          ]);
+          const bought = await live.create(person.headers, walletOrder, true);
+          assert.notEqual(bought.contract.id, contract.id);
+          assert.equal(bought.contract.paymentMethod, "credits");
+          assert.equal(bought.contract.status, "ACTIVE");
+          assert.equal(checkedCancellations, 1);
+          const history = (await live.list(person.headers)).contracts;
+          assert.equal(history.find((c) => c.id === contract.id).status, "CANCELLED");
+          assert.deepEqual(
+            (
+              await pool.query(
+                "SELECT approval_url,paid_cycles,paid_eur_minor FROM live_package_contract WHERE id=$1",
+                [contract.id],
+              )
+            ).rows,
+            [{ approval_url: null, paid_cycles: 0, paid_eur_minor: 0 }],
+          );
+        } finally {
+          if (prior === undefined) delete process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY;
+          else process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY = prior;
+        }
+      },
+    );
+    await t.test(
       "credit packages settle only the accepted cycle and share live entitlements",
       async () => {
         await verifyWalletPackages({ pool, auth, customer, plans, provider });

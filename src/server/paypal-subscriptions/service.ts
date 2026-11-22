@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import type { BillingPackageId, BillingPeriod } from "../../lib/billing";
+import { staleSubscriptionApproval } from "../../lib/subscription-approval";
 import { creditsForBamMinor } from "../../lib/wallet";
 import { AccountAccessError, accountTransaction, createAccountAccess } from "../auth/accounts";
 import type { AuthService } from "../auth/service";
@@ -56,6 +57,17 @@ function normalized(r: SandboxRecord): SandboxRecord {
   const iso = (s: string | null) => (s === null ? null : new Date(s).toISOString());
   return {
     ...r,
+    // Finishing the billing schedule does not end the final paid service period.
+    // Also repair the projection of older credit contracts saved as EXPIRED too early.
+    status:
+      r.paymentMethod === "credits" &&
+      r.paidCycles === r.totalCycles &&
+      r.endsAt &&
+      (r.status === "ACTIVE" || r.status === "EXPIRED")
+        ? new Date(r.endsAt).getTime() > Date.now()
+          ? "ACTIVE"
+          : "EXPIRED"
+        : r.status,
     createdAt: new Date(r.createdAt).toISOString(),
     providerUpdatedAt: iso(r.providerUpdatedAt),
     startsAt: iso(r.startsAt),
@@ -243,7 +255,7 @@ export function createPackageSubscriptions({
       `UPDATE live_package_contract SET starts_at=coalesce(starts_at,now()),
         ends_at=((coalesce(starts_at,now()) AT TIME ZONE 'UTC')+make_interval(months=>
           CASE WHEN period='annual' THEN 12 ELSE $2::int END)) AT TIME ZONE 'UTC',
-        status=CASE WHEN total_cycles=$2 THEN 'EXPIRED' ELSE 'ACTIVE' END,paid_cycles=$2
+        status='ACTIVE',paid_cycles=$2
         WHERE id=$1 AND payment_method='credits' AND paid_cycles=$2::int-1 AND (ends_at IS NULL OR ends_at<=now())`,
       [contract.id, cycle],
     );
@@ -340,12 +352,49 @@ export function createPackageSubscriptions({
     const before = await owner(h, (c, user) => read(c, id, user));
     if (!before.providerId) return { contract: dto(before) };
     const s = await provider.inspect(before);
-    const after = await owner(h, async (c, user) => {
+    let after = await owner(h, async (c, user) => {
       const r = await read(c, id, user);
       if (r.providerId !== before.providerId) return fail(409, "SANDBOX_SUBSCRIPTION_CONFLICT");
       return snapshot(c, r, s);
     });
+    if (
+      staleSubscriptionApproval(before) &&
+      staleSubscriptionApproval(after) &&
+      !s.lastPaymentAt &&
+      s.payments.length === 0 &&
+      (s.reportedCycles ?? 0) === 0
+    ) {
+      try {
+        await provider.cancel(after, true);
+      } catch (error) {
+        // Approval can race the unpaid-only check. Reconcile it instead of
+        // treating the newly approved subscription as a failed old attempt.
+        if (!(error instanceof AccountAccessError) || error.code !== "SUBSCRIPTION_PENDING_CHANGED")
+          throw error;
+      }
+      const current = await provider.inspect(after);
+      after = await owner(h, async (c, user) => {
+        const r = await read(c, id, user);
+        if (r.providerId !== after.providerId) return fail(409, "SANDBOX_SUBSCRIPTION_CONFLICT");
+        return snapshot(c, r, current);
+      });
+    }
     return { contract: dto(after) };
+  }
+  async function reconcileStaleApprovals(h: Headers, businessId: string) {
+    if (!provider) return;
+    const pending = await owner(
+      h,
+      async (c, uid) =>
+        (
+          await c.query<SandboxRecord>(
+            `SELECT ${columns} FROM ${contracts} WHERE user_id=$1 AND business_id=$2 AND status='APPROVAL_PENDING'`,
+            [uid, businessId],
+          )
+        ).rows.filter((r) => staleSubscriptionApproval(r)),
+      "read",
+    );
+    for (const contract of pending) await refresh(h, contract.id);
   }
   return {
     async settlements(h: Headers, page: number, reviewOnly = false) {
@@ -392,6 +441,7 @@ export function createPackageSubscriptions({
         quote = packageQuote(v.packageId, v.period),
         plan = plans[`${v.packageId}:${v.period}`];
       if (!quote || (!wallet && !plan)) return fail(503, "SANDBOX_SUBSCRIPTIONS_UNAVAILABLE");
+      await reconcileStaleApprovals(h, v.businessId);
       const r = await owner(h, async (c, uid) => {
         const b = await ownBusiness(c, v.businessId, uid);
         const byKey = (
@@ -412,6 +462,15 @@ export function createPackageSubscriptions({
             return fail(409, "IDEMPOTENCY_CONFLICT");
           return normalized(byKey);
         }
+        // Free the open-contract index only once the final paid period has ended.
+        // The business lock above serializes this with other purchases for the same business.
+        if (environment === "live")
+          await c.query(
+            `UPDATE live_package_contract SET status='EXPIRED'
+             WHERE business_id=$1 AND payment_method='credits' AND status='ACTIVE'
+               AND paid_cycles=total_cycles AND ends_at<=now()`,
+            [v.businessId],
+          );
         const open = (
           await c.query<SandboxRecord & { pendingSettlement: boolean }>(
             `SELECT ${columns},(settlement_hold_until>now()) AS "pendingSettlement" FROM ${contracts} WHERE business_id=$1 AND (status NOT IN ('CANCELLED','EXPIRED') OR ends_at>now() OR settlement_hold_until>now()) ORDER BY created_at DESC LIMIT 1 FOR UPDATE`,

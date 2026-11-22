@@ -19,6 +19,7 @@ import {
   stoppedPayPalInstallments,
   walletPackageStatus,
 } from "../../lib/sandbox-subscriptions";
+import { staleSubscriptionApproval } from "../../lib/subscription-approval";
 import { creditsForBamMinor, formatAhiCredits } from "../../lib/wallet";
 import styles from "./billing.module.css";
 import { SubscriptionCardButton } from "./SubscriptionCardButton";
@@ -258,9 +259,30 @@ export function PackageCheckout({
         );
         setContracts(history.contracts);
         setBalance(history.walletBalance ?? null);
+        const stale = history.contracts.filter((c) => staleSubscriptionApproval(c));
+        for (const contract of stale) {
+          if (signal.aborted) return;
+          try {
+            const updated = await request<{ contract: SandboxPackageContract }>(
+              `${contractsPath}/${contract.id}/refresh`,
+              userId,
+              signal,
+              {},
+            );
+            if (signal.aborted) return;
+            setContracts((values) =>
+              values.map((c) => (c.id === contract.id ? updated.contract : c)),
+            );
+            if (initialContract === contract.id) setReturnChecked(updated.contract.id);
+          } catch {
+            // Keep the pending record and its manual status/close actions if the
+            // provider cannot confirm closure. Loading history must remain usable.
+          }
+        }
         if (
           initialContract &&
           !abandoned &&
+          !stale.some((c) => c.id === initialContract) &&
           history.contracts.some(
             (c) =>
               c.id === initialContract && c.status !== "CREATING" && c.paymentMethod !== "credits",

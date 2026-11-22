@@ -97,6 +97,7 @@ export async function verifyWalletPackages({ pool, auth, customer, plans, provid
   const prepaid = await service.create(second.headers, annual, true);
   assert.equal(prepaid.contract.totalCycles, 1);
   assert.equal(prepaid.contract.paidCycles, 1);
+  assert.equal(prepaid.contract.status, "ACTIVE");
   assert.equal(await balance(second), 220);
   await assert.rejects(
     service.payCreditCycle(second.headers, prepaid.contract.id, {
@@ -159,6 +160,72 @@ export async function verifyWalletPackages({ pool, auth, customer, plans, provid
     assert.equal(acquired.contract.totalCycles, period === "monthly" ? 12 : 1);
     assert.equal(await balance(person), 1000 - chargeMinor / 100);
   }
+  // The final installment purchases another full month; billing completion is not expiry.
+  const finalBuyer = await customer();
+  await fund(finalBuyer, 2000);
+  const finalInput = offer(finalBuyer, "monthly", "business", 9800);
+  let finalMonth = await withoutGateway.create(finalBuyer.headers, finalInput, true);
+  for (let cycle = 2; cycle <= 12; cycle++) {
+    await pool.query(
+      `UPDATE live_package_contract
+       SET starts_at=now()-make_interval(months=>$2::int-1)-interval '1 hour',
+           ends_at=now()-interval '1 hour' WHERE id=$1`,
+      [finalMonth.contract.id, cycle],
+    );
+    finalMonth = await withoutGateway.payCreditCycle(finalBuyer.headers, finalMonth.contract.id, {
+      cycle,
+      expectedCreditMinor: 9800,
+    });
+  }
+  assert.equal(finalMonth.contract.paidCycles, 12);
+  assert.equal(finalMonth.contract.status, "ACTIVE");
+  assert.ok(Date.parse(finalMonth.contract.endsAt) > Date.now());
+  assert.deepEqual(
+    (
+      await pool.query("SELECT status FROM live_package_contract WHERE id=$1", [
+        finalMonth.contract.id,
+      ])
+    ).rows,
+    [{ status: "ACTIVE" }],
+  );
+  assert.equal((await withoutGateway.list(finalBuyer.headers)).contracts[0].status, "ACTIVE");
+  assert.deepEqual((await checkWindow(finalBuyer.businessId)).rows, [
+    { listing: true, nearby: true },
+  ]);
+  // Old records saved as EXPIRED still display and protect their remaining paid service.
+  await pool.query("UPDATE live_package_contract SET status='EXPIRED' WHERE id=$1", [
+    finalMonth.contract.id,
+  ]);
+  assert.equal((await withoutGateway.list(finalBuyer.headers)).contracts[0].status, "ACTIVE");
+  await assert.rejects(
+    withoutGateway.create(finalBuyer.headers, { ...finalInput, requestId: randomUUID() }, true),
+    { code: "SUBSCRIPTION_ALREADY_EXISTS" },
+  );
+  // Expired corrected contracts free the open-contract unique index for a new purchase.
+  await pool.query(
+    `UPDATE live_package_contract SET status='ACTIVE',starts_at=now()-interval '12 months 1 hour',
+       ends_at=now()-interval '1 hour' WHERE id=$1`,
+    [finalMonth.contract.id],
+  );
+  assert.equal((await withoutGateway.list(finalBuyer.headers)).contracts[0].status, "EXPIRED");
+  assert.deepEqual((await checkWindow(finalBuyer.businessId)).rows, [
+    { listing: false, nearby: false },
+  ]);
+  const replacement = await withoutGateway.create(
+    finalBuyer.headers,
+    { ...finalInput, requestId: randomUUID() },
+    true,
+  );
+  assert.notEqual(replacement.contract.id, finalMonth.contract.id);
+  assert.equal(replacement.contract.status, "ACTIVE");
+  assert.deepEqual(
+    (
+      await pool.query("SELECT status FROM live_package_contract WHERE id=$1", [
+        finalMonth.contract.id,
+      ])
+    ).rows,
+    [{ status: "EXPIRED" }],
+  );
   const held = await customer();
   await fund(held, 1000);
   await pool.query(

@@ -609,7 +609,7 @@ export function createDirectoryService({
               OR EXISTS (SELECT 1 FROM stay_booking WHERE business_id=$1 AND kind='customer'
                  AND status IN ('requested','confirmed') AND check_out>(now() AT TIME ZONE timezone)::date)) AS bookings,
             (EXISTS (SELECT 1 FROM live_package_contract WHERE business_id=$1 AND
-                 (status NOT IN ('CANCELLED','EXPIRED') OR ends_at>now() OR settlement_hold_until>now()))
+                 ((status NOT IN ('CANCELLED','EXPIRED') AND NOT (payment_method='credits' AND paid_cycles=total_cycles AND ends_at IS NOT NULL AND ends_at<=now())) OR ends_at>now() OR settlement_hold_until>now()))
               OR EXISTS (SELECT 1 FROM billing_receipt WHERE business_id=$1 AND kind='subscription'
                  AND gross_minor>refunded_minor AND service_ends_on>(now() AT TIME ZONE 'Europe/Sarajevo')::date)) AS contract,
             (EXISTS (SELECT 1 FROM marketing_order WHERE business_id=$1 AND

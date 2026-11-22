@@ -163,6 +163,27 @@ export async function testDirectoryRemoval(
     },
   );
 
+  await t.test("completed credit coverage protects removal only until its paid end", async () => {
+    const id = await fixture();
+    const contractId = randomUUID();
+    await pool.query(
+      `INSERT INTO live_package_contract(id,user_id,business_id,business_title,request_id,package_id,period,amount_bam_minor,amount_eur_minor,total_cycles,benefits_version,nearby_days,featured_days,payment_method,cycle_credit_minor,plan_id,status,paid_cycles,starts_at,ends_at)
+       VALUES($1,$2,$3,'QA',$4,'basic','annual',29000,14827,1,1,0,0,'credits',29000,NULL,'ACTIVE',1,now()-interval '11 months',now()+interval '1 month')`,
+      [contractId, member.user.id, id, randomUUID()],
+    );
+    await blocked(id, "BUSINESS_HAS_CONTRACT");
+    await pool.query(
+      "UPDATE live_package_contract SET starts_at=now()-interval '13 months',ends_at=now()-interval '1 month' WHERE id=$1",
+      [contractId],
+    );
+    assert.equal((await remove(id)).status, 200);
+    assert.equal(
+      (await pool.query("SELECT paid_cycles FROM live_package_contract WHERE id=$1", [contractId]))
+        .rows[0].paid_cycles,
+      1,
+    );
+  });
+
   await t.test(
     "active contracts, paid coverage and unsettled payments are protected; untouched offers close",
     async () => {

@@ -7,6 +7,7 @@ import { creditTopUpPath, creditTopUpReturn } from "../../lib/account-return";
 import { type CampaignSelection, campaignPath } from "../../lib/ad-brief";
 import type { BankTopUpCreate } from "../../lib/bank-credit-topup";
 import { billingMoney } from "../../lib/billing";
+import { creditTopUpStatusLabels, creditTopUpView } from "../../lib/credit-topup-view";
 import {
   adPlacements,
   categoryPromotionPriceBamMinor,
@@ -446,9 +447,8 @@ function MarketingView({
   const bankOffer = receiver
     ? bankTopUps.data?.offers.find((offer) => offer.quantity === bundle.quantity)
     : null;
-  const pendingBank = bankTopUps.data?.requests.find((request) => request.status === "pending");
-  const bankHistory =
-    bankTopUps.data?.requests.filter((request) => request.status !== "pending") ?? [];
+  const topUps = creditTopUpView(bankTopUps.data?.requests ?? [], data?.orders ?? []);
+  const { pendingBank, history: topUpHistory } = topUps;
   const purchaseReturn = creditTopUpReturn(returnTo);
   const platformCreditsOnly = data?.platformCreditsOnly === true;
   const bankOnly = platformCreditsOnly || data?.creditTopUpBankOnly === true;
@@ -642,7 +642,8 @@ function MarketingView({
     );
   const unitPrice = data.creditUnitBamMinor ?? null;
   const categoryCredits = creditsForBamMinor(categoryPromotionPriceBamMinor, unitPrice ?? 0);
-  const orders = data.orders.filter((order) => !order.bankTopUp);
+  const orders =
+    mode === "credits" ? topUps.orders : data.orders.filter((order) => !order.bankTopUp);
   const topUpInProgress = busy || bankTopUps.busy;
   return (
     <section className={styles.workspace}>
@@ -928,31 +929,27 @@ function MarketingView({
         </article>
       )}
       {message && <p role="status">{message}</p>}
-      {mode === "credits" && bankHistory.length > 0 && (
-        <article className={styles.order}>
-          <h2>Bankovne uplate</h2>
+      {mode === "credits" && topUpHistory.length > 0 && (
+        <details className={styles.order}>
+          <summary>Historija dopuna</summary>
           <ul className={styles.bankList}>
-            {bankHistory.map((request) => (
+            {topUpHistory.map((request) => (
               <li className={styles.bankOrder} key={request.id}>
                 <strong>
-                  {formatAhiCredits(request.quantity * 100)} ·{" "}
-                  {creditBankAmount(request.amountMinor, request.currency)}
+                  {formatAhiCredits(request.quantity * 100)}
+                  {request.amountMinor !== null &&
+                    ` · ${creditBankAmount(request.amountMinor, request.currency)}`}
                 </strong>
                 <span>
-                  {request.status === "approved" ? "Uplata potvrđena" : "Zahtjev otkazan"} ·{" "}
-                  {new Date(request.approvedAt ?? request.createdAt).toLocaleDateString([
-                    "bs-BA",
-                    "hr-HR",
-                  ])}
+                  {creditTopUpStatusLabels[request.status]}
+                  {request.date &&
+                    ` · ${new Date(request.date).toLocaleDateString(["bs-BA", "hr-HR"])}`}
                 </span>
-                <details>
-                  <summary>Referenca uplate</summary>
-                  <p>{request.paymentReference}</p>
-                </details>
+                {request.paymentReference && <p>Referenca uplate: {request.paymentReference}</p>}
               </li>
             ))}
           </ul>
-        </article>
+        </details>
       )}
       {mode === "credits" && Boolean(data.movements?.length) && (
         <article className={styles.order}>
@@ -975,56 +972,58 @@ function MarketingView({
           </ul>
         </article>
       )}
-      <div className={styles.orders}>
-        <h2>
-          {mode === "admin"
-            ? "Zahtjevi i uplate"
-            : promotionView === "aktivne"
-              ? "Aktivne kampanje"
-              : promotionView === "zakazane"
-                ? "Zakazane kampanje"
-                : "Moji zahtjevi"}
-        </h2>
-        {!orders.length && (
-          <p>
+      {(mode !== "credits" || orders.length > 0 || page > 0 || data.more) && (
+        <div className={styles.orders}>
+          <h2>
             {mode === "admin"
-              ? "Nema zahtjeva."
-              : promotionView
-                ? "Nema kampanja za ovaj prikaz."
-                : "Još nemaš zahtjeva."}
-          </p>
-        )}
-        {orders.map((order) => (
-          <OfferCard
-            key={order.id}
-            accountId={accountId}
-            order={order}
-            refresh={() => setRefresh((v) => v + 1)}
-            checkoutAvailable={data.checkoutAvailable}
-            creditTopUpBankOnly={bankOnly}
-            platformCreditsOnly={platformCreditsOnly}
-            walletRate={unitPrice}
-            balance={data.balance}
-            admin={mode === "admin"}
-            busy={busy}
-            submit={submit}
-          />
-        ))}
-        {(page > 0 || data.more) && (
-          <nav aria-label="Stranice zahtjeva">
-            {page > 0 && (
-              <button type="button" onClick={() => setPage(page - 1)}>
-                Prethodna
-              </button>
-            )}
-            {data.more && (
-              <button type="button" onClick={() => setPage(page + 1)}>
-                Sljedeća
-              </button>
-            )}
-          </nav>
-        )}
-      </div>
+              ? "Zahtjevi i uplate"
+              : promotionView === "aktivne"
+                ? "Aktivne kampanje"
+                : promotionView === "zakazane"
+                  ? "Zakazane kampanje"
+                  : "Moji zahtjevi"}
+          </h2>
+          {!orders.length && (
+            <p>
+              {mode === "admin"
+                ? "Nema zahtjeva."
+                : promotionView
+                  ? "Nema kampanja za ovaj prikaz."
+                  : "Još nemaš zahtjeva."}
+            </p>
+          )}
+          {orders.map((order) => (
+            <OfferCard
+              key={order.id}
+              accountId={accountId}
+              order={order}
+              refresh={() => setRefresh((v) => v + 1)}
+              checkoutAvailable={data.checkoutAvailable}
+              creditTopUpBankOnly={bankOnly}
+              platformCreditsOnly={platformCreditsOnly}
+              walletRate={unitPrice}
+              balance={data.balance}
+              admin={mode === "admin"}
+              busy={busy}
+              submit={submit}
+            />
+          ))}
+          {(page > 0 || data.more) && (
+            <nav aria-label="Stranice zahtjeva">
+              {page > 0 && (
+                <button type="button" onClick={() => setPage(page - 1)}>
+                  Prethodna
+                </button>
+              )}
+              {data.more && (
+                <button type="button" onClick={() => setPage(page + 1)}>
+                  Sljedeća
+                </button>
+              )}
+            </nav>
+          )}
+        </div>
+      )}
     </section>
   );
 }

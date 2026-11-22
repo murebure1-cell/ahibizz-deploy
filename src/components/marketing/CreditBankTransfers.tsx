@@ -8,15 +8,11 @@ import type {
   BankTopUpStatus,
   CreditBankCurrency,
 } from "../../lib/bank-credit-topup";
+import { creditTopUpStatusLabels as statusLabels } from "../../lib/credit-topup-view";
 import { bosnianFormatter } from "../../lib/number-format";
 import { CopyPaymentDetails } from "../support/CopyPaymentDetails";
 import styles from "./marketing.module.css";
 
-const statusLabels: Record<BankTopUpStatus, string> = {
-  pending: "Čeka bankovnu uplatu",
-  approved: "Uplata potvrđena",
-  cancelled: "Zahtjev otkazan",
-};
 const bankErrors: Record<string, string> = {
   BANK_TOPUP_UNAVAILABLE: "Bankovna dopuna trenutno nije dostupna.",
   BANK_TOPUP_CHANGED: "Zahtjev je izmijenjen. Provjeri njegov aktuelni status.",
@@ -191,7 +187,7 @@ export function useBankTopUps(
       return write(
         `/${encodeURIComponent(request.id)}/cancel`,
         { expectedVersion: request.version },
-        "Zahtjev za bankovnu dopunu je otkazan.",
+        "Zahtjev je otkazan i premješten u historiju dopuna.",
       );
     },
   };
@@ -206,6 +202,7 @@ export function CreditBankTransfer({
   request: BankTopUpRequest;
   workspace: BankWorkspace;
 }) {
+  if (request.status !== "pending") return null;
   const bank = request.instructionsAvailable ? request.bank : null;
   const amount = creditBankAmount(request.amountMinor, request.currency);
   const purpose = bank && `${bank.purpose} ${request.paymentReference}`;
@@ -230,6 +227,7 @@ export function CreditBankTransfer({
       <h3>
         {number.format(request.quantity)} kredita · {statusLabels[request.status]}
       </h3>
+      <p>Zahtjev čeka bankovnu uplatu.</p>
       <dl className={styles.bankDetails}>
         {details.map(([label, value]) => (
           <div className={styles.bankDetail} key={label}>
