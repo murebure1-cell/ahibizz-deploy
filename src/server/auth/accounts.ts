@@ -363,7 +363,7 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
         await authority(client, current, true);
         const pattern = value.q ? `%${value.q.replace(/[!%_]/g, "!$&")}%` : null;
         const result = await client.query<SafeAccountProfile>(
-          `SELECT ${profileColumns} FROM ${profileJoin} WHERE u.approval=$1 AND (NOT $4::boolean OR (u.role='member' AND u."emailVerified" AND u.approval='pending')) AND ($2::text IS NULL OR u.name ILIKE $2 ESCAPE '!' OR u.email ILIKE $2 ESCAPE '!') ORDER BY u."createdAt",u.id LIMIT 31 OFFSET $3`,
+          `SELECT ${profileColumns} FROM ${profileJoin} WHERE u.erased_at IS NULL AND u.approval=$1 AND (NOT $4::boolean OR (u.role='member' AND u."emailVerified" AND u.approval='pending')) AND ($2::text IS NULL OR u.name ILIKE $2 ESCAPE '!' OR u.email ILIKE $2 ESCAPE '!') ORDER BY u."createdAt",u.id LIMIT 31 OFFSET $3`,
           [value.approval, pattern, (value.page - 1) * 30, readyOnly],
         );
         return {
@@ -390,7 +390,7 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
         const actor = await authority(client, current, true);
         const target = (
           await client.query<CurrentAuthUser>(
-            'SELECT id, name, email, "emailVerified", role, approval FROM auth_user WHERE id = $1 FOR UPDATE',
+            'SELECT id, name, email, "emailVerified", role, approval FROM auth_user WHERE id=$1 AND erased_at IS NULL FOR UPDATE',
             [targetId],
           )
         ).rows[0];

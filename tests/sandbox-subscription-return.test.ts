@@ -4,6 +4,7 @@ import {
   awaitingFirstSandboxPayment,
   followSandboxFirstPayment,
   type SandboxPackageContract,
+  stoppedPayPalInstallments,
 } from "../src/lib/sandbox-subscriptions";
 
 const contract: SandboxPackageContract = {
@@ -23,6 +24,22 @@ const contract: SandboxPackageContract = {
   paidCycles: 0,
   paidEurMinor: 0,
 };
+
+test("stopped monthly PayPal plans show only installments without a verified payment", () => {
+  const stopped: SandboxPackageContract = {
+    ...contract,
+    status: "CANCELLED",
+    paymentMethod: "paypal",
+    startsAt: "2026-11-19T10:00:00Z",
+    paidCycles: 3,
+  };
+  assert.deepEqual(stoppedPayPalInstallments(stopped), { count: 9, amountBamMinor: 44100 });
+  assert.equal(stoppedPayPalInstallments({ ...stopped, startsAt: null }), null);
+  assert.equal(stoppedPayPalInstallments({ ...stopped, paidCycles: 12 }), null);
+  assert.equal(stoppedPayPalInstallments({ ...stopped, status: "ACTIVE" }), null);
+  assert.equal(stoppedPayPalInstallments({ ...stopped, period: "annual" }), null);
+  assert.equal(stoppedPayPalInstallments({ ...stopped, paymentMethod: "credits" }), null);
+});
 
 test("returned package waits for verified first settlement even after PayPal finishes the annual schedule", async () => {
   assert.equal(awaitingFirstSandboxPayment(contract), true);

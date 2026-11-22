@@ -1,12 +1,19 @@
 import { headers } from "next/headers";
 import Link from "next/link";
-import { type SupportTarget, supportEmail, supportSubjects } from "../../lib/support-requests";
+import { reelPath } from "../../lib/reel-navigation";
+import {
+  reportUrl,
+  type SupportTarget,
+  supportEmail,
+  supportSubjects,
+} from "../../lib/support-requests";
 import { getAccountService } from "../../server/auth/accounts";
 import { RequestForm } from "./RequestForm";
 import styles from "./resources.module.css";
 
 export async function RequestScreen({ target }: { target: SupportTarget }) {
   const deletion = target.subject === "deletion";
+  const reel = target.subject === "reel";
   const account = await getAccountService()
     ?.read(await headers())
     .catch(() => undefined);
@@ -26,23 +33,32 @@ export async function RequestScreen({ target }: { target: SupportTarget }) {
         ));
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
-      <Link href="/privatnost">Privatnost i podrška</Link>
-      <h1>{deletion ? "Brisanje AhiBizz naloga" : "Prijavi sadržaj"}</h1>
+      {reel ? (
+        <Link href={reelPath(target.reference)}>Nazad na Reel</Link>
+      ) : (
+        <Link href="/privatnost">Privatnost i podrška</Link>
+      )}
+      <h1>{deletion ? "Brisanje AhiBizz naloga" : reel ? "Prijavi Reel" : "Prijavi sadržaj"}</h1>
       {deletion ? (
         <>
           <p>
             Zahtjev obuhvata tvoj nalog, profil, slike i povezane lične podatke. Podrška provjerava
-            vlasništvo naloga i javlja ti kada završi brisanje.
+            vlasništvo i obrađuje zahtjev.
           </p>
           <p>
-            Ako vodiš djelatnost, navedi treba li je ukloniti ili prenijeti drugom vlasniku. Podaci
-            o izvršenim uplatama mogu se zadržati radi zakonskih obaveza.
+            Ako vodiš djelatnost, dogovori njen prenos ili uklanjanje s podrškom. Podaci o izvršenim
+            uplatama mogu se zadržati radi zakonskih obaveza.
           </p>
         </>
-      ) : (
+      ) : !reel ? (
         <p>
           {supportSubjects[target.subject]} · {target.reference}
         </p>
+      ) : null}
+      {reel && !account && (
+        <Link href={`/prijava?nastavi=${encodeURIComponent(reportUrl("reel", target.reference))}`}>
+          Prijavi se za slanje prijave
+        </Link>
       )}
       {account && (
         <RequestForm

@@ -5,6 +5,7 @@ import { Pool } from "pg";
 import { loadMigrations, runMigrations } from "../../scripts/migrate.mjs";
 import { createReelEngagementService } from "../../src/server/reels/engagement.ts";
 import { readReelFeed } from "../../src/server/reels/service.ts";
+import { createSupportRequests } from "../../src/server/support-requests.ts";
 import { integrationConfiguration } from "./postgres.test.mjs";
 
 const secret = "test-reels-engagement-only-secret-0000001";
@@ -27,17 +28,21 @@ test("isolated Reel feed and engagement stay bounded, authorized, and idempotent
     pool = new Pool({ ...config, options: `-c search_path=${schema}` });
     assert.equal((await pool.query("SELECT current_schema() AS schema")).rows[0].schema, schema);
     const migrations = await loadMigrations();
-    assert.equal(migrations.at(-1).version, "0049_reel_engagement.sql");
+    assert.ok(migrations.some((migration) => migration.version === "0050_reel_reports.sql"));
     assert.deepEqual(
       (await runMigrations({ pool, migrations })).applied,
       migrations.map((row) => row.version),
     );
-    const accounts = ["fixture-one", "fixture-two", "fixture-viewer"];
+    const accounts = ["fixture-one", "fixture-two", "fixture-viewer", "fixture-moderator"];
     const signed = new Map();
     for (const account of accounts) {
       await pool.query(
-        "INSERT INTO auth_user(id,name,email,\"emailVerified\",approval) VALUES($1,$1,$2,true,'approved')",
-        [account, `${account}@fixture.invalid`],
+        "INSERT INTO auth_user(id,name,email,\"emailVerified\",approval,role) VALUES($1,$1,$2,true,'approved',$3)",
+        [
+          account,
+          `${account}@fixture.invalid`,
+          account === "fixture-moderator" ? "owner" : "member",
+        ],
       );
       const session = { id: randomUUID(), token: randomUUID(), userId: account };
       await pool.query(
@@ -237,6 +242,43 @@ test("isolated Reel feed and engagement stay bounded, authorized, and idempotent
           readOrWrite(actor, clips[1].id, { action: "like", liked: true }, true),
           { status: 403, code: "REEL_LIKE_UNAVAILABLE" },
         );
+      },
+    );
+
+    await t.test(
+      "published, discoverable Reels can be reported once and resolved by an owner",
+      async () => {
+        const inbox = createSupportRequests(auth, pool);
+        const moderator = new Headers({
+          cookie: "fixture=fixture-moderator",
+          "X-AhiBizz-Account-ID": "fixture-moderator",
+        });
+        const details = "Sadržaj za provjeru na izoliranim testnim podacima.";
+        const reel = clips[0].id;
+        await assert.rejects(inbox.submit(new Headers(), "reel", reel, details), { status: 401 });
+        for (const id of [hidden, clips[1].id, randomUUID()]) {
+          await assert.rejects(inbox.submit(actor, "reel", id, details), {
+            status: 404,
+            code: "REPORT_TARGET_UNAVAILABLE",
+          });
+        }
+        await Promise.all(
+          [reel, reel.toUpperCase()].map((id) => inbox.submit(actor, "reel", id, details)),
+        );
+        await assert.rejects(inbox.pending(actor, 0), { status: 403 });
+        const { requests } = await inbox.pending(moderator, 0);
+        assert.equal(requests.length, 1);
+        assert.deepEqual(
+          {
+            subject: requests[0].subject,
+            reference: requests[0].reference,
+            details: requests[0].details,
+          },
+          { subject: "reel", reference: reel, details },
+        );
+        await assert.rejects(inbox.resolve(actor, requests[0].id), { status: 403 });
+        await inbox.resolve(moderator, requests[0].id);
+        assert.deepEqual((await inbox.pending(moderator, 0)).requests, []);
       },
     );
   } finally {

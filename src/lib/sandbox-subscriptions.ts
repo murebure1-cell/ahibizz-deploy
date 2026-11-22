@@ -92,6 +92,30 @@ export async function followSandboxFirstPayment(
 
 export type PackageContract = SandboxPackageContract;
 
+export function stoppedPayPalInstallments(
+  contract: Pick<
+    PackageContract,
+    | "status"
+    | "period"
+    | "paymentMethod"
+    | "startsAt"
+    | "paidCycles"
+    | "totalCycles"
+    | "amountBamMinor"
+  >,
+) {
+  if (
+    contract.status !== "CANCELLED" ||
+    contract.period !== "monthly" ||
+    contract.paymentMethod !== "paypal" ||
+    !contract.startsAt ||
+    contract.paidCycles >= contract.totalCycles
+  )
+    return null;
+  const count = contract.totalCycles - contract.paidCycles;
+  return { count, amountBamMinor: count * contract.amountBamMinor };
+}
+
 export function walletPackageStatus(contract: SandboxPackageContract, now = Date.now()) {
   if (contract.paymentMethod !== "credits" || !contract.endsAt) return null;
   if (Date.parse(contract.endsAt) > now) return "Plaćeno";

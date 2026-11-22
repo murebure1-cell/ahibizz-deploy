@@ -15,6 +15,7 @@ import {
   type SandboxContractStatus,
   type SandboxPackageContract,
   type SandboxPackageQuote,
+  stoppedPayPalInstallments,
   walletPackageStatus,
 } from "../../lib/sandbox-subscriptions";
 import { creditsForBamMinor } from "../../lib/wallet";
@@ -54,6 +55,22 @@ const statusLabels: Record<SandboxContractStatus, string> = {
 
 function creditAmount(minor: number) {
   return `${new Intl.NumberFormat("bs-BA", { maximumFractionDigits: 2 }).format(minor / 100)} kredita`;
+}
+function StoppedInstallments({ contract }: { contract: SandboxPackageContract }) {
+  const remaining = stoppedPayPalInstallments(contract);
+  if (!remaining) return null;
+  return (
+    <section className={styles.notice} aria-label="Preostale rate">
+      <strong>PayPal automatska naplata je zaustavljena</strong>
+      <p>
+        Rate bez potvrđene uplate {remaining.count} od {contract.totalCycles} ·{" "}
+        {billingMoney(remaining.amountBamMinor)}
+      </p>
+      <a href={`/pomoc?tema=naplata&ugovor=${encodeURIComponent(contract.id)}#kontakt`}>
+        Zatraži provjeru preostalih rata
+      </a>
+    </section>
+  );
 }
 function dueDate(value: string) {
   return new Intl.DateTimeFormat(["bs-BA", "hr-HR"], {
@@ -695,10 +712,11 @@ export function PackageCheckout({
               )}
               {confirmCancel === c.id && c.period === "monthly" && c.paidCycles < c.totalCycles && (
                 <p className={styles.footnote}>
-                  Za status preostalih rata iz ugovora obrati se{" "}
-                  <a href="/pomoc">korisničkoj podršci</a>.
+                  PayPal će zaustaviti buduće automatske uplate. Pregled preostalih rata i dalje je
+                  dostupan u ugovoru.
                 </p>
               )}
+              <StoppedInstallments contract={c} />
               <div className={styles.actions}>
                 {(c.status === "CREATING" || c.status === "APPROVAL_PENDING") && (
                   <>

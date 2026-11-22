@@ -50,6 +50,42 @@ export async function verifySupportRequests({ auth, pool, owner, member, other }
     "INSERT INTO directory_business(id,owner_user_id,title,category_id) VALUES($1,$2,'Report fixture',$3)",
     [businessId, owner.user.id, categoryId],
   );
+  const contractId = randomUUID();
+  const reference = `ugovor--${contractId}`;
+  await pool.query(
+    `INSERT INTO live_package_contract(id,user_id,business_id,business_title,request_id,package_id,
+       period,amount_bam_minor,amount_eur_minor,total_cycles,benefits_version,nearby_days,featured_days,
+       plan_id,status,starts_at,paid_cycles)
+     VALUES($1,$2,$3,'Report fixture',$4,'basic','monthly',2900,1483,12,1,0,0,
+       'fixture-paypal-plan','CANCELLED',now()-interval '1 day',1)`,
+    [contractId, owner.user.id, businessId, randomUUID()],
+  );
+  const unavailablePackage = (error) =>
+    error.status === 404 && error.code === "PACKAGE_REVIEW_UNAVAILABLE";
+  await assert.rejects(
+    inbox.submit(member.headers, "help", reference, comment),
+    unavailablePackage,
+  );
+  await assert.rejects(
+    inbox.submit(owner.headers, "help", `ugovor--${randomUUID()}`, comment),
+    unavailablePackage,
+  );
+  await Promise.all([
+    inbox.submit(owner.headers, "help", reference, comment),
+    inbox.submit(owner.headers, "help", reference.toUpperCase(), comment),
+  ]);
+  const packageCases = (await inbox.pending(owner.headers, 0)).requests.filter(
+    (row) => row.reference === reference,
+  );
+  assert.equal(packageCases.length, 1);
+  assert.deepEqual(packageCases[0].packageReview, {
+    businessTitle: "Report fixture",
+    paidCycles: 1,
+    totalCycles: 12,
+    amountBamMinor: 2900,
+  });
+  await inbox.resolve(owner.headers, packageCases[0].id);
+  await pool.query("DELETE FROM live_package_contract WHERE id=$1", [contractId]);
   await assert.rejects(inbox.submit(member.headers, "business", businessId, comment), unavailable);
   await pool.query(
     "UPDATE directory_business SET status='published',published_at=now() WHERE id=$1",

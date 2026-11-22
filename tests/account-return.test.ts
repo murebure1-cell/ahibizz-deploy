@@ -7,6 +7,25 @@ import {
   accountSectionPath,
   readAccountNavigation,
 } from "../src/lib/account-return";
+import { reportUrl, supportTarget } from "../src/lib/support-requests";
+
+test("Reel reporting survives login with an exact local report destination", () => {
+  const reel = "2b97204a-7562-418e-8873-41020b6ff957";
+  const path = reportUrl("reel", reel);
+  assert.deepEqual(supportTarget("reel", reel), { subject: "reel", reference: reel });
+  assert.equal(accountReturnPath(path), path);
+  for (const invalid of [
+    `${path}&next=//outside.invalid`,
+    `${path}&vrsta=reel`,
+    `${path}#other`,
+    "/prijavi-sadrzaj?vrsta=reel&oznaka=missing",
+    `//outside.invalid${path}`,
+  ]) {
+    assert.equal(accountReturnPath(invalid), "/nalog");
+  }
+  assert.equal(supportTarget("reel", "missing"), null);
+  assert.equal(supportTarget("reel", `${reel}\n`), null);
+});
 
 test("sign-in accepts only exact known administration continuations", () => {
   for (const path of [

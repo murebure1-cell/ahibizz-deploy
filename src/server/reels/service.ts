@@ -44,8 +44,14 @@ function context() {
   return { access: createAccountAccess(auth), pool };
 }
 
-const discoverable = `($4::text IS NULL OR NOT EXISTS(
-  SELECT 1 FROM people_block pb WHERE pb.actor_id=$4 AND pb.target_id=r.submitted_by AND pb.blocked))`;
+function visibleToViewer(parameter: "$2" | "$4") {
+  return `(${parameter}::text IS NULL OR NOT EXISTS (
+    SELECT 1 FROM people_block pb WHERE pb.actor_id=${parameter}
+      AND pb.target_id=r.submitted_by AND pb.blocked
+  ))`;
+}
+export const publicReelForViewer = `${publicReels} AND r.id=$1 AND ${visibleToViewer("$2")}`;
+const discoverable = visibleToViewer("$4");
 export async function listPublicReels(
   businessId: string | null,
   limit: number,
@@ -68,13 +74,10 @@ export async function readPublicReel(id: string, viewerId: string | null = null)
   if (!businessUuid(id)) return null;
   const pool = getAuthDatabasePool();
   if (!pool) return null;
-  const { rows } = await pool.query<PublicReel>(
-    `SELECT ${cardFields} ${publicReels} AND r.id=$1
-     AND ($2::text IS NULL OR NOT EXISTS (
-       SELECT 1 FROM people_block pb WHERE pb.actor_id=$2 AND pb.target_id=r.submitted_by AND pb.blocked
-     ))`,
-    [id, viewerId],
-  );
+  const { rows } = await pool.query<PublicReel>(`SELECT ${cardFields} ${publicReelForViewer}`, [
+    id,
+    viewerId,
+  ]);
   return rows[0] ?? null;
 }
 

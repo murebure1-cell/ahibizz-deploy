@@ -1,3 +1,4 @@
+import { businessUuid } from "./business-today";
 import { helpTicketTopic } from "./help-center";
 
 export const supportEmail = "podrska@ahibizz.com";
@@ -7,6 +8,7 @@ export const supportSubjects = {
   business: "Djelatnost",
   review: "Recenzija",
   conversation: "Razgovor",
+  reel: "Reel",
   help: "Korisnička podrška",
 } as const;
 export type SupportSubject = keyof typeof supportSubjects;
@@ -16,6 +18,7 @@ export function supportTarget(subject: unknown, reference: unknown): SupportTarg
   if (subject === "deletion") return reference === "" ? { subject, reference } : null;
   if (typeof subject !== "string" || !Object.hasOwn(supportSubjects, subject)) return null;
   if (typeof reference !== "string" || !/^[a-zA-Z0-9_-]{1,128}$/.test(reference)) return null;
+  if (subject === "reel" && (reference.length !== 36 || !businessUuid(reference))) return null;
   if (subject === "help" && !helpTicketTopic(reference)) return null;
   return { subject: subject as SupportSubject, reference };
 }

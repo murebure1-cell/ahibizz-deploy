@@ -37,6 +37,8 @@ export async function submitSupportRequest(
             : "Prijava je dostavljena administratoru.",
     };
   } catch (error) {
+    if (error instanceof AccountAccessError && error.code === "PACKAGE_REVIEW_UNAVAILABLE")
+      return { sent: false, message: "Za ovaj ugovor trenutno nema rata za provjeru." };
     const status = error instanceof AccountAccessError ? error.status : 503;
     return {
       sent: false,

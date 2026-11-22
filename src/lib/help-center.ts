@@ -67,7 +67,7 @@ export const helpTopics = {
     question: "Kako da prijavim sumnjiv sadržaj ili zaštitim nalog?",
     keywords: ["sigurn", "privat", "prevar", "sumnj", "sadrzaj", "blok", "bris", "nezelj", "krad"],
     answer:
-      "Za prijavu sadržaja otvori opciju Prijavi na profilu, recenziji ili razgovoru. Ako misliš da neko ima pristup tvom nalogu, promijeni lozinku i javi nam se. Za brisanje naloga otvori zaseban zahtjev.",
+      "Za prijavu sadržaja otvori opciju Prijavi na profilu, recenziji, Reelu ili razgovoru. Ako misliš da neko ima pristup tvom nalogu, promijeni lozinku i javi nam se. Za brisanje naloga otvori zaseban zahtjev.",
     links: [
       { label: "Zahtjev za brisanje naloga", href: "/brisanje-naloga" },
       { label: "Privatnost", href: "/privatnost" },
@@ -113,8 +113,18 @@ export function matchHelpTopic(query: string): HelpTopicId | null {
 }
 
 export function helpTicketTopic(reference: string): HelpTicketTopic | null {
+  if (packageSupportContractId(reference)) return "naplata";
   const parts = /^([a-z]+)--[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.exec(reference);
   return parts?.[1] === "ostalo" ? "ostalo" : helpTopic(parts?.[1]);
+}
+
+export function packageSupportContractId(reference: unknown) {
+  if (typeof reference !== "string") return null;
+  return (
+    /^ugovor--([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/i
+      .exec(reference)?.[1]
+      ?.toLowerCase() ?? null
+  );
 }
 
 export function helpTicketLabel(reference: string) {

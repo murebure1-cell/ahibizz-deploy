@@ -1,11 +1,15 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
+import { packageSupportContractId } from "../lib/help-center";
 import { type SupportSubject, supportTarget } from "../lib/support-requests";
 import { AccountAccessError, accountTransaction, createAccountAccess } from "./auth/accounts";
 import { type AuthService, getAuthDatabasePool, getAuthService } from "./auth/service";
+import { publicReelForViewer } from "./reels/service";
 import { reviewBusinessEligibility, reviewVisibility } from "./reviews/projection";
 
 const reportUuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+const stoppedPaymentPlan = `c.period='monthly' AND c.payment_method='paypal'
+    AND c.status='CANCELLED' AND c.starts_at IS NOT NULL AND c.paid_cycles<c.total_cycles`;
 const reportTargetQueries = {
   person: `SELECT 1 FROM auth_user a JOIN personal_profile p ON p.user_id=a.id
     WHERE a.id=$1 AND p.is_public AND a.approval='approved' AND a."emailVerified"=true
@@ -15,6 +19,7 @@ const reportTargetQueries = {
   review: `SELECT 1 FROM business_review r JOIN directory_business b ON b.id=r.business_id
     JOIN auth_user o ON o.id=b.owner_user_id JOIN auth_user a ON a.id=r.author_user_id
     WHERE r.id=$1 AND ${reviewBusinessEligibility} AND ${reviewVisibility}`,
+  reel: `SELECT 1 ${publicReelForViewer}`,
   // Blocking keeps the history accessible to existing participants for reporting.
   conversation: `SELECT 1 FROM message_thread t
     JOIN message_thread_member own ON own.thread_id=t.id AND own.user_id=$2
@@ -33,6 +38,12 @@ export type OpenSupportRequest = {
   details: string;
   email: string;
   name: string;
+  packageReview: {
+    businessTitle: string;
+    paidCycles: number;
+    totalCycles: number;
+    amountBamMinor: number;
+  } | null;
 };
 export function createSupportRequests(auth: AuthService, pool: Pool) {
   const access = createAccountAccess(auth);
@@ -50,10 +61,18 @@ export function createSupportRequests(auth: AuthService, pool: Pool) {
       return accountTransaction(pool, async (client) => {
         const actor = await access.authority(client, current);
         const subject = target.subject;
+        const contractId = subject === "help" ? packageSupportContractId(target.reference) : null;
         const uuidTarget =
-          subject === "business" || subject === "review" || subject === "conversation";
-        const canonical = uuidTarget && reportUuid.test(target.reference);
-        const reference = canonical ? target.reference.toLowerCase() : target.reference;
+          subject === "business" ||
+          subject === "review" ||
+          subject === "conversation" ||
+          subject === "reel";
+        const canonical = subject === "reel" || (uuidTarget && reportUuid.test(target.reference));
+        const reference = contractId
+          ? `ugovor--${contractId}`
+          : canonical
+            ? target.reference.toLowerCase()
+            : target.reference;
         const existing = await client.query(
           `SELECT id FROM support_request WHERE actor_id=$1 AND subject=$2
             AND ${canonical ? "lower(reference)" : "reference"}=$3
@@ -73,9 +92,16 @@ export function createSupportRequests(auth: AuthService, pool: Pool) {
             throw new AccountAccessError(404, "REPORT_TARGET_UNAVAILABLE");
           const visible = await client.query(
             reportTargetQueries[subject],
-            subject === "conversation" ? [reference, actor.id] : [reference],
+            subject === "conversation" || subject === "reel" ? [reference, actor.id] : [reference],
           );
           if (!visible.rowCount) throw new AccountAccessError(404, "REPORT_TARGET_UNAVAILABLE");
+        }
+        if (contractId) {
+          const valid = await client.query(
+            `SELECT 1 FROM live_package_contract c WHERE c.id=$1 AND c.user_id=$2 AND ${stoppedPaymentPlan}`,
+            [contractId, actor.id],
+          );
+          if (!valid.rowCount) throw new AccountAccessError(404, "PACKAGE_REVIEW_UNAVAILABLE");
         }
         await client.query(
           "INSERT INTO support_request(id,actor_id,subject,reference,details) VALUES($1,$2,$3,$4,$5)",
@@ -92,12 +118,23 @@ export function createSupportRequests(auth: AuthService, pool: Pool) {
     async pending(headers: Headers, page: number) {
       const current = await access.session(headers);
       return accountTransaction(pool, async (client) => {
-        await access.authority(client, current, true);
+        const operator = await access.authority(client, current, true);
         const result = await client.query<OpenSupportRequest>(
-          "SELECT r.id,r.subject,r.reference,r.details,u.name,u.email FROM support_request r JOIN auth_user u ON u.id=r.actor_id WHERE r.resolved_at IS NULL ORDER BY r.created_at,r.id LIMIT 31 OFFSET $1",
+          `SELECT r.id,r.subject,r.reference,r.details,u.name,u.email,
+             CASE WHEN c.id IS NOT NULL THEN json_build_object('businessTitle',c.business_title,
+               'paidCycles',c.paid_cycles,'totalCycles',c.total_cycles,
+               'amountBamMinor',c.amount_bam_minor) END AS "packageReview"
+           FROM support_request r JOIN auth_user u ON u.id=r.actor_id
+           LEFT JOIN live_package_contract c ON r.subject='help' AND c.user_id=r.actor_id
+             AND r.reference='ugovor--'||c.id::text
+           WHERE r.resolved_at IS NULL ORDER BY r.created_at,r.id LIMIT 31 OFFSET $1`,
           [page * 30],
         );
-        return { requests: result.rows.slice(0, 30), more: result.rows.length > 30 };
+        return {
+          requests: result.rows.slice(0, 30),
+          more: result.rows.length > 30,
+          operatorId: operator.id,
+        };
       });
     },
     async resolve(headers: Headers, id: string) {
@@ -106,7 +143,7 @@ export function createSupportRequests(auth: AuthService, pool: Pool) {
       const current = await access.session(headers);
       return accountTransaction(pool, async (client) => {
         const actor = await access.authority(client, current, true);
-        // Deletion requests close through actual account deletion (FK cascade).
+        // The erasure transaction fulfills deletion requests and records its own receipt.
         const result = await client.query(
           "UPDATE support_request SET resolved_at=now(),resolved_by=$1 WHERE id=$2 AND subject<>'deletion' AND resolved_at IS NULL",
           [actor.id, id],

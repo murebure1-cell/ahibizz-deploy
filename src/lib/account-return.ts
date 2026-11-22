@@ -5,6 +5,7 @@ import { adminReturnPath } from "./admin-navigation";
 import { bookingReturnPath } from "./booking-return";
 import {
   businessInquiryPath,
+  businessUuid,
   type CalendarTarget,
   ownerCalendarPath,
   readBusinessInquiry,
@@ -121,6 +122,9 @@ export function accountReturnPath(value: unknown): string {
   )
     return value;
   if (value.startsWith("/pretraga?") && canonicalSavedSearch(value.slice("/pretraga".length)))
+    return value;
+  const reelReportPrefix = "/prijavi-sadrzaj?vrsta=reel&oznaka=";
+  if (value.startsWith(reelReportPrefix) && businessUuid(value.slice(reelReportPrefix.length)))
     return value;
   if (value.startsWith("/nalog?")) {
     const params = new URLSearchParams(value.slice(7));

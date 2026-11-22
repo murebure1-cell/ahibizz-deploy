@@ -12,6 +12,7 @@ import {
   type ReelFeedPage,
   reelMedia,
 } from "../../lib/reels";
+import { reportUrl } from "../../lib/support-requests";
 import { BusinessLogo } from "../directory/BusinessLogo";
 import { Icon } from "../Icon";
 import styles from "./reel-viewer.module.css";
@@ -328,6 +329,15 @@ function ReelSlide({
           <Icon name="share" />
           <span className={styles.railLabel}>Podijeli</span>
         </button>
+        <Link
+          href={reportUrl("reel", reel.id)}
+          prefetch={false}
+          className={styles.railAction}
+          aria-label="Prijavi Reel"
+        >
+          <Icon name="shield" />
+          <span className={styles.railLabel}>Prijavi</span>
+        </Link>
         <span className={styles.railAction}>
           <Icon name="eye" />
           {engagement && (
