@@ -27,7 +27,7 @@ test("form controls fit long business names and gesture restriction is scoped to
     /\.page button\s*\{[^}]*max-width: 100%;[^}]*min-width: 0;[^}]*min-height: 48px/,
   );
 });
-test("card selection opens the embedded form locally and only wallet resumes a redirect", () => {
+test("eligible card selection opens locally and PayPal account checkout redirects", () => {
   const checkout = readFileSync("src/components/billing/Checkout.tsx", "utf8");
   const card = checkout.match(/<button[^>]*?className=\{styles\.payCard\}[\s\S]*?<\/button>/)?.[0];
   assert.ok(card);
@@ -36,7 +36,13 @@ test("card selection opens the embedded form locally and only wallet resumes a r
   assert.doesNotMatch(card, /act\(|fetch\(|window\.location/);
   assert.doesNotMatch(checkout, /act\("create",\s*"guest"\)/);
   assert.match(checkout, /\(cardOpen \|\| order\) && \(\s*<PayPalCardButton/);
-  assert.match(checkout, /canOfferPayPalCard\(order, review, kind\)/);
+  assert.match(
+    checkout,
+    /const cardAvailable = canOfferPayPalCard\(order, review, kind, offer\?\.kind\)/,
+  );
+  assert.match(checkout, /catalog\.paypalClientId && cardAvailable && \(\s*<button/);
+  assert.match(checkout, /cardAvailable && \(\s*<div id="karticni-obrazac"/);
+  assert.match(checkout, /setMethod\(next\.kind === "credits" \? "paypal" : "card"\)/);
   assert.match(
     checkout,
     /action === "create" && value.approvalUrl && value.order\?\.flow === "redirect"/,
