@@ -17,6 +17,13 @@ import {
   billingAllocation,
   billingRequest,
 } from "../src/lib/billing";
+import { creditNumber, formatAhiCredits } from "../src/lib/wallet";
+
+test("credit amounts keep Bosnian separators and credit labels", () => {
+  assert.equal(creditNumber(-1400.25), "-1.400,25");
+  assert.equal(formatAhiCredits(100), "1 Ahi kredit");
+  assert.equal(formatAhiCredits(500000), "5.000 Ahi kredita");
+});
 
 const id = "00000000-0000-4000-8000-000000000001";
 function receipt(changes: Partial<BillingReceipt> = {}): BillingReceipt {

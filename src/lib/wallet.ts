@@ -25,8 +25,14 @@ export function formatAhiCredits(creditMinor: number): string {
   return `${creditNumber(creditMinor / 100)} ${creditMinor === 100 ? "Ahi kredit" : "Ahi kredita"}`;
 }
 
+const creditNumberFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+
 export function creditNumber(value: number): string {
-  return new Intl.NumberFormat(["bs-BA", "hr-HR"], { maximumFractionDigits: 2 }).format(value);
+  // Some browser runtimes lack Bosnian or Croatian ICU data.
+  return creditNumberFormat
+    .formatToParts(value)
+    .map(({ type, value }) => (type === "group" ? "." : type === "decimal" ? "," : value))
+    .join("");
 }
 
 export function formatCreditsFromBam(amountMinor: number, unitBamMinor: number | null): string {
