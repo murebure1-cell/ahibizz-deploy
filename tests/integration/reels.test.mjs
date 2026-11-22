@@ -1,10 +1,18 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import test from "node:test";
 import { Pool } from "pg";
 import { loadMigrations, runMigrations } from "../../scripts/migrate.mjs";
+import { readAuthConfiguration } from "../../src/server/auth/config.ts";
+import { createDatabase } from "../../src/server/db.ts";
 import { createReelEngagementService } from "../../src/server/reels/engagement.ts";
-import { readReelFeed } from "../../src/server/reels/service.ts";
+import {
+  listPublicReels,
+  readPublicReel,
+  readReelFeed,
+  reelMediaAccess,
+} from "../../src/server/reels/service.ts";
 import { createSupportRequests } from "../../src/server/support-requests.ts";
 import { integrationConfiguration } from "./postgres.test.mjs";
 
@@ -104,6 +112,93 @@ test("isolated Reel feed and engagement stay bounded, authorized, and idempotent
        has_poster,reviewed_at,published_at)
        VALUES($1,$2,$3,'Hidden reel','published',32,3000,false,clock_timestamp(),clock_timestamp())`,
       [hidden, pendingStudio, accounts[1]],
+    );
+
+    await t.test(
+      "public Reel reads and byte slices remain visible without SMTP, and recheck eligibility",
+      async () => {
+        const environment = { DATABASE_URL: process.env.AHIBIZZ_TEST_DATABASE_URL };
+        assert.equal(readAuthConfiguration(environment), null);
+        const database = createDatabase({
+          environment: () => environment,
+          createPool: () => new Pool({ ...config, options: `-c search_path=${schema}` }),
+        });
+        try {
+          const reel = clips[0];
+          const owner = accounts[1];
+          const video = Buffer.alloc(32, 65);
+          await pool.query(
+            "INSERT INTO business_reel_part(reel_id,part_index,bytes) VALUES($1,0,$2)",
+            [reel.id, video],
+          );
+          const list = await listPublicReels(null, 30, 0, null, database);
+          assert.equal(list.length, 15);
+          assert.ok(list.every((item) => item.id !== hidden));
+          assert.equal((await readPublicReel(reel.id, null, database)).id, reel.id);
+          assert.ok((await readReelFeed(reel.id, null, null, reel.id, database)).items.length > 0);
+          const media = await reelMediaAccess(new Headers(), reel.id, "video", false, database);
+          assert.equal(media.size, 32);
+          assert.deepEqual(Buffer.from(await media.slice(0, 5, 8)), video.subarray(5, 13));
+          const childEnvironment = Object.fromEntries(
+            Object.entries(process.env).filter(
+              ([key]) => !/^(DATABASE_|BETTER_AUTH|SMTP_|AHIBIZZ_|PG)/.test(key),
+            ),
+          );
+          execFileSync(
+            process.execPath,
+            [
+              "--import",
+              "tsx",
+              "--input-type=module",
+              "-e",
+              `
+          import assert from 'node:assert/strict';
+          import { getDatabase } from './src/server/db.ts';
+          import { readAuthConfiguration } from './src/server/auth/config.ts';
+          import { listPublicReels, readPublicReel, reelMediaAccess, manageReels } from './src/server/reels/service.ts';
+          try {
+            assert.equal(readAuthConfiguration(), null);
+            assert.equal((await listPublicReels(null,30)).length,15);
+            assert.equal((await readPublicReel('${reel.id}')).id,'${reel.id}');
+            const asset=await reelMediaAccess(new Headers(),'${reel.id}','video',false);
+            assert.deepEqual(Buffer.from(await asset.slice(0,5,8)),Buffer.alloc(8,65));
+            await assert.rejects(reelMediaAccess(new Headers(),'${reel.id}','video',true),{status:503,code:'REEL_UNAVAILABLE'});
+            await assert.rejects(manageReels(new Headers(),true),{status:503,code:'REEL_UNAVAILABLE'});
+          } finally { await getDatabase().close(); }
+        `,
+            ],
+            {
+              cwd: process.cwd(),
+              env: {
+                ...childEnvironment,
+                NODE_ENV: "test",
+                DATABASE_URL: process.env.AHIBIZZ_TEST_DATABASE_URL,
+                PGOPTIONS: `-c search_path=${schema}`,
+              },
+              timeout: 20000,
+              stdio: "pipe",
+              windowsHide: true,
+            },
+          );
+          await pool.query('UPDATE auth_user SET "emailVerified"=false WHERE id=$1', [owner]);
+          assert.equal(await readPublicReel(reel.id, null, database), null);
+          await assert.rejects(media.slice(0, 0, 4), { status: 404, code: "REEL_NOT_FOUND" });
+          await pool.query('UPDATE auth_user SET "emailVerified"=true WHERE id=$1', [owner]);
+          await pool.query("UPDATE directory_business SET status='pending' WHERE id=$1", [
+            reel.business,
+          ]);
+          assert.equal(await readPublicReel(reel.id, null, database), null);
+          await assert.rejects(reelMediaAccess(new Headers(), reel.id, "video", false, database), {
+            status: 404,
+          });
+          await pool.query("UPDATE directory_business SET status='published' WHERE id=$1", [
+            reel.business,
+          ]);
+          assert.equal((await readPublicReel(reel.id, null, database)).id, reel.id);
+        } finally {
+          await database.close();
+        }
+      },
     );
 
     async function collect(origin, business = null, viewer = null) {

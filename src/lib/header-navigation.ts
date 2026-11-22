@@ -34,7 +34,7 @@ export function headerDestinations(
         ] as const)),
   ];
   if (!options.playEdition && options.supportAvailable)
-    more.push({ href: "/podrzi", label: "Podrži AhiBizz", icon: "heart" });
+    more.push({ href: "/podrzi", label: "Doniraj", icon: "heart" });
   if (!options.installed && !options.playEdition)
     more.push({ href: "/instaliraj", label: "Instaliraj aplikaciju", icon: "download" });
   more.push({ href: "/privatnost", label: "Privatnost", icon: "shield" });

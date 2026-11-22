@@ -23,7 +23,7 @@ export function SiteFooter() {
           <Link href="/blog">Blog</Link>
           {!IS_PLAY_EDITION && <Link href="/paketi">Paketi</Link>}
           {!IS_PLAY_EDITION && <Link href="/instaliraj">Instaliraj aplikaciju</Link>}
-          {!IS_PLAY_EDITION && getSupportConfig() && <Link href="/podrzi">Podrži AhiBizz</Link>}
+          {!IS_PLAY_EDITION && getSupportConfig() && <Link href="/podrzi">Doniraj</Link>}
         </nav>
       </div>
       <div className="container footer-bottom">

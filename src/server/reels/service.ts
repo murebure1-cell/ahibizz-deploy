@@ -1,4 +1,4 @@
-import type { Pool, PoolClient } from "pg";
+import type { PoolClient } from "pg";
 import { businessUuid } from "../../lib/business-today";
 import {
   type ManagedReel,
@@ -14,6 +14,7 @@ import {
 } from "../../lib/reels";
 import { AccountAccessError, accountTransaction, createAccountAccess } from "../auth/accounts";
 import { getAuthDatabasePool, getAuthService } from "../auth/service";
+import { type Database, getDatabase } from "../db";
 import { debitWallet, walletBalance } from "../wallet/service";
 import { normalizeReelPoster, readReelPart, verifyReelVideo } from "./video";
 
@@ -52,33 +53,44 @@ function visibleToViewer(parameter: "$2" | "$4") {
 }
 export const publicReelForViewer = `${publicReels} AND r.id=$1 AND ${visibleToViewer("$2")}`;
 const discoverable = visibleToViewer("$4");
+type PublicReadDatabase = Pick<Database, "query">;
+
+/** Public reads use the lazy database facade; they never initialize authentication or SMTP. */
+function publicReadDatabase(): PublicReadDatabase | null {
+  const database = getDatabase();
+  return database.configured() ? database : null;
+}
+
 export async function listPublicReels(
   businessId: string | null,
   limit: number,
   offset = 0,
   viewerId: string | null = null,
+  database: PublicReadDatabase | null = publicReadDatabase(),
 ) {
   if (businessId !== null && !businessUuid(businessId)) return [];
-  const pool = getAuthDatabasePool();
-  if (!pool) return [];
-  const { rows } = await pool.query<PublicReel>(
+  if (!database) return [];
+  const { rows } = await database.query(
     `SELECT ${cardFields} ${publicReels}
      AND ($1::uuid IS NULL OR b.id=$1) AND ${discoverable}
      ORDER BY r.published_at DESC,r.id DESC LIMIT $2 OFFSET $3`,
     [businessId, limit, offset, viewerId],
   );
-  return rows;
+  return rows as PublicReel[];
 }
 
-export async function readPublicReel(id: string, viewerId: string | null = null) {
+export async function readPublicReel(
+  id: string,
+  viewerId: string | null = null,
+  database: PublicReadDatabase | null = publicReadDatabase(),
+) {
   if (!businessUuid(id)) return null;
-  const pool = getAuthDatabasePool();
-  if (!pool) return null;
-  const { rows } = await pool.query<PublicReel>(`SELECT ${cardFields} ${publicReelForViewer}`, [
+  if (!database) return null;
+  const { rows } = await database.query(`SELECT ${cardFields} ${publicReelForViewer}`, [
     id,
     viewerId,
   ]);
-  return rows[0] ?? null;
+  return (rows[0] as PublicReel | undefined) ?? null;
 }
 
 /** View the selected clip first, then older clips, followed by remaining newer clips once. */
@@ -87,15 +99,15 @@ export async function readReelFeed(
   businessId: string | null,
   viewerId: string | null,
   origin = cursor,
-  pool = getAuthDatabasePool(),
+  database: PublicReadDatabase | null = publicReadDatabase(),
 ): Promise<ReelFeedPage> {
   const pageSize = 6;
   if (!businessUuid(cursor) || !businessUuid(origin) || (businessId && !businessUuid(businessId)))
     throw notFound();
-  if (!pool) throw new AccountAccessError(503, "REEL_UNAVAILABLE");
+  if (!database) throw new AccountAccessError(503, "REEL_UNAVAILABLE");
   // An already displayed anchor can be withdrawn without making the rest of the feed unavailable.
   // The branches each use the published tuple index and return only a bounded number of rows.
-  const { rows } = await pool.query<PublicReel & { phase: number; orderedAt: Date }>(
+  const { rows } = await database.query(
     `WITH anchors AS (
        SELECT c.id AS cursor_id,c.published_at AS cursor_at,o.id AS origin_id,o.published_at AS origin_at
        FROM business_reel c JOIN business_reel o ON o.id=$3
@@ -117,7 +129,9 @@ export async function readReelFeed(
      ) page ORDER BY phase,"orderedAt" DESC,id DESC LIMIT $5`,
     [businessId, cursor, origin, viewerId, pageSize + 1],
   );
-  const items = rows.slice(0, pageSize).map(({ phase, orderedAt, ...item }) => item);
+  const items = (rows as (PublicReel & { phase: number; orderedAt: Date })[])
+    .slice(0, pageSize)
+    .map(({ phase, orderedAt, ...item }) => item);
   return { items, next: rows.length > pageSize ? (items.at(-1)?.id ?? null) : null };
 }
 
@@ -513,23 +527,28 @@ export async function uploadReelPart(request: Request, id: string, index: number
   });
 }
 
-type Query = Pool | PoolClient;
+type Query = PublicReadDatabase;
 export type MediaRow = { size: number };
 export async function reelMediaAccess(
   headers: Headers,
   id: string,
   kind: "video" | "poster",
   preview: boolean,
+  database: PublicReadDatabase | null = preview ? null : publicReadDatabase(),
 ) {
   if (!businessUuid(id)) throw notFound();
-  const { pool, access } = context();
-  const subject = preview && (await access.session(headers));
+  const privateContext = preview ? context() : null;
+  const subject = privateContext && (await privateContext.access.session(headers));
   const withAccess = async <T>(
     query: (client: Query, actor: { id: string; role: string } | null) => Promise<T>,
   ) => {
-    if (!subject) return query(pool, null);
-    return accountTransaction(pool, async (client) => {
-      const actor = await access.authority(client, subject, false, "read");
+    if (!privateContext) {
+      if (!database) throw new AccountAccessError(503, "REEL_UNAVAILABLE");
+      return query(database, null);
+    }
+    if (!subject) throw new AccountAccessError(401, "AUTHENTICATION_REQUIRED");
+    return accountTransaction(privateContext.pool, async (client) => {
+      const actor = await privateContext.access.authority(client, subject, false, "read");
       return query(client, actor);
     });
   };
@@ -548,9 +567,8 @@ export async function reelMediaAccess(
       kind === "video"
         ? "r.source_size"
         : `(SELECT octet_length(bytes) FROM business_reel_part WHERE reel_id=r.id AND part_index=-1)`;
-    const record = (
-      await client.query<MediaRow>(`SELECT ${size} AS size ${scope.from}`, scope.values)
-    ).rows[0];
+    const record = (await client.query(`SELECT ${size} AS size ${scope.from}`, scope.values))
+      .rows[0] as MediaRow | undefined;
     if (!record?.size) throw notFound();
     return record;
   });
@@ -560,13 +578,13 @@ export async function reelMediaAccess(
       return withAccess(async (client, actor) => {
         const scope = allowed(actor);
         const n = scope.values.length;
-        const { rows } = await client.query<{ bytes: Buffer }>(
+        const { rows } = await client.query(
           `SELECT substring(p.bytes FROM $${n + 2}::int FOR $${n + 3}::int) AS bytes
            FROM business_reel_part p WHERE p.reel_id=(SELECT r.id ${scope.from})
               AND p.part_index=$${n + 1}::int`,
           [...scope.values, index, offset + 1, amount],
         );
-        const part = rows[0];
+        const part = rows[0] as { bytes: Buffer } | undefined;
         if (!part || part.bytes.length !== amount) throw notFound();
         return new Uint8Array(part.bytes);
       });

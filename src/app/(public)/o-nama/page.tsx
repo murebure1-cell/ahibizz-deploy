@@ -55,7 +55,7 @@ export default function AboutPage() {
             <p>Dobrovoljna podrška razvoju platforme.</p>
           </div>
           <Link className="button button-navy" href="/podrzi">
-            Podrži AhiBizz
+            Doniraj
             <Icon name="arrow" />
           </Link>
         </section>

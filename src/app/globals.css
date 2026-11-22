@@ -881,6 +881,13 @@ a {
     justify-content: space-between;
     gap: 20px;
   }
+  /* The mobile panel keeps its size while account links load. */
+  .header-menu,
+  .header-menu[data-account-menu="true"] {
+    width: min(375px, 100%);
+    height: calc(100dvh - 70px - var(--mobile-dock-space, env(safe-area-inset-bottom, 0px)));
+    scrollbar-gutter: stable;
+  }
   .brand img {
     width: 144px;
   }

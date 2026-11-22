@@ -1,5 +1,5 @@
 .page {
-  width: min(1000px, calc(100% - 64px));
+  width: min(720px, calc(100% - 64px));
   margin-inline: auto;
   padding-block: 64px 80px;
 }
@@ -62,16 +62,9 @@
   background: var(--ui-surface);
   font-size: 12px;
 }
-.methods {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  gap: 24px;
-}
-.methods[data-method-count="1"] {
-  grid-template-columns: minmax(0, 620px);
-}
 .card {
+  display: grid;
+  gap: 24px;
   min-width: 0;
   padding: 30px;
   border: 1px solid var(--ui-border);
@@ -82,37 +75,86 @@
   -webkit-backdrop-filter: blur(12px);
   animation: arrive 0.28s ease both;
 }
-.paypalWide {
-  grid-column: 1 / -1;
+.choices {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.choices legend,
+.bankDetails h2 {
+  margin: 0 0 12px;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+.methodOptions,
+.amountOptions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-.cardHeading {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 28px;
-}
-.cardHeading h2 {
-  font-size: 22px;
-  line-height: 1.2;
-}
-.methodIcon {
+.option {
+  position: relative;
   display: grid;
   place-items: center;
-  flex-shrink: 0;
-  width: 43px;
-  height: 43px;
+  min-height: 44px;
+  min-width: 0;
+  padding: 8px 14px;
   border: 1px solid var(--ui-border);
-  border-radius: 13px;
+  border-radius: 11px;
+  background: var(--ui-surface);
   color: var(--ui-text);
-  background: var(--ui-surface-soft);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 650;
+  text-align: center;
 }
-.methodIcon svg {
-  width: 22px;
-  height: 22px;
+.option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.option[data-selected="true"] {
+  border-color: var(--ui-accent-border);
+  color: var(--ui-accent-text);
+  background: var(--ui-accent-soft);
+}
+.option:focus-within {
+  outline: 2px solid var(--ui-accent-text);
+  outline-offset: 2px;
+}
+.customAmount {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 650;
+}
+.customAmount input {
+  box-sizing: border-box;
+  width: min(240px, 100%);
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  font-size: 16px;
+}
+.customAmount span[role="status"],
+.paymentNote {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.paymentNote {
+  margin: 0;
+}
+.bankDetails {
+  min-width: 0;
 }
 .paypalButton,
 .copyButton {
@@ -140,22 +182,19 @@
   background: var(--ui-accent);
   box-shadow: 0 8px 20px #ac83331a;
 }
-.paypalButton:hover {
+.paypalButton:hover:not(:disabled) {
   background: var(--ui-accent);
   transform: translateY(-1px);
+}
+.paypalButton:disabled {
+  cursor: default;
+  opacity: 0.62;
 }
 .paypalButton svg,
 .copyButton svg {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
-}
-.paypalWide .cardHeading {
-  margin-bottom: 0;
-}
-.paypalWide .paypalButton {
-  width: auto;
-  min-width: 240px;
 }
 .details {
   display: grid;
@@ -269,29 +308,12 @@
     padding-block: 24px;
     margin-top: 8px;
   }
-  .methods,
-  .methods[data-method-count="1"] {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 18px;
-  }
   .card {
     padding: 23px 20px;
     border-radius: 20px;
   }
-  .cardHeading {
-    gap: 12px;
-    margin-bottom: 24px;
-  }
-  .cardHeading h2 {
-    font-size: 21px;
-  }
-  .paypalWide {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .paypalWide .paypalButton {
-    min-width: 0;
-    width: 100%;
+  .methodOptions .option {
+    flex: 1 1 auto;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -302,7 +324,7 @@
   .copyButton {
     transition: none;
   }
-  .paypalButton:hover,
+  .paypalButton:hover:not(:disabled),
   .copyButton:hover:not(:disabled) {
     transform: none;
   }

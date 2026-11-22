@@ -121,8 +121,9 @@ function HomeArtwork({ kind }: { kind: "promotion" | "credits" }) {
         src={`/brand/home-${kind}-20261121.webp`}
         alt=""
         fill
-        sizes="(max-width: 600px) 100vw, 580px"
-        unoptimized
+        sizes="(max-width: 700px) calc(100vw - 40px), (max-width: 1252px) calc(100vw - 72px), 1180px"
+        loading="lazy"
+        fetchPriority="low"
       />
     </div>
   );

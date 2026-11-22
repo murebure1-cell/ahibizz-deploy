@@ -7,12 +7,14 @@ export const publicSupportSettings = {
     {
       id: "bih",
       label: "Uplata iz BiH",
+      currency: "BAM",
       name: "Raiffeisenbank",
       accountNumber: "1613000073375996",
     },
     {
       id: "eu",
       label: "Uplata iz EU",
+      currency: "EUR",
       name: "Wise",
       iban: "BE95 9678 9089 6058",
       bic: "TRWIBEB1XXX",

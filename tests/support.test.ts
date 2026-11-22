@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   bankTransferText,
+  donationAmountMinor,
+  donationAmountText,
+  donationPayPalLink,
   readSupportConfig,
   supportIban,
   supportPayPalUrl,
@@ -80,6 +83,38 @@ test("PayPal receiving links reject lookalikes, unsafe schemes, credentials and 
     "https://paypal.me/test\n",
   ])
     assert.equal(supportPayPalUrl(url), null, url);
+});
+
+test("donation amounts accept two decimal formats and reject ambiguous or nonpositive values", () => {
+  assert.equal(donationAmountMinor("10"), 1000);
+  assert.equal(donationAmountMinor(" 7,5 "), 750);
+  assert.equal(donationAmountMinor("0.01"), 1);
+  assert.equal(donationAmountMinor("1234.56"), 123456);
+  for (const value of ["", "0", "0.00", "-5", "5e2", "5.123", "1.234,56", "12345678901"])
+    assert.equal(donationAmountMinor(value), null, value);
+  assert.equal(donationAmountText(750, "BAM"), "7,50 KM");
+  assert.equal(donationAmountText(750, "EUR"), "7,50 EUR");
+});
+
+test("a chosen amount prefills only the documented PayPal.Me EUR link", () => {
+  assert.deepEqual(donationPayPalLink("https://paypal.me/AhiFixture/", 1000), {
+    href: "https://paypal.me/AhiFixture/10EUR",
+    amountPrefilled: true,
+  });
+  assert.deepEqual(donationPayPalLink("https://paypal.me/AhiFixture", 575), {
+    href: "https://paypal.me/AhiFixture/5.75EUR",
+    amountPrefilled: true,
+  });
+  for (const href of [
+    "https://www.paypal.com/donate?hosted_button_id=FIXTURE",
+    "https://paypal.com/ncp/payment/FIXTURE1",
+    "https://paypal.me/ahifixture?lang=en",
+  ])
+    assert.deepEqual(donationPayPalLink(href, 1000), { href, amountPrefilled: false });
+  assert.equal(donationPayPalLink("https://paypal.me.evil.invalid/AhiFixture", 1000), null);
+  assert.equal(donationPayPalLink("https://paypal.me/AhiFixture/25EUR", 1000), null);
+  assert.equal(donationPayPalLink("https://paypal.me/AhiFixture", 0), null);
+  assert.equal(donationPayPalLink("https://paypal.me/AhiFixture", 1.5), null);
 });
 
 test("IBAN instructions preserve the canonical account and reject altered check digits", () => {
@@ -238,4 +273,20 @@ test("copied bank instructions identify only the selected bank and the shared re
   assert.equal(bankTransferText(config, "unknown-account"), "");
   assert.equal(bankTransferText(config, ""), "");
   assert.equal(bankTransferText({ ...config, bankAccounts: [] }, bank.id), "");
+});
+
+test("transfer instructions include the chosen amount in the selected bank's configured currency", () => {
+  const config = readSupportConfig({
+    enabled: true,
+    recipient,
+    bankAccounts: [
+      { ...bank, currency: "BAM" },
+      { ...internationalBank, currency: "EUR" },
+    ],
+  });
+  assert.ok(config);
+  assert.match(bankTransferText(config, bank.id, 575), /\nIznos: 5,75 KM\n/);
+  assert.match(bankTransferText(config, internationalBank.id, 575), /\nIznos: 5,75 EUR\n/);
+  assert.doesNotMatch(bankTransferText(config, bank.id, 0), /\nIznos:/);
+  assert.doesNotMatch(bankTransferText(config, bank.id), /\nIznos:/);
 });
