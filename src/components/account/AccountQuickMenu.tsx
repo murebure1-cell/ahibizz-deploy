@@ -48,6 +48,7 @@ export function AccountQuickMenu({
       <Link
         key={href}
         href={href}
+        prefetch={false}
         className={appearance ?? styles.row}
         aria-current={currentHref === href ? "page" : undefined}
         data-design="app-menu-item"
@@ -107,7 +108,7 @@ export function AccountQuickMenu({
   }
   return (
     <div className={styles.menu}>
-      <Link href={path.profile} className={styles.profile} onClick={close}>
+      <Link href={path.profile} className={styles.profile} prefetch={false} onClick={close}>
         <span className={styles.avatar} aria-hidden="true">
           {initials || "A"}
         </span>
@@ -119,11 +120,11 @@ export function AccountQuickMenu({
       </Link>
       {!IS_PLAY_EDITION && (
         <div className={styles.balance}>
-          <Link href={path.credits} onClick={close}>
+          <Link href={path.credits} prefetch={false} onClick={close}>
             <span>Ahi krediti</span>
             {account.balance !== null && <strong>{number.format(account.balance)}</strong>}
           </Link>
-          <Link href={path.credits} className={styles.topup} onClick={close}>
+          <Link href={path.credits} className={styles.topup} prefetch={false} onClick={close}>
             Dopuni <Icon name="arrow" />
           </Link>
         </div>

@@ -1,5 +1,9 @@
 /* biome-ignore-all lint/style/noDescendingSpecificity: Rules are grouped by distinct preview components; component variants and responsive overrides intentionally follow their base styles. */
 .design-preview {
+  --preview-notice-height: 28px;
+  --preview-header-height: 78px;
+  --preview-menu-gap: 12px;
+  --preview-dock-height: env(safe-area-inset-bottom, 0px);
   --preview-navy: var(--ui-primary);
   --preview-ink: var(--ui-text);
   --preview-gold: var(--ui-accent);
@@ -35,7 +39,7 @@
   margin-inline: auto;
 }
 .preview-notice {
-  height: 28px;
+  height: var(--preview-notice-height);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -60,7 +64,7 @@
 .preview-header-inner {
   display: flex;
   align-items: center;
-  min-height: 78px;
+  min-height: var(--preview-header-height);
   gap: 42px;
 }
 .preview-header-inner > a {
@@ -96,8 +100,8 @@
   background: var(--preview-gold);
 }
 .preview-menu {
-  width: 43px;
-  height: 43px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--preview-line);
   border-radius: 13px;
   background: var(--ui-surface);
@@ -111,8 +115,19 @@
 .preview-menu-panel {
   position: absolute;
   right: max(36px, calc((100vw - 1180px) / 2));
-  top: calc(100% + 8px);
+  top: calc(100% + var(--preview-menu-gap));
   width: 280px;
+  max-height: calc(
+    100dvh -
+    var(--preview-notice-height) -
+    var(--preview-header-height) -
+    1px -
+    2 *
+    var(--preview-menu-gap) -
+    var(--preview-dock-height)
+  );
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 12px;
   background: var(--ui-glass);
   border: 1px solid var(--preview-line);
@@ -461,17 +476,16 @@
 }
 @media (max-width: 700px) {
   .design-preview {
-    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+    --preview-notice-height: 24px;
+    --preview-header-height: 67px;
+    --preview-dock-height: calc(69px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--preview-dock-height) + 7px);
   }
   .preview-container {
     width: calc(100% - 40px);
   }
   .preview-notice {
-    height: 24px;
     font-size: 9px;
-  }
-  .preview-header-inner {
-    min-height: 67px;
   }
   .preview-header img {
     width: 132px;
@@ -480,8 +494,6 @@
     display: none;
   }
   .preview-menu {
-    width: 39px;
-    height: 39px;
     border-radius: 11px;
     background: var(--ui-surface-soft);
   }
@@ -501,7 +513,7 @@
     left: 0;
     right: 0;
     z-index: 40;
-    height: calc(69px + env(safe-area-inset-bottom));
+    height: var(--preview-dock-height);
     padding: 7px 13px calc(7px + env(safe-area-inset-bottom));
     background: var(--ui-glass);
     backdrop-filter: blur(20px);
