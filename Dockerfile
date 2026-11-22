@@ -17,6 +17,7 @@ FROM node:24.22.3-alpine3.24@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
+    AHIBIZZ_PLATFORM_CREDITS_ONLY=true \
     HOSTNAME=0.0.0.0
 
 # Package managers are build tools. The server starts with Node directly and does

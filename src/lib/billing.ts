@@ -25,6 +25,7 @@ export type BillingCatalog = {
   operatorStatus: "unconfirmed";
   checkoutEnabled: boolean;
   automaticCharging: boolean;
+  platformCreditsOnly?: boolean;
   membershipActivation: false;
 };
 export type BillingReceipt = {

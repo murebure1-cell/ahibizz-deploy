@@ -741,4 +741,42 @@ export async function verifyMarketingOnlineQuotes(
     store,
     pool,
   });
+  await t.test(
+    "credits-only preserves verified PayPal settlement and releases abandoned offers",
+    async () => {
+      const strict = createCheckoutStore(pool, { platformCreditsOnly: true });
+      const business = await makeBusiness();
+      const banner = await quote("banner", 7, 1800, business);
+      const feature = await quote("featured", 2, 600, business);
+
+      const abandoned = await attach(await store.create(user, input(banner)));
+      const alreadyPaid = await attach(await store.create(user, input(feature)));
+      await assert.rejects(strict.create(user, input(banner)), /PLATFORM_CREDITS_ONLY/);
+      await assert.rejects(strict.prepareCapture(user, abandoned.id), /PLATFORM_CREDITS_ONLY/);
+      assert.equal(await strict.canCompleteApprovedPayment(user, abandoned), false);
+      await assert.rejects(
+        strict.cancelPromotion(other, abandoned.id, async () => true),
+        /ORDER_NOT_FOUND/,
+      );
+      await assert.rejects(
+        strict.cancelPromotion(user, abandoned.id, async () => false),
+        /ORDER_CANCELLATION_UNAVAILABLE/,
+      );
+      const cancelled = await strict.cancelPromotion(user, abandoned.id, async () => true);
+      assert.equal(cancelled.status, "cancelled");
+      assert.equal((await state(banner)).status, "quoted");
+      await command(user, { id: banner, action: "close" });
+
+      const settled = await strict.settleCapture(alreadyPaid.id, {
+        providerOrderId: alreadyPaid.providerOrderId,
+        captureId: `CAPTURE${alreadyPaid.providerOrderId}`,
+        merchantId: alreadyPaid.merchantId,
+        amountMinor: alreadyPaid.amountMinor,
+        currency: "EUR",
+        completedAt: new Date().toISOString(),
+      });
+      assert.equal(settled.status, "captured");
+      assert.equal((await state(feature)).online_checkout_id, alreadyPaid.id);
+    },
+  );
 }

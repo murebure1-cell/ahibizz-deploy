@@ -73,6 +73,7 @@ export type MarketingData = {
   promotions: { id: string; title: string; endsAt: string }[];
   included: { id: string; title: string; kind: "featured" | "nearby"; endsAt: string }[];
   checkoutAvailable: boolean;
+  platformCreditsOnly?: boolean;
   creditCardTopUps?: boolean;
   creditTopUpBankOnly?: boolean;
 };
@@ -96,7 +97,7 @@ export type MarketingCommand =
   | {
       action: "quote";
       id: string;
-      amountMinor: number;
+      amountMinor?: number;
       instructions: string;
       creditPrice?: number;
       campaignBenefit?: "advance" | "welcome";

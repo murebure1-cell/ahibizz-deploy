@@ -4,6 +4,7 @@ import type { BillingPackageId, BillingPeriod } from "../../lib/billing";
 import { creditsForBamMinor } from "../../lib/wallet";
 import { AccountAccessError, accountTransaction, createAccountAccess } from "../auth/accounts";
 import type { AuthService } from "../auth/service";
+import { readPlatformCreditsOnly } from "../wallet/platform-policy";
 import { debitWallet, readWalletRate, walletBalance } from "../wallet/service";
 import { getPackageBenefits } from "./benefits";
 import { type PlanReferences, packageQuote, type SubscriptionEnvironment } from "./config";
@@ -384,6 +385,8 @@ export function createPackageSubscriptions({
     },
     async create(h: Headers, raw: unknown, wallet = false) {
       if (wallet && environment !== "live") return fail(404, "NOT_FOUND");
+      if (!wallet && environment === "live" && readPlatformCreditsOnly())
+        return fail(409, "PLATFORM_CREDITS_ONLY");
       if (!wallet && !provider) return fail(503, "SUBSCRIPTIONS_UNAVAILABLE");
       const v = validateStart(raw, wallet),
         quote = packageQuote(v.packageId, v.period),

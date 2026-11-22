@@ -18,6 +18,7 @@ import {
 } from "../../lib/ad-catalog";
 import { type AdPricing, estimateAdCampaign, getAdRate } from "../../lib/ad-pricing";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
+import { formatCreditsFromBam } from "../../lib/wallet";
 import { Icon } from "../Icon";
 import styles from "./ad-guide.module.css";
 
@@ -108,7 +109,15 @@ function FormatPreview({
   );
 }
 
-export function AdExplorer({ pricing }: { pricing: AdPricing | null }) {
+export function AdExplorer({
+  pricing,
+  creditRate,
+}: {
+  pricing: AdPricing | null;
+  creditRate?: number | null;
+}) {
+  const priceLabel = (amount: number) =>
+    creditRate === undefined ? km(amount) : formatCreditsFromBam(amount, creditRate);
   const [device, setDevice] = useState<AdDevice>("mobile");
   const [page, setPage] = useState<AdPage>("home");
   const [chosen, setChosen] = useState<AdFormatId>("mobile_leaderboard");
@@ -196,7 +205,9 @@ export function AdExplorer({ pricing }: { pricing: AdPricing | null }) {
                   <span>
                     {selected.placement.width} × {selected.placement.height} px
                   </span>
-                  <b>{price !== null ? `${km(price)} / 1.000 prikaza` : "Cijena na upit"}</b>
+                  <b>
+                    {price !== null ? `${priceLabel(price)} / 1.000 prikaza` : "Cijena na upit"}
+                  </b>
                 </div>
                 <label className={styles.upload}>
                   <Icon name="download" />
@@ -268,7 +279,9 @@ export function AdExplorer({ pricing }: { pricing: AdPricing | null }) {
                     <div aria-live="polite">
                       <span>Procjena kampanje</span>
                       <strong>
-                        {estimate ? km(Math.max(estimate.netMinor, estimate.minimumMinor)) : "—"}
+                        {estimate
+                          ? priceLabel(Math.max(estimate.netMinor, estimate.minimumMinor))
+                          : "—"}
                       </strong>
                       {estimate && estimate.discountPercent > 0 && (
                         <small>Uključen popust od {estimate.discountPercent}%</small>
@@ -284,8 +297,8 @@ export function AdExplorer({ pricing }: { pricing: AdPricing | null }) {
               </div>
               {estimate?.belowMinimum && (
                 <p>
-                  Minimalni zakup banera iznosi {km(estimate.minimumMinor)}. Konačne uslove vidiš u
-                  ponudi.
+                  Minimalni zakup banera iznosi {priceLabel(estimate.minimumMinor)}. Konačne uslove
+                  vidiš u ponudi.
                 </p>
               )}
               {price !== null && !validVolume && (
@@ -327,7 +340,8 @@ export function AdExplorer({ pricing }: { pricing: AdPricing | null }) {
         <div className={styles.tableWrap}>
           <table>
             <caption>
-              Cijene u KM za 1.000 prikaza (CPM). Primjenjivi porez iskazuje se u ponudi.
+              Cijene u {creditRate === undefined ? "KM" : "Ahi kreditima"} za 1.000 prikaza (CPM).
+              Primjenjivi porez iskazuje se u ponudi.
             </caption>
             <thead>
               <tr>
@@ -369,7 +383,7 @@ export function AdExplorer({ pricing }: { pricing: AdPricing | null }) {
                               rate.cpmMinor === null ? (
                                 "Na upit"
                               ) : (
-                                km(rate.cpmMinor)
+                                priceLabel(rate.cpmMinor)
                               )
                             ) : (
                               <span title="Nije dostupno">—</span>
@@ -418,7 +432,7 @@ export function AdExplorer({ pricing }: { pricing: AdPricing | null }) {
                       {!places.length
                         ? "Pauzirano"
                         : min !== null
-                          ? `Od ${km(min)} / 1.000 prikaza`
+                          ? `Od ${priceLabel(min)} / 1.000 prikaza`
                           : "Na upit"}
                     </small>
                   </span>

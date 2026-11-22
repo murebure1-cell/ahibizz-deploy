@@ -55,7 +55,8 @@ export type BankTopUpCreate = {
 };
 export type BankTopUpApprove = {
   expectedVersion: number;
-  bankTransactionReference: string;
+  bankTransactionReference?: string;
+  statementMatched?: true;
   amountMinor: number;
   currency: CreditBankCurrency;
   paymentReference: string;

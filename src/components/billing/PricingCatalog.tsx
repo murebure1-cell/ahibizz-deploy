@@ -4,18 +4,25 @@ import { useEffect, useState } from "react";
 import { productionRequestPath } from "../../lib/account-return";
 import { accountShortcuts } from "../../lib/account-shortcuts";
 import { type BillingPeriod, billingPackages } from "../../lib/billing";
+import { categoryPromotionPriceBamMinor } from "../../lib/marketing";
 import { type PackageBenefitsCatalog, readPackageBenefits } from "../../lib/package-benefits";
+import { creditsForBamMinor, formatAhiCredits } from "../../lib/wallet";
 import styles from "./billing.module.css";
 
 export function PricingCatalog({
   initialBenefits = null,
+  creditsOnly = false,
+  walletRate = null,
 }: {
   initialBenefits?: PackageBenefitsCatalog | null;
+  creditsOnly?: boolean;
+  walletRate?: number | null;
 }) {
   const [benefits, setBenefits] = useState<PackageBenefitsCatalog | null>(initialBenefits);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
+  const categoryCredits = creditsForBamMinor(categoryPromotionPriceBamMinor, walletRate ?? 0);
   useEffect(() => {
     if (initialBenefits && attempt === 0) return;
     const controller = new AbortController();
@@ -62,17 +69,37 @@ export function PricingCatalog({
         {billingPackages.map((plan) => {
           const included = benefits?.benefits[plan.id];
           const monthly = period === "monthly";
+          const amount = monthly ? plan.monthlyMinor : plan.annualMinor;
+          const creditPrice = creditsForBamMinor(amount, walletRate ?? 0);
+          const creditTotal = creditsForBamMinor(
+            monthly ? plan.monthlyMinor * 12 : plan.monthlyMinor * 12 - plan.annualMinor,
+            walletRate ?? 0,
+          );
           return (
             <article className={styles.plan} key={plan.name}>
               <h2>{plan.name}</h2>
               <p className={styles.price}>
-                {(monthly ? plan.monthlyMinor : plan.annualMinor) / 100}{" "}
-                <span>{monthly ? "KM / mjesec" : "KM / godina"}</span>
+                {creditsOnly ? (
+                  creditPrice === null ? (
+                    "Cijena nije dostupna"
+                  ) : (
+                    <>
+                      {formatAhiCredits(creditPrice)}{" "}
+                      <span>{monthly ? "/ mjesec" : "/ godina"}</span>
+                    </>
+                  )
+                ) : (
+                  <>
+                    {amount / 100} <span>{monthly ? "KM / mjesec" : "KM / godina"}</span>
+                  </>
+                )}
               </p>
               <p className={styles.term}>
-                {monthly
-                  ? `Ugovor na 12 mjeseci · ukupno ${(plan.monthlyMinor * 12) / 100} KM`
-                  : `Jednokratno · ušteda ${(plan.monthlyMinor * 12 - plan.annualMinor) / 100} KM`}
+                {creditsOnly
+                  ? `${monthly ? "Ugovor na 12 mjeseci" : "Jednokratno"}${creditTotal === null ? "" : ` · ${monthly ? "ukupno" : "ušteda"} ${formatAhiCredits(creditTotal)}`}`
+                  : monthly
+                    ? `Ugovor na 12 mjeseci · ukupno ${(plan.monthlyMinor * 12) / 100} KM`
+                    : `Jednokratno · ušteda ${(plan.monthlyMinor * 12 - plan.annualMinor) / 100} KM`}
               </p>
               {included && (
                 <ul className={styles.planBenefits} aria-label="Uključeno u paket">
@@ -96,7 +123,7 @@ export function PricingCatalog({
                   )}
                 </ul>
               )}
-              {included?.enabled ? (
+              {included?.enabled && (!creditsOnly || creditPrice !== null) ? (
                 <div className={styles.planActions}>
                   <Link
                     className={styles.primary}
@@ -107,7 +134,8 @@ export function PricingCatalog({
                   </Link>
                 </div>
               ) : (
-                included && <p className={styles.term}>Trenutno nije u ponudi.</p>
+                included &&
+                !included.enabled && <p className={styles.term}>Trenutno nije u ponudi.</p>
               )}
             </article>
           );
@@ -128,7 +156,11 @@ export function PricingCatalog({
       <section className={styles.production} aria-label="Isticanje djelatnosti i plaćanje">
         <div>
           <h2>Istakni svoju djelatnost</h2>
-          <p>Isticanje u kategoriji na 7 dana · 10 KM (5,11 EUR).</p>
+          <p>
+            {creditsOnly
+              ? `Isticanje u kategoriji na 7 dana${categoryCredits === null ? "." : ` · ${formatAhiCredits(categoryCredits)}.`}`
+              : "Isticanje u kategoriji na 7 dana · 10 KM (5,11 EUR)."}
+          </p>
         </div>
         <div>
           <a className={styles.secondary} href="/naplata">

@@ -12,6 +12,7 @@ import {
   createCheckoutService,
 } from "../src/server/paypal/runtime";
 import type { createCheckoutStore } from "../src/server/paypal/store";
+import { handlePackageSubscriptions } from "../src/server/paypal-subscriptions/http";
 
 const origin = "https://checkout.invalid";
 const id = "00000000-0000-4000-8000-000000000001";
@@ -220,6 +221,20 @@ test("configuration is absent by default and all sales gates are required", () =
   assert.equal(bankOnly.creditTopUpBankOnly, true);
   assert.equal(bankOnly.creditCardTopUps, false);
   assert.equal(bankOnly.available, true);
+  const strict = checkoutCatalog(
+    checkoutConfiguration({
+      ...enabled,
+      AHIBIZZ_PLATFORM_CREDITS_ONLY: "true",
+      AHIBIZZ_CREDIT_TOP_UP_BANK_ONLY: "false",
+      PAYPAL_CREDIT_CARD_TOPUPS_ENABLED: "true",
+    }),
+    "owner",
+  );
+  assert.equal(strict.platformCreditsOnly, true);
+  assert.equal(strict.creditTopUpBankOnly, true);
+  assert.equal(strict.creditCardTopUps, false);
+  assert.equal(strict.available, false);
+  assert.equal(strict.paypalClientId, null);
 });
 test("disabled service cannot reach store, auth or provider", async () => {
   let touched = false;
@@ -257,6 +272,7 @@ function serviceFixture(
     environment?: "live" | "sandbox";
     terminal?: boolean;
     kind?: "promotion" | "support";
+    platformCreditsOnly?: boolean;
   } = {},
 ) {
   const calls: string[] = [];
@@ -340,6 +356,7 @@ function serviceFixture(
     fulfillmentReady: true,
     chargingApproved: options.enabled ?? true,
     refundsApproved: false,
+    platformCreditsOnly: options.platformCreditsOnly,
   };
   return {
     calls,
@@ -366,6 +383,62 @@ test("terminal order cannot be captured twice", async () => {
   const f = serviceFixture({ terminal: true });
   await f.service.capture(new Headers(), id);
   assert.deepEqual(f.calls, ["authenticate", "prepare"]);
+});
+test("credits-only blocks new PayPal orders and capture while reconciling verified legacy sales", async () => {
+  const f = serviceFixture({ platformCreditsOnly: true });
+  const handle = createCheckoutHttpHandler(f.service, origin);
+  for (const payload of [
+    { requestId: id, kind: "promotion", businessId: id },
+    { requestId: id, kind: "quote", quoteId: id },
+  ]) {
+    const response = await handle(request("orders", payload));
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), { code: "PLATFORM_CREDITS_ONLY" });
+  }
+  assert.equal((await handle(request(`orders/${id}/card-session`, {}))).status, 409);
+  assert.deepEqual(f.calls, []);
+
+  f.provider.inspect = async () => ({ status: "APPROVED" });
+  const incomplete = (await f.service.reconcile(new Headers(), id)) as {
+    paymentState: string;
+    canCompleteApprovedPayment: boolean;
+  };
+  assert.equal(incomplete.paymentState, "approved");
+  assert.equal(incomplete.canCompleteApprovedPayment, false);
+  const capture = await handle(request(`orders/${id}/capture`, {}));
+  assert.equal(capture.status, 409);
+  assert.deepEqual(await capture.json(), { code: "PLATFORM_CREDITS_ONLY" });
+  assert.deepEqual(f.calls, ["authenticate", "store-read", "authenticate", "store-read"]);
+
+  f.calls.length = 0;
+  f.provider.inspect = async () => ({
+    status: "COMPLETED",
+    providerOrderId: "ORDER12345678",
+    captureId: "CAPTURE123",
+    completedAt: "2026-11-18T18:00:00.000Z",
+    amountMinor: 511,
+    currency: "EUR",
+    merchantId: "merchant",
+  });
+  const alreadyPaid = await handle(request(`orders/${id}/capture`, {}));
+  assert.equal(alreadyPaid.status, 200);
+  assert.equal((await alreadyPaid.json()).order.status, "captured");
+  assert.deepEqual(f.calls, ["authenticate", "store-read", "settle"]);
+});
+test("direct live contract purchase is unavailable under credits-only regardless of PayPal setup", async () => {
+  const prior = process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY;
+  process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY = "true";
+  try {
+    const response = await handlePackageSubscriptions(
+      new Request(`${origin}/api/paketi/contracts`, { method: "POST" }),
+      "live",
+    );
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), { code: "PLATFORM_CREDITS_ONLY" });
+  } finally {
+    if (prior === undefined) delete process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY;
+    else process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY = prior;
+  }
 });
 test("wrong environment cannot reach live provider", async () => {
   const f = serviceFixture({ environment: "sandbox" });

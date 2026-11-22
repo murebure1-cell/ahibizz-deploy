@@ -1,8 +1,7 @@
 "use client";
 
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
-  BankTopUpApprove,
   BankTopUpCreate,
   BankTopUpData,
   BankTopUpRequest,
@@ -23,7 +22,7 @@ const bankErrors: Record<string, string> = {
   BANK_TOPUP_PENDING: "Već imaš otvoren zahtjev za dopunu.",
   BANK_REFERENCE_USED: "Ova transakcija s bankovnog izvoda već je evidentirana.",
   AMOUNT_MISMATCH: "Iznos, valuta i referenca uplate moraju odgovarati zahtjevu.",
-  INVALID_BANK_TOPUP: "Provjeri unesene podatke sa izvoda.",
+  INVALID_BANK_TOPUP: "Osvježi zahtjev i pokušaj ponovo.",
   INVALID_CREDIT_BUNDLE: "Odaberi jednu od ponuđenih dopuna.",
   BANK_TOPUP_NOT_FOUND: "Zahtjev za dopunu više nije dostupan.",
   ACCOUNT_CHANGED: "Provjeri status naloga prije evidentiranja uplate.",
@@ -174,16 +173,16 @@ export function useBankTopUps(
     start(input: BankTopUpCreate) {
       return write("", input, "Podaci za uplatu su spremni.");
     },
-    approve(
-      request: BankTopUpRequest,
-      input: Pick<
-        BankTopUpApprove,
-        "amountMinor" | "paymentReference" | "bankTransactionReference"
-      >,
-    ) {
+    approve(request: BankTopUpRequest) {
       return write(
         `/${encodeURIComponent(request.id)}/approve`,
-        { ...input, currency: request.currency, expectedVersion: request.version },
+        {
+          amountMinor: request.amountMinor,
+          paymentReference: request.paymentReference,
+          currency: request.currency,
+          expectedVersion: request.version,
+          statementMatched: true,
+        },
         "Uplata je potvrđena i krediti su dodani na račun.",
       );
     },
@@ -273,33 +272,6 @@ export function CreditBankTransfer({
 }
 
 export function BankTopUpAdmin({ workspace }: { workspace: BankWorkspace }) {
-  function approve(event: FormEvent<HTMLFormElement>, request: BankTopUpRequest) {
-    event.preventDefault();
-    const fields = new FormData(event.currentTarget);
-    const amountMinor = marketingAmount(fields.get("amount"));
-    const paymentReference = String(fields.get("paymentReference") ?? "")
-      .trim()
-      .toUpperCase();
-    if (
-      amountMinor !== request.amountMinor ||
-      fields.get("currency") !== request.currency ||
-      paymentReference !== request.paymentReference ||
-      fields.get("statementChecked") !== "on"
-    ) {
-      const mismatch = event.currentTarget.querySelector<HTMLInputElement>(
-        amountMinor !== request.amountMinor ? '[name="amount"]' : '[name="paymentReference"]',
-      );
-      mismatch?.setCustomValidity("Uneseni podaci moraju odgovarati ovom zahtjevu.");
-      mismatch?.reportValidity();
-      return;
-    }
-    void workspace.approve(request, {
-      amountMinor,
-      paymentReference,
-      bankTransactionReference: String(fields.get("bankTransactionReference") ?? "").trim(),
-    });
-  }
-
   return (
     <section className={styles.order} aria-label="Bankovne dopune kredita">
       <h2>Bankovne dopune kredita</h2>
@@ -339,59 +311,16 @@ export function BankTopUpAdmin({ workspace }: { workspace: BankWorkspace }) {
                 )}
                 <p>Referenca uplate: {request.paymentReference}</p>
                 {request.status !== "approved" && (
-                  <details>
-                    <summary>
-                      {request.status === "cancelled"
-                        ? "Potvrdi primljenu uplatu"
-                        : "Potvrdi uplatu s izvoda"}
-                    </summary>
-                    <form className={styles.form} onSubmit={(event) => approve(event, request)}>
-                      <label>
-                        Knjiženi iznos
-                        <input
-                          name="amount"
-                          required
-                          inputMode="decimal"
-                          maxLength={10}
-                          onInput={(event) => event.currentTarget.setCustomValidity("")}
-                        />
-                      </label>
-                      <label>
-                        Valuta na izvodu
-                        <select name="currency" required defaultValue="">
-                          <option value="">Odaberi valutu</option>
-                          <option value={request.currency}>
-                            {request.currency === "BAM" ? "KM (BAM)" : "EUR"}
-                          </option>
-                        </select>
-                      </label>
-                      <label>
-                        Referenca uplate iz svrhe
-                        <input
-                          name="paymentReference"
-                          required
-                          maxLength={64}
-                          onInput={(event) => event.currentTarget.setCustomValidity("")}
-                        />
-                      </label>
-                      <label>
-                        ID bankovne transakcije s izvoda
-                        <input
-                          name="bankTransactionReference"
-                          minLength={3}
-                          maxLength={120}
-                          required
-                        />
-                      </label>
-                      <label className={styles.statementCheck}>
-                        <input name="statementChecked" type="checkbox" required />
-                        Uplata je knjižena na izvodu i podaci se podudaraju.
-                      </label>
-                      <button disabled={workspace.busy} type="submit">
-                        Evidentiraj uplatu i dodaj kredite
-                      </button>
-                    </form>
-                  </details>
+                  <>
+                    <p>Odobri kad se iznos, valuta i referenca poklope s bankovnim izvodom.</p>
+                    <button
+                      disabled={workspace.busy}
+                      type="button"
+                      onClick={() => void workspace.approve(request)}
+                    >
+                      {request.status === "cancelled" ? "Odobri naknadnu uplatu" : "Odobri uplatu"}
+                    </button>
+                  </>
                 )}
               </li>
             ))}

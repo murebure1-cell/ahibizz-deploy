@@ -9,6 +9,8 @@ import {
   getBillingService,
 } from "./billing";
 import { livePackageConfig } from "./paypal-subscriptions/setup";
+import { readPlatformCreditsOnly } from "./wallet/platform-policy";
+import { readWalletRate } from "./wallet/service";
 
 function reply(body: unknown, status = 200) {
   return Response.json(body, {
@@ -143,12 +145,22 @@ export function createBillingRequestHandler({
       if (request.method === "GET" && url.pathname === "/api/billing/catalog") {
         if ([...url.searchParams].length || request.url.length > 8192)
           return reply({ code: "INVALID_BILLING_INPUT" }, 400);
-        const selling =
-          !IS_PLAY_EDITION &&
-          process.env.AHIBIZZ_LIVE_SUBSCRIPTIONS_ENABLED !== "false" &&
-          Boolean(await livePackageConfig(getAuthDatabasePool()));
+        const platformCreditsOnly = readPlatformCreditsOnly();
+        const canSell =
+          !IS_PLAY_EDITION && process.env.AHIBIZZ_LIVE_SUBSCRIPTIONS_ENABLED !== "false";
+        const pool = canSell ? getAuthDatabasePool() : null;
+        const automaticCharging =
+          canSell && !platformCreditsOnly && Boolean(await livePackageConfig(pool));
+        const checkoutEnabled = platformCreditsOnly
+          ? canSell && !!pool && Boolean(await readWalletRate(pool))
+          : automaticCharging;
         return reply({
-          catalog: { ...getBillingCatalog(), checkoutEnabled: selling, automaticCharging: selling },
+          catalog: {
+            ...getBillingCatalog(),
+            checkoutEnabled,
+            automaticCharging,
+            platformCreditsOnly,
+          },
         });
       }
       const settings = configuration(),

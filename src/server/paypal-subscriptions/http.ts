@@ -3,6 +3,7 @@ import { AccountAccessError } from "../auth/accounts";
 import { getAuthDatabasePool, getAuthService } from "../auth/service";
 import { readFlatJson } from "../flat-json";
 import { CheckoutHttpError, readCheckoutJsonBody } from "../paypal/http";
+import { readPlatformCreditsOnly } from "../wallet/platform-policy";
 import { readWalletRate } from "../wallet/service";
 import { adminPackageBenefits, getPackageBenefits } from "./benefits";
 import { type SubscriptionEnvironment, sandboxPackageCatalog, subscriptionConfig } from "./config";
@@ -27,11 +28,15 @@ export async function handlePackageSubscriptions(
     const prefix = environment === "live" ? "/api/paketi/" : "/api/test-paketi/";
     if (!url.pathname.startsWith(prefix)) return reply({ code: "NOT_FOUND" }, 404);
     const path = url.pathname.slice(prefix.length);
+    const platformCreditsOnly = environment === "live" && readPlatformCreditsOnly();
+    if (platformCreditsOnly && path === "contracts" && request.method === "POST")
+      return reply({ code: "PLATFORM_CREDITS_ONLY" }, 409);
     const pool = getAuthDatabasePool();
     const config =
       environment === "live" ? await livePackageConfig(pool) : subscriptionConfig(environment);
     const acceptingOrders =
       !!config &&
+      !platformCreditsOnly &&
       (environment !== "live" || process.env.AHIBIZZ_LIVE_SUBSCRIPTIONS_ENABLED !== "false");
     if (environment === "live" && path === "admin/setup" && request.method === "POST") {
       if (request.headers.get("origin") !== process.env.BETTER_AUTH_URL)
@@ -90,6 +95,7 @@ export async function handlePackageSubscriptions(
       return reply({
         ...schedule,
         available: acceptingOrders,
+        platformCreditsOnly,
         walletRate:
           environment === "live" &&
           pool &&

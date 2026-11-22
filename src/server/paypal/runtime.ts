@@ -1,6 +1,7 @@
 import { paypalOrderFlow } from "../../lib/paypal-order-flow";
 import { getAccountService } from "../auth/accounts";
 import { getAuthDatabasePool, getAuthService, readAuthConfiguration } from "../auth/service";
+import { readPlatformCreditsOnly } from "../wallet/platform-policy";
 import { creditCardTopUpsAvailable, readCreditTopUpBankOnly } from "./credit-top-up-policy";
 import {
   CheckoutHttpError,
@@ -57,6 +58,7 @@ export function checkoutConfiguration(
     creditCardTopUps: env.PAYPAL_CREDIT_CARD_TOPUPS_ENABLED === "true",
     creditCardTopUpsPilotOwner: env.PAYPAL_CREDIT_CARD_TOPUPS_PILOT_OWNER === "true",
     creditTopUpBankOnly: readCreditTopUpBankOnly(env),
+    platformCreditsOnly: readPlatformCreditsOnly(env),
     refundsApproved: env.PAYPAL_CHECKOUT_REFUNDS_ENABLED === "true",
   };
 }
@@ -93,11 +95,15 @@ const captureFailureCodes = new Set([
   "CARD_AUTHENTICATION_NOT_APPROVED",
 ]);
 export function checkoutCatalog(config: CheckoutConfiguration | null, role?: string) {
+  const platformCreditsOnly = config?.platformCreditsOnly ?? readPlatformCreditsOnly(),
+    available = Boolean(config?.chargingApproved && !platformCreditsOnly);
   return {
-    available: Boolean(config?.chargingApproved),
-    creditTopUpBankOnly: config?.creditTopUpBankOnly ?? readCreditTopUpBankOnly(),
+    available,
+    platformCreditsOnly,
+    creditTopUpBankOnly:
+      platformCreditsOnly || (config?.creditTopUpBankOnly ?? readCreditTopUpBankOnly()),
     creditCardTopUps: Boolean(
-      config?.chargingApproved && creditCardTopUpsAvailable(config, config.environment, role),
+      available && config && creditCardTopUpsAvailable(config, config.environment, role),
     ),
     environment: config?.environment ?? null,
     currency: "EUR",
@@ -108,12 +114,12 @@ export function checkoutCatalog(config: CheckoutConfiguration | null, role?: str
       version: "category-seven-days-20261118",
     },
     support: {
-      available: Boolean(config?.chargingApproved && config.environment === "sandbox"),
+      available: available && config?.environment === "sandbox",
       minMinor: 100,
       maxMinor: 100000,
     },
     paypalBosnianSupported: false,
-    paypalClientId: config?.chargingApproved ? config.clientId : null,
+    paypalClientId: available ? (config?.clientId ?? null) : null,
   };
 }
 function dto(order: CheckoutOrder) {
@@ -147,6 +153,7 @@ export function createCheckoutService({
   actor: (headers: Headers, owner?: boolean) => Promise<CheckoutActor>;
 }): CheckoutHttpService {
   function payable() {
+    if (config.platformCreditsOnly) throw new CheckoutHttpError(409, "PLATFORM_CREDITS_ONLY");
     if (!config.chargingApproved) throw new CheckoutHttpError(503, "CHECKOUT_NOT_RELEASED");
   }
   function chargePurpose(kind: "promotion" | "support" | "quote") {
@@ -378,6 +385,16 @@ export function createCheckoutService({
       return { order: dto(order) };
     },
     async capture(headers, id) {
+      if (config.platformCreditsOnly) {
+        const order = await store.read(await actor(headers), id);
+        matching(order);
+        if (terminal.has(order.status)) return { order: dto(order) };
+        if (order.providerOrderId) {
+          const result = await reconcile(order);
+          if (terminal.has(result.order.status)) return { order: dto(result.order) };
+        }
+        throw new CheckoutHttpError(409, "PLATFORM_CREDITS_ONLY");
+      }
       payable();
       const identity = await actor(headers);
       let order: CheckoutOrder;
@@ -434,6 +451,7 @@ export function createCheckoutService({
       const result = await reconcile(order);
       const canCompleteApprovedPayment =
         result.paymentState === "approved" &&
+        !config.platformCreditsOnly &&
         config.chargingApproved &&
         (await store.canCompleteApprovedPayment(identity, order));
       return { ...result, order: dto(result.order), canCompleteApprovedPayment };

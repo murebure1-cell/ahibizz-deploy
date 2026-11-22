@@ -4,11 +4,16 @@ import { AdExplorer } from "../../../components/marketing/AdExplorer";
 import styles from "../../../components/marketing/ad-guide.module.css";
 import { volumeLabels } from "../../../lib/ad-pricing";
 import { IS_PLAY_EDITION } from "../../../lib/distribution";
+import { categoryPromotionPriceBamMinor } from "../../../lib/marketing";
 import { supportEmail } from "../../../lib/support-requests";
+import { formatCreditsFromBam } from "../../../lib/wallet";
 import { publicOptInAudience } from "../../../server/ad-audience-sample";
+import { getAuthDatabasePool } from "../../../server/auth/service";
 import { publicDirectoryCounts } from "../../../server/directory/read-service";
 import { publicAdAudience } from "../../../server/marketing/ad-delivery";
 import { getPublicAdPricing } from "../../../server/marketing/ad-pricing";
+import { readPlatformCreditsOnly } from "../../../server/wallet/platform-policy";
+import { readWalletRate } from "../../../server/wallet/service";
 
 export const metadata = {
   title: "Oglašavanje na AhiBizzu",
@@ -48,11 +53,14 @@ const formatNumber = (value: number) => new Intl.NumberFormat("bs-BA").format(va
 const platformNames = { android: "Android", ios: "iOS", desktop: "Računar", other: "Ostalo" };
 
 export default async function PromotionPage() {
-  const [pricing, audience, directory, sample] = await Promise.all([
+  const creditsOnly = readPlatformCreditsOnly();
+  const pool = creditsOnly ? getAuthDatabasePool() : null;
+  const [pricing, audience, directory, sample, walletRate] = await Promise.all([
     getPublicAdPricing(),
     publicAdAudience(),
     publicDirectoryCounts(),
     publicOptInAudience(),
+    pool ? readWalletRate(pool).catch(() => null) : null,
   ]);
   const contactPhone =
     pricing?.contactPhone && /^\+[1-9]\d{6,14}$/.test(pricing.contactPhone)
@@ -103,7 +111,7 @@ export default async function PromotionPage() {
         <a href="#publika">Publika</a>
         <a href="#uslovi">Uslovi</a>
       </nav>
-      <AdExplorer pricing={pricing} />
+      <AdExplorer pricing={pricing} creditRate={creditsOnly ? walletRate : undefined} />
       <section className={styles.section} id="ciljanje">
         <h2>Kome se kampanja prikazuje?</h2>
         <div className={`${styles.tiles} ${styles.targetTiles}`}>
@@ -248,7 +256,10 @@ export default async function PromotionPage() {
                 </dl>
                 <p>
                   Primjenjuje se najveći odobreni popust. Minimalni zakup banera iznosi{" "}
-                  {formatNumber(pricing.terms.minimumMinor / 100)} KM.
+                  {creditsOnly
+                    ? formatCreditsFromBam(pricing.terms.minimumMinor, walletRate)
+                    : `${formatNumber(pricing.terms.minimumMinor / 100)} KM`}
+                  .
                 </p>
               </>
             ) : (
@@ -271,7 +282,9 @@ export default async function PromotionPage() {
                 skripti i praćenja posjetilaca.
               </li>
               <li>
-                U ponudi vidiš cijenu i uslove prije plaćanja karticom, PayPalom ili Ahi kreditima.
+                {creditsOnly
+                  ? "U ponudi vidiš cijenu i uslove prije plaćanja Ahi kreditima."
+                  : "U ponudi vidiš cijenu i uslove prije plaćanja karticom, PayPalom ili Ahi kreditima."}
               </li>
             </ul>
           </article>
@@ -284,7 +297,13 @@ export default async function PromotionPage() {
             <article>
               <Icon name="shop" />
               <h3>U kategoriji</h3>
-              <p>Istakni objavljenu djelatnost na 7 dana za 10 KM.</p>
+              <p>
+                Istakni objavljenu djelatnost na 7 dana ·{" "}
+                {creditsOnly
+                  ? formatCreditsFromBam(categoryPromotionPriceBamMinor, walletRate)
+                  : "10 KM"}
+                .
+              </p>
               <Link href="/naplata">
                 Odaberi djelatnost <Icon name="chevron" />
               </Link>

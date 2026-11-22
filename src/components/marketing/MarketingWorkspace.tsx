@@ -8,6 +8,7 @@ import type { BankTopUpCreate } from "../../lib/bank-credit-topup";
 import { billingMoney } from "../../lib/billing";
 import {
   adPlacements,
+  categoryPromotionPriceBamMinor,
   isPlacement,
   isProductionService,
   type MarketingCommand,
@@ -18,7 +19,7 @@ import {
   type PlacementTarget,
   productionServices,
 } from "../../lib/marketing";
-import { ahiCreditTopUps } from "../../lib/wallet";
+import { ahiCreditTopUps, creditsForBamMinor, formatAhiCredits } from "../../lib/wallet";
 import { AdCampaignForm, CampaignDetails } from "./AdCampaignForm";
 import { AdCreativeManager } from "./AdCreativeManager";
 import { AdRateEditor } from "./AdRateEditor";
@@ -72,6 +73,8 @@ function OfferCard({
   admin,
   checkoutAvailable,
   creditTopUpBankOnly,
+  platformCreditsOnly,
+  walletRate,
   balance,
   submit,
   busy,
@@ -82,6 +85,8 @@ function OfferCard({
   admin: boolean;
   checkoutAvailable: boolean;
   creditTopUpBankOnly: boolean;
+  platformCreditsOnly: boolean;
+  walletRate: number | null;
   balance: number;
   submit: (command: MarketingCommand) => void;
   busy: boolean;
@@ -96,6 +101,10 @@ function OfferCard({
         ? order.campaign.welcomeMinor
         : order.campaign.estimateMinor
     : null;
+  const suggestedAmount =
+    suggested != null ? Math.max(suggested, order.campaign?.minimumMinor ?? 0) : null;
+  const suggestedCredits =
+    suggestedAmount !== null ? creditsForBamMinor(suggestedAmount, walletRate ?? 0) : null;
   const title =
     order.kind === "credits"
       ? `${credits(order.quantity)} Ahi Credits`
@@ -107,7 +116,7 @@ function OfferCard({
     submit({
       id: order.id,
       action: "quote",
-      amountMinor: marketingAmount(fields.get("price")),
+      ...(!platformCreditsOnly ? { amountMinor: marketingAmount(fields.get("price")) } : {}),
       instructions: String(fields.get("instructions") ?? ""),
       ...(alternative > 0 ? { creditPrice: alternative } : {}),
       ...(order.campaign ? { expectedAssetVersion: order.campaign.assetVersion } : {}),
@@ -149,7 +158,12 @@ function OfferCard({
             : marketingLabels[order.status]}
         </span>
       </header>
-      {order.campaign && <CampaignDetails campaign={order.campaign} />}
+      {order.campaign && (
+        <CampaignDetails
+          campaign={order.campaign}
+          creditRate={platformCreditsOnly ? walletRate : undefined}
+        />
+      )}
       {order.campaign && ["requested", "quoted", "paid"].includes(order.status) && (
         <AdCreativeManager
           accountId={accountId}
@@ -161,8 +175,23 @@ function OfferCard({
       )}
       {order.amountMinor !== null && (
         <p className={styles.amount}>
-          {billingMoney(order.amountMinor)}
-          {order.creditPrice !== null && <small> ili {credits(order.creditPrice)} kredita</small>}
+          {platformCreditsOnly &&
+          order.kind !== "credits" &&
+          !order.onlinePending &&
+          (order.creditPrice !== null || order.status === "quoted") ? (
+            order.creditPrice !== null ? (
+              formatAhiCredits(Math.round(order.creditPrice * 100))
+            ) : (
+              "Cijena u kreditima nije dostupna"
+            )
+          ) : (
+            <>
+              {billingMoney(order.amountMinor)}
+              {!platformCreditsOnly && order.creditPrice !== null && (
+                <small> ili {credits(order.creditPrice)} kredita</small>
+              )}
+            </>
+          )}
         </p>
       )}
       {admin && order.productionReceiptConflict && (
@@ -181,9 +210,10 @@ function OfferCard({
       )}
       {!admin &&
         order.status === "quoted" &&
-        ((checkoutAvailable && !bankOnlyTopUp) || (bankOnlyTopUp && order.onlinePending)) && (
+        ((checkoutAvailable && !bankOnlyTopUp && !platformCreditsOnly) ||
+          ((bankOnlyTopUp || platformCreditsOnly) && order.onlinePending)) && (
           <Link className={styles.primaryLink} href={`/naplata?ponuda=${order.id}`}>
-            {bankOnlyTopUp
+            {bankOnlyTopUp || platformCreditsOnly
               ? "Provjeri otvorenu uplatu"
               : order.onlinePending
                 ? "Nastavi otvorenu uplatu"
@@ -192,9 +222,13 @@ function OfferCard({
         )}
       {order.status === "quoted" && !order.onlinePending && (admin || !bankOnlyTopUp) && (
         <div className={styles.instructions}>
-          <strong>{isProductionService(order.kind) ? "Detalji ponude" : "Upute za uplatu"}</strong>
+          <strong>
+            {platformCreditsOnly || isProductionService(order.kind)
+              ? "Detalji ponude"
+              : "Upute za uplatu"}
+          </strong>
           <p>{order.instructions}</p>
-          <small>Poziv na broj: {order.id}</small>
+          {!platformCreditsOnly && <small>Poziv na broj: {order.id}</small>}
         </div>
       )}
       {admin && order.status === "requested" && (
@@ -223,32 +257,53 @@ function OfferCard({
               </select>
             </label>
           )}
-          <label>
-            Cijena (KM)
-            <input
-              name="price"
-              inputMode="decimal"
-              required
-              maxLength={10}
-              key={benefit}
-              readOnly={Boolean(benefit)}
-              defaultValue={
-                suggested != null
-                  ? (Math.max(suggested, order.campaign?.minimumMinor ?? 0) / 100).toFixed(2)
-                  : undefined
-              }
-            />
-          </label>
-          {isPlacement(order.kind) && !benefit && (
+          {platformCreditsOnly ? (
+            <label>
+              Cijena (Ahi krediti)
+              <input
+                key={benefit}
+                type="number"
+                name="credits"
+                min="0.01"
+                step="0.01"
+                max="100000"
+                required
+                readOnly={Boolean(benefit) && suggestedCredits !== null}
+                defaultValue={
+                  suggestedCredits !== null ? (suggestedCredits / 100).toFixed(2) : undefined
+                }
+              />
+            </label>
+          ) : (
+            <label>
+              Cijena (KM)
+              <input
+                name="price"
+                inputMode="decimal"
+                required
+                maxLength={10}
+                key={benefit}
+                readOnly={Boolean(benefit)}
+                defaultValue={
+                  suggestedAmount !== null ? (suggestedAmount / 100).toFixed(2) : undefined
+                }
+              />
+            </label>
+          )}
+          {!platformCreditsOnly && isPlacement(order.kind) && !benefit && (
             <label>
               Posebna cijena u kreditima (opcionalno)
               <input name="credits" type="number" min="1" step="1" max="100000" />
             </label>
           )}
           <label>
-            {isProductionService(order.kind)
-              ? "Opis usluge i upute za uplatu"
-              : "Primalac, račun i upute za uplatu"}
+            {platformCreditsOnly
+              ? isProductionService(order.kind)
+                ? "Opis usluge"
+                : "Detalji ponude"
+              : isProductionService(order.kind)
+                ? "Opis usluge i upute za uplatu"
+                : "Primalac, račun i upute za uplatu"}
             <textarea name="instructions" maxLength={600} required rows={3} />
           </label>
           <button disabled={busy} type="submit">
@@ -256,7 +311,7 @@ function OfferCard({
           </button>
         </form>
       )}
-      {admin && order.status === "quoted" && !order.onlinePending && (
+      {admin && !platformCreditsOnly && order.status === "quoted" && !order.onlinePending && (
         <form onSubmit={confirm} className={styles.form}>
           <label>
             Primljeno na računu (KM)
@@ -274,7 +329,7 @@ function OfferCard({
       {!admin &&
         order.status === "quoted" &&
         !order.onlinePending &&
-        isPlacement(order.kind) &&
+        (isPlacement(order.kind) || (platformCreditsOnly && isProductionService(order.kind))) &&
         order.creditPrice !== null &&
         (balance >= order.creditPrice ? (
           <button
@@ -355,7 +410,8 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
     ? bankTopUps.data?.offers.find((offer) => offer.quantity === bundle.quantity)
     : null;
   const pendingBank = bankTopUps.data?.requests.find((request) => request.status === "pending");
-  const bankOnly = data?.creditTopUpBankOnly === true;
+  const platformCreditsOnly = data?.platformCreditsOnly === true;
+  const bankOnly = platformCreditsOnly || data?.creditTopUpBankOnly === true;
   const paypalAvailable = !bankOnly && data?.checkoutAvailable === true;
   const cardAvailable = paypalAvailable && data?.creditCardTopUps === true;
   const method =
@@ -544,6 +600,7 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
       </div>
     );
   const unitPrice = data.creditUnitBamMinor ?? null;
+  const categoryCredits = creditsForBamMinor(categoryPromotionPriceBamMinor, unitPrice ?? 0);
   const orders = data.orders.filter((order) => !order.bankTopUp);
   const topUpInProgress = busy || bankTopUps.busy;
   return (
@@ -745,7 +802,14 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
         <article className={styles.order}>
           <header>
             <h2>Isticanje u kategoriji</h2>
-            <small>7 dana · 10 KM</small>
+            <small>
+              7 dana
+              {platformCreditsOnly
+                ? categoryCredits === null
+                  ? ""
+                  : ` · ${formatAhiCredits(categoryCredits)}`
+                : " · 10 KM"}
+            </small>
           </header>
           {data.promotions.map((item) => (
             <p key={item.id}>
@@ -753,7 +817,9 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
               {new Date(item.endsAt).toLocaleDateString("bs-BA")}
             </p>
           ))}
-          {(data.checkoutAvailable || unitPrice !== null) && data.businesses.length > 0 ? (
+          {(platformCreditsOnly
+            ? categoryCredits !== null
+            : data.checkoutAvailable || unitPrice !== null) && data.businesses.length > 0 ? (
             <Link className={styles.primaryLink} href="/naplata">
               Istakni djelatnost
             </Link>
@@ -862,6 +928,8 @@ function MarketingView({ accountId, mode, target, campaign, promotionView }: Mar
             refresh={() => setRefresh((v) => v + 1)}
             checkoutAvailable={data.checkoutAvailable}
             creditTopUpBankOnly={bankOnly}
+            platformCreditsOnly={platformCreditsOnly}
+            walletRate={unitPrice}
             balance={data.balance}
             admin={mode === "admin"}
             busy={busy}

@@ -303,6 +303,7 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
   )
     throw new PayPalLiveError("INVALID_CONFIGURATION");
   function canCharge(order: LiveOrder, refund = false) {
+    if (!refund && config.platformCreditsOnly) throw new PayPalLiveError("PLATFORM_CREDITS_ONLY");
     if (!(refund ? config.refundsApproved : config.chargingApproved) || !config.webhookId)
       throw new PayPalLiveError("LIVE_CHECKOUT_NOT_RELEASED");
     if (

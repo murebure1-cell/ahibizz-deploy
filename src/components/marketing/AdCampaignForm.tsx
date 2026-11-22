@@ -25,6 +25,7 @@ import {
   type Placement,
   type PlacementTarget,
 } from "../../lib/marketing";
+import { formatCreditsFromBam } from "../../lib/wallet";
 import { CampaignGeoTime, countryLabel } from "./CampaignGeoTime";
 import styles from "./marketing.module.css";
 
@@ -32,6 +33,9 @@ const assetName = (a: BusinessMediaAsset) =>
   a.kind === "logo" ? "Logotip" : a.kind === "cover" ? "Naslovna slika" : `Fotografija ${a.slot}`;
 const assetKey = (a: BusinessMediaAsset) => `${a.kind}:${a.slot}:${a.version}`;
 const formatNumber = (n: number) => new Intl.NumberFormat("bs-BA").format(n);
+function adAmount(minor: number, creditRate: number | null | undefined) {
+  return creditRate === undefined ? billingMoney(minor) : formatCreditsFromBam(minor, creditRate);
+}
 export function AdCampaignForm({
   data,
   target,
@@ -57,6 +61,7 @@ export function AdCampaignForm({
   const [manual, setManual] = useState(false);
   const [validationError, setValidationError] = useState("");
   const pending = useRef<{ key: string; id: string } | null>(null);
+  const creditRate = data.platformCreditsOnly ? (data.creditUnitBamMinor ?? null) : undefined;
   const business = data.businesses.find((b) => b.id === businessId);
   const formats = adFormats.filter(
     (f) =>
@@ -100,12 +105,23 @@ export function AdCampaignForm({
         }
         dailyWindow = { startMinute, endMinute, timeZone };
       }
+      const budget = value("budget");
+      const budgetMinor =
+        budget === null
+          ? null
+          : creditRate === undefined
+            ? Math.round(Number(budget) * 100)
+            : (Math.round(Number(budget) * 100) * (creditRate ?? 0)) / 100;
+      if (budgetMinor !== null && (!Number.isSafeInteger(budgetMinor) || budgetMinor < 1)) {
+        setValidationError("Odaberi drugi iznos budžeta.");
+        return;
+      }
       campaign = {
         device,
         page,
         format: chosen.id,
         impressionGoal: Number(impressions),
-        budgetMinor: value("budget") ? Math.round(Number(value("budget")) * 100) : null,
+        budgetMinor,
         startsOn: value("startsOn"),
         city: null,
         targetCities,
@@ -231,13 +247,13 @@ export function AdCampaignForm({
               <div className={styles.instructions}>
                 <strong>
                   Procjena zakupa ·{" "}
-                  {billingMoney(Math.max(estimate.netMinor, estimate.minimumMinor))}
+                  {adAmount(Math.max(estimate.netMinor, estimate.minimumMinor), creditRate)}
                 </strong>
                 {estimate.discountPercent > 0 && (
                   <span>Popust na prikaze {estimate.discountPercent}%</span>
                 )}
                 {estimate.belowMinimum && (
-                  <span>Minimalni zakup {billingMoney(estimate.minimumMinor)}</span>
+                  <span>Minimalni zakup {adAmount(estimate.minimumMinor, creditRate)}</span>
                 )}
               </div>
             )}
@@ -249,14 +265,15 @@ export function AdCampaignForm({
                   <input name="startsOn" type="date" />
                 </label>
                 <label>
-                  Najveći budžet (KM)
+                  Najveći budžet ({creditRate === undefined ? "KM" : "Ahi krediti"})
                   <input
                     name="budget"
                     type="number"
                     inputMode="decimal"
                     step="0.01"
                     min="0.01"
-                    max="1000000"
+                    max={creditRate ? Math.floor((100000000 * 100) / creditRate) / 100 : 1000000}
+                    disabled={creditRate === null}
                   />
                 </label>
                 <CampaignGeoTime locations={data.locations} listing={page === "listing"} />
@@ -403,8 +420,10 @@ export function AdCampaignForm({
 }
 export function CampaignDetails({
   campaign: c,
+  creditRate,
 }: {
   campaign: NonNullable<MarketingData["orders"][number]["campaign"]>;
+  creditRate?: number | null;
 }) {
   const f = adFormats.find((format) => format.id === c.format);
   return (
@@ -434,7 +453,9 @@ export function CampaignDetails({
         <span>{[c.city, c.categoryName, c.keyword].filter(Boolean).join(" · ")}</span>
       )}
       {c.estimateMinor != null && (
-        <span>Procijenjeni zakup {billingMoney(Math.max(c.estimateMinor, c.minimumMinor))}</span>
+        <span>
+          Procijenjeni zakup {adAmount(Math.max(c.estimateMinor, c.minimumMinor), creditRate)}
+        </span>
       )}
       {c.benefit && (
         <span>{c.benefit === "advance" ? "Avansni popust" : "Popust dobrodošlice"}</span>
@@ -448,7 +469,7 @@ export function CampaignDetails({
           {c.maxPriceMinor != null ? `do ${billingMoney(c.maxPriceMinor)}` : ""}
         </span>
       )}
-      {c.budgetMinor != null && <span>Budžet do {billingMoney(c.budgetMinor)}</span>}
+      {c.budgetMinor != null && <span>Budžet do {adAmount(c.budgetMinor, creditRate)}</span>}
       {c.creative && (
         <span>
           {c.creative.kind === "gallery"

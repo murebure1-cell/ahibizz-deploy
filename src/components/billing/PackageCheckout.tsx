@@ -18,7 +18,7 @@ import {
   stoppedPayPalInstallments,
   walletPackageStatus,
 } from "../../lib/sandbox-subscriptions";
-import { creditsForBamMinor } from "../../lib/wallet";
+import { creditsForBamMinor, formatAhiCredits } from "../../lib/wallet";
 import styles from "./billing.module.css";
 import { SubscriptionCardButton } from "./SubscriptionCardButton";
 
@@ -32,6 +32,7 @@ type Business = {
 };
 type Catalog = PackageBenefitsCatalog & {
   available: boolean;
+  platformCreditsOnly?: boolean;
   walletRate?: number | null;
   packages: SandboxPackageQuote[];
   sellable: BillingPackageId[];
@@ -53,9 +54,6 @@ const statusLabels: Record<SandboxContractStatus, string> = {
   EXPIRED: "Raspored naplate završen",
 };
 
-function creditAmount(minor: number) {
-  return `${new Intl.NumberFormat("bs-BA", { maximumFractionDigits: 2 }).format(minor / 100)} kredita`;
-}
 function StoppedInstallments({ contract }: { contract: SandboxPackageContract }) {
   const remaining = stoppedPayPalInstallments(contract);
   if (!remaining) return null;
@@ -196,11 +194,13 @@ export function PackageCheckout({
   const creditPrice = catalog?.walletRate
     ? creditsForBamMinor(monthly ? selected.monthlyMinor : selected.annualMinor, catalog.walletRate)
     : null;
-  const hasPayment = Boolean(catalog?.available || creditPrice);
+  const creditsOnly = catalog?.platformCreditsOnly === true;
+  const onlineAvailable = catalog?.available === true && !creditsOnly;
+  const hasPayment = onlineAvailable || creditPrice !== null;
   const ready = hasPayment && Boolean(catalog?.sellable.includes(packageId));
   const methods: ("card" | "paypal" | "credits")[] = [];
   if (creditPrice !== null) methods.push("credits");
-  if (catalog?.available) methods.push("card", "paypal");
+  if (onlineAvailable) methods.push("card", "paypal");
   const paymentMethod = methods.includes(requestedMethod)
     ? requestedMethod
     : (methods[0] ?? requestedMethod);
@@ -342,7 +342,7 @@ export function PackageCheckout({
   }
 
   async function startCard(existing?: SandboxPackageContract) {
-    if (eventLock.current || (!existing && !canSubmit))
+    if (eventLock.current || creditsOnly || (!existing && !canSubmit))
       throw new Error("Plaćanje trenutno nije dostupno.");
     reportPoll.current?.abort();
     eventLock.current = true;
@@ -400,7 +400,12 @@ export function PackageCheckout({
     action: "create" | "resume" | "refresh" | "cancel" | "pay-credits",
     existing?: SandboxPackageContract,
   ) {
-    if (eventLock.current || (action === "create" && !canSubmit)) return;
+    if (
+      eventLock.current ||
+      (action === "create" && !canSubmit) ||
+      (creditsOnly && (action === "resume" || (action === "create" && paymentMethod !== "credits")))
+    )
+      return;
     reportPoll.current?.abort();
     eventLock.current = true;
     setBusy(true);
@@ -467,7 +472,15 @@ export function PackageCheckout({
         <div className={styles.orderSummary}>
           <h2>{selected.name}</h2>
           <p>{monthly ? "12 mjesečnih rata" : "Jedna uplata za 12 mjeseci"}</p>
-          <strong>{billingMoney(monthly ? selected.monthlyMinor : selected.annualMinor)}</strong>
+          {catalog && (
+            <strong>
+              {creditsOnly
+                ? creditPrice !== null
+                  ? formatAhiCredits(creditPrice)
+                  : "Cijena trenutno nije dostupna"
+                : billingMoney(monthly ? selected.monthlyMinor : selected.annualMinor)}
+            </strong>
+          )}
           {benefit && (
             <p>
               {benefit.nearbyDays || benefit.featuredDays
@@ -505,7 +518,9 @@ export function PackageCheckout({
         <p className={styles.notice}>
           {sandbox
             ? "Probna naplata trenutno nije dostupna."
-            : "Online plaćanje paketa još nije uključeno."}
+            : creditsOnly
+              ? "Plaćanje paketa kreditima trenutno nije dostupno."
+              : "Online plaćanje paketa još nije uključeno."}
         </p>
       )}
       {hasPayment && !ready && (
@@ -581,8 +596,8 @@ export function PackageCheckout({
               <p className={styles.notice}>
                 {paymentMethod === "credits" && creditPrice !== null
                   ? monthly
-                    ? `${creditAmount(creditPrice)} po rati. Svaku dospjelu ratu plaćaš u svom nalogu.`
-                    : `${creditAmount(creditPrice)} za 12 mjeseci.`
+                    ? `${formatAhiCredits(creditPrice)} po rati. Svaku dospjelu ratu plaćaš u svom nalogu.`
+                    : `${formatAhiCredits(creditPrice)} za 12 mjeseci.`
                   : monthly
                     ? `${billingMoney(quote.monthlyMinor)} mjesečno. PayPal naplaćuje 12 rata po ${checkoutEuro(quote.monthlyEurMinor)}.`
                     : `${billingMoney(quote.annualMinor)} godišnje. PayPal naplaćuje ${checkoutEuro(quote.annualEurMinor)} jednom za 12 mjeseci.`}
@@ -600,39 +615,45 @@ export function PackageCheckout({
                   ? "Prihvatam ugovor na 12 mjeseci i 12 prikazanih mjesečnih rata."
                   : "Prihvatam jednu uplatu za 12 mjeseci usluge."}
             </label>
-            <fieldset className={styles.methodPicker}>
-              <legend>Način plaćanja</legend>
-              {methods.map((method) => (
-                <label key={method}>
-                  <input
-                    type="radio"
-                    name="package-method"
-                    value={method}
-                    checked={paymentMethod === method}
-                    onChange={() => {
-                      setPaymentMethod(method);
-                      accept(false);
-                      setCardResume("");
-                      setError("");
-                    }}
-                  />
-                  {method === "card" ? "Kartica" : method === "credits" ? "Ahi krediti" : "PayPal"}
-                </label>
-              ))}
-            </fieldset>
+            {!creditsOnly && (
+              <fieldset className={styles.methodPicker}>
+                <legend>Način plaćanja</legend>
+                {methods.map((method) => (
+                  <label key={method}>
+                    <input
+                      type="radio"
+                      name="package-method"
+                      value={method}
+                      checked={paymentMethod === method}
+                      onChange={() => {
+                        setPaymentMethod(method);
+                        accept(false);
+                        setCardResume("");
+                        setError("");
+                      }}
+                    />
+                    {method === "card"
+                      ? "Kartica"
+                      : method === "credits"
+                        ? "Ahi krediti"
+                        : "PayPal"}
+                  </label>
+                ))}
+              </fieldset>
+            )}
             {paymentMethod === "card" && !cardResume
               ? cardButton()
               : paymentMethod !== "card" && (
                   <div className={styles.actions}>
                     <button type="submit" disabled={!canSubmit} className={styles.primary}>
                       {paymentMethod === "credits" && creditPrice
-                        ? `Plati ${creditAmount(creditPrice)}`
+                        ? `Plati ${formatAhiCredits(creditPrice)}`
                         : sandbox
                           ? "Odobri u PayPal Sandboxu"
                           : "Nastavi na PayPal"}
                     </button>
                     {paymentMethod === "credits" && balance !== null && (
-                      <p>Stanje · {creditAmount(Math.round(balance * 100))}</p>
+                      <p>Stanje · {formatAhiCredits(Math.round(balance * 100))}</p>
                     )}
                     {paymentMethod === "credits" && (
                       <a className={styles.secondary} href="/nalog?odjeljak=krediti">
@@ -676,7 +697,7 @@ export function PackageCheckout({
                   <dt>Uplaćeno</dt>
                   <dd>
                     {c.paymentMethod === "credits" && c.cycleCreditMinor
-                      ? creditAmount(c.paidCycles * c.cycleCreditMinor)
+                      ? formatAhiCredits(c.paidCycles * c.cycleCreditMinor)
                       : checkoutEuro(c.paidEurMinor)}
                   </dd>
                 </div>
@@ -718,7 +739,7 @@ export function PackageCheckout({
               )}
               <StoppedInstallments contract={c} />
               <div className={styles.actions}>
-                {(c.status === "CREATING" || c.status === "APPROVAL_PENDING") && (
+                {!creditsOnly && (c.status === "CREATING" || c.status === "APPROVAL_PENDING") && (
                   <>
                     <button
                       type="button"
@@ -758,7 +779,7 @@ export function PackageCheckout({
                       onClick={() => void perform("pay-credits", c)}
                     >
                       Plati {c.paidCycles + 1}. ratu od {dueDate(c.endsAt)} ·{" "}
-                      {creditAmount(c.cycleCreditMinor)}
+                      {formatAhiCredits(c.cycleCreditMinor)}
                     </button>
                   ) : (
                     <p>Sljedeća rata · {dueDate(c.endsAt)}</p>
@@ -807,7 +828,8 @@ export function PackageCheckout({
                     </button>
                   ))}
               </div>
-              {cardResume === c.id &&
+              {!creditsOnly &&
+                cardResume === c.id &&
                 (c.status === "CREATING" || c.status === "APPROVAL_PENDING") &&
                 cardButton(c)}
             </article>

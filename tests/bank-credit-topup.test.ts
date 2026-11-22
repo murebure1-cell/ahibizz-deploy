@@ -96,11 +96,19 @@ test("bank commands reject unknown fields, amounts, currencies and controls in s
     paymentReference: `AHI-${id.replaceAll("-", "").toUpperCase()}`,
   };
   assert.equal(parseBankTopUpApprove(base).bankTransactionReference, "STATEMENT-01");
+  const { bankTransactionReference: _reference, ...statement } = base;
+  assert.equal(
+    parseBankTopUpApprove({ ...statement, statementMatched: true }).statementMatched,
+    true,
+  );
   for (const value of [
     { ...base, bankTransactionReference: "xx\nsecret" },
     { ...base, paymentReference: "wrong" },
     { ...base, currency: "USD" },
     { ...base, userId: "admin" },
+    { ...statement, statementMatched: false },
+    { ...base, statementMatched: true },
+    { ...base, bankTransactionReference: "memo:fixture" },
   ])
     assert.throws(() => parseBankTopUpApprove(value));
   assert.deepEqual(parseBankTopUpCancel({ expectedVersion: 1 }), { expectedVersion: 1 });

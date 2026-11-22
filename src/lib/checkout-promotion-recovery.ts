@@ -15,7 +15,11 @@ function responseOrder(value: unknown): unknown {
   return (value as { order: unknown }).order;
 }
 
-function recoverableOrder(value: unknown, bankOnlyTopUp = false): value is CardOrder {
+function recoverableOrder(
+  value: unknown,
+  bankOnlyTopUp = false,
+  platformCreditsOnly = false,
+): value is CardOrder {
   if (!value || typeof value !== "object") return false;
   const order = value as CardOrder;
   return (
@@ -27,11 +31,12 @@ function recoverableOrder(value: unknown, bankOnlyTopUp = false): value is CardO
       typeof order.businessId === "string" &&
       uuid.test(order.businessId)) ||
       (order.kind === "quote" &&
-        order.quoteKind === "credits" &&
-        (order.flow === "sdk" || (bankOnlyTopUp && order.flow === "redirect")) &&
-        order.businessId === null &&
         typeof order.quoteId === "string" &&
-        uuid.test(order.quoteId))) &&
+        uuid.test(order.quoteId) &&
+        (platformCreditsOnly ||
+          (order.quoteKind === "credits" &&
+            (order.flow === "sdk" || (bankOnlyTopUp && order.flow === "redirect")) &&
+            order.businessId === null)))) &&
     (order.businessTitle === null || typeof order.businessTitle === "string") &&
     Number.isSafeInteger(order.amountMinor) &&
     order.amountMinor > 0 &&
@@ -44,8 +49,15 @@ function recoverableOrder(value: unknown, bankOnlyTopUp = false): value is CardO
   );
 }
 
-export function canCancelPromotionOrder(order: CardOrder | null, bankOnlyTopUp = false): boolean {
-  return recoverableOrder(order, bankOnlyTopUp) && order.status === "provider_created";
+export function canCancelPromotionOrder(
+  order: CardOrder | null,
+  bankOnlyTopUp = false,
+  platformCreditsOnly = false,
+): boolean {
+  return (
+    recoverableOrder(order, bankOnlyTopUp, platformCreditsOnly) &&
+    order.status === "provider_created"
+  );
 }
 
 /** No retries: an uncertain cancellation must be reconciled before another attempt. */
@@ -53,13 +65,14 @@ export async function cancelPromotionOrder(
   order: CardOrder,
   send: Send,
   bankOnlyTopUp = false,
+  platformCreditsOnly = false,
 ): Promise<CardOrder> {
-  if (!canCancelPromotionOrder(order, bankOnlyTopUp))
+  if (!canCancelPromotionOrder(order, bankOnlyTopUp, platformCreditsOnly))
     throw new Error("Ova narudžba nije dostupna za odustajanje.");
   const result = await send(`orders/${encodeURIComponent(order.id)}/cancel`, {});
   const next = responseOrder(result);
   if (
-    !recoverableOrder(next, bankOnlyTopUp) ||
+    !recoverableOrder(next, bankOnlyTopUp, platformCreditsOnly) ||
     next.status !== "cancelled" ||
     next.id !== order.id ||
     next.requestId !== order.requestId ||

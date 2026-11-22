@@ -12,6 +12,7 @@ type QuoteRow = {
   id: string;
   kind: MarketingOrder["kind"];
   amount_minor: number;
+  credit_price: number | null;
   quantity: number;
   title: string | null;
   business_id: string | null;
@@ -24,7 +25,8 @@ export async function payableQuote(
   lock = false,
 ) {
   const { rows } = await client.query<QuoteRow>(
-    `SELECT o.id,o.kind,o.amount_minor,o.quantity,o.business_id,b.title
+    `SELECT o.id,o.kind,o.amount_minor,(o.wallet_price_minor::double precision/100) AS credit_price,
+       o.quantity,o.business_id,b.title
      FROM marketing_order o LEFT JOIN directory_business b ON b.id=o.business_id
      WHERE o.id=$1 AND o.account_id=$2 AND o.status='quoted'
        AND NOT EXISTS (SELECT 1 FROM ahi_wallet_bank_topup bank WHERE bank.order_id=o.id)
@@ -50,6 +52,7 @@ export async function payableQuote(
     businessId: offer.business_id,
     amountMinor: bamToEuroMinor(offer.amount_minor),
     originalBamMinor: offer.amount_minor,
+    creditPrice: offer.credit_price,
   };
 }
 

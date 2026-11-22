@@ -58,22 +58,33 @@ export function parseBankTopUpApprove(input: unknown): BankTopUpApprove {
     "amountMinor",
     "currency",
     "paymentReference",
+    "statementMatched",
   ]);
   if (
     !integer(row.expectedVersion, 2) ||
     !integer(row.amountMinor, 100000000) ||
     (row.currency !== "BAM" && row.currency !== "EUR") ||
     typeof row.paymentReference !== "string" ||
-    !/^AHI-[A-F0-9]{32}$/.test(row.paymentReference) ||
-    typeof row.bankTransactionReference !== "string" ||
-    !/^[A-Za-z0-9][A-Za-z0-9 ./_:()-]{2,119}$/.test(row.bankTransactionReference.trim())
+    !/^AHI-[A-F0-9]{32}$/.test(row.paymentReference)
   )
     fail(400, "INVALID_BANK_TOPUP");
-  return {
+  const details = {
     expectedVersion: row.expectedVersion,
     amountMinor: row.amountMinor,
     currency: row.currency,
     paymentReference: row.paymentReference,
+  } satisfies Omit<BankTopUpApprove, "statementMatched" | "bankTransactionReference">;
+  if (row.statementMatched === true && row.bankTransactionReference === undefined)
+    return { ...details, statementMatched: true };
+  if (
+    row.statementMatched !== undefined ||
+    typeof row.bankTransactionReference !== "string" ||
+    !/^[A-Za-z0-9][A-Za-z0-9 ./_:()-]{2,119}$/.test(row.bankTransactionReference.trim()) ||
+    row.bankTransactionReference.trim().toUpperCase().startsWith("MEMO:")
+  )
+    fail(400, "INVALID_BANK_TOPUP");
+  return {
+    ...details,
     bankTransactionReference: row.bankTransactionReference.trim().toUpperCase(),
   };
 }
@@ -278,7 +289,10 @@ export function createBankTopUpService(
           command.paymentReference !== row.payment_reference
         )
           fail(409, "AMOUNT_MISMATCH");
-        if (row.status === "paid" && row.bank_reference === command.bankTransactionReference)
+        // The administrator matches the unique transfer memo and amount to the booked statement.
+        const verifiedReference =
+          command.bankTransactionReference ?? `MEMO:${row.payment_reference}`;
+        if (row.status === "paid" && row.bank_reference === verifiedReference)
           return { request: dto(row, configuration(), true) };
         // Closed instructions may still receive a late bank transfer. Only an
         // administrator with the exact statement proof can reconcile that receipt.
@@ -296,7 +310,7 @@ export function createBankTopUpService(
           await settleMarketingPayment(client, {
             id: row.order_id,
             actorId: actor.id,
-            reference: command.bankTransactionReference,
+            reference: verifiedReference,
             includedUntil: null,
             walletPaymentId: null,
           });

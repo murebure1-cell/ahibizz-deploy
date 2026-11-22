@@ -21,6 +21,15 @@ export function creditsForBamMinor(amountMinor: number, unitBamMinor: number): n
   return Number.isSafeInteger(scaled) && scaled % unitBamMinor === 0 ? scaled / unitBamMinor : null;
 }
 
+export function formatAhiCredits(creditMinor: number): string {
+  return `${(creditMinor / 100).toLocaleString("bs-BA", { maximumFractionDigits: 2 })} Ahi kredita`;
+}
+
+export function formatCreditsFromBam(amountMinor: number, unitBamMinor: number | null): string {
+  const creditMinor = creditsForBamMinor(amountMinor, unitBamMinor ?? 0);
+  return creditMinor === null ? "Cijena na upit" : formatAhiCredits(creditMinor);
+}
+
 export function validCreditBalance(value: unknown): value is number {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return false;
   const minor = Math.round(value * 100);

@@ -629,6 +629,92 @@ test("bank credit topups reuse the immutable ledger and exact bank settlement wi
         }
       },
     );
+    await t.test("one-click approval funds a credits-only production quote once", async () => {
+      const actor = await fixture();
+      const bank = (await service.create(headers(actor), input())).request;
+      const statement = {
+        expectedVersion: bank.version,
+        amountMinor: bank.amountMinor,
+        currency: bank.currency,
+        paymentReference: bank.paymentReference,
+        statementMatched: true,
+      };
+      await assert.rejects(
+        service.approve(headers(actor), bank.id, statement),
+        (e) => e.status === 403,
+      );
+      assert.equal(await balance(actor), 0);
+      await Promise.all([
+        service.approve(headers(owner), bank.id, statement),
+        service.approve(headers(owner), bank.id, statement),
+      ]);
+      assert.equal(await balance(actor), 60);
+      const category = randomUUID();
+      await pool.query(
+        "INSERT INTO directory_category(id,name,slug) VALUES($1,'Fixture photography','fixture-photography')",
+        [category],
+      );
+      const businessId = randomUUID();
+      const id = randomUUID();
+      await pool.query(
+        "INSERT INTO directory_business(id,owner_user_id,title,category_id,city) VALUES($1,$2,'Fixture studio',$3,'Tuzla')",
+        [businessId, actor.userId, category],
+      );
+      const priorPolicy = process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY;
+      process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY = "true";
+      try {
+        await marketing.command(headers(actor), {
+          action: "request",
+          id,
+          kind: "photo_video",
+          quantity: 1,
+          businessId,
+        });
+        const quote = {
+          action: "quote",
+          id,
+          creditPrice: 45,
+          instructions: "Fotografisanje i video",
+        };
+        await assert.rejects(
+          marketing.command(headers(owner), { ...quote, amountMinor: 450 }),
+          deny("PLATFORM_CREDITS_ONLY"),
+        );
+        await marketing.command(headers(owner), quote);
+        assert.equal((await marketing.offer(headers(actor), id)).offer.creditPrice, 45);
+        await assert.rejects(
+          marketing.command(headers(owner), {
+            action: "confirm",
+            id,
+            amountMinor: 450,
+            reference: "FIXTURE-OLD-FLOW",
+          }),
+          deny("PLATFORM_CREDITS_ONLY"),
+        );
+        await Promise.all([
+          marketing.command(headers(actor), { action: "useCredits", id }),
+          marketing.command(headers(actor), { action: "useCredits", id }),
+        ]);
+        assert.equal(await balance(actor), 15);
+        assert.equal(
+          (await pool.query("SELECT wallet_payment_id FROM marketing_order WHERE id=$1", [id]))
+            .rows[0].wallet_payment_id,
+          id,
+        );
+        assert.equal(
+          (
+            await pool.query(
+              "SELECT count(*)::int AS n FROM billing_receipt WHERE production_order_id=$1",
+              [id],
+            )
+          ).rows[0].n,
+          0,
+        );
+      } finally {
+        if (priorPolicy === undefined) delete process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY;
+        else process.env.AHIBIZZ_PLATFORM_CREDITS_ONLY = priorPolicy;
+      }
+    });
   } finally {
     if (pool) await pool.end();
     if (created) await admin.query(`DROP SCHEMA "${schema}" CASCADE`);

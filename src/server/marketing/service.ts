@@ -18,6 +18,7 @@ import { type AuthService, getAuthDatabasePool, getAuthService } from "../auth/s
 import { syncProductionReceipt } from "../billing/service";
 import { creditCardTopUpsAvailable, readCreditTopUpBankOnly } from "../paypal/credit-top-up-policy";
 import { checkoutConfiguration } from "../paypal/runtime";
+import { readPlatformCreditsOnly } from "../wallet/platform-policy";
 import { debitWallet, readCreditMovements, readWalletRate, walletBalance } from "../wallet/service";
 import { createCreditTopUp, lockWalletRate, setCreditRate } from "../wallet/topup";
 import { readAdPricing } from "./ad-pricing";
@@ -115,7 +116,8 @@ export function parseMarketingCommand(v: unknown): MarketingCommand {
       "expectedAssetVersion",
     ]);
     if (
-      amount(row.amountMinor, 100000000) &&
+      (amount(row.amountMinor, 100000000) ||
+        (row.amountMinor === undefined && row.creditPrice !== undefined)) &&
       (row.expectedAssetVersion === undefined ||
         row.expectedAssetVersion === 0 ||
         amount(row.expectedAssetVersion, 2147483647)) &&
@@ -130,7 +132,7 @@ export function parseMarketingCommand(v: unknown): MarketingCommand {
       return {
         action,
         id,
-        amountMinor: row.amountMinor,
+        ...(typeof row.amountMinor === "number" ? { amountMinor: row.amountMinor } : {}),
         instructions: row.instructions.trim(),
         creditPrice: row.creditPrice,
         ...(row.expectedAssetVersion !== undefined
@@ -197,7 +199,9 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
       return accountTransaction(pool, async (client) => {
         const actor = await access.authority(client, scope, false, "read");
         const quote = await payableQuote(client, actor.id, id);
-        const environment = checkoutConfiguration()?.environment;
+        const environment = readPlatformCreditsOnly()
+          ? "live"
+          : checkoutConfiguration()?.environment;
         const saved = environment
           ? await pendingQuoteOrder(client, id, environment, actor.id)
           : null;
@@ -276,6 +280,7 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
               ).rows
             : [];
         const config = checkoutConfiguration();
+        const platformCreditsOnly = readPlatformCreditsOnly();
         return {
           orders: orders.slice(0, 20),
           more: orders.length > 20,
@@ -307,7 +312,11 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           productionBusinesses: businesses.map(({ id, title }) => ({ id, title })),
           promotions: mode === "ads" ? await paidPromotions(client, actor.id) : [],
           included: mode === "ads" ? await packagePromotions(client, actor.id) : [],
-          checkoutAvailable: config?.chargingApproved === true && config.environment === "live",
+          checkoutAvailable:
+            !platformCreditsOnly &&
+            config?.chargingApproved === true &&
+            config.environment === "live",
+          platformCreditsOnly,
           creditTopUpBankOnly: readCreditTopUpBankOnly(),
           creditCardTopUps:
             config?.chargingApproved === true &&
@@ -345,6 +354,8 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           return buyCategoryPromotion(client, actor.id, command);
         const quoteRate = command.action === "quote" ? await lockWalletRate(client) : null;
         if (command.action === "request") {
+          if (command.kind === "credits" && readCreditTopUpBankOnly())
+            fail(409, "CREDIT_TOP_UP_BANK_ONLY");
           const prior = (
             await client.query<LockedOrder>(
               "SELECT o.*,c.request_fingerprint FROM marketing_order o LEFT JOIN marketing_campaign_brief c ON c.order_id=o.id WHERE o.id=$1 FOR UPDATE OF o",
@@ -433,37 +444,51 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           fail(409, "QUOTE_PAYMENT_PENDING");
         if (command.action === "quote") {
           if (includedUntil) fail(409, "INCLUDED_IN_PACKAGE");
+          const creditsOnly = readPlatformCreditsOnly();
+          if (creditsOnly && order.kind === "credits") fail(409, "CREDIT_TOP_UP_BANK_ONLY");
+          const creditPrice = command.creditPrice;
+          if (creditsOnly && (command.amountMinor !== undefined || creditPrice === undefined))
+            fail(409, "PLATFORM_CREDITS_ONLY");
+          const amountMinor =
+            command.amountMinor ??
+            (creditPrice !== undefined && quoteRate !== null
+              ? Math.round(creditPrice * quoteRate)
+              : null);
+          if (!amount(amountMinor, 100000000)) fail(400, "INVALID_OFFER");
           if (
             (command.offerStandardTargeting && !order.campaign_key) ||
-            (command.campaignBenefit && (!order.campaign_key || command.creditPrice !== undefined))
+            (command.campaignBenefit &&
+              (!order.campaign_key || (!creditsOnly && creditPrice !== undefined)))
           )
             fail(400, "INVALID_CAMPAIGN");
           if (order.campaign_key)
             await checkCampaignQuote(
               client,
               command.id,
-              command.amountMinor,
+              amountMinor,
               command.campaignBenefit,
               command.offerStandardTargeting,
               command.expectedAssetVersion ?? 0,
             );
-          if (order.status !== "requested" || (command.creditPrice && !isPlacement(order.kind)))
+          const creditService =
+            isPlacement(order.kind) || (creditsOnly && isProductionService(order.kind));
+          if (order.status !== "requested" || (creditPrice !== undefined && !creditService))
             fail(409, "OFFER_CHANGED");
           await client.query(
             "UPDATE marketing_order SET status='quoted',amount_minor=$2,instructions=$3,credit_price=$4,quoted_at=now(),quoted_by=$5,wallet_price_minor=$6,campaign_benefit=$7 WHERE id=$1",
             [
               command.id,
-              command.amountMinor,
+              amountMinor,
               command.instructions,
-              Number.isInteger(command.creditPrice) ? command.creditPrice : null,
+              isPlacement(order.kind) && Number.isInteger(creditPrice) ? creditPrice : null,
               actor.id,
-              !isPlacement(order.kind)
+              !creditService
                 ? null
-                : command.creditPrice !== undefined
-                  ? Math.round(command.creditPrice * 100)
+                : creditPrice !== undefined
+                  ? Math.round(creditPrice * 100)
                   : quoteRate === null
                     ? null
-                    : creditsForBamMinor(command.amountMinor, quoteRate),
+                    : creditsForBamMinor(amountMinor, quoteRate),
               command.campaignBenefit ?? null,
             ],
           );
@@ -482,7 +507,7 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           if (
             command.action === "useCredits" &&
             (actor.id !== order.account_id ||
-              !isPlacement(order.kind) ||
+              (!isPlacement(order.kind) && !isProductionService(order.kind)) ||
               order.wallet_price_minor === null)
           )
             fail(403, "OFFER_FORBIDDEN");
@@ -498,6 +523,11 @@ export function createMarketingService(auth: AuthService, pool: Pool) {
           )
             return { id: command.id };
           if (order.status !== "quoted") fail(409, "OFFER_CHANGED");
+          if (command.action === "confirm" && readPlatformCreditsOnly())
+            fail(
+              409,
+              order.kind === "credits" ? "CREDIT_TOP_UP_BANK_ONLY" : "PLATFORM_CREDITS_ONLY",
+            );
           if (isPlacement(order.kind)) {
             const active = await client.query(
               "SELECT id FROM marketing_order WHERE business_id=$1 AND kind=$2 AND campaign_key IS NOT DISTINCT FROM $3::text AND status='paid' AND revoked_at IS NULL AND ends_at>clock_timestamp()",
