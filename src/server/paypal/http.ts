@@ -10,6 +10,7 @@ export type CheckoutRecord = {
   id: string;
   userId: string;
   kind: "promotion" | "support" | "quote";
+  quoteKind?: string | null;
   businessId: string | null;
   amountMinor: number;
   currency: "EUR";
@@ -284,6 +285,7 @@ export function providerOrder(order: CheckoutRecord): LiveOrder {
   return {
     id: order.id,
     purpose: order.kind,
+    ...(order.kind === "quote" && order.quoteKind === "credits" ? { paypalAccountOnly: true } : {}),
     amountMinor: order.amountMinor,
     currency: "EUR",
     merchantId: order.merchantId,

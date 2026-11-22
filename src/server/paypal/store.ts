@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import type { MarketingOrder } from "../../lib/marketing";
 import { paypalOrderFlow } from "../../lib/paypal-order-flow";
 import { hasActiveWalletPromotion } from "../marketing/category-promotion";
 import {
@@ -21,6 +22,7 @@ export type CheckoutOrder = {
   id: string;
   userId: string;
   quoteId: string | null;
+  quoteKind: MarketingOrder["kind"] | null;
   requestId: string;
   environment: CheckoutEnvironment;
   kind: "promotion" | "support" | "quote";
@@ -69,7 +71,9 @@ const uuid = (v: string) => {
     fail(400, "INVALID_CHECKOUT_ID");
   return v;
 };
-const columns = `id,user_id AS "userId",request_id AS "requestId",environment,kind,quote_id AS "quoteId",business_id AS "businessId",category_id AS "categoryId",business_title AS "businessTitle",offer_version AS "offerVersion",original_bam_minor AS "originalBamMinor",amount_minor AS "amountMinor",currency,merchant_id AS "merchantId",status,provider_order_id AS "providerOrderId",approval_url AS "approvalUrl",capture_id AS "captureId",create_request_id AS "createRequestId",capture_request_id AS "captureRequestId",refunded_minor AS "refundedMinor",refund_total_unknown AS "refundTotalUnknown",starts_at::text AS "startsAt",ends_at::text AS "endsAt",expires_at::text AS "expiresAt",captured_at::text AS "capturedAt",capture_lease_until::text AS "captureLeaseUntil",version`;
+const columns = `id,user_id AS "userId",request_id AS "requestId",environment,kind,quote_id AS "quoteId",
+  (SELECT q.kind FROM marketing_order q WHERE q.id=paypal_checkout_order.quote_id) AS "quoteKind",
+  business_id AS "businessId",category_id AS "categoryId",business_title AS "businessTitle",offer_version AS "offerVersion",original_bam_minor AS "originalBamMinor",amount_minor AS "amountMinor",currency,merchant_id AS "merchantId",status,provider_order_id AS "providerOrderId",approval_url AS "approvalUrl",capture_id AS "captureId",create_request_id AS "createRequestId",capture_request_id AS "captureRequestId",refunded_minor AS "refundedMinor",refund_total_unknown AS "refundTotalUnknown",starts_at::text AS "startsAt",ends_at::text AS "endsAt",expires_at::text AS "expiresAt",captured_at::text AS "capturedAt",capture_lease_until::text AS "captureLeaseUntil",version`;
 
 export function promotionSql(alias = "b", includePayPal = true) {
   if (!/^[a-z][a-z0-9_]*$/i.test(alias)) throw new Error("Invalid SQL alias");
@@ -351,6 +355,7 @@ export function createCheckoutStore(pool: Pool) {
       if ((input.kind === "promotion") !== Boolean(input.businessId))
         fail(400, "INVALID_CHECKOUT_INPUT");
       if (input.quoteId) uuid(input.quoteId);
+      const cardCheckout = paypalOrderFlow(input.offerVersion) !== "redirect";
       const fingerprint = createHash("sha256")
         .update(
           JSON.stringify([
@@ -374,12 +379,15 @@ export function createCheckoutStore(pool: Pool) {
         ).rows[0];
         if (existing) {
           if (existing.fingerprint !== fingerprint) fail(409, "COMMAND_CONFLICT");
+          if (existing.quoteKind === "credits" && cardCheckout)
+            fail(409, "CREDIT_TOP_UP_PAYPAL_REQUIRED");
           return existing;
         }
         const quote = input.quoteId
           ? await payableQuote(c, actor.userId, input.quoteId, true)
           : null;
         if (input.quoteId && !quote) fail(409, "QUOTE_NOT_PAYABLE");
+        if (quote?.kind === "credits" && cardCheckout) fail(409, "CREDIT_TOP_UP_PAYPAL_REQUIRED");
         const price = quote?.amountMinor ?? input.amountMinor;
         if (price === undefined) fail(400, "INVALID_CHECKOUT_INPUT");
         if (quote) {
@@ -517,6 +525,7 @@ export function createCheckoutStore(pool: Pool) {
         await authority(c, actor);
         const order = await row(c, id);
         if (order.userId !== actor.userId) fail(404, "ORDER_NOT_FOUND");
+        if (order.quoteKind === "credits") fail(409, "CREDIT_TOP_UP_PAYPAL_REQUIRED");
         if (
           (order.kind !== "promotion" && order.kind !== "quote") ||
           (order.kind === "promotion" && !order.businessId) ||

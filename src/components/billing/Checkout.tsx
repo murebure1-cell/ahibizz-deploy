@@ -27,6 +27,7 @@ type Catalog = {
   support: { available?: boolean; minMinor: number; maxMinor: number };
 };
 const messages: Record<string, string> = {
+  CREDIT_TOP_UP_PAYPAL_REQUIRED: "Za ovu dopunu nastavi preko PayPal računa.",
   CHECKOUT_FLOW_MISMATCH:
     "Postoji narudžba za drugi način plaćanja. Provjeri prethodnu narudžbu prije nove uplate.",
   LIVE_SUPPORT_NOT_RELEASED:
@@ -74,7 +75,13 @@ const confirmationMessages: Record<string, string> = {
 function isSavedCardPayment(order: Order | null) {
   return order?.status === "provider_created" && Boolean(order.flow && order.flow !== "redirect");
 }
-type PayableOffer = { id: string; title: string; amountMinor: number; originalBamMinor: number };
+type PayableOffer = {
+  id: string;
+  kind: string;
+  title: string;
+  amountMinor: number;
+  originalBamMinor: number;
+};
 function cents(value: string) {
   const match = /^(\d{1,4})(?:[.,](\d{1,2}))?$/.exec(value.trim());
   return match ? Number(match[1]) * 100 + Number((match[2] ?? "").padEnd(2, "0")) : 0;
@@ -278,6 +285,7 @@ export function Checkout({
       const next = result.offer;
       if (
         next?.id !== quoteId ||
+        typeof next.kind !== "string" ||
         typeof next.title !== "string" ||
         !Number.isSafeInteger(next.amountMinor) ||
         next.amountMinor < 1 ||
@@ -287,7 +295,7 @@ export function Checkout({
         throw new Error("Podaci za plaćanje ove ponude nisu dostupni.");
       setOffer(next);
       setReview(true);
-      setMethod("card");
+      setMethod(next.kind === "credits" ? "paypal" : "card");
     }
     void loadOffer().catch((cause) => {
       if (!controller.signal.aborted)
@@ -517,6 +525,8 @@ export function Checkout({
     }
   }
   const walletAvailable = kind === "promotion" && wallet !== null && !initialOrderId && !order;
+  const creditTopUp = (order?.quoteKind ?? offer?.kind) === "credits";
+  const cardAvailable = canOfferPayPalCard(order, review, kind, offer?.kind);
   const selectedAmount =
     order?.amountMinor ??
     (kind === "quote"
@@ -537,7 +547,7 @@ export function Checkout({
     !["approved", "pending", "voided"].includes(cardCheck?.state ?? "") &&
     catalog?.available &&
     catalog.paypalClientId &&
-    canOfferPayPalCard(order, review, kind);
+    cardAvailable;
   const restartHref = promotionRestartHref(order);
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
@@ -550,7 +560,9 @@ export function Checkout({
         )}
         <h1>
           {kind === "quote"
-            ? "Plaćanje ponude"
+            ? creditTopUp
+              ? "Dopuna Ahi kredita"
+              : "Plaćanje ponude"
             : kind === "promotion"
               ? "Isticanje djelatnosti"
               : "Podrži razvoj AhiBizza"}
@@ -823,6 +835,9 @@ export function Checkout({
               {isSavedCardPayment(order) && cardCheck && (
                 <p role="status">{confirmationMessages[cardCheck.state]}</p>
               )}
+              {creditTopUp && isSavedCardPayment(order) && !cardCheck && (
+                <p>Prije nove dopune provjeri status ovog ranijeg pokušaja.</p>
+              )}
               {canCompleteCard ? (
                 <button
                   type="button"
@@ -856,7 +871,7 @@ export function Checkout({
           <div className={styles.cardMethod}>
             {!order &&
               (walletAvailable ||
-                (catalog?.available && catalog.paypalClientId && kind !== "support")) && (
+                (catalog?.available && catalog.paypalClientId && cardAvailable)) && (
                 <fieldset className={styles.methodPicker} aria-label="Odaberi način plaćanja">
                   {walletAvailable && (
                     <button
@@ -869,7 +884,7 @@ export function Checkout({
                       Ahi krediti
                     </button>
                   )}
-                  {catalog?.available && catalog.paypalClientId && (
+                  {catalog?.available && catalog.paypalClientId && cardAvailable && (
                     <button
                       type="button"
                       className={styles.payCard}
@@ -924,7 +939,7 @@ export function Checkout({
               catalog?.available &&
               catalog.paypalClientId &&
               catalog.environment &&
-              canOfferPayPalCard(order, review, kind) && (
+              cardAvailable && (
                 <div id="karticni-obrazac" hidden={!cardOpen && !order}>
                   {(cardOpen || order) && (
                     <PayPalCardButton

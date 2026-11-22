@@ -115,7 +115,7 @@ function dto(order: CheckoutOrder) {
     requestId: order.requestId,
     kind: order.kind,
     businessId: order.businessId,
-    ...(order.quoteId ? { quoteId: order.quoteId } : {}),
+    ...(order.quoteId ? { quoteId: order.quoteId, quoteKind: order.quoteKind } : {}),
     businessTitle: order.businessTitle,
     amountMinor: order.amountMinor,
     currency: order.currency,

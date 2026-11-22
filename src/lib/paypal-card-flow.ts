@@ -8,6 +8,7 @@ export type CardOrder = {
   requestId: string;
   kind: "promotion" | "support" | "quote";
   quoteId?: string | null;
+  quoteKind?: string | null;
   businessId: string | null;
   businessTitle: string | null;
   amountMinor: number;
@@ -22,7 +23,9 @@ export function canOfferPayPalCard(
   order: CardOrder | null,
   reviewed: boolean,
   kind: string,
+  quoteKind?: string,
 ): boolean {
+  if ((order?.quoteKind ?? quoteKind) === "credits") return false;
   return order
     ? (order.kind === "promotion" || (order.kind === "quote" && Boolean(order.quoteId))) &&
         (((order.flow === "sdk" || order.flow === "card-fields") &&

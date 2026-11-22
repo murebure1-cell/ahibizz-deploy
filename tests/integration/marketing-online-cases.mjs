@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readActiveBanner } from "../../src/server/marketing/read.ts";
 import { createMarketingService } from "../../src/server/marketing/service.ts";
 import { verifyWallet } from "./wallet-core-cases.mjs";
@@ -39,7 +39,7 @@ export async function verifyMarketingOnlineQuotes(
     quoteId,
     merchantId: "FIXTURE_MERCHANT",
     environment,
-    offerVersion: "marketing-quote-v1:sdk",
+    offerVersion: "marketing-quote-v1",
   });
   const bank = (id, amountMinor) =>
     command(owner, {
@@ -63,6 +63,11 @@ export async function verifyMarketingOnlineQuotes(
       const id = await quote("credits", 30, 1000);
       const terms = input(id);
       await assert.rejects(store.create(other, terms), /QUOTE_NOT_PAYABLE/);
+      for (const flow of ["sdk", "guest", "card-fields"]) {
+        const attempt = { ...input(id), offerVersion: `marketing-quote-v1:${flow}` };
+        await assert.rejects(store.create(user, attempt), /CREDIT_TOP_UP_PAYPAL_REQUIRED/);
+        await assert.rejects(store.create(other, attempt), /QUOTE_NOT_PAYABLE/);
+      }
       await assert.rejects(
         store.create(user, { ...terms, amountMinor: 1 }),
         /INVALID_CHECKOUT_INPUT/,
@@ -73,6 +78,7 @@ export async function verifyMarketingOnlineQuotes(
       ]);
       assert.equal(first.id, repeated.id);
       assert.equal(first.quoteId, id);
+      assert.equal(first.quoteKind, "credits");
       assert.equal(first.originalBamMinor, 1000);
       assert.equal(first.amountMinor, 511);
       assert.equal(first.currency, "EUR");
@@ -81,7 +87,7 @@ export async function verifyMarketingOnlineQuotes(
           ...input(id),
           offerVersion: "marketing-quote-v1:card-fields",
         }),
-        /CHECKOUT_FLOW_MISMATCH/,
+        /CREDIT_TOP_UP_PAYPAL_REQUIRED/,
       );
       const attached = await attach(first);
       await assert.rejects(bank(id, 1000), (error) => error.code === "QUOTE_PAYMENT_PENDING");
@@ -105,6 +111,65 @@ export async function verifyMarketingOnlineQuotes(
       assert.equal(await balance(), baseline);
       await capture(attached);
       assert.equal(await balance(), baseline);
+    },
+  );
+
+  await t.test(
+    "a legacy top-up allows verification and capture but cannot reopen a card form",
+    async () => {
+      const baseline = await balance();
+      const id = await quote("credits", 20, 1000);
+      const legacy = { ...input(id), offerVersion: "marketing-quote-v1:guest" };
+      const providerOrderId = "LEGACYTOPUP1234";
+      const orderId = randomUUID();
+      const fingerprint = createHash("sha256")
+        .update(
+          JSON.stringify([
+            "quote",
+            null,
+            null,
+            legacy.merchantId,
+            legacy.environment,
+            legacy.offerVersion,
+            id,
+          ]),
+        )
+        .digest("hex");
+      await pool.query(
+        `INSERT INTO paypal_checkout_order (
+         id,user_id,request_id,fingerprint,environment,kind,quote_id,business_title,
+         offer_version,original_bam_minor,amount_minor,merchant_id,status,provider_order_id,
+         create_request_id,capture_request_id
+       ) VALUES($1,$2,$3,$4,$5,'quote',$6,'20 Ahi Credits',$7,1000,511,$8,
+         'provider_created',$9,$10,$11)`,
+        [
+          orderId,
+          user.userId,
+          legacy.requestId,
+          fingerprint,
+          legacy.environment,
+          id,
+          legacy.offerVersion,
+          legacy.merchantId,
+          providerOrderId,
+          randomUUID(),
+          randomUUID(),
+        ],
+      );
+      await assert.rejects(store.create(user, legacy), /CREDIT_TOP_UP_PAYPAL_REQUIRED/);
+      await assert.rejects(store.create(user, input(id)), /CHECKOUT_FLOW_MISMATCH/);
+      await assert.rejects(
+        store.readPendingGuestCard(user, orderId),
+        /CREDIT_TOP_UP_PAYPAL_REQUIRED/,
+      );
+      const saved = await store.read(user, orderId);
+      assert.equal(saved.quoteKind, "credits");
+      assert.equal(saved.providerOrderId, providerOrderId);
+      assert.equal(await store.canCompleteApprovedPayment(user, saved), true);
+      await store.prepareCapture(user, orderId);
+      const paid = await capture(saved);
+      assert.equal(paid.status, "captured");
+      assert.equal(await balance(), baseline + 20);
     },
   );
 

@@ -656,3 +656,28 @@ test("guest handoff requests the hosted card landing and keeps the same return U
   links = [{ rel: "payer-action", href: "https://www.paypal.com/checkoutnow?token=fixture" }];
   await assert.rejects(paypal.create(order, "guest"), /INVALID_APPROVAL_URL/);
 });
+
+test("credit top-up creates only an account login order at PayPal", async () => {
+  let calls = 0;
+  const provider = createLivePayPal({ ...config, chargingApproved: true }, async (url, init) => {
+    calls++;
+    if (String(url).endsWith("/token")) return Response.json({ access_token: "fixture" });
+    const body = JSON.parse(String(init?.body));
+    assert.deepEqual(Object.keys(body.payment_source), ["paypal"]);
+    assert.equal(body.payment_source.paypal.experience_context.landing_page, "LOGIN");
+    assert.equal(body.purchase_units[0].amount.value, "5.11");
+    return Response.json({
+      id: "ORDER12345678",
+      links: [{ rel: "payer-action", href: "https://www.paypal.com/checkoutnow?token=fixture" }],
+    });
+  });
+  const topUp: LiveOrder = { ...order, purpose: "quote", paypalAccountOnly: true };
+  for (const flow of ["sdk", "guest", "card-fields"] as const)
+    await assert.rejects(provider.create(topUp, flow), /CREDIT_TOP_UP_PAYPAL_REQUIRED/);
+  assert.equal(calls, 0);
+  assert.equal(
+    (await provider.create(topUp)).approvalUrl,
+    "https://www.paypal.com/checkoutnow?token=fixture",
+  );
+  assert.equal(calls, 2);
+});

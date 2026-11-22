@@ -12,6 +12,7 @@ export class PayPalLiveError extends Error {
 export type LiveOrder = {
   id: string;
   purpose: "promotion" | "support" | "quote";
+  paypalAccountOnly?: true;
   amountMinor: number;
   currency: "EUR";
   merchantId: string;
@@ -421,6 +422,8 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
         ((flow === "guest" || flow === "card-fields") && order.purpose === "support")
       )
         throw new PayPalLiveError("INVALID_CHECKOUT_FLOW");
+      if (order.paypalAccountOnly && flow !== "redirect")
+        throw new PayPalLiveError("CREDIT_TOP_UP_PAYPAL_REQUIRED");
       canCharge(order);
       const returnUrl = `${origin.origin}/naplata/povratak?narudzba=${order.id}`;
       const cancelUrl = `${origin.origin}/naplata/odustajanje?narudzba=${order.id}`;
@@ -463,7 +466,11 @@ export function createLivePayPal(config: LiveConfiguration, transport: typeof fe
                   payment_source: {
                     paypal: {
                       experience_context: {
-                        ...(flow === "guest" ? { landing_page: "GUEST_CHECKOUT" } : {}),
+                        ...(order.paypalAccountOnly
+                          ? { landing_page: "LOGIN" }
+                          : flow === "guest"
+                            ? { landing_page: "GUEST_CHECKOUT" }
+                            : {}),
                         brand_name: "AhiBizz",
                         locale: "en-BA",
                         shipping_preference: "NO_SHIPPING",

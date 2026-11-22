@@ -21,6 +21,21 @@ const order: CardOrder = {
   flow: "sdk",
 };
 const providerOrderId = "TESTORDER123456";
+test("credit top-up never offers a new or previously saved direct card form", () => {
+  assert.equal(canOfferPayPalCard(null, true, "quote", "credits"), false);
+  for (const flow of ["sdk", "guest", "card-fields"] as const) {
+    const saved = {
+      ...order,
+      kind: "quote" as const,
+      quoteId: "top-up-quote",
+      quoteKind: "credits",
+      status: "provider_created",
+      flow,
+    };
+    assert.equal(canOfferPayPalCard(saved, true, "quote"), false);
+    assert.equal(canOfferPayPalCard({ ...saved, quoteKind: "banner" }, true, "quote"), true);
+  }
+});
 test("an accepted quote binds SDK checkout to its server identity and price for creation, retry and capture", async () => {
   const quote: CardOrder = {
     ...order,
