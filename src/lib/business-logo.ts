@@ -28,6 +28,27 @@ function luminance(red: number, green: number, blue: number) {
   return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue);
 }
 
+/**
+ * True when the loaded logo has transparent pixels, so it can be shown as a white silhouette on a
+ * dark map pin; opaque logos (with their own background) are shown as they are. Null if unreadable.
+ */
+export function logoHasTransparency(image: HTMLImageElement): boolean | null {
+  if (!image.complete || !image.naturalWidth) return null;
+  try {
+    const canvas = image.ownerDocument.createElement("canvas");
+    canvas.width = canvas.height = 32;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) return null;
+    context.drawImage(image, 0, 0, 32, 32);
+    const { data } = context.getImageData(0, 0, 32, 32);
+    for (let offset = 3; offset < data.length; offset += 4)
+      if ((data[offset] ?? 255) < 250) return true;
+    return false;
+  } catch {
+    return null;
+  }
+}
+
 /** Inspect only the already loaded image; no second image request or pixel modification. */
 export function readBusinessLogoSurface(
   image: HTMLImageElement,

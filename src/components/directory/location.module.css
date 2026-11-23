@@ -114,7 +114,7 @@
 .map :global(.leaflet-control-attribution a) {
   color: #3c5665;
 }
-/* Google map pin: a dark grey drop with the business logo in a white circle, anchored at the tip. */
+/* Google map pin: a navy drop with a white rim and the business logo in white, anchored at the tip. */
 .googlePin {
   position: absolute;
   width: 52px;
@@ -126,13 +126,16 @@
   content: "";
   position: absolute;
   left: 50%;
-  bottom: 0;
+  bottom: 1px;
   width: 22px;
   height: 22px;
   translate: -50% 0;
   rotate: 45deg;
+  border: 2.5px solid #fff;
+  border-top: 0;
+  border-left: 0;
   border-radius: 0 0 5px 0;
-  background: #3a3f45;
+  background: #1b3a57;
 }
 .googlePin > span {
   position: absolute;
@@ -140,17 +143,27 @@
   display: grid;
   place-items: center;
   overflow: hidden;
-  border: 4px solid #3a3f45;
+  border: 2.5px solid #fff;
   border-radius: 50%;
-  background: #fff;
-  color: #3a3f45;
-  box-shadow: 0 6px 16px #0d1b2a40;
+  background: #1b3a57;
+  color: #fff;
+  box-shadow: 0 6px 16px #0d1b2a55;
 }
 .googlePin img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  padding: 4px;
+  padding: 9px;
+}
+/* Transparent logos become white marks; logos with their own background sit in a white circle. */
+.googlePin img[data-white] {
+  filter: brightness(0) invert(1);
+}
+.googlePin img[data-opaque] {
+  padding: 5px;
+  border-radius: 50%;
+  background: #fff;
+  background-clip: content-box;
 }
 .googlePin svg {
   width: 24px;

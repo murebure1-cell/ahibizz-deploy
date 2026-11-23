@@ -97,21 +97,6 @@
   border: 0;
   border-radius: 8px;
 }
-.mapLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--ui-border);
-  border-radius: 12px;
-  color: var(--ui-text);
-  font-size: 13px;
-  font-weight: 650;
-}
-.mapLink:hover {
-  border-color: var(--ui-accent-border);
-}
 .cities {
   display: flex;
   flex-wrap: wrap;
