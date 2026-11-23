@@ -261,8 +261,8 @@ export function HomeNearbyResults({ exampleId }: { exampleId?: string }) {
       </HomeEmptyState>
     );
   if (state === "waiting")
-    return location.status === "unavailable" ? (
-      <p className={homeStyles.availability}>Lokacija nije dostupna. Odaberi grad.</p>
+    return location.permission === "denied" || location.status === "unavailable" ? (
+      <NearbyWithoutLocation denied={location.permission === "denied"} />
     ) : null;
   if (!businesses.length)
     return (
@@ -285,6 +285,31 @@ export function HomeNearbyResults({ exampleId }: { exampleId?: string }) {
       </div>
     );
   return <NearbyCards exampleId={exampleId} />;
+}
+
+const quickCities = ["Sarajevo", "Tuzla", "Zenica", "Mostar", "Banja Luka", "Bihać"];
+
+/** Without a location the section still offers a one-tap way to see businesses. */
+function NearbyWithoutLocation({ denied }: { denied: boolean }) {
+  return (
+    <div className={styles.group}>
+      <p className={homeStyles.availability}>
+        {denied
+          ? "Lokacija je isključena. Odaberi grad ili je uključi u postavkama preglednika."
+          : "Lokacija nije dostupna. Odaberi grad."}
+      </p>
+      <nav className={styles.cities} aria-label="Brzi izbor grada">
+        {quickCities.map((city) => (
+          <Link key={city} href={`/?${new URLSearchParams({ mjesto: city })}`} scroll={false}>
+            {city}
+          </Link>
+        ))}
+      </nav>
+      <Link className={homeStyles.subtleLink} href="/pretraga">
+        Sve djelatnosti
+      </Link>
+    </div>
+  );
 }
 
 function NearbyCards({ exampleId }: { exampleId?: string }) {
