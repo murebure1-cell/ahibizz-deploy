@@ -7,6 +7,7 @@ import type { Appearance } from "../../lib/appearance";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { HeaderMenuAccount } from "../../lib/header-access";
 import type { NavigationDestination } from "../../lib/header-navigation";
+import { forgetRememberedArea } from "../../lib/location-area-storage";
 import { clearBrowserMessagingRecovery } from "../../lib/messaging-recovery-storage";
 import { useAppAppearance } from "../appearance/AppAppearance";
 import { Icon } from "../Icon";
@@ -96,6 +97,7 @@ export function AccountQuickMenu({
       });
       if (!response.ok || (await response.json()).ok !== true) throw new Error("logout");
       clearBrowserMessagingRecovery(account.id);
+      forgetRememberedArea();
       resetAppearance();
       close();
       window.location.assign("/prijava");

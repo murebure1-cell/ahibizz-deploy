@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   cachedFixMs,
+  coarseArea,
   createDeviceLocationController,
   type DeviceLocationState,
   freshFixMs,
@@ -17,6 +18,7 @@ function fixture(initial: PermissionState | null = "prompt") {
     nextId = 0,
     queryCount = 0,
     remembered = false;
+  let area: { latitude: number; longitude: number; accuracy?: number } | null = null;
   let visibility: (() => void) | undefined;
   const timers = new Map<number, { at: number; callback: () => void }>();
   const watches = new Map<
@@ -75,6 +77,13 @@ function fixture(initial: PermissionState | null = "prompt") {
     remember: (allowed) => {
       remembered = allowed;
     },
+    rememberedArea: () => area,
+    rememberArea: (value) => {
+      area = value;
+    },
+    forgetArea: () => {
+      area = null;
+    },
   };
   const controller = createDeviceLocationController(environment, (state) => states.push(state));
   const position = (latitude: number, longitude: number, accuracy = 20, timestamp = now) =>
@@ -96,6 +105,12 @@ function fixture(initial: PermissionState | null = "prompt") {
     },
     setRemembered(value: boolean) {
       remembered = value;
+    },
+    get area() {
+      return area;
+    },
+    setArea(value: typeof area) {
+      area = value;
     },
     permission(value: PermissionState) {
       permissionState = value;
@@ -246,12 +261,13 @@ test("revocation immediately clears private location and never repeatedly prompt
   assert.equal(f.state()?.status, "denied");
   assert.equal(f.watches.size, 0);
   assert.equal(f.remembered, false);
+  const oneShotsBefore = f.oneShots.length;
   f.visible(false);
   f.visible(true);
   f.controller.requestLocation();
   await flush();
   assert.equal(f.watches.size, 0);
-  assert.equal(f.oneShots.length, 0);
+  assert.equal(f.oneShots.length, oneShotsBefore);
   f.permission("granted");
   assert.equal(f.watches.size, 1);
   f.controller.stop();
@@ -302,9 +318,11 @@ test("the device's recent cached fix shows nearby results at once and the first 
   watcher.success(f.position(44.5, 18.6, 300, f.environment.now() - 300_000));
   assert.equal(f.state()?.status, "ready");
   assert.equal(f.state()?.point?.latitude, 44.5);
-  // Once an origin exists, an older-than-fresh fix cannot move it.
-  watcher.success(f.position(45, 19, 20, f.environment.now() - freshFixMs - 1));
+  // A fix older than the cache window still cannot move it.
+  watcher.success(f.position(45, 19, 20, f.environment.now() - cachedFixMs - 1));
   assert.equal(f.state()?.point?.latitude, 44.5);
+  // The cached fix was not saved as the device area; only fresh fixes are.
+  assert.equal(f.area, null);
   // The first fresh fix corrects the cached origin without the usual 30-second wait.
   watcher.success(f.position(44.53, 18.64));
   assert.equal(f.state()?.point?.latitude, 44.53);
@@ -315,6 +333,56 @@ test("the device's recent cached fix shows nearby results at once and the first 
   f.advance(locationStaleMs - freshFixMs - 1);
   assert.ok(f.state()?.point);
   f.controller.stop();
+});
+
+test("a granted visit asks for a one-shot fix alongside the watch, so the device can answer from its cache", async () => {
+  const f = fixture("granted");
+  f.controller.start();
+  f.controller.setActive(true);
+  await flush();
+  assert.equal(f.watches.size, 1);
+  assert.equal(f.oneShots.length, 1);
+  f.oneShots[0]?.success(f.position(44.5, 18.6, 30, f.environment.now() - 120_000));
+  assert.equal(f.state()?.status, "ready");
+  assert.equal(f.state()?.point?.latitude, 44.5);
+  f.controller.stop();
+});
+
+test("a remembered ~1 km area shows nearby results at once, a fresh fix replaces and refreshes it, and denial forgets it", async () => {
+  const f = fixture("granted");
+  f.setArea({ latitude: 44.54, longitude: 18.67, accuracy: 1100 });
+  f.controller.start();
+  f.controller.setActive(true);
+  await flush();
+  assert.equal(f.state()?.status, "ready");
+  assert.deepEqual(f.state()?.point, { latitude: 44.54, longitude: 18.67, accuracy: 1100 });
+  f.emit(44.538416, 18.667136);
+  assert.equal(f.state()?.point?.latitude, 44.538416);
+  // Only the rounded area is stored on the device, never the exact fix.
+  assert.deepEqual(f.area, { latitude: 44.54, longitude: 18.67, accuracy: 1100 });
+  f.permission("denied");
+  assert.equal(f.area, null);
+  assert.equal(f.state()?.point, null);
+  f.controller.stop();
+});
+
+test("a remembered area is never used before permission is confirmed", async () => {
+  const f = fixture("prompt");
+  f.setArea({ latitude: 44.54, longitude: 18.67, accuracy: 1100 });
+  f.controller.start();
+  f.controller.setActive(true);
+  await flush();
+  assert.equal(f.state()?.point ?? null, null);
+  assert.equal(f.area, null);
+  f.controller.stop();
+});
+
+test("coarse areas round to two decimals", () => {
+  assert.deepEqual(coarseArea({ latitude: 44.538416, longitude: 18.667136 }), {
+    latitude: 44.54,
+    longitude: 18.67,
+    accuracy: 1100,
+  });
 });
 
 test("late permission resolution and late position callbacks cannot restart a stopped provider", async () => {
