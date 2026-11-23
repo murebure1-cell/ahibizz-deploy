@@ -1,43 +1,130 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { landPoints, unitVector } from "../../lib/globe-land";
+import { decodeLand, landOutlineUrl, unitVector } from "../../lib/globe-land";
 
-const gold = ["#f2c45a", "#e8b444", "#ffd978", "#d39a2c", "#fff1c2", "#f5cd6a"];
 const turnSeconds = 48;
 /** Axis tilted like a desk globe, seen a little from above. */
 const view = { elevation: 0.32, tilt: -0.36 };
 /** Europe and Bosnia face the viewer first. */
 const startLongitude = -18;
+/** Share of the canvas the ball fills, leaving room for the smooth edge. */
+const ballScale = 0.96;
 
-type Projected = { x: number; y: number; z: number };
+const vertexShader = `#version 300 es
+in vec2 corner;
+out vec2 spot;
+void main() {
+  spot = corner;
+  gl_Position = vec4(corner, 0.0, 1.0);
+}`;
 
-function project(vx: number, vy: number, vz: number, spin: number): Projected {
-  const sin = Math.sin(spin);
-  const cos = Math.cos(spin);
-  // Spin around the north axis.
-  const x1 = vx * cos + vz * sin;
-  const z1 = vz * cos - vx * sin;
-  // Look a little from above.
-  const se = Math.sin(view.elevation);
-  const ce = Math.cos(view.elevation);
-  const y2 = vy * ce - z1 * se;
-  const z2 = vy * se + z1 * ce;
-  // Lean the axis like a globe on a stand.
-  const st = Math.sin(view.tilt);
-  const ct = Math.cos(view.tilt);
-  return { x: x1 * ct - y2 * st, y: x1 * st + y2 * ct, z: z2 };
+// Every pixel of the ball looks up its latitude and longitude in the land texture, then gets lit:
+// lacquered deep blue sea, smooth polished gold land, a soft highlight and a thin blue rim.
+const fragmentShader = `#version 300 es
+precision highp float;
+in vec2 spot;
+out vec4 colour;
+uniform sampler2D land;
+uniform float spin;
+uniform float elevation;
+uniform float tilt;
+uniform float pixel;
+const float PI = 3.141592653589793;
+void main() {
+  vec2 p = spot / ${ballScale.toFixed(2)};
+  float r = length(p);
+  float edge = 1.0 - smoothstep(1.0 - 1.5 * pixel, 1.0, r);
+  if (edge <= 0.0) discard;
+  vec3 n = vec3(p, sqrt(max(0.0, 1.0 - r * r)));
+
+  float ct = cos(tilt), st = sin(tilt);
+  vec3 a = vec3(n.x * ct + n.y * st, -n.x * st + n.y * ct, n.z);
+  float ce = cos(elevation), se = sin(elevation);
+  vec3 b = vec3(a.x, a.y * ce + a.z * se, -a.y * se + a.z * ce);
+  float cs = cos(spin), ss = sin(spin);
+  vec3 w = vec3(b.x * cs - b.z * ss, b.y, b.x * ss + b.z * cs);
+
+  float u = atan(w.x, w.z) / (2.0 * PI) + 0.5;
+  float v = 0.5 - asin(clamp(w.y, -1.0, 1.0)) / PI;
+  // Pick the smaller derivative across the date line so no seam appears there.
+  float u2 = fract(u + 0.5) - 0.5;
+  float dx = abs(dFdx(u)) < abs(dFdx(u2)) ? dFdx(u) : dFdx(u2);
+  float dy = abs(dFdy(u)) < abs(dFdy(u2)) ? dFdy(u) : dFdy(u2);
+  float isLand = textureGrad(land, vec2(u, v), vec2(dx, dFdx(v)), vec2(dy, dFdy(v))).a;
+
+  vec3 light = normalize(vec3(-0.45, 0.55, 0.7));
+  vec3 half_ = normalize(light + vec3(0.0, 0.0, 1.0));
+  float diffuse = max(dot(n, light), 0.0);
+  float facing = max(dot(n, half_), 0.0);
+
+  vec3 sea = mix(vec3(0.012, 0.05, 0.16), vec3(0.09, 0.32, 0.76), diffuse);
+  sea += vec3(0.62, 0.78, 1.0) * pow(facing, 110.0) * 0.45;
+  vec3 gold = mix(vec3(0.42, 0.27, 0.08), vec3(0.93, 0.72, 0.33), diffuse);
+  gold += vec3(1.0, 0.92, 0.66) * pow(facing, 22.0) * 0.45;
+  vec3 c = mix(sea, gold, isLand);
+  c += vec3(0.32, 0.56, 1.0) * pow(1.0 - n.z, 2.6) * (0.18 + 0.3 * diffuse);
+  colour = vec4(c * edge, edge);
+}`;
+
+/** Equirectangular land mask: white land on a transparent sea, 2048 × 1024. */
+function landTexture(rings: Float32Array[]) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 2048;
+  canvas.height = 1024;
+  const context = canvas.getContext("2d");
+  if (!context) return canvas;
+  const sx = canvas.width / 360;
+  const sy = canvas.height / 180;
+  context.fillStyle = "#fff";
+  context.beginPath();
+  for (const offset of [-360, 0, 360])
+    for (const ring of rings) {
+      for (let i = 0; i < ring.length; i += 2) {
+        const x = ((ring[i] ?? 0) + 180 + offset) * sx;
+        const y = (90 - (ring[i + 1] ?? 0)) * sy;
+        if (i === 0) context.moveTo(x, y);
+        else context.lineTo(x, y);
+      }
+      context.closePath();
+    }
+  context.fill("evenodd");
+  return canvas;
 }
 
-/** Cheap stable noise so every dot keeps its own colour and glitter rhythm. */
-function noise(index: number) {
-  const value = Math.sin(index * 12.9898) * 43758.5453;
-  return value - Math.floor(value);
+function compile(gl: WebGL2RenderingContext) {
+  const program = gl.createProgram();
+  for (const [type, source] of [
+    [gl.VERTEX_SHADER, vertexShader],
+    [gl.FRAGMENT_SHADER, fragmentShader],
+  ] as const) {
+    const shader = gl.createShader(type);
+    if (!shader) return null;
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return null;
+    gl.attachShader(program, shader);
+  }
+  gl.linkProgram(program);
+  return gl.getProgramParameter(program, gl.LINK_STATUS) ? program : null;
+}
+
+/** Same rotation as the shader, for the location lights drawn on top. */
+function project([vx, vy, vz]: [number, number, number], spin: number) {
+  const x1 = vx * Math.cos(spin) + vz * Math.sin(spin);
+  const z1 = vz * Math.cos(spin) - vx * Math.sin(spin);
+  const y2 = vy * Math.cos(view.elevation) - z1 * Math.sin(view.elevation);
+  const z2 = vy * Math.sin(view.elevation) + z1 * Math.cos(view.elevation);
+  return {
+    x: x1 * Math.cos(view.tilt) - y2 * Math.sin(view.tilt),
+    y: x1 * Math.sin(view.tilt) + y2 * Math.cos(view.tilt),
+    z: z2,
+  };
 }
 
 /**
- * Deep blue globe with glittering gold land that turns slowly; AhiBizz locations light up in gold as
- * they come round to the front.
+ * Clean, sharp blue globe with smooth gold continents that turns slowly; AhiBizz locations glow softly in
+ * gold while they face the viewer.
  */
 export function GoldGlobe({
   places,
@@ -46,124 +133,149 @@ export function GoldGlobe({
   places: [number, number][];
   className?: string;
 }) {
-  const canvas = useRef<HTMLCanvasElement>(null);
+  const ball = useRef<HTMLCanvasElement>(null);
+  const lights = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const element = canvas.current;
-    const context = element?.getContext("2d");
-    if (!element || !context) return;
-    const land = landPoints();
+    const ballCanvas = ball.current;
+    const lightCanvas = lights.current;
+    const gl = ballCanvas?.getContext("webgl2", { antialias: true, premultipliedAlpha: true });
+    const overlay = lightCanvas?.getContext("2d");
+    if (!ballCanvas || !lightCanvas || !overlay) return;
+    const program = gl ? compile(gl) : null;
     const spots = places.map(([lat, lng]) => unitVector(lat, lng));
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let frame = 0;
     let visible = true;
+    let cancelled = false;
     const started = performance.now();
 
-    function draw(now: number) {
-      if (!element || !context) return;
-      const size = element.clientWidth;
-      const ratio = Math.min(window.devicePixelRatio || 1, 2);
-      if (element.width !== Math.round(size * ratio)) {
-        element.width = Math.round(size * ratio);
-        element.height = Math.round(size * ratio);
+    if (gl && program) {
+      // biome-ignore lint/correctness/useHookAtTopLevel: WebGL's useProgram is not a React hook.
+      gl.useProgram(program);
+      const corners = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, corners);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+        gl.STATIC_DRAW,
+      );
+      const corner = gl.getAttribLocation(program, "corner");
+      gl.enableVertexAttribArray(corner);
+      gl.vertexAttribPointer(corner, 2, gl.FLOAT, false, 0, 0);
+      gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+      // Sea only until the outlines arrive.
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        1,
+        1,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        new Uint8Array(4),
+      );
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      void fetch(landOutlineUrl)
+        .then((response) => (response.ok ? response.arrayBuffer() : Promise.reject()))
+        .then((buffer) => {
+          if (cancelled) return;
+          gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            landTexture(decodeLand(buffer)),
+          );
+          gl.generateMipmap(gl.TEXTURE_2D);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          // Keeps coasts near the poles sharp where the flat map is stretched sideways.
+          const anisotropic = gl.getExtension("EXT_texture_filter_anisotropic");
+          if (anisotropic)
+            gl.texParameterf(
+              gl.TEXTURE_2D,
+              anisotropic.TEXTURE_MAX_ANISOTROPY_EXT,
+              Math.min(16, gl.getParameter(anisotropic.MAX_TEXTURE_MAX_ANISOTROPY_EXT)),
+            );
+          if (still) frame = requestAnimationFrame(draw);
+        })
+        .catch(() => {});
+    }
+
+    function size(canvas: HTMLCanvasElement) {
+      const pixels = Math.round(canvas.clientWidth * Math.min(window.devicePixelRatio || 1, 3));
+      if (canvas.width !== pixels) {
+        canvas.width = pixels;
+        canvas.height = pixels;
       }
+      return pixels;
+    }
+
+    function draw(now: number) {
+      if (!ballCanvas || !lightCanvas || !overlay) return;
       const t = still ? 0 : (now - started) / 1000;
       const spin = ((startLongitude + (t * 360) / turnSeconds) * Math.PI) / 180;
-      const centre = (size * ratio) / 2;
-      const radius = centre * 0.84;
-      context.setTransform(1, 0, 0, 1, 0, 0);
-      context.clearRect(0, 0, element.width, element.height);
+      const pixels = size(ballCanvas);
+      size(lightCanvas);
+      const radius = (pixels / 2) * ballScale;
 
-      // Ocean: deep lacquered blue with a light from the upper left.
-      const ocean = context.createRadialGradient(
-        centre - radius * 0.38,
-        centre - radius * 0.42,
-        radius * 0.05,
-        centre,
-        centre,
-        radius,
-      );
-      ocean.addColorStop(0, "#5aa2ec");
-      ocean.addColorStop(0.35, "#1f5fb4");
-      ocean.addColorStop(0.75, "#0e3478");
-      ocean.addColorStop(1, "#061a44");
-      context.beginPath();
-      context.arc(centre, centre, radius, 0, Math.PI * 2);
-      context.fillStyle = ocean;
-      context.fill();
-
-      // Glittering gold land, darker towards the edge of the sphere.
-      const dot = Math.max(1, radius / 95);
-      // Grains overlap a little so the continents read as solid glittering gold.
-      const grain = Math.max(1.3, radius / 58);
-      for (let i = 0, n = 0; i < land.length; i += 3, n++) {
-        const p = project(land[i] ?? 0, land[i + 1] ?? 0, land[i + 2] ?? 0, spin);
-        if (p.z <= 0) continue;
-        const shade = 0.5 + 0.5 * p.z;
-        const glitter = still ? 1 : 0.78 + 0.22 * Math.sin(t * (1.5 + noise(n) * 3) + n);
-        context.globalAlpha = Math.min(1, shade * glitter);
-        context.fillStyle = gold[Math.floor(noise(n + 7) * gold.length)] ?? "#e9ca8a";
-        const s = grain * (0.7 + noise(n + 3) * 0.6);
-        context.fillRect(centre + p.x * radius - s / 2, centre - p.y * radius - s / 2, s, s);
+      if (gl && program) {
+        gl.viewport(0, 0, pixels, pixels);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.uniform1f(gl.getUniformLocation(program, "spin"), spin);
+        gl.uniform1f(gl.getUniformLocation(program, "elevation"), view.elevation);
+        gl.uniform1f(gl.getUniformLocation(program, "tilt"), view.tilt);
+        gl.uniform1f(gl.getUniformLocation(program, "pixel"), 1 / radius);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       }
-      context.globalAlpha = 1;
 
-      // Shadow on the far side and a glossy highlight, like the varnish of a real globe.
-      const shadow = context.createRadialGradient(
-        centre - radius * 0.3,
-        centre - radius * 0.3,
-        radius * 0.55,
-        centre,
-        centre,
-        radius * 1.02,
-      );
-      shadow.addColorStop(0, "#00000000");
-      shadow.addColorStop(1, "#020b1fb0");
-      context.beginPath();
-      context.arc(centre, centre, radius, 0, Math.PI * 2);
-      context.fillStyle = shadow;
-      context.fill();
-      const shine = context.createRadialGradient(
-        centre - radius * 0.42,
-        centre - radius * 0.48,
-        0,
-        centre - radius * 0.42,
-        centre - radius * 0.48,
-        radius * 0.5,
-      );
-      shine.addColorStop(0, "#ffffff40");
-      shine.addColorStop(1, "#ffffff00");
-      context.fillStyle = shine;
-      context.fill();
-
-      // AhiBizz locations: they light up as they turn towards the viewer and pulse while in front.
-      spots.forEach(([x, y, z], index) => {
-        const p = project(x, y, z, spin);
-        if (p.z <= 0.05) return;
-        const light = Math.min(1, (p.z - 0.05) / 0.3);
-        const px = centre + p.x * radius;
-        const py = centre - p.y * radius;
-        const pulse = still ? 0.5 : (t * 0.6 + noise(index + 11)) % 1;
-        const glow = context.createRadialGradient(px, py, 0, px, py, dot * 7);
-        glow.addColorStop(0, `rgba(255, 236, 180, ${0.95 * light})`);
-        glow.addColorStop(0.35, `rgba(233, 202, 138, ${0.5 * light})`);
-        glow.addColorStop(1, "rgba(233, 202, 138, 0)");
-        context.fillStyle = glow;
-        context.beginPath();
-        context.arc(px, py, dot * 7, 0, Math.PI * 2);
-        context.fill();
-        context.strokeStyle = `rgba(255, 228, 160, ${(1 - pulse) * 0.8 * light})`;
-        context.lineWidth = ratio;
-        context.beginPath();
-        context.arc(px, py, dot * (2 + pulse * 8), 0, Math.PI * 2);
-        context.stroke();
-        context.fillStyle = `rgba(255, 255, 255, ${light})`;
-        context.beginPath();
-        context.arc(px, py, dot * 1.3, 0, Math.PI * 2);
-        context.fill();
-      });
-
-      ring(context, centre, radius);
+      overlay.setTransform(1, 0, 0, 1, 0, 0);
+      overlay.clearRect(0, 0, pixels, pixels);
+      const centre = pixels / 2;
+      if (!gl || !program) {
+        // No WebGL 2: a plain lacquered blue ball, still with the lights.
+        const sea = overlay.createRadialGradient(
+          centre - radius * 0.4,
+          centre - radius * 0.45,
+          radius * 0.05,
+          centre,
+          centre,
+          radius,
+        );
+        sea.addColorStop(0, "#3f86e0");
+        sea.addColorStop(0.6, "#123c8c");
+        sea.addColorStop(1, "#04112e");
+        overlay.fillStyle = sea;
+        overlay.beginPath();
+        overlay.arc(centre, centre, radius, 0, Math.PI * 2);
+        overlay.fill();
+      }
+      const unit = Math.max(1, pixels / 230);
+      const breath = still ? 1 : 0.8 + 0.2 * Math.sin(t * 2.1);
+      for (const spot of spots) {
+        const p = project(spot, spin);
+        if (p.z <= 0.08) continue;
+        const light = Math.min(1, (p.z - 0.08) / 0.3);
+        const x = centre + p.x * radius;
+        const y = centre - p.y * radius;
+        const halo = overlay.createRadialGradient(x, y, 0, x, y, unit * 6);
+        halo.addColorStop(0, `rgba(255, 226, 150, ${0.55 * light * breath})`);
+        halo.addColorStop(1, "rgba(255, 226, 150, 0)");
+        overlay.fillStyle = halo;
+        overlay.beginPath();
+        overlay.arc(x, y, unit * 6, 0, Math.PI * 2);
+        overlay.fill();
+        overlay.fillStyle = `rgba(255, 248, 225, ${light})`;
+        overlay.beginPath();
+        overlay.arc(x, y, unit * 1.5, 0, Math.PI * 2);
+        overlay.fill();
+      }
 
       if (!still && visible) frame = requestAnimationFrame(draw);
     }
@@ -173,15 +285,15 @@ export function GoldGlobe({
       cancelAnimationFrame(frame);
       if (visible || still) frame = requestAnimationFrame(draw);
     });
-    observer.observe(element);
+    observer.observe(ballCanvas);
     const onVisibility = () => {
       visible = document.visibilityState === "visible";
       cancelAnimationFrame(frame);
       if (visible) frame = requestAnimationFrame(draw);
     };
     document.addEventListener("visibilitychange", onVisibility);
-    frame = requestAnimationFrame(draw);
     return () => {
+      cancelled = true;
       cancelAnimationFrame(frame);
       observer.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
@@ -189,30 +301,10 @@ export function GoldGlobe({
   }, [places]);
 
   // Decorative: the banner wraps it in an aria-hidden stage.
-  return <canvas ref={canvas} className={className} />;
-}
-
-/** The brass half ring of a desk globe on the left, holding the tilted axis at both poles. */
-function ring(context: CanvasRenderingContext2D, centre: number, radius: number) {
-  context.save();
-  context.translate(centre, centre);
-  context.rotate(view.tilt);
-  const brass = context.createLinearGradient(-radius, -radius, radius * 0.2, radius);
-  brass.addColorStop(0, "#fff0c4");
-  brass.addColorStop(0.45, "#d9b26a");
-  brass.addColorStop(1, "#8a6526");
-  context.strokeStyle = brass;
-  context.fillStyle = brass;
-  context.lineWidth = Math.max(2, radius * 0.05);
-  context.lineCap = "round";
-  context.beginPath();
-  context.arc(0, 0, radius * 1.1, Math.PI * 0.5, Math.PI * 1.5);
-  context.stroke();
-  // Axis caps where the ring holds the globe.
-  for (const y of [-1, 1]) {
-    context.beginPath();
-    context.arc(0, y * radius * 1.04, radius * 0.045, 0, Math.PI * 2);
-    context.fill();
-  }
-  context.restore();
+  return (
+    <div className={className}>
+      <canvas ref={ball} />
+      <canvas ref={lights} />
+    </div>
+  );
 }
