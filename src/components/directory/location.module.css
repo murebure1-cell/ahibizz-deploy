@@ -146,6 +146,9 @@
   color: #3a3f45;
   box-shadow: 0 6px 16px #0d1b2a40;
 }
+.googlePin > span[data-logo-surface="dark"] {
+  background: #173047;
+}
 .googlePin img {
   width: 100%;
   height: 100%;

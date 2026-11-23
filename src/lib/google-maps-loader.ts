@@ -1,5 +1,6 @@
 "use client";
 
+import { readBusinessLogoSurface } from "./business-logo";
 import { googleMapsKeyMeta, readGoogleMapsKey } from "./google-maps";
 
 // Minimal shapes of the Google Maps JavaScript API used in the app, so no extra type package is needed.
@@ -92,6 +93,10 @@ export function logoBadge(src: string, size = 56): Promise<string> {
     image.decoding = "async";
     image.onload = () => {
       try {
+        // Light (e.g. white) logos get the navy surface used on cards; empty images use a plain pin.
+        const surface = readBusinessLogoSurface(image, src);
+        if (surface === "empty") throw new Error("Empty logo");
+        const fill = surface === "dark" ? "#173047" : "#ffffff";
         const scale = window.devicePixelRatio > 1 ? 2 : 1;
         const canvas = document.createElement("canvas");
         canvas.width = canvas.height = size * scale;
@@ -101,7 +106,7 @@ export function logoBadge(src: string, size = 56): Promise<string> {
         const radius = size / 2;
         context.beginPath();
         context.arc(radius, radius, radius - 1, 0, Math.PI * 2);
-        context.fillStyle = "#ffffff";
+        context.fillStyle = fill;
         context.fill();
         context.lineWidth = 3;
         context.strokeStyle = "#173047";

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { LocationPoint } from "../../lib/business-location";
+import { readBusinessLogoSurface } from "../../lib/business-logo";
 import { googleMapsDark, googleMapsLight } from "../../lib/google-maps";
 import {
   type GoogleMap,
@@ -35,10 +36,16 @@ function createLogoPin(maps: GoogleMapsApi, point: LocationPoint, logoUrl?: stri
   if (logo) {
     const image = document.createElement("img");
     image.alt = "";
-    image.src = logo.src;
     image.addEventListener("error", () => {
       badge.innerHTML = shopIcon;
     });
+    image.addEventListener("load", () => {
+      // Light logos get the navy surface; empty images fall back to the shop icon.
+      const surface = readBusinessLogoSurface(image, logo.src);
+      if (surface === "empty") badge.innerHTML = shopIcon;
+      else if (surface) badge.dataset.logoSurface = surface;
+    });
+    image.src = logo.src;
     badge.appendChild(image);
   } else badge.innerHTML = shopIcon;
   element.appendChild(badge);
