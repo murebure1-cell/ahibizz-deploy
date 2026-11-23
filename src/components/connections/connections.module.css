@@ -678,6 +678,28 @@
   background: var(--ui-surface-soft);
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton span {
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--ui-surface) 70%, transparent) 50%,
+        transparent 100%
+      )
+      var(--ui-surface-soft) no-repeat;
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.3s ease-in-out infinite;
+  }
+  @keyframes skeleton-shimmer {
+    from {
+      background-position: 150% 0;
+    }
+    to {
+      background-position: -50% 0;
+    }
+  }
+}
+
 .skeleton span:first-child {
   height: 20px;
   width: 40%;

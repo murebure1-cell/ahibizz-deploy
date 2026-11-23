@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { AppProviders } from "../components/design/AppProviders";
 import { appearanceBootstrap } from "../lib/appearance";
 import "./globals.css";
+import "./motion.css";
 
 export const metadata: Metadata = {
   title: { default: "AhiBizz — lokalno počinje s ljudima", template: "%s | AhiBizz" },
