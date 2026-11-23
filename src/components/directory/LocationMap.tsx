@@ -6,7 +6,7 @@ import type { LocationPoint } from "../../lib/business-location";
 import { isCurrentBusinessLogoImage, readBusinessLogoSurface } from "../../lib/business-logo";
 import { safeBusinessImage } from "../../lib/public-business";
 import "leaflet/dist/leaflet.css";
-import { googleMapsKeyMeta, readGoogleMapsKey } from "../../lib/google-maps";
+import { pageGoogleMapsKey } from "../../lib/google-maps-loader";
 import { GoogleLocationMap } from "./GoogleLocationMap";
 import styles from "./location.module.css";
 
@@ -25,8 +25,7 @@ type MapProps = {
 export function LocationMap(props: MapProps) {
   const [googleKey, setGoogleKey] = useState<string | null | undefined>(undefined);
   useEffect(() => {
-    const meta = document.querySelector<HTMLMetaElement>(`meta[name="${googleMapsKeyMeta}"]`);
-    setGoogleKey(readGoogleMapsKey(meta?.content));
+    setGoogleKey(pageGoogleMapsKey());
   }, []);
   if (googleKey === undefined)
     return (
@@ -41,6 +40,7 @@ export function LocationMap(props: MapProps) {
         point={props.point}
         disabled={props.disabled}
         readOnly={props.readOnly ?? false}
+        logoUrl={props.logoUrl}
         onPoint={props.onPoint}
         onUnavailable={() => setGoogleKey(null)}
       />

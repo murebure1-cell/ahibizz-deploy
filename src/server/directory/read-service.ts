@@ -14,6 +14,14 @@ import {
 import { businessKeys, object, pageInput, uuid } from "./validation";
 
 export type DirectoryReadDatabase = Pick<Database, "query">;
+export type MapPinRow = {
+  id: string;
+  title: string;
+  city: string | null;
+  latitude: number | string;
+  longitude: number | string;
+  media: DirectoryBusiness["media"];
+};
 type PromotionFilter = boolean | "category" | "all";
 type ListOptions = { maximumPageSize?: number; newestFirst?: boolean };
 
@@ -356,6 +364,19 @@ export function createPublicDirectoryService({
         newestFirst: true,
       });
       return result.items;
+    },
+    /** Published businesses with coordinates, for the map; only public fields and media. */
+    mapPins(): Promise<MapPinRow[]> {
+      return safeRead(async () => {
+        const result = await database.query(
+          `SELECT b.id, b.title, b.city, b.latitude, b.longitude, ${businessMediaProjection} AS media
+             FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id
+            WHERE ${publicBusinessWhere} AND b.latitude IS NOT NULL AND b.longitude IS NOT NULL
+            ORDER BY b.published_at DESC NULLS LAST, b.id
+            LIMIT 2000`,
+        );
+        return result.rows as MapPinRow[];
+      });
     },
     async readPublic(id: string): Promise<PublicDirectoryBusiness> {
       const key = uuid(id);
