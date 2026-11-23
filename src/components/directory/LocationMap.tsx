@@ -6,21 +6,49 @@ import type { LocationPoint } from "../../lib/business-location";
 import { isCurrentBusinessLogoImage, readBusinessLogoSurface } from "../../lib/business-logo";
 import { safeBusinessImage } from "../../lib/public-business";
 import "leaflet/dist/leaflet.css";
+import { googleMapsKeyMeta, readGoogleMapsKey } from "../../lib/google-maps";
+import { GoogleLocationMap } from "./GoogleLocationMap";
 import styles from "./location.module.css";
 
-export function LocationMap({
-  point,
-  disabled,
-  readOnly = false,
-  logoUrl,
-  onPoint,
-}: {
+type MapProps = {
   point: LocationPoint | null;
   disabled: boolean;
   readOnly?: boolean;
   logoUrl?: string;
   onPoint: (point: LocationPoint) => void;
-}) {
+};
+
+/**
+ * Uses Google Maps when the server publishes a key, and the OpenStreetMap (Leaflet) map otherwise
+ * or whenever Google refuses the key or cannot load.
+ */
+export function LocationMap(props: MapProps) {
+  const [googleKey, setGoogleKey] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    const meta = document.querySelector<HTMLMetaElement>(`meta[name="${googleMapsKeyMeta}"]`);
+    setGoogleKey(readGoogleMapsKey(meta?.content));
+  }, []);
+  if (googleKey === undefined)
+    return (
+      <div className={styles.mapWrap}>
+        <section className={styles.map} aria-label="Karta lokacije djelatnosti" />
+      </div>
+    );
+  if (googleKey)
+    return (
+      <GoogleLocationMap
+        apiKey={googleKey}
+        point={props.point}
+        disabled={props.disabled}
+        readOnly={props.readOnly ?? false}
+        onPoint={props.onPoint}
+        onUnavailable={() => setGoogleKey(null)}
+      />
+    );
+  return <LeafletLocationMap {...props} />;
+}
+
+function LeafletLocationMap({ point, disabled, readOnly = false, logoUrl, onPoint }: MapProps) {
   const element = useRef<HTMLElement>(null);
   const map = useRef<Leaflet.Map | null>(null);
   const marker = useRef<Leaflet.Marker | null>(null);

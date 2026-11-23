@@ -18,9 +18,11 @@ export default function PrivacyPage() {
       <section className={styles.section}>
         <h2>Lokacija i obavijesti</h2>
         <p>
-          Ako dopustiš lokaciju, AhiBizz koristi koordinate za prikaz djelatnosti u blizini.
-          Pretraga adresa koristi Photon, a karte OpenStreetMap. Usluge za karte primaju upit ili
-          područje karte koje otvaraš.
+          Ako dopustiš lokaciju, AhiBizz koristi koordinate za prikaz djelatnosti u blizini. Na ovom
+          uređaju pamti se samo približno područje (oko 1 km) najviše 24 sata, da bi djelatnosti u
+          blizini bile odmah prikazane; briše se kad isključiš lokaciju ili se odjaviš. Pretraga
+          adresa koristi Photon, a karte Google Maps ili OpenStreetMap. Usluge za karte primaju upit
+          ili područje karte koje otvaraš.
         </p>
         <p>
           Za obavijesti čuvamo pretplatu uređaja. Obavijesti možeš isključiti u Postavkama, a

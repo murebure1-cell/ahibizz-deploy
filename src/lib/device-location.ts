@@ -20,6 +20,17 @@ export const freshFixMs = 90_000;
  * once instead of waiting for a new satellite or network fix; the watch then refines it.
  */
 export const cachedFixMs = 600_000;
+/** How long the device keeps the approximate area (about 1 km) for an instant next visit. */
+export const areaRememberMs = 86_400_000;
+
+/** About 1 km: enough to list nearby businesses, too coarse to reveal an address. */
+export function coarseArea(point: LocationPoint): LocationPoint {
+  return {
+    latitude: Math.round(point.latitude * 100) / 100,
+    longitude: Math.round(point.longitude * 100) / 100,
+    accuracy: 1100,
+  };
+}
 
 export function distanceMetres(a: LocationPoint, b: LocationPoint): number {
   const radians = (degrees: number) => (degrees * Math.PI) / 180;
@@ -49,6 +60,10 @@ export type LocationEnvironment = {
   cancel: (id: number) => void;
   remembered?: () => boolean;
   remember?: (allowed: boolean) => void;
+  /** A previously stored approximate area, already checked for age; never an exact point. */
+  rememberedArea?: () => LocationPoint | null;
+  rememberArea?: (area: LocationPoint) => void;
+  forgetArea?: () => void;
 };
 
 /** Foreground-only GPS lifecycle. Exact points live only in this provider's memory. */
@@ -139,7 +154,7 @@ export function createDeviceLocationController(
       (point.accuracy ?? 0) > 5000 ||
       !Number.isFinite(position.timestamp) ||
       position.timestamp < lastPositionAt ||
-      age > (state.point ? freshFixMs : cachedFixMs) ||
+      age > (state.point && !provisional ? freshFixMs : cachedFixMs) ||
       position.timestamp - now > 5000
     ) {
       if (!state.point) update({ status: "unavailable" });
@@ -152,8 +167,10 @@ export function createDeviceLocationController(
     // A reused device fix counts as at most `freshFixMs` old, so it stays usable while the watch refines it.
     lastFixAt = Math.min(now, Math.max(position.timestamp, now - freshFixMs));
     const cached = age > freshFixMs;
+    if (!cached) environment.rememberArea?.(coarseArea(point));
     expire();
-    if (!state.point) {
+    // A remembered area or an old device fix is only a placeholder: any real fix replaces it at once.
+    if (!state.point || provisional) {
       provisional = cached;
       publish(point);
       expire();
@@ -161,8 +178,6 @@ export function createDeviceLocationController(
     }
     if (state.permission !== "granted" || state.status !== "ready")
       update({ permission: "granted", status: "ready" });
-    const replacesProvisional = provisional && !cached;
-    if (replacesProvisional) provisional = false;
     if (distanceMetres(state.point, point) < Math.max(150, Math.min(point.accuracy ?? 0, 500))) {
       pending = null;
       clearTimer("pending");
@@ -170,7 +185,7 @@ export function createDeviceLocationController(
     }
     pending = point;
     const remaining = locationRefreshMs - (now - publishedAt);
-    if (!active || remaining <= 0 || replacesProvisional) publish(point);
+    if (!active || remaining <= 0) publish(point);
     else if (pendingTimer === undefined)
       pendingTimer = environment.schedule(() => {
         pendingTimer = undefined;
@@ -180,6 +195,7 @@ export function createDeviceLocationController(
   function denied() {
     userRequested = false;
     environment.remember?.(false);
+    environment.forgetArea?.();
     stopPosition();
     clearTimer("stale");
     update({ point: null, permission: "denied", status: "denied" });
@@ -199,11 +215,30 @@ export function createDeviceLocationController(
     if (state.permission === "denied") return;
     if (!explicit && state.permission !== "granted" && !userRequested) return;
     if (requesting) return;
+    // Only the first lookup of a visit uses the remembered area; an expired real fix re-acquires.
+    if (!state.point && lastFixAt === 0) {
+      const area = environment.rememberedArea?.();
+      if (area) {
+        // Show nearby results for the remembered area at once while the device finds the real fix.
+        provisional = true;
+        lastFixAt = environment.now() - freshFixMs;
+        publish(area);
+        expire();
+      }
+    }
     if (!state.point) update({ status: "locating" });
     const epoch = ++positionEpoch;
     requesting = true;
     try {
       if (active) {
+        // Watches often wait for a new fix; a one-shot request may answer at once from the
+        // position the device already holds (maximumAge), so ask both while only a placeholder exists.
+        if (!state.point || provisional)
+          environment.gps.getCurrentPosition(
+            (position) => success(position, epoch),
+            () => {},
+            options,
+          );
         const id = environment.gps.watchPosition(
           (position) => success(position, epoch),
           (error) => failure(error, epoch),
@@ -240,6 +275,7 @@ export function createDeviceLocationController(
         else {
           if (permission.state === "prompt") {
             environment.remember?.(false);
+            environment.forgetArea?.();
             if (state.point || state.permission === "granted") {
               userRequested = false;
               stopPosition();

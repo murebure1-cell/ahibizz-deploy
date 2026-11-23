@@ -15,6 +15,11 @@ import {
   type DeviceLocationState,
   initialDeviceLocation,
 } from "../../lib/device-location";
+import {
+  forgetRememberedArea,
+  readRememberedArea,
+  saveRememberedArea,
+} from "../../lib/location-area-storage";
 
 type LocationContext = DeviceLocationState & {
   requestLocation: () => void;
@@ -60,6 +65,9 @@ export function DeviceLocationProvider({ children }: { children: ReactNode }) {
             /* Optional preference storage may be unavailable. */
           }
         },
+        rememberedArea: readRememberedArea,
+        rememberArea: saveRememberedArea,
+        forgetArea: forgetRememberedArea,
       },
       setState,
     );

@@ -11,6 +11,7 @@ import {
 } from "../../lib/account-return";
 import { accountShortcuts } from "../../lib/account-shortcuts";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
+import { forgetRememberedArea } from "../../lib/location-area-storage";
 import type { MessageTarget } from "../../lib/messaging";
 import { clearBrowserMessagingRecovery } from "../../lib/messaging-recovery-storage";
 import { type PersonalProfile, profileImageUrl } from "../../lib/people";
@@ -170,6 +171,7 @@ function AccountWorkspace({
         return;
       }
       clearBrowserMessagingRecovery(initial.id);
+      forgetRememberedArea();
       resetAppearance();
       window.location.assign("/prijava");
     } catch {
