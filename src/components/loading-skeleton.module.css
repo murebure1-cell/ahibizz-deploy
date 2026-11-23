@@ -1,0 +1,47 @@
+.skeleton {
+  display: grid;
+  gap: 12px;
+}
+.row {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  background: var(--ui-surface);
+}
+.row span {
+  display: block;
+  height: 12px;
+  width: 72%;
+  border-radius: 6px;
+  background: var(--ui-surface-soft);
+}
+.row span:first-child {
+  height: 16px;
+  width: 44%;
+}
+.row span:last-child {
+  width: 58%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .row span {
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--ui-surface) 70%, transparent) 50%,
+        transparent 100%
+      )
+      var(--ui-surface-soft) no-repeat;
+    background-size: 200% 100%;
+    animation: loading-shimmer 1.3s ease-in-out infinite;
+  }
+  @keyframes loading-shimmer {
+    from {
+      background-position: 150% 0;
+    }
+    to {
+      background-position: -50% 0;
+    }
+  }
+}

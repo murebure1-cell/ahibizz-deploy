@@ -7,6 +7,7 @@ import { FavoritesProvider } from "../favorites/FavoritesProvider";
 import { DeviceLocationProvider } from "../location/DeviceLocation";
 import { MobileDock } from "../MobileDock";
 import { AppPwaProvider } from "../pwa/AppPwa";
+import { ImageArrival } from "./ImageArrival";
 
 export const designerFramePath = "/administracija/izgled/pregled";
 
@@ -14,6 +15,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
   if (usePathname() === designerFramePath) return <>{children}</>;
   return (
     <AppAppearance>
+      <ImageArrival />
       <DeviceLocationProvider>
         <AppPwaProvider>{children}</AppPwaProvider>
       </DeviceLocationProvider>
