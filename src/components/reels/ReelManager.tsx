@@ -13,6 +13,7 @@ import {
   reelMedia,
   reelPartBytes,
 } from "../../lib/reels";
+import { ConfirmButton } from "../ConfirmButton";
 import { previewFrame } from "./poster";
 import styles from "./reels.module.css";
 
@@ -371,17 +372,16 @@ export function ReelManager({
                 {reel.status === "published" && (
                   <Link href={`/reels/${reel.id}`}>Javna objava</Link>
                 )}
-                <button
-                  type="button"
+                <ConfirmButton
                   disabled={busy}
                   className={styles.secondary}
-                  onClick={() => {
-                    if (window.confirm("Povući ovaj reel? Snimak i naslovnica će se ukloniti."))
-                      void decide(reel, "withdraw");
-                  }}
+                  title="Povući reel?"
+                  description="Snimak i naslovnica će se ukloniti."
+                  confirmLabel="Povuci reel"
+                  onConfirm={() => void decide(reel, "withdraw")}
                 >
                   Povuci reel
-                </button>
+                </ConfirmButton>
               </div>
             )}
           </article>

@@ -40,6 +40,21 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Lint, types and unit tests
         run: pnpm check
+      - name: Build the Google Play edition and confirm purchases stay closed
+        env:
+          AHIBIZZ_DISTRIBUTION: google-play
+        run: |
+          set -euo pipefail
+          pnpm build
+          node -e '
+            const rewrites = require("./.next/routes-manifest.json").rewrites.beforeFiles;
+            const closed = new Set(rewrites.filter((r) => r.destination === "/store-unavailable").map((r) => r.source));
+            const required = ["/istakni", "/nalog/isticanja", "/paketi", "/oglasavanje", "/naplata", "/podrzi"];
+            const missing = required.filter((path) => !closed.has(path + "/:path*"));
+            if (missing.length) { console.error("Play build leaves purchase pages open: " + missing.join(", ")); process.exit(1); }
+            console.log("Play edition: " + closed.size + " purchase routes closed.");
+          '
+          rm -rf .next
       - name: Test migrations against isolated PostgreSQL
         env:
           CI: "true"
@@ -228,6 +243,45 @@ jobs:
           done
           echo "Production entrypoint did not become ready within 60 seconds."
           exit 1
+      - name: Smoke test key pages render on the production image
+        timeout-minutes: 3
+        env:
+          DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
+        run: |
+          set -euo pipefail
+          name=ahibizz-route-smoke
+          container_id=
+          if docker container inspect "$name" >/dev/null 2>&1; then
+            echo "Refusing to replace an existing route smoke-test container."
+            exit 1
+          fi
+          cleanup() {
+            code=$?
+            trap - EXIT
+            if [[ -n "$container_id" ]]; then
+              if (( code != 0 )); then docker logs "$container_id" || true; fi
+              docker rm --force "$container_id" >/dev/null || true
+            fi
+            exit "$code"
+          }
+          trap cleanup EXIT
+          container_id=$(docker run --detach --name "$name" --network host \
+            --env PORT=3099 --env DATABASE_URL \
+            --env BETTER_AUTH_URL=https://route-smoke.ahibizz-ci.invalid \
+            --env BETTER_AUTH_SECRET=isolated-ci-only-secret-over-thirty-two-characters \
+            --env SMTP_HOST=fixture.invalid --env SMTP_PORT=465 --env SMTP_USER=fixture \
+            --env SMTP_PASSWORD=fixture-only --env SMTP_FROM=no-reply@fixture.invalid \
+            ahibizz:ci)
+          deadline=$((SECONDS + 60))
+          until curl --fail --silent --max-time 2 http://127.0.0.1:3099/api/health/ready >/dev/null; do
+            if (( SECONDS >= deadline )); then
+              echo "Route smoke server did not become ready within 60 seconds."
+              exit 1
+            fi
+            sleep 2
+          done
+          node scripts/smoke-routes.mjs http://127.0.0.1:3099
+          docker stop --time 15 "$container_id" >/dev/null
       - name: Smoke test guarded ingress with client-IP trust disabled
         timeout-minutes: 3
         env:

@@ -38,6 +38,8 @@ Ove korake obavlja imenovani izdavač nakon odobrenja. Tokom ove predaje nije po
    }
    ```
 
+   CI od 23. 11. 2026. na svakom pushu gradi Play izdanje i pada ako bilo koja kupovna stranica (`/istakni`, `/nalog/isticanja`, `/paketi`, `/oglasavanje`, `/naplata`, `/podrzi`) nije preusmjerena na `/store-unavailable`.
+
    Docker put: `docker build --build-arg AHIBIZZ_DISTRIBUTION=google-play --tag ahibizz:play .`. Lokalni Play build koristi zaseban radni/build folder kako `.next` ne bi zamijenio web build. Deploy ostaje `integration/ahibizz → ahibizz-deploy → OctaDeploy app 213`; domena i zaseban Play servis traže potvrdu vlasnika. Prije autorizovanog deploya napraviti svjež backup i potvrditi odabrani commit.
 5. Na pripremljenoj domeni provjeriti `/.well-known/ahibizz-distribution.json` (`google-play`), manifest, PNG ikone, `/sw.js`, `/privatnost`, `/brisanje-naloga` i sve kupovne zabrane. Običan web build sa skrivenim menijem nije Play build.
 6. U posebnom Android folderu, izvan aplikacijskog izvornog koda, instalirati pregledanu i zapisanu verziju `@bubblewrap/cli`. Bubblewrap treba JDK i Android SDK; instalaciju radi tim na svom build računaru. Ne instalirati PostgreSQL/Docker samo zbog omotača.

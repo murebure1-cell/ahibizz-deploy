@@ -96,6 +96,11 @@
     animation: ahibizz-notice-in var(--motion-base) var(--motion-ease) backwards;
   }
 
+  /* Images that arrive after the page is ready fade in over their reserved placeholder. */
+  img[data-arrived="true"] {
+    animation: ahibizz-fade 280ms ease-out backwards;
+  }
+
   /* Slow loads breathe gently; quick loads finish before the pulse starts. */
   [aria-busy="true"] {
     animation: ahibizz-busy 1.1s ease-in-out 320ms infinite alternate;

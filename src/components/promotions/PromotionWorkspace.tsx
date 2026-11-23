@@ -22,6 +22,8 @@ import {
   promotionStatusLabel,
 } from "../../lib/promotions";
 import { AccountAuthorityBoundary } from "../account/AccountAuthorityBoundary";
+import { ConfirmButton } from "../ConfirmButton";
+import { LoadingSkeleton } from "../LoadingSkeleton";
 import { CopyPaymentDetails } from "../support/CopyPaymentDetails";
 import styles from "./promotions.module.css";
 
@@ -271,9 +273,11 @@ function Workspace({
           {notice}
         </p>
       )}
-      {!data ? (
+      {!data && !error ? (
+        <LoadingSkeleton label="Učitavam isticanja…" />
+      ) : !data ? (
         <p role="status">
-          {error ? "Pregled nije učitan." : "Učitavam isticanja…"}{" "}
+          Pregled nije učitan.{" "}
           <button type="button" onClick={refresh}>
             Osvježi
           </button>
@@ -776,16 +780,17 @@ function OrderCard({
         </form>
       )}
       {(order.status === "pending" || (admin && order.status === "active")) && (
-        <button
-          type="button"
+        <ConfirmButton
           disabled={busy}
-          onClick={() => {
-            if (window.confirm("Otkazati ovo isticanje?"))
-              void act(() => command(`${base}/${order.id}/cancel`, {}), "Isticanje je otkazano.");
-          }}
+          title="Otkazati isticanje?"
+          description="Narudžba ostaje u historiji kao otkazana, a mjesto se oslobađa."
+          confirmLabel="Otkaži isticanje"
+          onConfirm={() =>
+            void act(() => command(`${base}/${order.id}/cancel`, {}), "Isticanje je otkazano.")
+          }
         >
           Otkaži isticanje
-        </button>
+        </ConfirmButton>
       )}
     </article>
   );
