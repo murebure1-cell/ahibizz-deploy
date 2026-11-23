@@ -154,7 +154,7 @@ CREATE TRIGGER promotion_owner_changed AFTER UPDATE OF approval,"emailVerified",
  FOR EACH ROW WHEN (NEW.approval IS DISTINCT FROM OLD.approval OR NEW."emailVerified" IS DISTINCT FROM OLD."emailVerified" OR NEW.role IS DISTINCT FROM OLD.role)
  EXECUTE FUNCTION cancel_changed_promotions();
 
--- Content erasure never reads or changes archived payment and advertisement rows.
+-- Erasure keeps the 0051 behaviour and also removes banner images the account uploaded.
 CREATE OR REPLACE FUNCTION erase_account_content(subject_user text, previous_email text) RETURNS void
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -171,6 +171,7 @@ BEGIN
   DELETE FROM push_test_limit WHERE user_id=subject_user;
   DELETE FROM community_rules_acceptance WHERE account_id=subject_user;
   DELETE FROM personal_profile_image WHERE user_id=subject_user;
+  DELETE FROM personal_profile_entitlement WHERE user_id=subject_user;
   DELETE FROM personal_profile WHERE user_id=subject_user;
   DELETE FROM people_block WHERE subject_user IN (actor_id,people_block.target_id);
   DELETE FROM people_connection_event
@@ -182,6 +183,8 @@ BEGIN
   DELETE FROM business_favorite WHERE user_id=subject_user;
   DELETE FROM directory_saved_search WHERE account_id=subject_user;
   DELETE FROM blog_bookmark WHERE account_id=subject_user;
+  DELETE FROM ad_audience_preference WHERE account_id=subject_user;
+  DELETE FROM ad_measurement_consent WHERE account_id=subject_user;
   DELETE FROM account_activity WHERE recipient_id=subject_user;
   DELETE FROM support_request WHERE actor_id=subject_user;
 
@@ -201,7 +204,15 @@ BEGIN
   DELETE FROM business_reel_like WHERE user_id=subject_user;
   DELETE FROM business_reel_part
     WHERE reel_id IN (SELECT id FROM business_reel WHERE submitted_by=subject_user);
-  DELETE FROM business_reel WHERE submitted_by=subject_user;
+  DELETE FROM business_reel WHERE submitted_by=subject_user AND wallet_payment_id IS NULL;
+  UPDATE business_reel SET title='Uklonjen video',caption='',status='withdrawn',has_poster=false,
+    review_reason=NULL WHERE submitted_by=subject_user AND wallet_payment_id IS NOT NULL;
+
+  UPDATE marketing_order SET status='closed',instructions=CASE
+    WHEN instructions IS NOT NULL THEN 'Ponuda je zatvorena.' ELSE NULL END
+    WHERE account_id=subject_user AND status IN ('requested','quoted');
+  DELETE FROM marketing_ad_asset
+    WHERE order_id IN (SELECT id FROM marketing_order WHERE account_id=subject_user);
 
   DELETE FROM directory_business_image_proposal
     WHERE business_id IN (SELECT id FROM directory_business WHERE owner_user_id=subject_user AND deleted_at IS NOT NULL);
@@ -213,5 +224,8 @@ BEGIN
     contact_phone=NULL,website_url=NULL,address_line=NULL,city=NULL,country_code=NULL,latitude=NULL,
     longitude=NULL,editorial_revision=NULL,is_verified=false,is_featured=false
     WHERE owner_user_id=subject_user AND deleted_at IS NOT NULL;
+
+  DELETE FROM promotion_banner_image
+    WHERE order_id IN (SELECT id FROM promotion_order WHERE owner_id=subject_user);
 END $$;
 

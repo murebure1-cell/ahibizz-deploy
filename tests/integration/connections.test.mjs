@@ -508,46 +508,17 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           );
           assert.equal((await connections.searchPublic({ q: "Alice" })).items.length, 0);
           await show(alice, true);
-          await pool.query(
-            "UPDATE personal_profile_entitlement SET can_customize_cover=false WHERE user_id=$1",
-            [alice.user.id],
-          );
-          assert.equal((await connections.readPublic(alice.user.id)).coverVersion, null);
-          assert.equal(
-            await connections.readPublicMedia(alice.user.id, "cover", publicCover),
-            null,
-          );
+          assert.equal((await connections.readPublic(alice.user.id)).coverVersion, publicCover);
+          assert.ok(await connections.readPublicMedia(alice.user.id, "cover", publicCover));
           assert.ok(await connections.readPublicMedia(alice.user.id, "photo", publicPhoto));
         },
       );
       await t.test(
-        "only effective paid coverage enables the personal cover for the current business owner",
+        "the personal cover stays available without any paid package or business",
         async () => {
-          const businessId = randomUUID(),
-            categoryId = randomUUID(),
-            contractId = randomUUID(),
-            saleId = randomUUID();
-          await pool.query(
-            "INSERT INTO directory_category(id,name,slug) VALUES($1,'Cover fixture','cover-package-fixture')",
-            [categoryId],
-          );
-          await pool.query(
-            "INSERT INTO directory_business(id,owner_user_id,title,category_id,status,package_access) VALUES($1,$2,'Cover fixture',$3,'draft','first_year')",
-            [businessId, alice.user.id, categoryId],
-          );
-          assert.equal((await people.read(alice.headers)).canCustomizeCover, false);
-          await pool.query(
-            `INSERT INTO live_package_contract(id,user_id,business_id,business_title,request_id,package_id,period,amount_bam_minor,amount_eur_minor,total_cycles,benefits_version,nearby_days,featured_days,plan_id,status,starts_at,ends_at,paid_cycles)
-             VALUES($1,$2,$3,'Cover fixture',$4,'basic','monthly',2900,1483,12,1,0,0,'P-COVERFIXTURE','ACTIVE',now()-interval '1 day',now()+interval '1 month'-interval '1 day',1)`,
-            [contractId, alice.user.id, businessId, randomUUID()],
-          );
-          assert.equal((await people.read(alice.headers)).canCustomizeCover, false);
-          await pool.query(
-            "INSERT INTO live_package_payment(id,contract_id,amount_eur_minor,paid_at,status) VALUES($1,$2,1483,now()-interval '1 day','COMPLETED')",
-            [saleId, contractId],
-          );
+          for (const person of [alice, bob])
+            assert.equal((await people.read(person.headers)).canCustomizeCover, true);
           const profile = await people.read(alice.headers);
-          assert.equal(profile.canCustomizeCover, true);
           assert.equal(profile.coverVersion, publicCover);
           assert.equal((await people.readMedia(alice.headers, "cover")).version, publicCover);
           assert.equal((await connections.readPublic(alice.user.id)).coverVersion, publicCover);
@@ -555,33 +526,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             (await connections.readPublicMedia(alice.user.id, "cover", publicCover)).version,
             publicCover,
           );
-          await pool.query("UPDATE live_package_payment SET needs_review=true WHERE id=$1", [
-            saleId,
-          ]);
-          assert.equal((await people.read(alice.headers)).canCustomizeCover, false);
-          await pool.query("UPDATE live_package_payment SET needs_review=false WHERE id=$1", [
-            saleId,
-          ]);
-          await pool.query("UPDATE directory_business SET owner_user_id=$2 WHERE id=$1", [
-            businessId,
-            bob.user.id,
-          ]);
-          assert.equal((await people.read(alice.headers)).canCustomizeCover, false);
-          assert.equal((await people.read(bob.headers)).canCustomizeCover, false);
-          await pool.query("UPDATE directory_business SET owner_user_id=$2 WHERE id=$1", [
-            businessId,
-            alice.user.id,
-          ]);
-          await pool.query("UPDATE live_package_payment SET status='REFUNDED' WHERE id=$1", [
-            saleId,
-          ]);
-          assert.equal((await people.read(alice.headers)).canCustomizeCover, false);
-          assert.equal((await connections.readPublic(alice.user.id)).coverVersion, null);
-          assert.equal(
-            await connections.readPublicMedia(alice.user.id, "cover", publicCover),
-            null,
-          );
-          assert.ok(await connections.readPublicMedia(alice.user.id, "photo", publicPhoto));
         },
       );
       await t.test(
