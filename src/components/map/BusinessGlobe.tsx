@@ -96,7 +96,6 @@ export function BusinessGlobe({ pins, countries }: { pins: MapPin[]; countries: 
           map.stopCameraAnimation();
           setSpinning(false);
         });
-        const plain = plainMapPin();
         for (const pin of pins) {
           const marker = new lib.Marker3DInteractiveElement({
             position: { lat: pin.latitude, lng: pin.longitude },
@@ -112,7 +111,7 @@ export function BusinessGlobe({ pins, countries }: { pins: MapPin[]; countries: 
             // Markers read their template when it is added, so replace it as a whole.
             marker.replaceChildren(template);
           };
-          setImage(plain);
+          setImage(plainMapPin(pin.title));
           marker.addEventListener("gmp-click", () => {
             map.stopCameraAnimation();
             setSpinning(false);
@@ -124,7 +123,7 @@ export function BusinessGlobe({ pins, countries }: { pins: MapPin[]; countries: 
           });
           map.append(marker);
           if (pin.logo)
-            void logoMapPin(pin.logo)
+            void logoMapPin(pin.logo, pin.title)
               .then(setImage)
               .catch(() => {});
         }
