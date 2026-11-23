@@ -443,7 +443,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           const clone = async (reference, duration = 7, euroDelta = 0, status = "pending") =>
             pool.query(
               `INSERT INTO promotion_order(id,business_id,owner_id,kind,scope_id,scope_key,duration_days,starts_at,ends_at,amount_bam_minor,amount_eur_minor,payment_reference,status,bank_details)
-          SELECT $1,business_id,owner_id,kind,scope_id,scope_key,$3,starts_at+interval '1 year',starts_at+interval '1 year'+$3*interval '24 hours',amount_bam_minor,amount_eur_minor+$4,$2,$5,bank_details FROM promotion_order WHERE id=$6`,
+          SELECT $1,business_id,owner_id,kind,scope_id,scope_key,$3::integer,starts_at+interval '1 year',starts_at+interval '1 year'+$3::integer*interval '24 hours',amount_bam_minor,amount_eur_minor+$4,$2,$5,bank_details FROM promotion_order WHERE id=$6`,
               [randomUUID(), reference, duration, euroDelta, status, order.id],
             );
           await assert.rejects(clone(order.paymentReference), { code: "23505" });
