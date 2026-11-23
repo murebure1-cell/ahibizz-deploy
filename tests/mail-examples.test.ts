@@ -49,21 +49,11 @@ test("booking preview links select the correct owner's calendar or guest's appoi
   assert.ok(!mailExamples.some((entry) => /^(stay|rental)-customer-completed$/.test(entry.id)));
 });
 
-test("payment previews distinguish funds received, payment review and yearly billing", () => {
-  assert.ok(rendered("payment-review").text.includes("Ne plaćaj ponovo"));
-  assert.ok(rendered("payment-captured").text.includes("5,11 EUR"));
-  assert.ok(rendered("membership-renewed").text.includes("49 KM"));
-  assert.ok(rendered("membership-annual-paid").text.includes("490 KM"));
-});
-
 test("owner, moderation and support notices link to role-appropriate sections", () => {
   for (const [id, path] of [
     ["business-assigned", "/nalog?odjeljak=djelatnosti"],
     ["person-verified", "/nalog?odjeljak=profil"],
     ["business-badge-removed", "/nalog?odjeljak=djelatnosti"],
-    ["advertising-requested", "/administracija/oglasi"],
-    ["production-quoted", "/nalog?odjeljak=oglasi"],
-    ["credits-added", "/nalog?odjeljak=krediti"],
     ["support-admin-report", "/administracija/zahtjevi"],
     ["support-reviewed", "/pravila-zajednice"],
     ["deletion-requested", "/brisanje-naloga"],

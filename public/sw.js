@@ -1,7 +1,7 @@
 // Public assets only. Never store API responses, account pages, messages or user media.
-const CACHE = "ahibizz-app-static-v1";
+const CACHE = "ahibizz-app-static-v2";
 const OFFLINE = "/app-offline.html";
-const SHELL = [OFFLINE, "/preview-app/icons/icon-192.png", "/preview-app/icons/icon-512.png", "/preview-app/icons/maskable-512.png", "/preview-app/icons/apple-touch-icon.png"];
+const SHELL = [OFFLINE, "/app-icons/icon-192.png", "/app-icons/icon-512.png", "/app-icons/maskable-512.png", "/app-icons/apple-touch-icon.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
@@ -41,7 +41,7 @@ self.addEventListener("fetch", (event) => {
       (await caches.match(OFFLINE)) || Response.error()));
     return;
   }
-  if (!/^\/(?:_next\/static\/|brand\/|preview-app\/icons\/)/.test(url.pathname)) return;
+  if (!/^\/(?:_next\/static\/|brand\/|app-icons\/)/.test(url.pathname)) return;
   event.respondWith(fetch(request).then((response) => {
     const type = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
     const cacheable = /^(image\/|font\/|text\/css$|(?:text|application)\/(?:javascript|ecmascript|x-javascript|octet-stream)$)/.test(type);
@@ -76,7 +76,7 @@ self.addEventListener("push", event => {
     await self.registration.showNotification("AhiBizz", {
       body:test ? "Probna obavijest je stigla. Dodirni za povratak u postavke." :
         activity ? "Imaš novu obavijest." : "Imaš novu poruku.",
-      icon:"/preview-app/icons/icon-192.png", tag:id ? "ahibizz-"+id : "ahibizz-message",
+      icon:"/app-icons/icon-192.png", tag:id ? "ahibizz-"+id : "ahibizz-message",
       data:{kind:test?"test":activity?"activity":"message",id,activityId}
     });
     if(test) await reportPush(id,"shown");

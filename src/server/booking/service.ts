@@ -112,7 +112,7 @@ async function transaction<T>(pool: Pool, body: (client: PoolClient) => Promise<
 async function business(query: Query, id: string): Promise<Business> {
   const row = (
     await query.query<Business>(
-      "SELECT id, owner_user_id, title, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status FROM directory_business b WHERE id = $1 AND b.deleted_at IS NULL",
+      "SELECT id, owner_user_id, title, status FROM directory_business b WHERE id = $1 AND b.deleted_at IS NULL",
       [id],
     )
   ).rows[0];
@@ -122,7 +122,7 @@ async function business(query: Query, id: string): Promise<Business> {
 async function publicBusiness(query: Query, id: string): Promise<Business> {
   const row = (
     await query.query<Business>(
-      "SELECT b.id, b.owner_user_id, b.title, b.status FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id WHERE b.id = $1 AND b.status = 'published' AND package_allows_listing(b) AND u.approval = 'approved' AND u.\"emailVerified\" = true AND u.role IN ('member','owner')",
+      "SELECT b.id, b.owner_user_id, b.title, b.status FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id WHERE b.id = $1 AND b.status = 'published' AND u.approval = 'approved' AND u.\"emailVerified\" = true AND u.role IN ('member','owner')",
       [id],
     )
   ).rows[0];
@@ -159,7 +159,7 @@ async function context(
   const { actor, users } = await authority(client, identity, [hint.owner_user_id, ...extra]);
   const locked = (
     await client.query<Business>(
-      "SELECT id, owner_user_id, title, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status FROM directory_business b WHERE id = $1 AND b.deleted_at IS NULL FOR UPDATE",
+      "SELECT id, owner_user_id, title, status FROM directory_business b WHERE id = $1 AND b.deleted_at IS NULL FOR UPDATE",
       [businessId],
     )
   ).rows[0];
@@ -395,23 +395,6 @@ async function insert(
   );
   return entryDto(await entry(client, id));
 }
-async function creditTotal(
-  query: Query,
-  column: "business_id" | "recipient_user_id",
-  id: string,
-): Promise<number> {
-  const value = Number(
-    (
-      await query.query<{ amount: string }>(
-        `SELECT COALESCE(SUM(amount),0)::text AS amount FROM booking_completion_credit WHERE ${column} = $1`,
-        [id],
-      )
-    ).rows[0]?.amount,
-  );
-  if (!Number.isSafeInteger(value) || value < 0) fail(503, "BOOKING_UNAVAILABLE");
-  return value;
-}
-
 export function createBookingService({
   accounts,
   auth,
@@ -575,7 +558,6 @@ export function createBookingService({
         if (rows.length > 5000) fail(503, "BOOKING_CAPACITY_EXCEEDED");
         return {
           entries: rows.map(entryDto),
-          earnedCredits: await creditTotal(client, "business_id", id),
         };
       });
     },
@@ -600,7 +582,6 @@ export function createBookingService({
           entries: rows.slice(0, 20).map(entryDto),
           page,
           hasMore: rows.length > 20,
-          credits: await creditTotal(client, "recipient_user_id", currentActor.id),
           ...(view ? { view, asOf } : {}),
         };
       });
@@ -778,32 +759,6 @@ export function createBookingService({
           before.version,
           instant,
         );
-        if (
-          status === "completed" &&
-          before.kind === "customer" &&
-          before.customerId &&
-          before.customerId !== before.businessOwnerId
-        ) {
-          // At most one award per customer and business per local day, so repeated bookings
-          // between the same two accounts cannot be used to mint credits.
-          await client.query(
-            `INSERT INTO booking_completion_credit (entry_id,business_id,recipient_user_id,amount,created_at)
-             SELECT $1,$2,$3,5,$4
-             WHERE NOT EXISTS (
-               SELECT 1 FROM booking_completion_credit c JOIN booking_entry e ON e.id=c.entry_id
-               WHERE c.business_id=$2 AND e.customer_user_id=$5
-                 AND (c.created_at AT TIME ZONE 'Europe/Sarajevo')::date=($4::timestamptz AT TIME ZONE 'Europe/Sarajevo')::date
-             )
-             ON CONFLICT (entry_id) DO NOTHING`,
-            [
-              id,
-              before.businessId,
-              before.businessOwnerId,
-              instant.toISOString(),
-              before.customerId,
-            ],
-          );
-        }
         return entryDto(await entry(client, id));
       });
     },

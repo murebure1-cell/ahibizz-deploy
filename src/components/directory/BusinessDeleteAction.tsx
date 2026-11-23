@@ -11,8 +11,6 @@ function deleteError(error: unknown) {
   switch (code) {
     case "BUSINESS_HAS_BOOKINGS":
       return "Prvo riješi otvorene termine za ovu djelatnost.";
-    case "BUSINESS_HAS_CONTRACT":
-      return "Prvo provjeri ugovor i trajanje paketa za ovu djelatnost.";
     case "BUSINESS_HAS_PAYMENTS":
       return "Prvo provjeri aktivno isticanje i status uplata za ovu djelatnost.";
     case "VERSION_CONFLICT":

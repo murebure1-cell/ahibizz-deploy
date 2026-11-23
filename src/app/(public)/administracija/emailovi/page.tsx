@@ -53,7 +53,7 @@ export default async function AdminMailPage({
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <Link href="/administracija" className={styles.back}>
-        ← Administracija
+        Administracija
       </Link>
       <h1>Email poruke</h1>
       <Form action={adminMailPath} scroll={false} className={styles.picker}>

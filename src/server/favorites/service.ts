@@ -113,7 +113,7 @@ async function authority(client: PoolClient, session: Session, others: string[] 
   await fresh(client, session);
   return { actor, users: rows };
 }
-const publicEligibility = `b.status='published' AND package_allows_listing(b) AND u.approval='approved' AND u."emailVerified"=true AND u.role IN ('member','owner')`;
+const publicEligibility = `b.status='published' AND u.approval='approved' AND u."emailVerified"=true AND u.role IN ('member','owner')`;
 export function createFavoritesService({
   accounts,
   auth,

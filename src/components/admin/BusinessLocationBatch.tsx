@@ -16,6 +16,7 @@ import {
   retireLocationBatch,
   runLocationBatch,
 } from "../../lib/business-location-batch";
+import { accountDate } from "../../lib/display-date";
 import styles from "./business-import.module.css";
 import { AdminRequestError } from "./responses";
 
@@ -211,7 +212,7 @@ export function BusinessLocationBatch({
   return (
     <main id="glavni-sadrzaj" className={styles.layout}>
       <header className={styles.heading}>
-        <Link href="/administracija?odjeljak=djelatnosti">← Djelatnosti</Link>
+        <Link href="/administracija?odjeljak=djelatnosti">Djelatnosti</Link>
         <h1>Lokacije djelatnosti</h1>
       </header>
       <section className={styles.panel}>
@@ -273,9 +274,7 @@ export function BusinessLocationBatch({
                       <br />
                       OSM {row.provenance.osmType}:{row.provenance.osmId}
                       <br />
-                      <span className={styles.hint}>
-                        {new Date(row.provenance.checkedUtc).toLocaleDateString("bs")}
-                      </span>
+                      <span className={styles.hint}>{accountDate(row.provenance.checkedUtc)}</span>
                     </td>
                     <td>
                       {journal?.done.some((r) => r.id === row.id)

@@ -50,7 +50,7 @@ export async function dispatchDuePush(pool: Pool, contact: string, send = sendNo
           WHERE m.id=q.message_id AND member.read_sequence<m.sequence AND
             NOT people_contact_blocked(t.left_user_id,t.right_user_id)
           AND (t.kind='person' OR NOT EXISTS (SELECT 1 FROM message_thread_member any_member WHERE any_member.thread_id=t.id AND any_member.blocked))
-          AND (t.kind='person' OR EXISTS (SELECT 1 FROM directory_business b WHERE b.id=t.business_id AND b.owner_user_id=t.right_user_id AND b.status='published' AND package_allows_listing(b)))
+          AND (t.kind='person' OR EXISTS (SELECT 1 FROM directory_business b WHERE b.id=t.business_id AND b.owner_user_id=t.right_user_id AND b.status='published'))
         )))`,
           [job.id, job.attempts],
         )

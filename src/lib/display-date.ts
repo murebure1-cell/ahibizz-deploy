@@ -1,40 +1,30 @@
-const dateFormatter = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "numeric",
-  year: "numeric",
-  timeZone: "Europe/Sarajevo",
-});
-const months = [
-  "januara",
-  "februara",
-  "marta",
-  "aprila",
-  "maja",
-  "juna",
-  "jula",
-  "augusta",
-  "septembra",
-  "oktobra",
-  "novembra",
-  "decembra",
-];
-export function accountDate(iso: string, timeZone = "Europe/Sarajevo") {
-  const formatter =
-    timeZone === "Europe/Sarajevo"
-      ? dateFormatter
-      : new Intl.DateTimeFormat("en-GB", {
-          timeZone,
-          day: "numeric",
-          month: "numeric",
-          year: "numeric",
-        });
+const defaultTimeZone = "Europe/Sarajevo";
+
+/** Stable Bosnian presentation, independent of the browser locale and timezone. */
+export function accountDate(value: string | Date, timeZone = defaultTimeZone) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "—";
   const parts = Object.fromEntries(
-    formatter.formatToParts(new Date(iso)).map((part) => [part.type, part.value]),
+    new Intl.DateTimeFormat("en-GB-u-nu-latn", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone,
+    })
+      .formatToParts(date)
+      .map((part) => [part.type, part.value]),
   );
-  return `${Number(parts.day)}. ${months[Number(parts.month) - 1]} ${parts.year}.`;
+  return `${parts.day}. ${parts.month}. ${parts.year}.`;
 }
 
-export function messageDay(iso: string) {
-  const date = new Date(iso);
-  return `${date.getDate()}. ${months[date.getMonth()]}`;
+export function bosnianDateTime(value: string | Date, timeZone = defaultTimeZone) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "—";
+  const time = new Intl.DateTimeFormat("en-GB-u-nu-latn", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone,
+  }).format(date);
+  return `${accountDate(date, timeZone)} ${time}`;
 }

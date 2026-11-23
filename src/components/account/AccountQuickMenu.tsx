@@ -8,12 +8,10 @@ import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { HeaderMenuAccount } from "../../lib/header-access";
 import type { NavigationDestination } from "../../lib/header-navigation";
 import { clearBrowserMessagingRecovery } from "../../lib/messaging-recovery-storage";
-import { bosnianFormatter } from "../../lib/number-format";
 import { useAppAppearance } from "../appearance/AppAppearance";
 import { Icon } from "../Icon";
 import styles from "./account-quick-menu.module.css";
 
-const number = bosnianFormatter({ maximumFractionDigits: 2 });
 const appearanceOptions = [
   ["system", "Uređaj"],
   ["light", "Svijetla"],
@@ -118,17 +116,6 @@ export function AccountQuickMenu({
         </span>
         <Icon name="arrow" />
       </Link>
-      {!IS_PLAY_EDITION && (
-        <div className={styles.balance}>
-          <Link href={path.credits} prefetch={false} onClick={close}>
-            <span>Ahi krediti</span>
-            {account.balance !== null && <strong>{number.format(account.balance)}</strong>}
-          </Link>
-          <Link href={path.credits} className={styles.topup} prefetch={false} onClick={close}>
-            Dopuni <Icon name="arrow" />
-          </Link>
-        </div>
-      )}
       <div className={styles.tiles}>
         {link({ href: path.businesses, label: "Moje djelatnosti", icon: "shop" }, styles.tile)}
         {link({ href: "/nalog?odjeljak=poruke", label: "Poruke", icon: "message" }, styles.tile)}
@@ -145,24 +132,6 @@ export function AccountQuickMenu({
           {link({ href: path.appointments, label: "Aktuelni termini", icon: "calendar" })}
           {link({ href: path.appointmentHistory, label: "Historija termina", icon: "clock" })}
         </details>
-        {!IS_PLAY_EDITION && (
-          <details
-            open={
-              currentHref === path.ads ||
-              currentHref === path.scheduledAds ||
-              currentHref === path.activeAds
-            }
-          >
-            <summary>
-              <Icon name="star" />
-              <span>Promocije</span>
-              <Icon name="chevron" className={styles.chevron} />
-            </summary>
-            {link({ href: path.ads, label: "Moji zahtjevi i oglasi", icon: "star" })}
-            {link({ href: path.activeAds, label: "Aktivne promocije", icon: "check" })}
-            {link({ href: path.scheduledAds, label: "Zakazane promocije", icon: "clock" })}
-          </details>
-        )}
         <details
           open={
             currentHref === path.saved ||
@@ -197,8 +166,6 @@ export function AccountQuickMenu({
         {!IS_PLAY_EDITION &&
           supportAvailable &&
           link({ href: "/podrzi", label: "Doniraj", icon: "heart" })}
-        {!IS_PLAY_EDITION &&
-          link({ href: path.membership, label: "Moji paketi i ugovori", icon: "crown" })}
       </div>
       <div className={styles.preferences}>
         <fieldset>

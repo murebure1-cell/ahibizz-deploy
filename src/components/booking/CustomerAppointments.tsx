@@ -23,13 +23,12 @@ import {
   reconcileCustomerCancellations,
 } from "../../lib/customer-appointments-state";
 import { listenForBookingResume } from "./booking-resume";
-import { AppointmentsEmpty, InventoryAppointments } from "./InventoryAppointments";
+import { InventoryAppointments } from "./InventoryAppointments";
 import styles from "./public-booking.module.css";
 
 type Props = {
   active?: boolean;
   heading?: boolean;
-  preview?: boolean;
   request?: typeof bookingRequest;
   expectedAccountId?: string;
   initialView?: BookingListView;
@@ -42,7 +41,6 @@ export function CustomerAppointments(props: Props) {
 function AppointmentsWorkspace({
   active = true,
   heading = true,
-  preview = false,
   request = bookingRequest,
   expectedAccountId,
   initialView = "upcoming",
@@ -116,17 +114,16 @@ function AppointmentsWorkspace({
   const ready = result?.key === selection;
   const entries = ready ? result.entries : [];
   const more = ready && result.more;
-  const credits = ready ? result.credits : null;
   useEffect(() => {
-    if (!active || requiresLogin || (preview && request === bookingRequest)) return;
+    if (!active || requiresLogin) return;
     return listenForBookingResume(() => {
       // An in-flight cancellation refreshes the same list when it settles.
       if (!writing.current) setRefresh((value) => value + 1);
     });
-  }, [active, preview, request, requiresLogin]);
+  }, [active, requiresLogin]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: The refresh counter deliberately repeats the same read after a user action.
   useEffect(() => {
-    if (!active || writing.current || (preview && request === bookingRequest)) return;
+    if (!active || writing.current) return;
     const current = ++revision.current,
       generation = authority.current,
       controller = new AbortController();
@@ -161,7 +158,6 @@ function AppointmentsWorkspace({
               key: `${view}:${page}`,
               entries: data.entries,
               more: data.hasMore,
-              credits: Number.isInteger(data.credits) ? data.credits : null,
             },
             cancellations.current.values(),
           ),
@@ -188,9 +184,9 @@ function AppointmentsWorkspace({
       revision.current++;
       controller.abort();
     };
-  }, [active, page, view, refresh, preview, api, clearPrivate, request]);
+  }, [active, page, view, refresh, api, clearPrivate]);
   async function cancel(entry: BookingEntry) {
-    if (requiresLogin || writing.current || (preview && request === bookingRequest)) return;
+    if (requiresLogin || writing.current) return;
     const generation = authority.current,
       controller = new AbortController();
     controllers.current.add(controller);
@@ -211,7 +207,7 @@ function AppointmentsWorkspace({
       setLoading(false);
       cancellations.current.set(cancelled.id, cancelled);
       setReadState((previous) => customerAppointmentCancelled(previous, cancelled));
-      setNotice(preview ? "Termin je otkazan u pregledu." : "Termin je otkazan.");
+      setNotice("Termin je otkazan.");
     } catch (failure) {
       if (!live.current || generation !== authority.current) return;
       if (bookingAccessDenied(failure)) {
@@ -264,10 +260,6 @@ function AppointmentsWorkspace({
           </button>
         ))}
       </fieldset>
-      {preview && <p className={styles.note}>Proba bez stvarnog zakazivanja.</p>}
-      {credits !== null && credits > 0 && (
-        <p className={styles.credit}>Krediti kroz booking: {credits}</p>
-      )}
       {error && (
         <div role="alert" className={styles.error}>
           <p>{error}</p>
@@ -293,10 +285,7 @@ function AppointmentsWorkspace({
           Provjeravam tvoje termine…
         </p>
       )}
-      {preview && ready && entries.length === 0 && !loading && !error && (
-        <AppointmentsEmpty view={view} preview />
-      )}
-      {!preview && entries.length > 0 && <h3>Usluge</h3>}
+      {entries.length > 0 && <h3>Usluge</h3>}
       <div className={styles.entryList} aria-busy={loading}>
         {entries.map((entry) => (
           <article key={entry.id} className={styles.entry}>
@@ -305,15 +294,7 @@ function AppointmentsWorkspace({
                 {bookingStatusLabels[entry.status]}
               </span>
               <h3>{entry.serviceName}</h3>
-              <Link
-                href={
-                  preview
-                    ? `/pregled/djelatnost?profil=${entry.businessId}`
-                    : `/djelatnosti/${entry.businessId}`
-                }
-              >
-                {entry.businessTitle}
-              </Link>
+              <Link href={`/djelatnosti/${entry.businessId}`}>{entry.businessTitle}</Link>
               <p>{bookingDate(entry.startsAt, entry.timezone, { time: true })}</p>
               <span className={styles.note}>
                 {entry.durationMinutes} min · {bookingMoney(entry.priceMinor)}
@@ -344,7 +325,7 @@ function AppointmentsWorkspace({
           </button>
         </nav>
       )}
-      {!preview && active && expectedAccountId && !requiresLogin && (
+      {active && expectedAccountId && !requiresLogin && (
         <InventoryAppointments
           key={view}
           actor={expectedAccountId}

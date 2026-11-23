@@ -21,7 +21,6 @@ export function SiteFooter() {
           <Link href="/privatnost">Privatnost</Link>
           <Link href="/pomoc">Pomoć</Link>
           <Link href="/blog">Blog</Link>
-          {!IS_PLAY_EDITION && <Link href="/paketi">Paketi</Link>}
           {!IS_PLAY_EDITION && <Link href="/instaliraj">Instaliraj aplikaciju</Link>}
           {!IS_PLAY_EDITION && getSupportConfig() && <Link href="/podrzi">Doniraj</Link>}
         </nav>

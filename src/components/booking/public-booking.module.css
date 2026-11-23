@@ -349,14 +349,6 @@
   opacity: 0.5;
   cursor: default;
 }
-.credit {
-  font-size: 13px;
-  color: var(--ui-accent-text);
-  background: var(--ui-surface-soft);
-  border-radius: 10px;
-  padding: 13px 16px;
-  margin-bottom: 17px;
-}
 .entryList {
   display: grid;
   gap: 14px;

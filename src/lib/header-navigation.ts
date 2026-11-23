@@ -17,12 +17,7 @@ export function headerDestinations(
   if (access === "member" || access === "owner")
     primary.push({ href: accountSectionPath("messages"), label: "Poruke", icon: "message" });
 
-  const business: NavigationDestination[] = options.playEdition
-    ? []
-    : [
-        { href: "/oglasavanje", label: "Oglašavanje", icon: "star" },
-        { href: "/paketi", label: "Paketi za djelatnosti", icon: "card" },
-      ];
+  const business: NavigationDestination[] = [];
   const more: NavigationDestination[] = [
     { href: "/o-nama", label: "O AhiBizzu", icon: "info" },
     { href: "/reels", label: "Reels", icon: "play" },
@@ -55,22 +50,11 @@ export function headerCurrentDestination(pathname: string, query: URLSearchParam
       const view = query.get("prikaz");
       if (selected === "termini" && view === "historija")
         return "/nalog?odjeljak=termini&prikaz=historija";
-      if (selected === "oglasi" && (view === "aktivne" || view === "zakazane"))
-        return `/nalog?odjeljak=oglasi&prikaz=${view}`;
       if (selected === "djelatnosti" && query.get("novo") === "1")
         return "/nalog?odjeljak=djelatnosti&novo=1";
       if (
         selected &&
-        [
-          "termini",
-          "oglasi",
-          "djelatnosti",
-          "sacuvani",
-          "profil",
-          "postavke",
-          "krediti",
-          "paketi",
-        ].includes(selected)
+        ["termini", "djelatnosti", "sacuvani", "profil", "postavke"].includes(selected)
       )
         return `/nalog?odjeljak=${selected}`;
     }
@@ -81,7 +65,5 @@ export function headerCurrentDestination(pathname: string, query: URLSearchParam
   if (pathname.startsWith("/djelatnosti/")) return "/pretraga";
   if (pathname.startsWith("/ljudi/")) return "/ljudi";
   if (pathname.startsWith("/administracija/")) return "/administracija";
-  if (pathname.startsWith("/paketi/")) return "/paketi";
-  if (pathname === "/naplata" || pathname.startsWith("/naplata/")) return "/oglasavanje";
   return pathname;
 }

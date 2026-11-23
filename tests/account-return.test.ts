@@ -5,41 +5,9 @@ import {
   accountReturnPath,
   accountSection,
   accountSectionPath,
-  creditTopUpPath,
-  creditTopUpReturn,
   readAccountNavigation,
 } from "../src/lib/account-return";
 import { reportUrl, supportTarget } from "../src/lib/support-requests";
-
-test("credit top-ups preserve only supported purchase destinations and their exact selection", () => {
-  const id = "2b97204a-7562-418e-8873-41020b6ff957";
-  for (const purchase of [
-    "/naplata",
-    `/naplata?ponuda=${id}`,
-    `/naplata?djelatnost=${id}`,
-    "/nalog/reels",
-    `/nalog/reels?djelatnost=${id}`,
-    `/paketi/placanje?paket=business&period=annual&djelatnost=${id}`,
-    `/paketi/placanje?paket=premium&period=monthly&djelatnost=${id}&ugovor=${id}`,
-  ]) {
-    const topUp = creditTopUpPath(purchase);
-    assert.equal(creditTopUpReturn(purchase), purchase);
-    assert.equal(new URL(topUp, "https://fixture.invalid").searchParams.get("nastavi"), purchase);
-    assert.equal(accountReturnPath(topUp), topUp);
-    assert.equal(accountReturnPath(`${topUp}&nastavi=/naplata`), "/nalog");
-  }
-  for (const invalid of [
-    "//outside.invalid/naplata",
-    "/administracija",
-    "/naplata?ponuda=unknown",
-    "/nalog/reels?next=https://outside.invalid",
-    `/paketi/placanje?paket=basic&period=monthly&djelatnost=${id}&djelatnost=${id}`,
-    creditTopUpPath("/naplata"),
-  ]) {
-    assert.equal(creditTopUpReturn(invalid), null);
-    assert.equal(creditTopUpPath(invalid), "/nalog?odjeljak=krediti");
-  }
-});
 
 test("Reel reporting survives login with an exact local report destination", () => {
   const reel = "2b97204a-7562-418e-8873-41020b6ff957";
@@ -67,12 +35,9 @@ test("sign-in accepts only exact known administration continuations", () => {
     "/administracija?odjeljak=danas",
     "/administracija?odjeljak=odobrenja",
     "/administracija?odjeljak=pregled",
-    "/administracija?odjeljak=obracuni",
-    "/administracija?odjeljak=transakcije",
     "/administracija?odjeljak=nalozi",
     "/administracija?odjeljak=kategorije",
     "/administracija?odjeljak=djelatnosti",
-    "/administracija?odjeljak=naplata",
     "/administracija?odjeljak=recenzije",
   ])
     assert.equal(accountReturnPath(path), path);
@@ -83,12 +48,8 @@ test("sign-in accepts only exact known administration continuations", () => {
     "/administracija/lokacije?next=//evil.invalid",
     "/administracija/lokacije/",
     "/administracija?odjeljak=recenzije&next=//evil.invalid",
-    "/administracija?odjeljak=naplata#other",
-    "/administracija?odjeljak=naplata&odjeljak=nalozi",
     "/administracija?odjeljak=constructor",
     "/administracija?odjeljak=%6eaplata",
-    "/administracija?odjeljak=naplata&next=//evil.invalid",
-    "/administracija?odjeljak=naplata\n",
     "//evil.invalid/administracija",
   ])
     assert.equal(accountReturnPath(path), "/nalog");
@@ -103,27 +64,15 @@ test("login retains only exact known messaging destinations and previous safe pr
     "/nalog?odjeljak=prijatelji",
     "/nalog?odjeljak=poruke",
     "/nalog?odjeljak=postavke",
-    "/nalog?odjeljak=oglasi&usluga=produkcija",
-    "/nalog?odjeljak=paketi",
     "/nalog?odjeljak=poruke&osoba=person_1-A",
     `/nalog?odjeljak=poruke&djelatnost=${business}`,
     `/djelatnosti/${business}#business-appointments`,
     `/djelatnosti/${business}#recenzije`,
     "/ljudi/person_A-1",
-    `/naplata?ponuda=${business}`,
-    `/naplata?djelatnost=${business}`,
-    `/nalog?odjeljak=oglasi&mjesto=nearby&djelatnost=${business}`,
   ])
     assert.equal(accountReturnPath(value), value);
   for (const value of [
     undefined,
-    `/naplata?ponuda=${business}&iznos=1`,
-    `/naplata?djelatnost=${business}&iznos=1`,
-    `/nalog?odjeljak=oglasi&mjesto=nepoznat&djelatnost=${business}`,
-    `/nalog?odjeljak=oglasi&mjesto=banner&djelatnost=${business}&iznos=1`,
-    `/nalog?odjeljak=oglasi&mjesto=banner&mjesto=featured&djelatnost=${business}`,
-    "/naplata?ponuda=//evil.invalid",
-    "/nalog?odjeljak=oglasi&usluga=produkcija&nastavi=//evil.invalid",
     null,
     [],
     {},
@@ -144,7 +93,6 @@ test("login retains only exact known messaging destinations and previous safe pr
     "/nalog?odjeljak=termini#other",
     "/nalog?odjeljak=postavke&odjeljak=profil",
     "/nalog?odjeljak=postavke&appearance=dark",
-    "/nalog?odjeljak=paketi&pretplata=paid",
     "/nalog?odjeljak=constructor",
     "/nalog?odjeljak=%74ermini",
     "/nalog?odjeljak=poruke%26osoba%3Dsomeone",
@@ -165,7 +113,6 @@ test("known account deep links retain their section through sign-in without expo
     ["prijatelji", "connections"],
     ["poruke", "messages"],
     ["postavke", "settings"],
-    ["paketi", "membership"],
   ] as const;
   for (const [query, expected] of sections) {
     const loginReturn = accountReturnPath(`/nalog?odjeljak=${query}`);
@@ -200,9 +147,6 @@ test("account pane addresses round-trip for refresh and browser history without 
     "connections",
     "messages",
     "settings",
-    "membership",
-    "advertising",
-    "credits",
   ] as const) {
     const href = accountSectionPath(section);
     assert.equal(accountReturnPath(href), href);

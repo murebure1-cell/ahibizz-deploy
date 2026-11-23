@@ -33,7 +33,7 @@ export default async function ManageReelsPage({ searchParams }: { searchParams: 
     <main id="glavni-sadrzaj" className={styles.page}>
       <header>
         <Link href="/nalog" className={styles.back}>
-          ← Moj nalog
+          Moj nalog
         </Link>
         <h1>Moji reels</h1>
       </header>
@@ -44,8 +44,6 @@ export default async function ManageReelsPage({ searchParams }: { searchParams: 
           businesses={list.businesses}
           businessId={selected}
           reels={list.reels}
-          priceCredits={list.priceCredits}
-          balance={list.balance}
           admin={false}
         />
       ) : (
@@ -53,8 +51,8 @@ export default async function ManageReelsPage({ searchParams }: { searchParams: 
       )}
       {(page > 1 || (list?.hasMore && page < 999)) && (
         <nav className={styles.pagination} aria-label="Stranice mojih reelova">
-          {page > 1 && <Link href={href(page - 1)}>← Prethodna</Link>}
-          {list?.hasMore && page < 999 && <Link href={href(page + 1)}>Sljedeća →</Link>}
+          {page > 1 && <Link href={href(page - 1)}>Prethodna</Link>}
+          {list?.hasMore && page < 999 && <Link href={href(page + 1)}>Sljedeća</Link>}
         </nav>
       )}
     </main>

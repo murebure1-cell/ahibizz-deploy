@@ -338,7 +338,7 @@ function ProfileEditor({
                 )}
               </div>
             ) : (
-              <p className={styles.fieldHint}>Naslovnica prema paketu</p>
+              <p className={styles.fieldHint}>Naslovnica trenutno nije dostupna.</p>
             )}
           </section>
         </div>

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import styles from "../../../components/support/resources.module.css";
-import { IS_PLAY_EDITION } from "../../../lib/distribution";
 import { supportEmail } from "../../../lib/support-requests";
 
 export const metadata = { title: "Privatnost i podrška" };
@@ -35,26 +34,8 @@ export default function PrivacyPage() {
           zakazanom terminu vide korisnik i vlasnik odgovarajuće djelatnosti. Za hosting, email i
           obavijesti koristimo pružaoce tih usluga.
         </p>
-        {!IS_PLAY_EDITION && (
-          <p>
-            Za naplatu putem PayPala podatke o kartici unosiš kod PayPala. AhiBizz evidentira iznos,
-            status i referencu transakcije.
-          </p>
-        )}
       </section>
       <section className={styles.section}>
-        {!IS_PLAY_EDITION && (
-          <>
-            <h2>Oglasi i publika</h2>
-            <p>
-              Za kampanje brojimo vidljive prikaze i klikove. U Postavkama možeš zasebno uključiti
-              izbor publike za oglase i dobrovoljno mjerenje posjeta. Za mjerenje bilježimo vrijeme
-              pregleda, vrstu uređaja i regiju ako je odabereš. Javno prikazujemo zbir za grupe od
-              najmanje deset učesnika. Isključivanjem mjerenja brišeš svoje zapise iz uzorka. Kada
-              pošalješ upit u oglasu, prima ga djelatnost kojoj se obraćaš.
-            </p>
-          </>
-        )}
         <h2>Prijave i brisanje podataka</h2>
         <p>
           Na profilu, recenziji ili u razgovoru možeš prijaviti zloupotrebu. Za pristup svojim

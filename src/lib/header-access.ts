@@ -1,13 +1,11 @@
 import { type Appearance, isAppearance } from "./appearance";
 import { type NavigationRole, readEligibleNavigationRole } from "./session-navigation";
-import { validCreditBalance } from "./wallet";
 
 export type HeaderMenuAccount = {
   id: string;
   name: string;
   role: NavigationRole;
   appearance: Appearance;
-  balance: number | null;
 };
 export async function headerMenuRequest({
   signal,
@@ -32,7 +30,6 @@ export async function headerMenuRequest({
     name: account.name,
     role,
     appearance: account.appearance,
-    balance: validCreditBalance(account.balance) ? account.balance : null,
   };
 }
 

@@ -1,8 +1,7 @@
 import { businessMediaProjection } from "../business-media/service";
 import type { Database } from "../db";
 import { getDatabase } from "../db";
-import { paidPlacementSql } from "../marketing/read";
-import { promotionSql } from "../paypal/store";
+import { activePromotionSql } from "../promotions/read";
 import { businessReviewsProjection } from "../reviews/projection";
 import {
   type BusinessFields,
@@ -19,7 +18,7 @@ type PromotionFilter = boolean | "category" | "all";
 type ListOptions = { maximumPageSize?: number; newestFirst?: boolean };
 
 const publicBusinessWhere =
-  "b.status = 'published' AND package_allows_listing(b) AND u.approval = 'approved' AND u.\"emailVerified\" = true";
+  "b.deleted_at IS NULL AND b.status = 'published' AND u.approval = 'approved' AND u.\"emailVerified\" = true";
 
 export async function publicDirectoryCounts() {
   const database = getDatabase();
@@ -60,7 +59,7 @@ const publicColumns = [
   "b.status",
   "b.version",
   "b.is_verified AS verified",
-  "b.is_featured AS featured",
+  "FALSE AS featured",
   'b.created_at AS "createdAt"',
   'b.updated_at AS "updatedAt"',
   'b.published_at AS "publishedAt"',
@@ -71,7 +70,6 @@ const publicColumns = [
 ].join(", ");
 export const columns = [
   publicColumns,
-  'NOT package_allows_listing(b) AS "packagePaymentNeeded"',
   'b.editorial_revision AS "editorialRevision"',
   `EXISTS (SELECT 1 FROM directory_business_image_proposal ip WHERE ip.business_id=b.id) AS "pendingMedia"`,
   `(SELECT a.action FROM directory_moderation_audit a WHERE a.business_id=b.id AND a.action IN ('approve-changes','reject-changes') AND a.next_version=b.version LIMIT 1) AS "revisionDecision"`,
@@ -118,7 +116,6 @@ export function publicDto(value: DirectoryBusiness): PublicDirectoryBusiness {
     moderationReturn: _moderationReturn,
     hasRentalVehicles: _hasRentalVehicles,
     hasStayUnits: _hasStayUnits,
-    packagePaymentNeeded: _packagePaymentNeeded,
     ...publicValue
   } = value;
   return publicValue;
@@ -228,35 +225,31 @@ export async function listDirectory(
     filters.push(`(${distance}) <= $${radius}::double precision`);
     order = `(${distance}) ASC, b.id ASC`;
   }
-  const paidCategory =
-    publicOnly && (Boolean(categoryId) || featuredOnly === "category" || featuredOnly === "all");
-  const paid = paidCategory
-    ? promotionSql("b", process.env.PAYPAL_CHECKOUT_FULFILLMENT_READY === "true")
-    : null;
-  if (paid) order = `(${paid}) DESC, ${order}`;
-  const includeLocal = publicOnly && (nearby || city || featuredOnly === "all");
-  const localPlacement = includeLocal
-    ? `(b.latitude IS NOT NULL AND b.longitude IS NOT NULL AND ${paidPlacementSql("nearby")})`
-    : null;
-  if (localPlacement) order = `"localFeatured" DESC, ${order}`;
-  if (publicOnly && featuredOnly === "all") {
-    filters.push(`(${paid} OR ${localPlacement} OR ${paidPlacementSql("featured")})`);
-    // Keep pages consistent while the home rail appends more results.
-    order = publicationOrder;
-  } else if (publicOnly && featuredOnly) {
-    filters.push(featuredOnly === "category" ? (paid ?? "FALSE") : paidPlacementSql("featured"));
-    // Stable within an hour for scrolling/pagination, then gives other paid profiles the lead.
-    order = "md5(b.id::text || floor(extract(epoch FROM now())/3600)::text), b.id";
+  const home = activePromotionSql("b", "home");
+  const category = activePromotionSql("b", "category");
+  const local = activePromotionSql("b", "nearby");
+  const all = `(${home} OR ${category} OR ${local})`;
+  let highlighted = home;
+  if (publicOnly) {
+    if (categoryId || subcategoryId || featuredOnly === "category") {
+      highlighted = `(${highlighted} OR ${category})`;
+      order = `(${category}) DESC, ${order}`;
+    }
+    if (nearby || city) {
+      highlighted = `(${highlighted} OR ${local})`;
+      order = `(${local}) DESC, ${order}`;
+    }
+    if (featuredOnly) {
+      filters.push(featuredOnly === "category" ? category : featuredOnly === "all" ? all : home);
+      highlighted = "TRUE";
+      // Keep pages consistent while a featured rail appends more results.
+      order = publicationOrder;
+    }
   }
-  let selectedColumns =
-    publicOnly && paid
-      ? publicColumns.replace("b.is_featured AS featured", `(${paid}) AS featured`)
-      : publicOnly
-        ? publicColumns
-        : columns;
-  if (publicOnly && featuredOnly === "all")
-    selectedColumns = publicColumns.replace("b.is_featured AS featured", "TRUE AS featured");
-  if (localPlacement) selectedColumns += `, ${localPlacement} AS "localFeatured"`;
+  let selectedColumns = publicOnly
+    ? publicColumns.replace("FALSE AS featured", `(${highlighted}) AS featured`)
+    : columns;
+  if (publicOnly && (nearby || city)) selectedColumns += `, (${local}) AS "localFeatured"`;
   const fromWhere = `FROM directory_business b ${publicOnly ? "JOIN auth_user u ON u.id = b.owner_user_id" : ""} WHERE ${filters.join(" AND ")}`;
   if (openNow) selectedColumns += ', COUNT(*) OVER()::int AS "openCount"';
   const limitIndex = values.push(pageSize + 1),
@@ -355,7 +348,7 @@ export function createPublicDirectoryService({
       return queryPublic(input, featuredOnly, blockViewer);
     },
     homeAllPromotions(page = 1) {
-      return queryPublic({ page }, "all", null, { maximumPageSize: 6 });
+      return queryPublic({ page }, true, null, { maximumPageSize: 6 });
     },
     async homeNewest(blockViewer?: string | null) {
       const result = await queryPublic({}, false, blockViewer, {

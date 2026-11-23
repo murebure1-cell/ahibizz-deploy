@@ -228,7 +228,6 @@ export function SimulatorScreens({
               businesses: 2,
               unreadThreads: 1,
               promotedBusinesses: 1,
-              credits: 5,
             }}
             onSection={() => {}}
           />

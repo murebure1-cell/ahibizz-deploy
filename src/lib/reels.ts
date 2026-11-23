@@ -7,8 +7,6 @@ export const reelMinDuration = 1;
 export const reelPosterEdge = 720;
 export const reelBusinessLimit = 3;
 export const reelAccountLimit = 12;
-export const reelPublicationCredits = 50;
-export const reelMaxPublicationCredits = 100_000;
 
 export type ReelStatus = "uploading" | "pending" | "published" | "rejected" | "withdrawn";
 export type PublicReel = {
@@ -36,8 +34,6 @@ export type ManagedReel = Omit<PublicReel, "durationMs" | "businessLogo"> & {
   durationMs: number | null;
   reviewReason: string | null;
   createdAt: string;
-  priceCredits: number | null;
-  paid: boolean;
 };
 export function reelMedia(id: string, kind: "poster" | "video", preview = false) {
   return `/api/reels/media/${id}/${kind}${preview ? "?pregled=1" : ""}`;
@@ -45,4 +41,12 @@ export function reelMedia(id: string, kind: "poster" | "video", preview = false)
 export function reelDuration(durationMs: number) {
   const seconds = Math.floor(durationMs / 1000);
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+export function reelResubmissionNotice(admin: boolean, playEdition: boolean) {
+  if (admin) return "Vlasnik treba ponovo poslati reel.";
+  // The Play edition cannot submit Reels, so it must not tell the owner to resend one.
+  return playEdition
+    ? "Za provjeru ove objave obrati se podršci."
+    : "Povuci ovaj reel i pošalji ga ponovo.";
 }

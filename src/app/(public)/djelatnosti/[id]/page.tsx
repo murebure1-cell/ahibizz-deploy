@@ -6,12 +6,9 @@ import { PublicBooking } from "../../../../components/booking/PublicBooking";
 import { PublicBusinessProfile } from "../../../../components/directory/PublicBusinessProfile";
 import profileStyles from "../../../../components/directory/public-profile.module.css";
 import styles from "../../../../components/directory/public-search.module.css";
-import { CampaignAd } from "../../../../components/marketing/CampaignAd";
-import adStyles from "../../../../components/marketing/campaign-ad.module.css";
 import { BusinessReels } from "../../../../components/reels/ReelShelf";
 import { RentalFleet } from "../../../../components/rentals/RentalFleet";
 import { StayUnits } from "../../../../components/stays/StayUnits";
-import type { PageAds } from "../../../../lib/ad-render";
 import {
   type DirectorySearchParams,
   directorySearchSuffix,
@@ -19,7 +16,6 @@ import {
 import { getBookingService } from "../../../../server/booking";
 import { DirectoryAccessError, getPublicDirectoryService } from "../../../../server/directory";
 import { publicBusinessView } from "../../../../server/directory/public-view";
-import { publicPageAds } from "../../../../server/marketing/ad-delivery";
 import { getRentalService } from "../../../../server/rentals/service";
 import { getStayService } from "../../../../server/stays/service";
 
@@ -82,18 +78,6 @@ async function ListingOffer({ offer, link = false }: { offer: Offer; link?: bool
   );
 }
 
-async function ListingAd({
-  data,
-  region,
-}: {
-  data: Promise<PageAds>;
-  region: "inline" | "elsewhere";
-}) {
-  const ads = await data;
-  if (!ads.main.mobile && !ads.main.desktop) return null;
-  return <CampaignAd candidates={ads.main} region={region} />;
-}
-
 export default async function PublicBusinessPage({
   params,
   searchParams,
@@ -116,7 +100,7 @@ export default async function PublicBusinessPage({
       const hostsGuests = categories.some(
         (c) => c.accommodation && (c.id === business.categoryId || c.id === business.subcategoryId),
       );
-      // Start each offer once and share it between its link, section, and ad targeting.
+      // Start each offer once and share it between its link, section, and section.
       const booking = Promise.resolve()
         .then(() => getBookingService()?.publicConfig(id))
         .catch(() => null);
@@ -168,38 +152,9 @@ export default async function PublicBusinessPage({
           ),
         },
       ];
-      const ads = Promise.all([booking, rentals, stays]).then(
-        ([configuration, rentalCatalog, stayCatalog]) =>
-          publicPageAds({
-            page: "listing",
-            listingId: id,
-            city: business.city ?? "",
-            countryCode: business.countryCode,
-            categoryIds: [business.categoryId, business.subcategoryId].filter((v): v is string =>
-              Boolean(v),
-            ),
-            publishedPrices: [
-              ...new Set(
-                [
-                  ...(configuration?.enabled ? configuration.services : []),
-                  ...(rentalCatalog?.vehicles ?? []),
-                  ...(stayCatalog?.units ?? []),
-                ].map((service) => service.priceMinor),
-              ),
-            ],
-          }),
-      );
       return (
-        <main id="glavni-sadrzaj" className={adStyles.withResults}>
-          <Suspense fallback={null}>
-            <ListingAd data={ads} region="elsewhere" />
-          </Suspense>
+        <main id="glavni-sadrzaj">
           <PublicBusinessProfile
-            sponsor={
-              <Suspense fallback={null}>
-                <ListingAd data={ads} region="inline" />
-              </Suspense>
-            }
             backHref={`/pretraga${directorySearchSuffix(search)}`}
             business={publicBusinessView(business, categories)}
             offerLinks={offers.map((offer) => (

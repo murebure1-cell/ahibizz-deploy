@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { accountDate } from "../../lib/display-date";
 import {
   type ChatConversation,
   type ChatMessage,
@@ -51,16 +52,6 @@ const messageDate = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
   timeZone: "Europe/Sarajevo",
 });
-const recentDate = new Intl.DateTimeFormat("bs-BA", {
-  day: "numeric",
-  month: "short",
-  timeZone: "Europe/Sarajevo",
-});
-const messageYear = new Intl.DateTimeFormat("bs-BA", {
-  year: "numeric",
-  timeZone: "Europe/Sarajevo",
-});
-
 type MailboxFilters = { query: string; unreadOnly: boolean };
 const baseFilters: MailboxFilters = { query: "", unreadOnly: false };
 
@@ -83,16 +74,11 @@ function initials(name: string) {
     .toLocaleUpperCase("bs");
 }
 function messageDayLabel(value: Date) {
-  const { day, month, year } = Object.fromEntries(
-    messageDate.formatToParts(value).map(({ type, value }) => [type, value]),
-  );
-  return `${day}.${month}.${year}.`;
+  return accountDate(value);
 }
 function previewDate(value: Date, today: Date) {
   if (messageDate.format(value) === messageDate.format(today)) return messageTime.format(value);
-  return messageYear.format(value) === messageYear.format(today)
-    ? recentDate.format(value)
-    : messageDayLabel(value);
+  return messageDayLabel(value);
 }
 function threadContext(thread: ChatThread) {
   if (thread.kind === "person") return "Lični razgovor";

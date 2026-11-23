@@ -12,12 +12,9 @@ const sections = [
   ["danas", "today"],
   ["odobrenja", "approvalQueue"],
   ["pregled", "businessQueue"],
-  ["obracuni", "receiptQueue"],
-  ["transakcije", "settlementQueue"],
   ["nalozi", "accounts"],
   ["kategorije", "categories"],
   ["djelatnosti", "businesses"],
-  ["naplata", "billing"],
   ["recenzije", "reviews"],
 ] as const;
 

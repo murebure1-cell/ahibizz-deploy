@@ -39,17 +39,13 @@ test("eligible sign-in shortcuts use only closed paths and preserve owner admin 
     "/administracija/lokacije",
     "/administracija/emailovi",
     "/administracija/zahtjevi",
-    "/administracija/oglasi",
     "/administracija/izgled",
     "/administracija?odjeljak=danas",
     "/administracija?odjeljak=odobrenja",
     "/administracija?odjeljak=pregled",
-    "/administracija?odjeljak=obracuni",
-    "/administracija?odjeljak=transakcije",
     "/administracija?odjeljak=nalozi",
     "/administracija?odjeljak=kategorije",
     "/administracija?odjeljak=djelatnosti",
-    "/administracija?odjeljak=naplata",
   ]) {
     assert.equal(signedInReturnPath(owner, path), path);
     assert.equal(signedInReturnPath(member, path), "/nalog");
@@ -71,7 +67,7 @@ test("absent or denied accounts never skip the sign-in form", () => {
     { ...owner, emailVerified: false },
     { ...owner, approval: "suspended" },
   ])
-    assert.equal(signedInReturnPath(value, "/administracija?odjeljak=naplata"), null);
+    assert.equal(signedInReturnPath(value, "/administracija?odjeljak=nalozi"), null);
 });
 
 test("lazy header access uses one credentialed no-store GET and treats only401 as guest", async () => {

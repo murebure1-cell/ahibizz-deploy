@@ -61,7 +61,7 @@ export function errorMessage(error: unknown): string {
   if (error.status === 409)
     return "Podaci su u međuvremenu izmijenjeni. Osvježi listu prije nove odluke.";
   if (error.status === 400) return "Provjeri unesene podatke.";
-  if (error.status === 502) return "Odgovor servera nije ispravan. Osvježi podatke.";
+  if (error.status === 502) return "Podaci nisu učitani. Pokušaj ponovo.";
   return "Podaci trenutno nisu dostupni. Pokušaj ponovo.";
 }
 
