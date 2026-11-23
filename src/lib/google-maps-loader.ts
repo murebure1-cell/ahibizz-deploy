@@ -1,7 +1,12 @@
 "use client";
 
 import { logoHasTransparency, readBusinessLogoSurface } from "./business-logo";
-import { googleMapsKeyMeta, readGoogleMapsKey } from "./google-maps";
+import {
+  googleMapIdMeta,
+  googleMapsKeyMeta,
+  readGoogleMapId,
+  readGoogleMapsKey,
+} from "./google-maps";
 
 // Minimal shapes of the Google Maps JavaScript API used in the app, so no extra type package is needed.
 export type LatLng = { lat(): number; lng(): number };
@@ -50,6 +55,12 @@ const authListeners = new Set<() => void>();
 export function pageGoogleMapsKey(): string | null {
   const meta = document.querySelector<HTMLMetaElement>(`meta[name="${googleMapsKeyMeta}"]`);
   return readGoogleMapsKey(meta?.content);
+}
+
+/** Optional Google map style (Map ID) published by the server, e.g. one that hides places. */
+export function pageGoogleMapId(): string | null {
+  const meta = document.querySelector<HTMLMetaElement>(`meta[name="${googleMapIdMeta}"]`);
+  return readGoogleMapId(meta?.content);
 }
 
 /** Called when Google rejects the key (wrong domain, API not enabled); returns an unsubscribe. */

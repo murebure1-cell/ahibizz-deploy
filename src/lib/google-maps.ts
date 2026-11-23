@@ -5,6 +5,13 @@ export function readGoogleMapsKey(value: string | undefined): string | null {
 }
 
 export const googleMapsKeyMeta = "ahibizz-google-maps-key";
+export const googleMapIdMeta = "ahibizz-google-map-id";
+
+/** A Google Cloud Map ID (map style); only letters, digits, dash and underscore. */
+export function readGoogleMapId(value: string | undefined): string | null {
+  const id = value?.trim() ?? "";
+  return /^[A-Za-z0-9_-]{4,64}$/.test(id) ? id : null;
+}
 
 type Style = { featureType?: string; elementType?: string; stylers: Record<string, string>[] };
 

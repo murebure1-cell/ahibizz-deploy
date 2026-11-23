@@ -9,6 +9,7 @@ import "leaflet/dist/leaflet.css";
 import { pageGoogleMapsKey } from "../../lib/google-maps-loader";
 import { GoogleLocationMap } from "./GoogleLocationMap";
 import styles from "./location.module.css";
+import { ProfileMap3D } from "./ProfileMap3D";
 
 type MapProps = {
   point: LocationPoint | null;
@@ -32,6 +33,16 @@ export function LocationMap(props: MapProps) {
       <div className={styles.mapWrap}>
         <section className={styles.map} aria-label="Karta lokacije djelatnosti" />
       </div>
+    );
+  // Public profiles use the tilted 3D map; the editor keeps the flat map with a draggable pin.
+  if (googleKey && props.readOnly && props.point)
+    return (
+      <ProfileMap3D
+        apiKey={googleKey}
+        point={props.point}
+        logoUrl={props.logoUrl}
+        onUnavailable={() => setGoogleKey(null)}
+      />
     );
   if (googleKey)
     return (
