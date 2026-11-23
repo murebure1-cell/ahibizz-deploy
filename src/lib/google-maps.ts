@@ -8,24 +8,33 @@ export const googleMapsKeyMeta = "ahibizz-google-maps-key";
 
 type Style = { featureType?: string; elementType?: string; stylers: Record<string, string>[] };
 
-/** Light slate map in the app's grey-blue, with business clutter (POI) hidden. */
+/** Light silver map: neutral grey ground, white streets, grey labels, business clutter (POI) hidden. */
 export const googleMapsLight: Style[] = [
-  { elementType: "geometry", stylers: [{ color: "#e7ecf1" }] },
+  { elementType: "geometry", stylers: [{ color: "#f2f2f2" }] },
   { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#566b7d" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#f4f6f8" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#7a7a7a" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#f5f5f5" }] },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
   { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-  { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#f8fafc" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#d3dce5" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#d5dee7" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#b8c9d8" }] },
-  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#dde5ec" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#dadada" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#e4e4e4" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#d6d6d6" }] },
+  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#ececec" }] },
+  {
+    featureType: "administrative.neighborhood",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#5c5c5c" }],
+  },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#4a4a4a" }],
+  },
   {
     featureType: "administrative",
     elementType: "geometry.stroke",
-    stylers: [{ color: "#a9b8c6" }],
+    stylers: [{ color: "#c9c9c9" }],
   },
 ];
 
