@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { IS_PLAY_EDITION } from "../lib/distribution";
 import {
   type HeaderAccess,
@@ -36,25 +36,27 @@ export function SiteHeader({
   const installed = useOptionalAppPwa()?.installed ?? true;
   const [open, setOpen] = useState(false);
   const [currentHref, setCurrentHref] = useState<string | null>(null);
-  const [summary, setSummary] = useState<HeaderMenuAccount | "guest" | "unknown">("unknown");
+  const [summary, setSummary] = useState<HeaderMenuAccount | "guest" | "unknown" | "loading">(
+    "loading",
+  );
   const account = typeof summary === "object" ? summary : null;
-  const access: HeaderAccess = typeof summary === "object" ? summary.role : summary;
-  const [refresh, setRefresh] = useState(0);
+  const loading = summary === "loading";
+  const access: HeaderAccess = account?.role ?? (summary === "guest" ? "guest" : "unknown");
   const header = useRef<HTMLElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLElement>(null);
   const controller = useRef<AbortController | null>(null);
-  const revision = useRef(0);
   const previousPath = useRef(pathname);
-  const clearAccess = useCallback(() => {
-    revision.current++;
+  const preview = pathname === "/pregled" || pathname.startsWith("/pregled/");
+  const abortRead = useCallback(() => {
     controller.current?.abort();
     controller.current = null;
-    setSummary("unknown");
   }, []);
-  const closeMenu = useCallback(() => {
-    clearAccess();
-    setOpen(false);
-  }, [clearAccess]);
+  const closeMenu = useCallback(() => setOpen(false), []);
+
+  useLayoutEffect(() => {
+    if (open && menu.current) menu.current.scrollTop = 0;
+  }, [open]);
 
   useEffect(() => {
     if (previousPath.current === pathname) return;
@@ -62,53 +64,57 @@ export function SiteHeader({
     closeMenu();
   }, [pathname, closeMenu]);
 
-  useEffect(() => {
-    const revalidate = () => {
-      clearAccess();
-      if (document.visibilityState !== "hidden") setRefresh((value) => value + 1);
-    };
-    window.addEventListener("focus", revalidate);
-    window.addEventListener("pageshow", revalidate);
-    window.addEventListener("popstate", closeMenu);
-    document.addEventListener("visibilitychange", revalidate);
-    return () => {
-      window.removeEventListener("focus", revalidate);
-      window.removeEventListener("pageshow", revalidate);
-      window.removeEventListener("popstate", closeMenu);
-      document.removeEventListener("visibilitychange", revalidate);
-    };
-  }, [clearAccess, closeMenu]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: refresh revalidates an open menu after a browser/session boundary.
-  useEffect(() => {
-    clearAccess();
-    if (
-      !open ||
-      pathname === "/pregled" ||
-      pathname.startsWith("/pregled/") ||
-      document.visibilityState === "hidden"
-    )
-      return;
-    const current = revision.current;
+  const readAccess = useCallback(() => {
+    if (controller.current || preview || document.visibilityState === "hidden") return;
     const read = new AbortController();
     controller.current = read;
-    const load = request
-      ? request({ signal: read.signal }).then((role) =>
-          role === "guest" ? ("guest" as const) : ("unknown" as const),
-        )
-      : headerMenuRequest({ signal: read.signal });
-    void load
-      .then((next) => {
-        if (!read.signal.aborted && current === revision.current) setSummary(next);
-      })
-      .catch(() => {
-        if (!read.signal.aborted && current === revision.current) setSummary("unknown");
-      });
-    return () => {
-      read.abort();
-      if (controller.current === read) controller.current = null;
+    setSummary((current) => (current === "unknown" ? "loading" : current));
+    void (async () => {
+      try {
+        const options = { signal: read.signal };
+        const next = request
+          ? (await request(options)) === "guest"
+            ? "guest"
+            : "unknown"
+          : await headerMenuRequest(options);
+        if (!read.signal.aborted) setSummary(next);
+      } catch {
+        if (!read.signal.aborted) setSummary("unknown");
+      } finally {
+        if (controller.current === read) controller.current = null;
+      }
+    })();
+  }, [preview, request]);
+
+  useEffect(() => {
+    const clearAccess = () => {
+      abortRead();
+      setSummary("loading");
     };
-  }, [open, pathname, clearAccess, refresh, request]);
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") clearAccess();
+      else readAccess();
+    };
+    const onRestore = (event: PageTransitionEvent) => {
+      if (event.persisted) readAccess();
+    };
+    readAccess();
+    window.addEventListener("blur", clearAccess);
+    window.addEventListener("focus", readAccess);
+    window.addEventListener("pagehide", clearAccess);
+    window.addEventListener("pageshow", onRestore);
+    window.addEventListener("popstate", closeMenu);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      abortRead();
+      window.removeEventListener("blur", clearAccess);
+      window.removeEventListener("focus", readAccess);
+      window.removeEventListener("pagehide", clearAccess);
+      window.removeEventListener("pageshow", onRestore);
+      window.removeEventListener("popstate", closeMenu);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [abortRead, closeMenu, readAccess]);
 
   useEffect(() => {
     if (!open) return;
@@ -140,6 +146,7 @@ export function SiteHeader({
       <Link
         key={link.href}
         href={link.href}
+        prefetch={false}
         aria-current={currentHref === link.href ? "page" : undefined}
         data-design="app-menu-item"
         onClick={closeMenu}
@@ -173,25 +180,32 @@ export function SiteHeader({
           aria-expanded={open}
           aria-controls="site-navigation"
           onClick={() => {
-            clearAccess();
-            if (!open) {
-              setCurrentHref(
-                headerCurrentDestination(pathname, new URLSearchParams(window.location.search)),
-              );
+            if (open) {
+              closeMenu();
+              return;
             }
-            setOpen(!open);
+            setCurrentHref(
+              headerCurrentDestination(pathname, new URLSearchParams(window.location.search)),
+            );
+            setOpen(true);
+            readAccess();
           }}
         >
           <Icon name={open ? "close" : "menu"} />
         </button>
         <nav
+          ref={menu}
           id="site-navigation"
           data-design="app-menu"
           className="header-menu"
           aria-label="Glavna navigacija"
           hidden={!open}
-          data-account-menu={account ? "true" : undefined}
         >
+          {loading && !preview && (
+            <p className="header-menu-status" role="status">
+              Učitavamo nalog…
+            </p>
+          )}
           {account && (
             <AccountQuickMenu
               key={account.id}
@@ -207,7 +221,7 @@ export function SiteHeader({
             />
           )}
           {account ? (
-            <details className="header-more">
+            <details className="header-more" key={`explore-${open}`}>
               <summary>
                 Istraži AhiBizz <Icon name="chevron" />
               </summary>
@@ -248,6 +262,7 @@ export function SiteHeader({
                 <Link
                   key={link.href}
                   href={link.href}
+                  prefetch={false}
                   aria-current={currentHref === link.href ? "page" : undefined}
                   data-design="app-menu-item"
                   onClick={closeMenu}

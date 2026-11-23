@@ -169,11 +169,13 @@ a {
   backdrop-filter: blur(16px);
 }
 .header-inner {
+  --header-row-height: 76px;
+  --header-menu-gap: 12px;
   position: relative;
   display: flex;
   align-items: center;
   gap: 36px;
-  min-height: 76px;
+  min-height: var(--header-row-height);
 }
 .brand {
   display: inline-flex;
@@ -210,20 +212,29 @@ a {
 .header-menu {
   position: absolute;
   right: 0;
-  top: calc(100% - 8px);
-  width: min(320px, calc(100vw - 40px));
-  max-height: calc(100dvh - 86px - env(safe-area-inset-bottom, 0px));
+  top: calc(100% + var(--header-menu-gap));
+  width: min(375px, 100%);
+  max-height: calc(
+    100dvh -
+    var(--header-row-height) -
+    2 *
+    var(--header-menu-gap) -
+    var(--mobile-dock-space, env(safe-area-inset-bottom, 0px))
+  );
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: 8px;
   background: var(--ui-surface-raised);
   border: 1px solid var(--line);
   border-radius: 18px;
   box-shadow: 0 14px 36px var(--ui-shadow);
 }
-.header-menu[data-account-menu="true"] {
-  width: min(375px, calc(100vw - 28px));
-  scrollbar-gutter: stable;
+.header-menu-status {
+  margin: 0;
+  padding: 12px 14px;
+  color: var(--ui-text-secondary);
+  font-size: 14px;
 }
 .header-menu > a,
 .header-more a,
@@ -279,22 +290,6 @@ a {
 .header-more a {
   font-size: 14px;
   color: var(--ui-text-secondary);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .header-menu:not([hidden]) {
-    transform-origin: top right;
-    animation: header-menu-enter 150ms ease-out;
-  }
-  @keyframes header-menu-enter {
-    from {
-      opacity: 0.75;
-      transform: translateY(-3px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
 }
 .header-access {
   display: grid;
@@ -877,16 +872,12 @@ a {
     width: calc(100% - 40px);
   }
   .header-inner {
-    min-height: 62px;
+    --header-row-height: 62px;
     justify-content: space-between;
     gap: 20px;
   }
-  /* The mobile panel keeps its size while account links load. */
-  .header-menu,
-  .header-menu[data-account-menu="true"] {
-    width: min(375px, 100%);
-    height: calc(100dvh - 70px - var(--mobile-dock-space, env(safe-area-inset-bottom, 0px)));
-    scrollbar-gutter: stable;
+  .header-menu {
+    height: 100dvh;
   }
   .brand img {
     width: 144px;

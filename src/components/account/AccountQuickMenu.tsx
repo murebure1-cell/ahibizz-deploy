@@ -46,6 +46,7 @@ export function AccountQuickMenu({
       <Link
         key={href}
         href={href}
+        prefetch={false}
         className={appearance ?? styles.row}
         aria-current={currentHref === href ? "page" : undefined}
         data-design="app-menu-item"
@@ -105,7 +106,7 @@ export function AccountQuickMenu({
   }
   return (
     <div className={styles.menu}>
-      <Link href={path.profile} className={styles.profile} onClick={close}>
+      <Link href={path.profile} className={styles.profile} prefetch={false} onClick={close}>
         <span className={styles.avatar} aria-hidden="true">
           {initials || "A"}
         </span>
