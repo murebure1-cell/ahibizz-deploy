@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  cachedFixMs,
   createDeviceLocationController,
   type DeviceLocationState,
+  freshFixMs,
   type LocationEnvironment,
   locationRefreshMs,
   locationStaleMs,
@@ -278,7 +280,7 @@ test("stale, future, inaccurate and nonfinite fixes never become a real nearby o
   await flush();
   const watcher = [...f.watches.values()][0];
   assert.ok(watcher);
-  watcher.success(f.position(44, 18, 20, f.environment.now() - 90_001));
+  watcher.success(f.position(44, 18, 20, f.environment.now() - cachedFixMs - 1));
   watcher.success(f.position(44, 18, 20, f.environment.now() + 5001));
   watcher.success(f.position(44, 18, 50_000));
   watcher.success(f.position(Number.NaN, 18));
@@ -286,6 +288,32 @@ test("stale, future, inaccurate and nonfinite fixes never become a real nearby o
   assert.equal(f.state()?.status, "unavailable");
   f.emit(44, 18);
   assert.equal(f.state()?.status, "ready");
+  f.controller.stop();
+});
+
+test("the device's recent cached fix shows nearby results at once and the first fresh fix replaces it immediately", async () => {
+  const f = fixture("granted");
+  f.controller.start();
+  f.controller.setActive(true);
+  await flush();
+  const watcher = [...f.watches.values()][0];
+  assert.ok(watcher);
+  // A five-minute-old position the phone already holds is accepted as the first origin.
+  watcher.success(f.position(44.5, 18.6, 300, f.environment.now() - 300_000));
+  assert.equal(f.state()?.status, "ready");
+  assert.equal(f.state()?.point?.latitude, 44.5);
+  // Once an origin exists, an older-than-fresh fix cannot move it.
+  watcher.success(f.position(45, 19, 20, f.environment.now() - freshFixMs - 1));
+  assert.equal(f.state()?.point?.latitude, 44.5);
+  // The first fresh fix corrects the cached origin without the usual 30-second wait.
+  watcher.success(f.position(44.53, 18.64));
+  assert.equal(f.state()?.point?.latitude, 44.53);
+  // After that, ordinary movement is throttled again.
+  watcher.success(f.position(44.56, 18.68));
+  assert.equal(f.state()?.point?.latitude, 44.53);
+  // The reused fix is not treated as already stale, so the origin is not dropped at once.
+  f.advance(locationStaleMs - freshFixMs - 1);
+  assert.ok(f.state()?.point);
   f.controller.stop();
 });
 
