@@ -1,16 +1,30 @@
 import Link from "next/link";
+import { mapPins } from "../../lib/business-map";
+import { getPublicDirectoryService } from "../../server/directory/read-service";
 import { Icon } from "../Icon";
+import { GoldGlobe } from "./GoldGlobe";
 import styles from "./home-map-banner.module.css";
 
-const meridians = [0, 30, 60, 90, 120, 150];
-const parallels = [
-  { y: -34, size: 0.8 },
-  { y: 0, size: 1 },
-  { y: 34, size: 0.8 },
-];
+/** Approximate places (about 1 km) of every business on the map, without names, once per place. */
+async function bannerPlaces(): Promise<[number, number][]> {
+  const rows =
+    (await getPublicDirectoryService()
+      ?.mapPins()
+      .catch(() => null)) ?? [];
+  const places = new Map<string, [number, number]>();
+  for (const pin of mapPins(rows)) {
+    const place: [number, number] = [
+      Math.round(pin.latitude * 100) / 100,
+      Math.round(pin.longitude * 100) / 100,
+    ];
+    places.set(place.join(","), place);
+  }
+  return [...places.values()];
+}
 
-/** Home banner for the world map: title on the left, a slowly turning globe rising out of the card. */
-export function HomeMapBanner() {
+/** Home banner for the world map: title on the left, a turning blue-and-gold globe rising out of the card. */
+export async function HomeMapBanner() {
+  const places = await bannerPlaces();
   return (
     <section className={styles.banner} aria-labelledby="home-map-heading">
       <Link href="/mapa" className={styles.link} aria-labelledby="home-map-heading">
@@ -24,26 +38,7 @@ export function HomeMapBanner() {
       </Link>
       <div className={styles.stage} aria-hidden="true">
         <div className={styles.glow} />
-        <div className={styles.sphere} />
-        <div className={styles.spin}>
-          {meridians.map((angle) => (
-            <span
-              key={angle}
-              className={styles.meridian}
-              style={{ transform: `rotateY(${angle}deg)` }}
-            />
-          ))}
-          {parallels.map((ring) => (
-            <span
-              key={ring.y}
-              className={styles.parallel}
-              style={{ transform: `translateY(${ring.y}%) rotateX(90deg) scale(${ring.size})` }}
-            />
-          ))}
-        </div>
-        <span className={`${styles.dot} ${styles.dotOne}`} />
-        <span className={`${styles.dot} ${styles.dotTwo}`} />
-        <span className={`${styles.dot} ${styles.dotThree}`} />
+        <GoldGlobe places={places} className={styles.globe} />
       </div>
     </section>
   );
