@@ -7,6 +7,7 @@ import {
   loadGoogleMaps,
   logoMapPin,
   onGoogleMapsAuthFailure,
+  pageGoogleMapId,
   pageGoogleMapsKey,
   plainMapPin,
 } from "../../lib/google-maps-loader";
@@ -22,6 +23,7 @@ type Camera = {
 type GlobeElement = HTMLElement & {
   range: number;
   mode: string;
+  colorScheme: string;
   flyCameraTo(options: { endCamera: Camera; durationMillis?: number }): void;
   flyCameraAround(options: { camera: Camera; durationMillis?: number; repeatCount?: number }): void;
   stopCameraAnimation(): void;
@@ -37,9 +39,10 @@ const world: Camera = {
   tilt: 0,
   heading: 0,
 };
-// Far away the globe shows country names and borders; close up it switches to clean 3D imagery,
-// so hospitals, shops and other Google places never appear, only AhiBizz markers.
-const labelsAboveMetres = 250_000;
+/** The app theme decides the map scheme: light streets and pale 3D buildings, or deep navy. */
+function mapScheme() {
+  return document.documentElement.dataset.theme === "dark" ? "DARK" : "LIGHT";
+}
 
 function camera(latitude: number, longitude: number, range: number, tilt = 0): Camera {
   return { center: { lat: latitude, lng: longitude, altitude: 0 }, range, tilt, heading: 0 };
@@ -61,6 +64,7 @@ export function BusinessGlobe({ pins, countries }: { pins: MapPin[]; countries: 
       return;
     }
     let cancelled = false;
+    let themeObserver: MutationObserver | undefined;
     const stopAuth = onGoogleMapsAuthFailure(() => {
       if (!cancelled) setState("unavailable");
     });
@@ -69,9 +73,13 @@ export function BusinessGlobe({ pins, countries }: { pins: MapPin[]; countries: 
         const maps = await loadGoogleMaps(key);
         const lib = (await maps.importLibrary("maps3d")) as unknown as Maps3d;
         if (cancelled || !holder.current) return;
+        const mapId = pageGoogleMapId();
         const map = new lib.Map3DElement({
           ...world,
-          mode: "HYBRID",
+          // Vector map with 3D buildings; a map style (mapId) can hide Google's places.
+          mode: "ROADMAP",
+          colorScheme: mapScheme(),
+          ...(mapId ? { mapId } : {}),
           // One finger turns the globe, two fingers zoom, without a "use two fingers" overlay.
           gestureHandling: "GREEDY",
           defaultUIHidden: true,
@@ -79,10 +87,10 @@ export function BusinessGlobe({ pins, countries }: { pins: MapPin[]; countries: 
         map.className = styles.globe ?? "";
         holder.current.replaceChildren(map);
         globe.current = map;
-        map.addEventListener("gmp-rangechange", () => {
-          const mode = map.range > labelsAboveMetres ? "HYBRID" : "SATELLITE";
-          if (map.mode !== mode) map.mode = mode;
+        themeObserver = new MutationObserver(() => {
+          map.colorScheme = mapScheme();
         });
+        themeObserver.observe(document.documentElement, { attributeFilter: ["data-theme"] });
         // Any touch stops the slow spin so the person is in control.
         map.addEventListener("pointerdown", () => {
           map.stopCameraAnimation();
@@ -132,6 +140,7 @@ export function BusinessGlobe({ pins, countries }: { pins: MapPin[]; countries: 
     return () => {
       cancelled = true;
       stopAuth();
+      themeObserver?.disconnect();
       globe.current = null;
     };
   }, [pins]);
@@ -205,7 +214,8 @@ export function BusinessGlobe({ pins, countries }: { pins: MapPin[]; countries: 
                     type="button"
                     onClick={() => {
                       setSelected(null);
-                      fly(camera(city.latitude, city.longitude, 9000, 45));
+                      // Close and tilted, so the 3D buildings of the city stand out.
+                      fly(camera(city.latitude, city.longitude, 3500, 60));
                     }}
                   >
                     {city.name} <span>{city.count}</span>
