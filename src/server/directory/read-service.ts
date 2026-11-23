@@ -18,6 +18,7 @@ export type MapPinRow = {
   id: string;
   title: string;
   city: string | null;
+  countryCode: string | null;
   latitude: number | string;
   longitude: number | string;
   media: DirectoryBusiness["media"];
@@ -369,7 +370,7 @@ export function createPublicDirectoryService({
     mapPins(): Promise<MapPinRow[]> {
       return safeRead(async () => {
         const result = await database.query(
-          `SELECT b.id, b.title, b.city, b.latitude, b.longitude, ${businessMediaProjection} AS media
+          `SELECT b.id, b.title, b.city, b.country_code AS "countryCode", b.latitude, b.longitude, ${businessMediaProjection} AS media
              FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id
             WHERE ${publicBusinessWhere} AND b.latitude IS NOT NULL AND b.longitude IS NOT NULL
             ORDER BY b.published_at DESC NULLS LAST, b.id

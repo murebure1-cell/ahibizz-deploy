@@ -237,10 +237,6 @@ export function HomeNearbyControl() {
           </button>
         </Form>
       </details>
-      <Link className={styles.mapLink} href="/mapa">
-        <Icon name="pin" />
-        Vidi mapu
-      </Link>
     </div>
   );
 }

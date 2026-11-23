@@ -16,7 +16,8 @@
 
 @media (prefers-reduced-motion: no-preference) {
   /* Page transition: every page renders its own main element, so each navigation arrives softly. */
-  #glavni-sadrzaj {
+  /* Full-screen pages are excluded: a moving parent would shift their fixed layer. */
+  #glavni-sadrzaj:not([data-fullscreen]) {
     animation: ahibizz-page-in var(--motion-slow) var(--motion-ease) backwards;
   }
 

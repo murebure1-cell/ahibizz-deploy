@@ -13,6 +13,7 @@ import {
   HomeNearbySection,
   HomeSurface,
 } from "../../components/home/HomeSurface";
+import { HomeMapBanner } from "../../components/map/HomeMapBanner";
 import { RecentReels } from "../../components/reels/ReelShelf";
 import { homeCategories, homePlace } from "../../lib/home";
 import {
@@ -127,19 +128,22 @@ async function HomeLocalDirectory({
 }) {
   const [businesses, categories] = await Promise.all([data, classification]);
   return (
-    <HomeNearbyProvider
-      key={place}
-      categories={categories ?? []}
-      initialBusinesses={(businesses ?? []).map((business) =>
-        publicBusinessView(business, categories ?? []),
-      )}
-      available={place ? businesses !== null : categories !== null}
-      place={place}
-    >
-      <HomeNearbySection title={title} control={<HomeNearbyControl />}>
-        <HomeNearbyResults exampleId={homeExampleId} />
-      </HomeNearbySection>
-    </HomeNearbyProvider>
+    <>
+      <HomeNearbyProvider
+        key={place}
+        categories={categories ?? []}
+        initialBusinesses={(businesses ?? []).map((business) =>
+          publicBusinessView(business, categories ?? []),
+        )}
+        available={place ? businesses !== null : categories !== null}
+        place={place}
+      >
+        <HomeNearbySection title={title} control={<HomeNearbyControl />}>
+          <HomeNearbyResults exampleId={homeExampleId} />
+        </HomeNearbySection>
+      </HomeNearbyProvider>
+      <HomeMapBanner />
+    </>
   );
 }
 
