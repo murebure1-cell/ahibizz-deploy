@@ -16,6 +16,7 @@ import {
   stayQuote,
 } from "../../lib/stays";
 import { Icon } from "../Icon";
+import { LoadingSkeleton } from "../LoadingSkeleton";
 import common from "../rentals/rentals.module.css";
 import { StayEntry } from "./StayEntries";
 import { stayError, useStayRead, writeStay } from "./stay-client";
@@ -262,7 +263,7 @@ export function StayCalendar({
                 </button>
               </p>
             ) : !calendar?.data ? (
-              <p>Učitavanje kalendara…</p>
+              <LoadingSkeleton label="Učitavanje kalendara…" rows={2} />
             ) : (
               <>
                 <strong>{bookingDate(`${day}T12:00:00Z`, "UTC")}</strong>
