@@ -32,7 +32,7 @@ export function rentalError(error: unknown) {
   if (error instanceof BookingRequestError) {
     if (error.code === "RENTAL_HAS_BOOKINGS")
       return "Automobil ima predstojeći najam ili blokadu. Provjeri njegov kalendar.";
-    if (error.code.includes("LIMIT")) return "Na besplatnom paketu možeš dodati dva automobila.";
+    if (error.code.includes("LIMIT")) return "Možeš dodati najviše dva automobila.";
     if (
       error.code.includes("OVERLAP") ||
       error.code === "RENTAL_CONFLICT" ||

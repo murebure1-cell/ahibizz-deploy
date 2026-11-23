@@ -31,11 +31,8 @@ export function MobileDock() {
   const query = new URLSearchParams(search?.toString());
   const current = headerCurrentDestination(pathname, query);
   const accountPane = pathname === "/nalog";
-  const financialPane =
-    accountPane && ["krediti", "oglasi", "paketi"].includes(query.get("odjeljak") ?? "");
   const notificationsOpen = pathname === accountShortcuts.notifications;
   if (
-    financialPane ||
     current === publish.href ||
     (pathname !== "/" &&
       !accountPane &&

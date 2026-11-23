@@ -300,7 +300,7 @@ test("preview blocks can review version zero before any booking settings exist",
   assert.equal((await api.ownerRequest(calendar.replace("forma", id))).entries.length, 1);
 });
 
-test("preview credits require an approved customer appointment, elapsed end and one completion", async () => {
+test("preview completion requires an approved customer appointment and elapsed end", async () => {
   const f = fixture(),
     { api } = f,
     [slot] = await f.slots();
@@ -308,16 +308,11 @@ test("preview credits require an approved customer appointment, elapsed end and 
   const entry = await f.create(slot);
   const move = (id: string, expectedVersion: number, action: string) =>
     api.ownerRequest(`entries/${id}/action`, bookingWrite("POST", { expectedVersion, action }));
-  assert.equal((await api.ownerRequest(calendar)).earnedCredits, 0);
   await assert.rejects(move(entry.id, 1, "complete"), error("INVALID_BOOKING_TRANSITION", 409));
   await move(entry.id, 1, "approve");
-  assert.equal((await api.ownerRequest(calendar)).earnedCredits, 0);
   await assert.rejects(move(entry.id, 2, "complete"), error("INVALID_BOOKING_TRANSITION", 409));
   f.setClock(slot.endsAt);
   await move(entry.id, 2, "complete");
-  assert.equal((await api.ownerRequest(calendar)).earnedCredits, 5);
-  assert.equal((await api.ownerRequest("mine")).credits, 5);
-  assert.equal((await api.customerRequest("mine")).credits, 0);
   await assert.rejects(move(entry.id, 2, "complete"), error("VERSION_CONFLICT", 409));
   await assert.rejects(move(entry.id, 3, "complete"), error("INVALID_BOOKING_TRANSITION", 409));
   const manual = await api.ownerRequest(
@@ -336,11 +331,6 @@ test("preview credits require an approved customer appointment, elapsed end and 
   );
   f.setClock(manual.entry.endsAt);
   await move(manual.entry.id, 1, "complete");
-  assert.equal(
-    (await api.ownerRequest(calendar)).earnedCredits,
-    5,
-    "manual appointments never earn credits",
-  );
   const block = await api.ownerRequest(
     "mine/businesses/forma/entries",
     bookingWrite(
@@ -359,7 +349,6 @@ test("preview credits require an approved customer appointment, elapsed end and 
     move(block.entry.id, 1, "complete"),
     error("INVALID_BOOKING_TRANSITION", 409),
   );
-  assert.equal((await api.ownerRequest(calendar)).earnedCredits, 5);
 });
 
 test("preview draft settings begin disabled, reads are isolated copies and disabled public booking still permits private blocks", async () => {

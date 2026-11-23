@@ -78,11 +78,11 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
           />
           <span>
             <strong>Sakrij djelatnosti blokiranih korisnika u pretrazi</strong>
-            <span>Odnosi se na rezultate pretrage i prijedloge u Reelsima dok si prijavljen.</span>
+            <span>Važi za pretragu i prijedloge u Reelsima dok koristiš svoj nalog.</span>
           </span>
         </label>
       </section>
-      <section className={styles.listPanel} aria-label="Korisnici koje sam blokirao">
+      <section className={styles.listPanel} aria-label="Blokirani korisnici">
         {data.items.length > 0 ? (
           <ul className={styles.list}>
             {data.items.map((item) => (

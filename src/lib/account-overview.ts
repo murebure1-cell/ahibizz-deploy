@@ -1,5 +1,4 @@
 import { isNextAppointment, type NextAppointment } from "./next-appointment";
-import { validCreditBalance } from "./wallet";
 
 export type AccountOverviewFacts = {
   accountId: string;
@@ -7,36 +6,8 @@ export type AccountOverviewFacts = {
   businesses: number;
   unreadThreads: number;
   promotedBusinesses: number;
-  credits: number;
   nextAppointment?: NextAppointment | null;
 };
-
-export type PlacementKind = "category" | "featured" | "nearby" | "banner";
-export type ActivePlacement = { id: string; title: string; endsAt: string; kind: PlacementKind };
-export type AccountPlacements = {
-  accountId: string;
-  items: ActivePlacement[];
-};
-
-export function readPlacements(value: unknown, expectedId: string): AccountPlacements {
-  const data = (value as { placements?: AccountPlacements } | null)?.placements;
-  if (
-    !data ||
-    data.accountId !== expectedId ||
-    !Array.isArray(data.items) ||
-    !data.items.every(
-      (row) =>
-        row &&
-        typeof row.id === "string" &&
-        /^[a-f0-9-]{36}$/i.test(row.id) &&
-        ["category", "featured", "nearby", "banner"].includes(row.kind) &&
-        typeof row.title === "string" &&
-        Number.isFinite(Date.parse(row.endsAt)),
-    )
-  )
-    throw new Error("Invalid account placements");
-  return data;
-}
 
 export function readOverview(value: unknown, expectedId: string): AccountOverviewFacts {
   if (!value || typeof value !== "object" || !("overview" in value))
@@ -48,7 +19,6 @@ export function readOverview(value: unknown, expectedId: string): AccountOvervie
     (overview.nextAppointment != null && !isNextAppointment(overview.nextAppointment)) ||
     typeof overview.joinedAt !== "string" ||
     !Number.isFinite(Date.parse(overview.joinedAt)) ||
-    !validCreditBalance(overview.credits) ||
     [overview.businesses, overview.unreadThreads, overview.promotedBusinesses].some(
       (value) => typeof value !== "number" || !Number.isSafeInteger(value) || value < 0,
     )

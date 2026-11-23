@@ -20,7 +20,8 @@ export function SupportPage({ config }: { config: SupportConfig }) {
     ...config.bankAccounts.map((bank) => ({ id: `bank:${bank.id}`, label: bank.label })),
   ];
   const [method, setMethod] = useState(methods[0]?.id ?? "");
-  const [choice, setChoice] = useState("");
+  // A preselected common amount keeps the donate action usable on arrival.
+  const [choice, setChoice] = useState("10");
   const [customAmount, setCustomAmount] = useState("");
   const bank = config.bankAccounts.find((entry) => method === `bank:${entry.id}`);
   const currency = method === "paypal" ? "EUR" : bank?.currency;
@@ -78,7 +79,7 @@ export function SupportPage({ config }: { config: SupportConfig }) {
                     checked={method === option.id}
                     onChange={() => {
                       setMethod(option.id);
-                      setChoice("");
+                      setChoice("10");
                       setCustomAmount("");
                     }}
                   />

@@ -104,8 +104,8 @@ export function AppPwaProvider({ children }: { children: ReactNode }) {
     if (!event) {
       setNote(
         platform === "ios"
-          ? "Otvori meni Dijeli → Dodaj na početni ekran. Ako opcija nedostaje, otvori ovu stranicu u Safariju."
-          : "U Chromeu otvori meni ⋮ → Dodaj na početni ekran → Instaliraj aplikaciju.",
+          ? "U meniju Dijeli odaberi Dodaj na početni ekran. Ako opcija nedostaje, otvori ovu stranicu u Safariju."
+          : "U Chromeovom meniju odaberi Dodaj na početni ekran, pa Instaliraj aplikaciju.",
       );
       return;
     }

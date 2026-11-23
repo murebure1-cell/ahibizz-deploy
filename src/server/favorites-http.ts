@@ -67,11 +67,24 @@ export function createFavoritesHttpHandler({
       const url = new URL(request.url);
       if (request.method === "GET" && url.pathname === "/api/favorites/states") {
         if (url.searchParams.size !== 1 || url.searchParams.getAll("ids").length !== 1) invalid();
-        return reply(
-          readFavoriteStates(
-            await service.states(request.headers, (url.searchParams.get("ids") ?? "").split(",")),
-          ),
-        );
+        try {
+          return reply(
+            readFavoriteStates(
+              await service.states(request.headers, (url.searchParams.get("ids") ?? "").split(",")),
+            ),
+          );
+        } catch (error) {
+          // A guest reading public cards is an expected state, not a failed request: answer it
+          // without an error status so every anonymous page view does not log a 401.
+          if (
+            !request.headers.has("X-AhiBizz-Account-ID") &&
+            (error instanceof FavoritesAccessError || error instanceof AccountAccessError) &&
+            error.status === 401 &&
+            error.code === "AUTHENTICATION_REQUIRED"
+          )
+            return reply({ anonymous: true });
+          throw error;
+        }
       }
       if (request.method === "GET" && url.pathname === "/api/favorites") {
         if (

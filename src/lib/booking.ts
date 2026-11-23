@@ -110,7 +110,7 @@ export function bookingDate(
         .formatToParts(date)
         .map((part) => [part.type, part.value]),
     );
-    const label = `${Number(values.day)}. ${Number(values.month)}. ${values.year}.`;
+    const label = `${values.day}. ${values.month}. ${values.year}.`;
     return time ? `${label} u ${values.hour}:${values.minute}` : label;
   } catch {
     return "—";

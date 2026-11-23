@@ -86,7 +86,13 @@ export function createFavoritesApi(request: typeof fetch = fetch): FavoritesApi 
   }
   return {
     async states(ids, actor, signal) {
-      return readFavoriteStates(await json(`/states?ids=${ids.join(",")}`, { signal }, actor));
+      const data = await json(`/states?ids=${ids.join(",")}`, { signal }, actor);
+      if ((data as { anonymous?: unknown })?.anonymous === true) {
+        // An anonymous answer is only valid for a reader that has not displayed an account.
+        if (actor) throw new FavoritesClientError("ACCOUNT_IDENTITY_CHANGED", 401);
+        throw new FavoritesClientError("AUTHENTICATION_REQUIRED", 401);
+      }
+      return readFavoriteStates(data);
     },
     async set(id, command, actor) {
       return readFavoriteStates(

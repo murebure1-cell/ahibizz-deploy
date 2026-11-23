@@ -205,10 +205,7 @@ const queue = {
   actionLabel: "Pregledaj djelatnosti",
   path: adminSectionPath("businessQueue"),
 };
-const packages = { actionLabel: "Moje pretplate", path: accountSectionPath("membership") };
 const profile = { actionLabel: "Moj profil", path: accountSectionPath("profile") };
-const advertising = { actionLabel: "Moji oglasi", path: accountSectionPath("advertising") };
-const credits = { actionLabel: "Moji krediti", path: accountSectionPath("credits") };
 const contacts = { actionLabel: "Moji prijatelji", path: accountSectionPath("connections") };
 const supportQueue = {
   recipient: "Administrator",
@@ -220,16 +217,10 @@ const rules = {
   actionLabel: "Pravila zajednice",
   path: "/pravila-zajednice",
 };
-const order = { actionLabel: "Otvori narudžbu", path: `/naplata?narudzba=${demoId}` };
 const businessDetails = [{ label: "Djelatnost", value: "Studio Primjer" }];
 const correctionDetails = [
   ...businessDetails,
   { label: "Razlog", value: "Dopuni adresu djelatnosti." },
-];
-const promotion = [{ label: "Usluga", value: "Isticanje djelatnosti na 7 dana" }];
-const businessPlan = [
-  { label: "Paket", value: "Poslovni" },
-  { label: "Način plaćanja", value: "Mjesečno" },
 ];
 
 export const mailExamples: readonly MailExample[] = [
@@ -350,54 +341,6 @@ export const mailExamples: readonly MailExample[] = [
     path: accountSectionPath("messages"),
   }),
   preview(
-    "advertising-requested",
-    "Oglasi i produkcija",
-    "Novi zahtjev za ponudu",
-    "Vlasnik djelatnosti zatražio je ponudu za prikaz oglasa.",
-    { recipient: "Administrator", actionLabel: "Otvori zahtjeve", path: "/administracija/oglasi" },
-    [...businessDetails, { label: "Mjesto prikaza", value: "Baner na početnoj" }],
-  ),
-  preview(
-    "advertising-quoted",
-    "Oglasi i produkcija",
-    "Ponuda za oglas je spremna",
-    "Cijenu i upute za uplatu možeš pregledati u svom nalogu.",
-    advertising,
-    [...businessDetails, { label: "Trajanje prikaza", value: "7 dana" }],
-  ),
-  preview(
-    "advertising-scheduled",
-    "Oglasi i produkcija",
-    "Dogovoren je prikaz oglasa",
-    "U svojim oglasima možeš pregledati period isticanja.",
-    advertising,
-    [...businessDetails, { label: "Period prikaza", value: "Od 18. do 25. juna 2027." }],
-  ),
-  preview(
-    "production-quoted",
-    "Oglasi i produkcija",
-    "Ponuda za foto i video je spremna",
-    "Pregledaj opis usluge, cijenu i upute za uplatu.",
-    advertising,
-    businessDetails,
-  ),
-  preview(
-    "credits-quoted",
-    "Ahi Credits",
-    "Ponuda za dopunu kredita",
-    "U svom nalogu možeš pregledati cijenu tražene dopune.",
-    credits,
-    [{ label: "Broj kredita", value: "50" }],
-  ),
-  preview(
-    "credits-added",
-    "Ahi Credits",
-    "Krediti su dodani",
-    "Dopuna je evidentirana. Novo stanje dostupno je u tvom nalogu.",
-    credits,
-    [{ label: "Dodano kredita", value: "50" }],
-  ),
-  preview(
     "support-reported",
     "Podrška",
     "Prijava sadržaja je zaprimljena",
@@ -426,89 +369,5 @@ export const mailExamples: readonly MailExample[] = [
     "Zahtjev za brisanje naloga je zaprimljen",
     "Zahtjev za brisanje je zaprimljen. Administrator će provjeriti vlasništvo nad nalogom.",
     { actionLabel: "Podaci o brisanju naloga", path: "/brisanje-naloga" },
-  ),
-  preview(
-    "payment-captured",
-    "Uplate",
-    "Uplata je potvrđena",
-    "Isticanje djelatnosti važi do 25. juna 2027.",
-    order,
-    [...promotion, { label: "Plaćeni iznos", value: "5,11 EUR" }],
-  ),
-  preview(
-    "payment-review",
-    "Uplate",
-    "Uplata zahtijeva provjeru",
-    "Ne plaćaj ponovo za ovu narudžbu. Njen status možeš provjeriti u aplikaciji.",
-    order,
-    promotion,
-  ),
-  preview(
-    "payment-void",
-    "Uplate",
-    "Narudžba je stornirana",
-    "Nije izvršena naplata.",
-    order,
-    promotion,
-  ),
-  preview(
-    "payment-adjusted",
-    "Uplate",
-    "Uplata je korigovana",
-    "Povrat je evidentiran u narudžbi.",
-    order,
-    [...promotion, { label: "Iznos povrata", value: "5,11 EUR" }],
-  ),
-  preview(
-    "membership-active",
-    "Pretplate",
-    "Pretplata je aktivna",
-    "Paket i podatke o ugovoru možeš pregledati u svom nalogu.",
-    packages,
-    businessPlan,
-  ),
-  preview(
-    "membership-renewed",
-    "Pretplate",
-    "Mjesečna uplata je evidentirana",
-    "U evidenciji pretplate zabilježena je nova mjesečna uplata.",
-    packages,
-    [...businessPlan, { label: "Ugovorena mjesečna rata", value: "49 KM" }],
-  ),
-  preview(
-    "membership-annual-paid",
-    "Pretplate",
-    "Godišnja uplata je evidentirana",
-    "Godišnja uplata je zabilježena. Period paketa možeš provjeriti u svom nalogu.",
-    packages,
-    [
-      { label: "Paket", value: "Poslovni" },
-      { label: "Način plaćanja", value: "Godišnje · jedna uplata" },
-      { label: "Ugovoreni godišnji iznos", value: "490 KM" },
-    ],
-  ),
-  preview(
-    "membership-paused",
-    "Pretplate",
-    "Pretplata je pauzirana",
-    "Trenutni status i podatke o naplati možeš pregledati u svojim pretplatama.",
-    packages,
-    businessPlan,
-  ),
-  preview(
-    "membership-cancelled",
-    "Pretplate",
-    "Automatska naplata je otkazana",
-    "U svom nalogu možeš pregledati stanje ugovora i dosadašnje uplate.",
-    packages,
-    businessPlan,
-  ),
-  preview(
-    "membership-completed",
-    "Pretplate",
-    "Raspored naplate je završen",
-    "Pregled uplata i podatke o ugovoru možeš pronaći u svojim pretplatama.",
-    packages,
-    businessPlan,
   ),
 ];

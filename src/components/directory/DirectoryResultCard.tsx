@@ -84,6 +84,7 @@ export function DirectoryResultCard({
           <BusinessLogo src={logo?.src} alt="" sizes="72px" />
         </div>
         <header className={styles.identity}>
+          {business.featured && <span className={styles.example}>Istaknuto</span>}
           {example && <span className={styles.example}>Primjer</span>}
           <h2 data-design="directory-title">
             <Link href={profile} title={business.title}>

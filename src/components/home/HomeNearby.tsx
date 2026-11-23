@@ -275,7 +275,7 @@ export function HomeNearbyResults({ exampleId }: { exampleId?: string }) {
               : `Još nema objavljenih djelatnosti za ${place}.`}
         </p>
         <Link className={homeStyles.subtleLink} href="/pretraga">
-          Istraži sve djelatnosti <Icon name="arrow" />
+          Pretraži djelatnosti
         </Link>
         {refresh === "failed" && (
           <button onClick={retryRefresh} type="button" className={styles.more}>

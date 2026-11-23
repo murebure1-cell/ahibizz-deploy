@@ -1,3 +1,4 @@
+import { accountSectionPath } from "./account-return";
 import { contentSearchKey, searchInput } from "./content-hub";
 
 export const reportHelpPath = "/pomoc?tema=sigurnost";
@@ -16,16 +17,13 @@ export const helpTopics = {
     ],
   },
   djelatnost: {
-    label: "Djelatnost i oglasi",
+    label: "Moja djelatnost",
     icon: "shop",
-    question: "Kako da objavim ili istaknem djelatnost?",
-    keywords: ["djelat", "oglas", "istak", "kampanj", "marketing", "promoc", "preduz", "biznis"],
+    question: "Kako da objavim djelatnost?",
+    keywords: ["djelat", "preduz", "biznis"],
     answer:
-      "U nalogu otvori Djelatnosti i odaberi dodavanje. Unesi grad, opis, kontakt i fotografije. Za promociju postojećeg profila pregledaj dostupne pozicije i pošalji zahtjev za ponudu.",
-    links: [
-      { label: "Moje djelatnosti", href: "/nalog?odjeljak=djelatnosti" },
-      { label: "Pozicije za oglašavanje", href: "/oglasavanje" },
-    ],
+      "U nalogu otvori Djelatnosti i odaberi dodavanje. Unesi grad, opis, kontakt i fotografije. Objava djelatnosti je besplatna.",
+    links: [{ label: "Moje djelatnosti", href: "/nalog?odjeljak=djelatnosti" }],
   },
   rezervacije: {
     label: "Booking i termini",
@@ -37,28 +35,6 @@ export const helpTopics = {
     links: [
       { label: "Moji termini", href: "/nalog?odjeljak=termini" },
       { label: "Otvori poruke", href: "/nalog?odjeljak=poruke" },
-    ],
-  },
-  naplata: {
-    label: "Naplata i paketi",
-    icon: "card",
-    question: "Kako da provjerim uplatu ili svoj paket?",
-    keywords: [
-      "kredit",
-      "paket",
-      "naplat",
-      "uplat",
-      "racun",
-      "kartic",
-      "paypal",
-      "plac",
-      "pretplat",
-    ],
-    answer:
-      "U nalogu provjeri trenutno članstvo i stanje Ahi kredita. Ako se uplata ne vidi, u zahtjevu podršci navedi iznos, približno vrijeme uplate i oznaku narudžbe ako je imaš.",
-    links: [
-      { label: "Pregled paketa", href: "/paketi" },
-      { label: "Moj nalog", href: "/nalog" },
     ],
   },
   sigurnost: {
@@ -91,6 +67,32 @@ export type HelpTopicId = keyof typeof helpTopics;
 export type HelpTicketTopic = HelpTopicId | "ostalo";
 export const helpTopicIds = Object.keys(helpTopics) as HelpTopicId[];
 
+type HelpAnswer = {
+  label: string;
+  icon: (typeof helpTopics)[HelpTopicId]["icon"];
+  question: string;
+  answer: string;
+  links: readonly { label: string; href: string }[];
+};
+
+export function helpTopicContent(id: HelpTopicId, playEdition = false): HelpAnswer {
+  const topic = helpTopics[id];
+  if (!playEdition) return topic;
+  switch (id) {
+    case "djelatnost":
+      return {
+        ...topic,
+        label: "Moje djelatnosti",
+        question: "Kako da dodam ili uredim djelatnost?",
+        answer:
+          "U nalogu otvori Djelatnosti i odaberi dodavanje. Unesi grad, opis, kontakt i fotografije. Objava djelatnosti je besplatna.",
+        links: [{ label: "Moje djelatnosti", href: accountSectionPath("businesses") }],
+      };
+    default:
+      return topic;
+  }
+}
+
 export function helpTopic(value: unknown): HelpTopicId | null {
   return typeof value === "string" && Object.hasOwn(helpTopics, value)
     ? (value as HelpTopicId)
@@ -113,18 +115,8 @@ export function matchHelpTopic(query: string): HelpTopicId | null {
 }
 
 export function helpTicketTopic(reference: string): HelpTicketTopic | null {
-  if (packageSupportContractId(reference)) return "naplata";
   const parts = /^([a-z]+)--[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.exec(reference);
   return parts?.[1] === "ostalo" ? "ostalo" : helpTopic(parts?.[1]);
-}
-
-export function packageSupportContractId(reference: unknown) {
-  if (typeof reference !== "string") return null;
-  return (
-    /^ugovor--([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/i
-      .exec(reference)?.[1]
-      ?.toLowerCase() ?? null
-  );
 }
 
 export function helpTicketLabel(reference: string) {

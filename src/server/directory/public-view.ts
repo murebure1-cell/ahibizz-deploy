@@ -20,6 +20,7 @@ export function publicBusinessView(
     latitude: business.latitude,
     longitude: business.longitude,
     verified: business.verified,
+    featured: business.featured === true,
     localFeatured: business.localFeatured === true,
     details: business.details ?? null,
     reviews: business.reviews ?? { count: 0, sum: 0 },

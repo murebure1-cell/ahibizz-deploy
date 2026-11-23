@@ -62,11 +62,13 @@ function fixture(options: { unavailable?: boolean; missing?: boolean } = {}) {
               if (options.unavailable)
                 throw new Error("private-fixture-database-url-and-driver-detail");
               return {
-                rows: sql.includes("FROM directory_category")
-                  ? [{ id: categoryId, name: "Fixture", slug: "fixture", parentId: null }]
-                  : options.missing
-                    ? []
-                    : [row],
+                rows:
+                  sql.includes("FROM directory_category") &&
+                  !sql.includes("FROM directory_business")
+                    ? [{ id: categoryId, name: "Fixture", slug: "fixture", parentId: null }]
+                    : options.missing
+                      ? []
+                      : [row],
               };
             },
             release() {},
@@ -161,7 +163,7 @@ test("public list and detail retain eligibility predicates and the existing publ
     assert.match(query.sql, /JOIN auth_user u ON u.id = b.owner_user_id/);
     assert.match(
       query.sql,
-      /b.status = 'published' AND package_allows_listing\(b\) AND u.approval = 'approved' AND u\."emailVerified" = true/,
+      /b.status = 'published' AND u.approval = 'approved' AND u\."emailVerified" = true/,
     );
     assert.doesNotMatch(query.sql, /\bbytes\b/);
     assert.doesNotMatch(query.sql, /directory_moderation_audit|moderationReturn/);
@@ -178,6 +180,12 @@ test("public search retains prepared literal filters and page bounds", async () 
   assert.match(
     f.queries[0]?.sql ?? "",
     /ORDER BY .*ILIKE ALL .* DESC, b.created_at DESC, b.id DESC/s,
+  );
+  // Public search text also covers category names and the owner's published reels.
+  assert.match(f.queries[0]?.sql ?? "", /FROM directory_category c WHERE c.id=b.category_id/);
+  assert.match(
+    f.queries[0]?.sql ?? "",
+    /FROM business_reel r WHERE r.business_id=b.id AND r.status='published' AND r.submitted_by=b.owner_user_id/,
   );
 });
 

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   ANDROID_LINK_RELATION,
@@ -41,4 +42,13 @@ test("asset links publish only the declared Play package and distinct signing fi
       },
     },
   ]);
+});
+
+test("the handover template requires a real signing certificate before publication", () => {
+  const [template] = JSON.parse(
+    readFileSync(new URL("../docs/handover/assetlinks.example.json", import.meta.url), "utf8"),
+  );
+  assert.equal(template.target.package_name, ANDROID_PACKAGE);
+  assert.deepEqual(template.relation, [ANDROID_LINK_RELATION]);
+  assert.deepEqual(androidAssetStatements(template.target.sha256_cert_fingerprints.join(",")), []);
 });

@@ -1,3 +1,4 @@
+import { bosnianNumber } from "../../lib/number-format";
 import type { ReviewSummary } from "../../lib/reviews";
 import { Icon } from "../Icon";
 import styles from "./business-rating.module.css";
@@ -13,10 +14,7 @@ export function BusinessRating({ summary }: { summary?: ReviewSummary | null }) 
   )
     return null;
   const value = summary.sum / summary.count;
-  const label = value.toLocaleString("bs-BA", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
+  const label = bosnianNumber(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const last = summary.count % 10;
   const teen = summary.count % 100;
   const noun = last >= 2 && last <= 4 && (teen < 12 || teen > 14) ? "recenzije" : "recenzija";

@@ -1,3 +1,5 @@
+import { accountDate } from "./display-date";
+
 export const articleCategories = {
   vodici: "Vodiči",
   poslovanje: "Poslovanje",
@@ -45,10 +47,7 @@ export type ArticleSummary = {
 export type BlogArticle = ArticleSummary & { body: string; revision: number };
 
 export function formatArticleDate(value: Date) {
-  return new Intl.DateTimeFormat("bs-BA", {
-    dateStyle: "long",
-    timeZone: "Europe/Sarajevo",
-  }).format(value);
+  return accountDate(value);
 }
 
 export function blogPath(

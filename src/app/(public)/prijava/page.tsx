@@ -6,6 +6,7 @@ import { signedInReturnPath } from "../../../lib/session-navigation";
 import { getAccountService } from "../../../server/auth/accounts";
 import { authenticationAvailable } from "../../../server/auth-availability";
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Prijava" };
 export default async function LoginPage({
   searchParams,
 }: {

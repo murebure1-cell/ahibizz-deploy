@@ -46,7 +46,6 @@ import {
   uncertainDirectoryMutation,
 } from "../../lib/directory-mutation-recovery";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
-import { placementOfferPath } from "../../lib/marketing";
 import type { DirectoryBusiness } from "../../server/directory/types";
 import { ProfileVerification } from "../admin/ProfileVerification";
 import { BusinessBookingManager } from "../booking/BusinessBookingManager";
@@ -209,7 +208,6 @@ export function BusinessManager({
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
-  const [promotionId, setPromotionId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<DirectoryListFilter>(
@@ -305,7 +303,6 @@ export function BusinessManager({
     loadedSelection.current = "";
     setSearchText("");
     setSearchQuery("");
-    setPromotionId(null);
     setItems(null);
     setCategories([]);
     setHasMore(false);
@@ -829,11 +826,7 @@ export function BusinessManager({
             setEditing(undefined);
           } else {
             setEditing(latest.business);
-            setError(
-              latest.business.packagePaymentNeeded
-                ? "Nacrt je sačuvan. Za objavu je potreban aktivan paket."
-                : "Podaci su sačuvani. Objava nije potvrđena.",
-            );
+            setError("Podaci su sačuvani. Objava nije potvrđena.");
           }
         } catch (failure) {
           if (!current(access) || controller.signal.aborted) return;
@@ -1500,11 +1493,6 @@ export function BusinessManager({
           )}
           <div className={styles.list}>
             {items?.map((item) => {
-              const canPromote =
-                !IS_PLAY_EDITION &&
-                item.status === "published" &&
-                !item.packagePaymentNeeded &&
-                expectedAccountId === item.ownerId;
               const stays =
                 item.hasStayUnits ||
                 hasStayCategory(categories, item.categoryId, item.subcategoryId);
@@ -1619,29 +1607,26 @@ export function BusinessManager({
                             {cars ? "Automobili" : "Booking"}
                           </button>
                         )}
-                        {item.packagePaymentNeeded &&
-                          !IS_PLAY_EDITION &&
-                          expectedAccountId === item.ownerId && (
-                            <a
-                              className={styles.primary}
-                              href="/paketi/placanje?paket=basic&period=monthly"
+                        {!IS_PLAY_EDITION &&
+                          item.status === "published" &&
+                          item.ownerId === expectedAccountId && (
+                            <Link
+                              className={styles.secondary}
+                              href={`/nalog/isticanja?djelatnost=${item.id}`}
                             >
-                              Aktiviraj paket
-                            </a>
+                              <Icon name="star" /> Istakni djelatnost
+                            </Link>
                           )}
-                        {!item.packagePaymentNeeded &&
-                          ["draft", "pending"].includes(item.status) && (
-                            <button
-                              type="button"
-                              className={styles.primary}
-                              disabled={
-                                locked || loading || (!isOwner && item.status === "pending")
-                              }
-                              onClick={() => move(item, "publish")}
-                            >
-                              {isOwner ? "Objavi" : "Pošalji na pregled"}
-                            </button>
-                          )}
+                        {["draft", "pending"].includes(item.status) && (
+                          <button
+                            type="button"
+                            className={styles.primary}
+                            disabled={locked || loading || (!isOwner && item.status === "pending")}
+                            onClick={() => move(item, "publish")}
+                          >
+                            {isOwner ? "Objavi" : "Pošalji na pregled"}
+                          </button>
+                        )}
                         {isOwner && (item.editorialRevision || item.pendingMedia) && (
                           <>
                             <button
@@ -1684,20 +1669,6 @@ export function BusinessManager({
                             Vrati u nacrt
                           </button>
                         )}
-                        {canPromote && (
-                          <button
-                            type="button"
-                            className={styles.promote}
-                            aria-expanded={promotionId === item.id}
-                            aria-controls={`isticanje-${item.id}`}
-                            disabled={locked || loading}
-                            onClick={() =>
-                              setPromotionId((current) => (current === item.id ? null : item.id))
-                            }
-                          >
-                            <Icon name="star" /> Istakni djelatnost
-                          </button>
-                        )}
                         <button
                           type="button"
                           className={styles.cancel}
@@ -1729,44 +1700,6 @@ export function BusinessManager({
                       />
                     )}
                   </div>
-                  {canPromote && (
-                    <nav
-                      hidden={promotionId !== item.id || locked}
-                      id={`isticanje-${item.id}`}
-                      className={styles.placements}
-                      aria-labelledby={`mjesto-${item.id}`}
-                    >
-                      <h3 id={`mjesto-${item.id}`}>Gdje želiš istaknuti djelatnost?</h3>
-                      <Link
-                        prefetch={false}
-                        href={`/naplata?djelatnost=${encodeURIComponent(item.id)}`}
-                      >
-                        <span>U kategoriji</span>
-                        <Icon name="chevron" />
-                      </Link>
-                      <Link
-                        prefetch={false}
-                        href={placementOfferPath({ businessId: item.id, placement: "nearby" })}
-                      >
-                        <span>Na lokaciji</span>
-                        <Icon name="chevron" />
-                      </Link>
-                      <Link
-                        prefetch={false}
-                        href={placementOfferPath({ businessId: item.id, placement: "featured" })}
-                      >
-                        <span>Na početnoj</span>
-                        <Icon name="chevron" />
-                      </Link>
-                      <Link
-                        prefetch={false}
-                        href={placementOfferPath({ businessId: item.id, placement: "banner" })}
-                      >
-                        <span>Reklamna kampanja</span>
-                        <Icon name="chevron" />
-                      </Link>
-                    </nav>
-                  )}
                 </article>
               );
             })}

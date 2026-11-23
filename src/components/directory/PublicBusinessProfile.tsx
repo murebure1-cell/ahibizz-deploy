@@ -8,6 +8,7 @@ import {
   businessContactLinks,
   businessDirections,
   businessLocationLabel,
+  displayPhone,
   type PublicBusinessView,
   publicBusinessPoint,
   safeBusinessImage,
@@ -134,7 +135,7 @@ export function PublicBusinessProfile({
 
       <header className={styles.identity}>
         <div className={styles.logo}>
-          <BusinessLogo src={logo?.src} alt={logo?.alt ?? ""} sizes="72px" />
+          <BusinessLogo src={logo?.src} alt={logo?.alt ?? ""} sizes="72px" priority />
         </div>
         <div className={styles.title}>
           {taxonomy && <p className={styles.category}>{taxonomy}</p>}
@@ -334,7 +335,7 @@ export function PublicBusinessProfile({
                 <Icon name="phone" />
                 <span>
                   <small>Telefon</small>
-                  <strong>{business.contactPhone}</strong>
+                  <strong>{displayPhone(business.contactPhone)}</strong>
                 </span>
                 <Icon name="chevron" />
               </a>

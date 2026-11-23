@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { Fragment } from "react";
 import { DirectoryResultCard } from "../../../components/directory/DirectoryResultCard";
 import { DirectorySearchForm } from "../../../components/directory/DirectorySearchForm";
 import styles from "../../../components/directory/public-search.module.css";
 import { EmptyDirectory } from "../../../components/EmptyDirectory";
 import { SaveSearchButton } from "../../../components/favorites/SavedSearches";
-import { CampaignAd } from "../../../components/marketing/CampaignAd";
-import adStyles from "../../../components/marketing/campaign-ad.module.css";
 import {
   type DirectorySearchParams,
   directorySearchSuffix,
@@ -22,7 +19,6 @@ import {
   type PublicDirectoryBusiness,
 } from "../../../server/directory";
 import { publicBusinessView } from "../../../server/directory/public-view";
-import { publicPageAds } from "../../../server/marketing/ad-delivery";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Istraži djelatnosti" };
@@ -48,13 +44,6 @@ export default async function SearchPage({
         : params.istaknute === "1";
   const openNow = params.otvoreno === "1";
   const blockViewer = await getSearchBlockViewer(await headers());
-  const campaigns = publicPageAds({
-    page: !query && (categoryId || subcategoryId) ? "category" : "search",
-    city,
-    categoryIds: [categoryId, subcategoryId].filter(Boolean),
-    keyword: query,
-    blockViewer,
-  });
   let checkedAt: string | undefined, total: number | undefined;
   let items: PublicDirectoryBusiness[] = [],
     categories: DirectoryCategory[] = [],
@@ -110,8 +99,6 @@ export default async function SearchPage({
     },
   ] as const;
   const filtered = Boolean(query || city || categoryId || subcategoryId || featuredOnly || openNow);
-  const candidates = (await campaigns).main;
-  const inlineAd = !invalidFilters && <CampaignAd candidates={candidates} region="inline" />;
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <header className={styles.intro}>
@@ -128,8 +115,7 @@ export default async function SearchPage({
         subcategoryId={subcategoryId}
         categories={categories}
       />
-      <div className={adStyles.withResults}>
-        {!invalidFilters && <CampaignAd candidates={candidates} region="elsewhere" />}
+      <div>
         <section aria-label="Rezultati pretrage">
           <div className={styles.resultsHeading}>
             <h2>
@@ -190,15 +176,13 @@ export default async function SearchPage({
             </div>
           ) : items.length ? (
             <div className={styles.grid}>
-              {items.map((item, index) => (
-                <Fragment key={item.id}>
-                  <DirectoryResultCard
-                    business={publicBusinessView(item, categories)}
-                    searchSuffix={sourceQuery}
-                    checkedAt={checkedAt}
-                  />
-                  {index === Math.min(items.length, 2) - 1 && inlineAd}
-                </Fragment>
+              {items.map((item) => (
+                <DirectoryResultCard
+                  key={item.id}
+                  business={publicBusinessView(item, categories)}
+                  searchSuffix={sourceQuery}
+                  checkedAt={checkedAt}
+                />
               ))}
             </div>
           ) : (
@@ -211,7 +195,6 @@ export default async function SearchPage({
               }
             />
           )}
-          {available && items.length === 0 && inlineAd}
           {available && (page > 1 || hasMore) && (
             <nav className={styles.pagination} aria-label="Stranice rezultata">
               {page > 1 && <Link href={pageHref(page - 1)}>Prethodna</Link>}

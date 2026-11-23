@@ -13,9 +13,7 @@ import {
   HomeNearbySection,
   HomeSurface,
 } from "../../components/home/HomeSurface";
-import { CampaignAd } from "../../components/marketing/CampaignAd";
 import { RecentReels } from "../../components/reels/ReelShelf";
-import type { PageAds } from "../../lib/ad-render";
 import { homeCategories, homePlace } from "../../lib/home";
 import {
   type DirectoryCategory,
@@ -23,32 +21,11 @@ import {
   type PublicDirectoryBusiness,
 } from "../../server/directory";
 import { publicBusinessView } from "../../server/directory/public-view";
-import { publicPageAds } from "../../server/marketing/ad-delivery";
+import { getActiveBanner } from "../../server/promotions/read";
 import { readPublishedDesign } from "../../server/visual-design-store";
 
 type Categories = Promise<DirectoryCategory[] | null>;
 type Listings = Promise<PublicDirectoryBusiness[] | null>;
-
-async function HomeAd({
-  data,
-  slot,
-  fallback,
-}: {
-  data: Promise<PageAds>;
-  slot: "icon" | "inline" | "elsewhere";
-  fallback?: ReactNode;
-}) {
-  const ads = await data;
-  const candidates = slot === "icon" ? ads.icon : ads.main;
-  if (!candidates.mobile && !candidates.desktop) return fallback;
-  return (
-    <CampaignAd
-      candidates={candidates}
-      region={slot === "icon" ? undefined : slot}
-      fallback={fallback}
-    />
-  );
-}
 
 async function HomeDirectoryCategories({
   data,
@@ -108,17 +85,15 @@ async function HomeNewestListings({
 
 async function HomePromotedListings({
   data,
-  example,
   classification,
   title,
 }: {
   data: Promise<{ items: PublicDirectoryBusiness[]; pageSize: number; hasMore: boolean } | null>;
-  example: Promise<PublicDirectoryBusiness | null>;
   classification: Categories;
   title: string;
 }) {
-  const [businesses, categories, sample] = await Promise.all([data, classification, example]);
-  if (!businesses?.items.length && !sample) return null;
+  const [businesses, categories] = await Promise.all([data, classification]);
+  if (!businesses?.items.length) return null;
   return (
     <HomeListingsSection
       kind="featured"
@@ -133,7 +108,7 @@ async function HomePromotedListings({
         initiallyMore={businesses?.hasMore ?? false}
         pageSize={businesses?.pageSize ?? 6}
         categories={categories ?? []}
-        example={sample ? publicBusinessView(sample, categories ?? []) : null}
+        example={null}
       />
     </HomeListingsSection>
   );
@@ -175,7 +150,11 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ mjesto?: string | string[] }>;
 }) {
-  const [params, design] = await Promise.all([searchParams, readPublishedDesign()]);
+  const [params, design, banner] = await Promise.all([
+    searchParams,
+    readPublishedDesign(),
+    getActiveBanner().catch(() => null),
+  ]);
   const place = homePlace(params.mjesto);
   const service = getPublicDirectoryService();
   const classification =
@@ -190,7 +169,6 @@ export default async function HomePage({
           () => null,
         )
       : Promise.resolve(null);
-  const campaigns = publicPageAds({ page: "home", city: place });
   const featured = service?.homeAllPromotions().catch(() => null) ?? Promise.resolve(null);
   const newest = service?.homeNewest().catch(() => null) ?? Promise.resolve(null);
   const example = service?.readPublic(homeExampleId).catch(() => null) ?? Promise.resolve(null);
@@ -208,8 +186,8 @@ export default async function HomePage({
           <RecentReels />
         </Suspense>
       }
-      advertisingHref="/nalog?odjeljak=oglasi"
-      creditsHref="/nalog?odjeljak=krediti"
+      advertisingHref="/istakni"
+      banner={banner ? { ...banner, id: banner.businessId, city: banner.city ?? "" } : null}
       slots={{
         categories: (
           <Suspense fallback={<HomeCategories categories={[]} searchAction={href} />}>
@@ -217,11 +195,7 @@ export default async function HomePage({
               data={classification}
               place={place}
               href={href}
-              sponsor={
-                <Suspense fallback={null}>
-                  <HomeAd data={campaigns} slot="icon" />
-                </Suspense>
-              }
+              sponsor={null}
             />
           </Suspense>
         ),
@@ -229,7 +203,6 @@ export default async function HomePage({
           <Suspense fallback={null}>
             <HomePromotedListings
               data={featured}
-              example={example}
               classification={classification}
               title={titles.featured || "Istaknute djelatnosti"}
             />
@@ -253,16 +226,6 @@ export default async function HomePage({
               place={place}
               title={nearbyTitle}
             />
-          </Suspense>
-        ),
-        floatingAd: (
-          <Suspense fallback={null}>
-            <HomeAd data={campaigns} slot="elsewhere" />
-          </Suspense>
-        ),
-        inlineAd: (fallback) => (
-          <Suspense fallback={fallback}>
-            <HomeAd data={campaigns} slot="inline" fallback={fallback} />
           </Suspense>
         ),
       }}

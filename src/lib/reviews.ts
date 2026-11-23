@@ -272,7 +272,12 @@ export function createReviewsApi(fetcher: typeof fetch = fetch): ReviewsApi {
   };
   return {
     list: async (id, page = 1) => readReviewPage(await request(`${business(id)}?page=${page}`)),
-    own: async (id) => readOwnReviewState(await request(`${business(id)}/own`)),
+    own: async (id) => {
+      const value = await request(`${business(id)}/own`);
+      if ((value as { anonymous?: unknown })?.anonymous === true)
+        throw new ReviewsClientError("AUTHENTICATION_REQUIRED", 401);
+      return readOwnReviewState(value);
+    },
     save: async (id, body, actor) =>
       readReviewCommand(await request(`${business(id)}/own`, "PUT", body, actor)),
     withdraw: async (id, body, actor) =>

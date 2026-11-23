@@ -3,7 +3,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { type AdminTodayRow, adminQueues, readAdminToday } from "../../lib/admin-today";
 import { accountDate } from "../../lib/display-date";
-import { IS_PLAY_EDITION } from "../../lib/distribution";
 import { Icon } from "../Icon";
 import styles from "./admin.module.css";
 import { adminActorRequest, errorMessage, responseData } from "./responses";
@@ -43,7 +42,7 @@ export function AdminToday({ accountId }: { accountId: string }) {
       });
     return () => controller.abort();
   }, [accountId, revision]);
-  const queues = adminQueues.filter((item) => !IS_PLAY_EDITION || item.id !== "settlements");
+  const queues = adminQueues;
   return (
     <section className={styles.card} aria-label="Na čekanju">
       <div className={styles.queueHeading}>

@@ -1,6 +1,5 @@
 import { blockedPeoplePath } from "./account-blocks";
 import { activityInboxPath, deviceNotificationSettingsPath } from "./activity";
-import { type CampaignSelection, campaignPath, readCampaignSelection } from "./ad-brief";
 import { adminReturnPath } from "./admin-navigation";
 import { bookingReturnPath } from "./booking-return";
 import {
@@ -11,7 +10,6 @@ import {
   readBusinessInquiry,
   readCalendarTarget,
 } from "./business-today";
-import { type PlacementTarget, placementOfferPath, readPlacementTarget } from "./marketing";
 import { type MessageTarget, messageLink, readMessageTarget } from "./messaging";
 import { canonicalSavedSearch } from "./saved-search";
 
@@ -23,9 +21,6 @@ const accountSections = {
   prijatelji: "connections",
   poruke: "messages",
   postavke: "settings",
-  paketi: "membership",
-  oglasi: "advertising",
-  krediti: "credits",
   sacuvani: "saved",
 } as const;
 
@@ -39,9 +34,6 @@ const sectionQueries: Record<AccountSection, keyof typeof accountSections> = {
   connections: "prijatelji",
   messages: "poruke",
   settings: "postavke",
-  membership: "paketi",
-  advertising: "oglasi",
-  credits: "krediti",
   saved: "sacuvani",
 };
 
@@ -65,16 +57,10 @@ export function readAccountNavigation(params: URLSearchParams): {
   invalidMessageTarget: boolean;
   businessThread?: string;
   calendarTarget?: CalendarTarget;
-  placementTarget?: PlacementTarget;
-  campaign?: CampaignSelection;
 } {
   const values = params.getAll("odjeljak");
   const section =
     params.size === 0 ? "overview" : accountSection(values.length === 1 ? values[0] : undefined);
-  const campaign = readCampaignSelection(params);
-  if (campaign) return { section, campaign, invalidMessageTarget: false };
-  const placementTarget = readPlacementTarget(params);
-  if (placementTarget) return { section, placementTarget, invalidMessageTarget: false };
   const calendarTarget = readCalendarTarget(params);
   if (calendarTarget) return { section, calendarTarget, invalidMessageTarget: false };
   const businessThread = readBusinessInquiry(params);
@@ -90,24 +76,7 @@ export function readAccountNavigation(params: URLSearchParams): {
   }
 }
 
-export const productionRequestPath = "/nalog?odjeljak=oglasi&usluga=produkcija";
 export const accountNotificationsPath = activityInboxPath;
-
-export function creditTopUpReturn(value: unknown): string | null {
-  if (
-    typeof value !== "string" ||
-    !/^\/(?:naplata|paketi\/placanje|nalog\/reels)(?:\?|$)/.test(value)
-  )
-    return null;
-  const path = accountReturnPath(value);
-  return path === value ? path : null;
-}
-
-export function creditTopUpPath(returnTo: string): string {
-  const path = accountSectionPath("credits");
-  const next = creditTopUpReturn(returnTo);
-  return next ? `${path}&${new URLSearchParams({ nastavi: next })}` : path;
-}
 
 /** Only known in-app destinations survive login; never a caller-supplied origin or nested URL. */
 export function accountReturnPath(value: unknown): string {
@@ -118,15 +87,14 @@ export function accountReturnPath(value: unknown): string {
   )
     return "/nalog";
   if (
-    value === productionRequestPath ||
     value === accountNotificationsPath ||
     value === deviceNotificationSettingsPath ||
     /^\/nalog\/obavijesti\?stavka=[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value) ||
     value === "/sacuvane-pretrage" ||
+    value === "/nalog/isticanja" ||
+    /^\/nalog\/isticanja\?djelatnost=[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value) ||
     value === "/nalog?odjeljak=djelatnosti&novo=1" ||
     value === "/nalog?odjeljak=termini&prikaz=historija" ||
-    value === "/nalog?odjeljak=oglasi&prikaz=aktivne" ||
-    value === "/nalog?odjeljak=oglasi&prikaz=zakazane" ||
     /^\/nalog\/reels(?:\?djelatnost=[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})?$/i.test(value) ||
     /^\/reels\/[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(
       value,
@@ -144,12 +112,6 @@ export function accountReturnPath(value: unknown): string {
     return value;
   if (value.startsWith("/nalog?")) {
     const params = new URLSearchParams(value.slice(7));
-    const creditReturn = creditTopUpReturn(params.get("nastavi"));
-    if (creditReturn && value === creditTopUpPath(creditReturn)) return value;
-    const campaign = readCampaignSelection(params);
-    if (campaign && value === campaignPath(campaign)) return value;
-    const placement = readPlacementTarget(params);
-    if (placement && value === placementOfferPath(placement)) return value;
     const calendar = readCalendarTarget(params),
       thread = readBusinessInquiry(params);
     if (
@@ -158,27 +120,6 @@ export function accountReturnPath(value: unknown): string {
     )
       return value;
   }
-  if (
-    /^\/naplata(?:\/(?:povratak|odustajanje))?(?:\?narudzba=[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})?$/i.test(
-      value,
-    ) ||
-    /^\/naplata\?(?:ponuda|djelatnost)=[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(
-      value,
-    )
-  )
-    return value;
-  if (
-    /^\/dodo-proba(?:\?narudzba=[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})?$/i.test(
-      value,
-    )
-  )
-    return value;
-  if (
-    /^\/paketi\/placanje(?:\?paket=(?:basic|business|premium)(?:&period=(?:monthly|annual)(?:&djelatnost=[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})?)?(?:&ugovor=[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}(?:&odustao=1)?)?)?$/.test(
-      value,
-    )
-  )
-    return value;
   const administration = adminReturnPath(value);
   if (administration) return administration;
   const previous = bookingReturnPath(value);

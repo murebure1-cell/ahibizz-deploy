@@ -13,16 +13,10 @@ export const adminQueues = [
   },
   { id: "reports", title: "Zahtjevi i prijave", href: "/administracija/zahtjevi", icon: "shield" },
   {
-    id: "receipts",
-    title: "Obračuni na čekanju",
-    href: "/administracija?odjeljak=obracuni",
-    icon: "card",
-  },
-  {
-    id: "settlements",
-    title: "PayPal uplate za provjeru",
-    href: "/administracija?odjeljak=transakcije",
-    icon: "card",
+    id: "promotions",
+    title: "Isticanja na ?ekanju",
+    href: "/administracija/isticanja",
+    icon: "star",
   },
 ] as const;
 

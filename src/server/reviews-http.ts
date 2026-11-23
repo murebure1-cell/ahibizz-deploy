@@ -116,7 +116,20 @@ export function createReviewsHttpHandler({
       if (request.method === "GET" && match) {
         if (match[2] === "own") {
           if (url.search) invalid();
-          return reply(readOwnReviewState(await service.own(request.headers, match[1] as string)));
+          try {
+            return reply(
+              readOwnReviewState(await service.own(request.headers, match[1] as string)),
+            );
+          } catch (error) {
+            // A guest reading a public profile is expected; answer without an error status.
+            if (
+              (error instanceof ReviewsAccessError || error instanceof AccountAccessError) &&
+              error.status === 401 &&
+              error.code === "AUTHENTICATION_REQUIRED"
+            )
+              return reply({ anonymous: true });
+            throw error;
+          }
         }
         if (match[2]) return reply({ code: "NOT_FOUND" }, 404);
         let page = 1;

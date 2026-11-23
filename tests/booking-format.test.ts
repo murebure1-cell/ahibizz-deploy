@@ -36,7 +36,7 @@ test("date labels retain the business timezone at midnight/year boundaries and u
   );
   assert.equal(
     bookingDate("2026-12-31T23:30:00.000Z", "Europe/Sarajevo", { time: true }),
-    "1. 1. 2027. u 00:30",
+    "01. 01. 2027. u 00:30",
   );
   assert.equal(
     bookingDate("2026-11-12T23:00:00.000Z", "UTC", { time: true }),

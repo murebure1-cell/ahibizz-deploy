@@ -9,17 +9,13 @@ import {
   deviceNotificationSettingsPath,
 } from "../../../../lib/activity";
 import { businessUuid } from "../../../../lib/business-today";
+import { bosnianDateTime } from "../../../../lib/display-date";
 import { markActivityRead, readActivity } from "../../../../server/account-activity";
 import { AccountAccessError } from "../../../../server/auth/accounts";
 import styles from "./activity.module.css";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Obavijesti" };
-const clock = new Intl.DateTimeFormat("bs-BA", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "Europe/Sarajevo",
-});
 const login = (returnPath: string) => `/prijava?nastavi=${encodeURIComponent(returnPath)}`;
 
 async function acknowledge(accountId: string, id?: string, version?: number) {
@@ -58,7 +54,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
       <header className={styles.header}>
         <div>
           <Link href="/nalog" className="text-link">
-            ← Moj nalog
+            Moj nalog
           </Link>
           <h1>Obavijesti</h1>
           {result && result.unread > 0 && (
@@ -109,7 +105,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
                           </span>
                         )}
                         <time dateTime={new Date(item.happenedAt).toISOString()}>
-                          {clock.format(new Date(item.happenedAt))}
+                          {bosnianDateTime(item.happenedAt)}
                         </time>
                       </span>
                       <Icon name="chevron" className={styles.arrow} />

@@ -40,7 +40,6 @@ async function loadedAppointments(): Promise<CustomerAppointmentsState> {
       key: "upcoming:1",
       entries: page.entries,
       more: page.hasMore,
-      credits: page.credits,
     },
     requiresLogin: false,
   };
@@ -53,11 +52,7 @@ test("authoritative 401 and 403 remove previously loaded private appointments an
     [403, "ACCOUNT_SUSPENDED"],
   ] as const) {
     const denied = customerAppointmentsFailed(loaded, new BookingRequestError(code, status));
-    assert.equal(
-      denied.result,
-      null,
-      "No cached entry, credit or cancel target remains renderable.",
-    );
+    assert.equal(denied.result, null, "No cached entry or cancel target remains renderable.");
     assert.equal(denied.requiresLogin, true);
     assert.equal(loaded.result?.entries.length, 1, "The old snapshot is not mutated.");
     const laterOutage = customerAppointmentsFailed(
@@ -100,7 +95,6 @@ test("confirmed cancellation removes the upcoming action before a fallible refre
   const corrected = customerAppointmentCancelled(loaded, cancelled);
   assert.equal(corrected.result?.entries.length, 0);
   assert.equal(corrected.result?.key, loaded.result?.key);
-  assert.equal(corrected.result?.credits, loaded.result?.credits);
   assert.equal(corrected.result?.more, loaded.result?.more);
   assert.equal(loaded.result?.entries[0], entry, "The accepted source snapshot is not mutated.");
   assert.equal(entry.status, "requested");

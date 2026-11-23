@@ -42,7 +42,6 @@ const emptyMessages: Record<ConnectionView, string> = {
 export function ConnectionsPanel({
   active = true,
   heading = true,
-  preview = false,
   request = connectionRequest,
   profileHref = (id: string) => `/ljudi/${encodeURIComponent(id)}`,
   peopleHref = "/ljudi",
@@ -51,7 +50,6 @@ export function ConnectionsPanel({
 }: {
   active?: boolean;
   heading?: boolean;
-  preview?: boolean;
   request?: typeof connectionRequest;
   profileHref?: (id: string) => string;
   peopleHref?: string;
@@ -132,10 +130,6 @@ export function ConnectionsPanel({
     setItems(previous?.items ?? []);
     setHasMore(previous?.hasMore ?? false);
     setReady(Boolean(previous));
-    if (preview && api.current === connectionRequest) {
-      setError("Pregled prijatelja trenutno nije dostupan.");
-      return;
-    }
     setLoading(true);
     setError("");
     try {
@@ -191,7 +185,7 @@ export function ConnectionsPanel({
       )
         setLoading(false);
     }
-  }, [page, preview, view, clearDeniedAccess, scopedRequest, expectedAccountId]);
+  }, [page, view, clearDeniedAccess, scopedRequest, expectedAccountId]);
 
   useEffect(() => {
     if (active) void load();
@@ -202,7 +196,7 @@ export function ConnectionsPanel({
   }, [active, load]);
 
   async function send(intent: PendingWrite) {
-    if (writing.current || (preview && api.current === connectionRequest)) return;
+    if (writing.current) return;
     const access = accessEpoch.current,
       expectedActor = expectedAccountId;
     writing.current = true;
