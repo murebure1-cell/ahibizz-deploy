@@ -17,7 +17,7 @@ test("only a well-formed Google Maps browser key is published to the page", () =
     assert.equal(readGoogleMapsKey(value), null);
 });
 
-test("both map themes hide points of interest and keep the grey-blue palette", () => {
+test("both map themes hide points of interest and use plain hex colours", () => {
   for (const style of [googleMapsLight, googleMapsDark]) {
     assert.ok(
       style.some((rule) => rule.featureType === "poi" && rule.stylers[0]?.visibility === "off"),

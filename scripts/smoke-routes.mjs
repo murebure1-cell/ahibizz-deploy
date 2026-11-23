@@ -11,6 +11,7 @@ const publicPages = [
   "/",
   "/pretraga",
   "/istakni",
+  "/mapa",
   "/reels",
   "/ljudi",
   "/blog",

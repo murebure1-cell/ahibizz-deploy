@@ -122,6 +122,7 @@ test("public directory uses only the lazy database when SMTP and auth service ar
     "homeAllPromotions",
     "homeNewest",
     "listPublic",
+    "mapPins",
     "readPublic",
   ]);
   assert.equal(f.pools, 0);
