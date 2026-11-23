@@ -13,6 +13,13 @@ export const initialDeviceLocation: DeviceLocationState = {
 };
 export const locationRefreshMs = 30_000;
 export const locationStaleMs = 300_000;
+/** Later fixes must be this recent to move an existing origin. */
+export const freshFixMs = 90_000;
+/**
+ * The first fix may reuse the position the device already holds, so nearby results appear at
+ * once instead of waiting for a new satellite or network fix; the watch then refines it.
+ */
+export const cachedFixMs = 600_000;
 
 export function distanceMetres(a: LocationPoint, b: LocationPoint): number {
   const radians = (degrees: number) => (degrees * Math.PI) / 180;
@@ -64,10 +71,11 @@ export function createDeviceLocationController(
   let publishedAt = 0,
     lastFixAt = 0,
     lastPositionAt = 0,
-    pending: LocationPoint | null = null;
+    pending: LocationPoint | null = null,
+    provisional = false;
   const options: PositionOptions = {
     enableHighAccuracy: false,
-    maximumAge: 30_000,
+    maximumAge: cachedFixMs,
     timeout: 15_000,
   };
 
@@ -125,12 +133,13 @@ export function createDeviceLocationController(
       position.coords.accuracy,
     );
     const now = environment.now();
+    const age = now - position.timestamp;
     if (
       !point ||
       (point.accuracy ?? 0) > 5000 ||
       !Number.isFinite(position.timestamp) ||
       position.timestamp < lastPositionAt ||
-      now - position.timestamp > 90_000 ||
+      age > (state.point ? freshFixMs : cachedFixMs) ||
       position.timestamp - now > 5000
     ) {
       if (!state.point) update({ status: "unavailable" });
@@ -140,15 +149,20 @@ export function createDeviceLocationController(
     userRequested = true;
     environment.remember?.(true);
     lastPositionAt = position.timestamp;
-    lastFixAt = Math.min(now, position.timestamp);
+    // A reused device fix counts as at most `freshFixMs` old, so it stays usable while the watch refines it.
+    lastFixAt = Math.min(now, Math.max(position.timestamp, now - freshFixMs));
+    const cached = age > freshFixMs;
     expire();
     if (!state.point) {
+      provisional = cached;
       publish(point);
       expire();
       return;
     }
     if (state.permission !== "granted" || state.status !== "ready")
       update({ permission: "granted", status: "ready" });
+    const replacesProvisional = provisional && !cached;
+    if (replacesProvisional) provisional = false;
     if (distanceMetres(state.point, point) < Math.max(150, Math.min(point.accuracy ?? 0, 500))) {
       pending = null;
       clearTimer("pending");
@@ -156,7 +170,7 @@ export function createDeviceLocationController(
     }
     pending = point;
     const remaining = locationRefreshMs - (now - publishedAt);
-    if (!active || remaining <= 0) publish(point);
+    if (!active || remaining <= 0 || replacesProvisional) publish(point);
     else if (pendingTimer === undefined)
       pendingTimer = environment.schedule(() => {
         pendingTimer = undefined;
