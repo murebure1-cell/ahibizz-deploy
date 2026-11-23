@@ -94,8 +94,9 @@ export function loadGoogleMaps(key: string): Promise<GoogleMapsApi> {
   return loader;
 }
 
-/** Navy with a white rim: strong contrast for white logos on light and dark maps alike. */
-export const mapPinColour = "#1b3a57";
+/** AhiBizz navy with a gold rim; logos are drawn in white, initials in gold. */
+export const mapPinColour = "#173047";
+const pinGold = "#e9ca8a";
 const pinWidth = 46;
 const pinHeight = 58;
 
@@ -115,14 +116,33 @@ function pinCanvas() {
   context.fillStyle = mapPinColour;
   context.fill();
   context.lineWidth = 2.5;
-  context.strokeStyle = "#ffffff";
+  context.strokeStyle = pinGold;
   context.stroke();
   return { canvas, context, centre, cy: radius + 2, inner: radius - 7 };
 }
 
-/** Plain pin with a white shop symbol, used while a logo loads or when there is none. */
-export function plainMapPin(): string {
+/** Up to two initials of the business name, e.g. "Eden restoran" -> "ER". */
+export function businessInitials(title: string): string {
+  const words = title
+    .replace(/["'„“”.,()&-]/g, " ")
+    .split(/\s+/)
+    .filter((word) => /\p{L}/u.test(word));
+  const letters = words.slice(0, 2).map((word) => [...word][0] ?? "");
+  return letters.join("").toLocaleUpperCase("bs") || "A";
+}
+
+/** Pin with the business initials in gold, used without a logo or when the logo is unreadable. */
+export function plainMapPin(title?: string): string {
   const { canvas, context, centre, cy } = pinCanvas();
+  if (title) {
+    const initials = businessInitials(title);
+    context.fillStyle = pinGold;
+    context.font = `700 ${initials.length > 1 ? 15 : 18}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(initials, centre, cy + 1);
+    return canvas.toDataURL("image/png");
+  }
   context.strokeStyle = "#ffffff";
   context.lineWidth = 1.8;
   context.lineJoin = "round";
@@ -141,18 +161,62 @@ export function plainMapPin(): string {
 }
 
 /**
- * Map pin with the business logo. Logos with transparency are drawn as a white silhouette on the
- * navy pin; logos with their own background keep their colours inside a white circle.
- * Logos are same-origin, so the canvas stays readable; on failure the caller keeps the plain pin.
+ * How readable a logo is on a pin: the share of the square it covers and how much its brightness
+ * varies. A flat white or single-colour block is unreadable and gets the initials pin instead.
  */
-export function logoMapPin(src: string): Promise<string> {
+function logoShape(image: HTMLImageElement) {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 32;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return null;
+  context.drawImage(image, 0, 0, 32, 32);
+  const { data } = context.getImageData(0, 0, 32, 32);
+  let covered = 0,
+    sum = 0,
+    squares = 0;
+  for (let offset = 0; offset < data.length; offset += 4) {
+    if ((data[offset + 3] ?? 0) < 128) continue;
+    const light =
+      (0.2126 * (data[offset] ?? 0) +
+        0.7152 * (data[offset + 1] ?? 0) +
+        0.0722 * (data[offset + 2] ?? 0)) /
+      255;
+    covered++;
+    sum += light;
+    squares += light * light;
+  }
+  const mean = covered ? sum / covered : 0;
+  return {
+    coverage: covered / 1024,
+    spread: covered ? Math.sqrt(Math.max(0, squares / covered - mean * mean)) : 0,
+  };
+}
+
+/**
+ * Map pin with the business logo, always drawn so it reads on the navy pin: logos with transparency
+ * become a white mark; logos with their own background keep their colours inside a white circle;
+ * flat or empty logos fall back to the business initials. On failure the caller keeps its pin.
+ */
+export function logoMapPin(src: string, title?: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.decoding = "async";
     image.onload = () => {
       try {
-        if (readBusinessLogoSurface(image, src) === "empty") throw new Error("Empty logo");
+        if (readBusinessLogoSurface(image, src) === "empty") {
+          resolve(plainMapPin(title));
+          return;
+        }
         const transparent = logoHasTransparency(image);
+        const shape = logoShape(image);
+        const flat =
+          !shape ||
+          (transparent ? shape.coverage > 0.9 : shape.spread < 0.06) ||
+          shape.coverage < 0.02;
+        if (flat) {
+          resolve(plainMapPin(title));
+          return;
+        }
         const { canvas, context, centre, cy, inner } = pinCanvas();
         const box = inner * 2 - (transparent ? 4 : 0);
         const ratio = Math.min(box / image.naturalWidth, box / image.naturalHeight);
@@ -185,7 +249,7 @@ export function logoMapPin(src: string): Promise<string> {
         reject(error);
       }
     };
-    image.onerror = () => reject(new Error("Logo failed"));
+    image.onerror = () => resolve(plainMapPin(title));
     image.src = src;
   });
 }

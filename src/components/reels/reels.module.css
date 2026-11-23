@@ -5,9 +5,12 @@
 }
 
 .shelf {
+  --shelf-pad: clamp(0.85rem, 3vw, 1.6rem);
   display: grid;
   gap: clamp(0.8rem, 2.5vw, 1.25rem);
-  padding: clamp(0.85rem, 3vw, 1.6rem);
+  padding: var(--shelf-pad);
+  /* Cards slide right up to the rounded border and are clipped by it, never past it. */
+  overflow: hidden;
   border: 1px solid #5b7089;
   border-radius: clamp(1.15rem, 4vw, 1.8rem);
   color: #fff;
@@ -101,12 +104,24 @@
   grid-template-rows: minmax(0, 1fr);
   justify-content: start;
   overflow-x: auto;
-  padding: 0.18rem 0.18rem 0.45rem;
-  scroll-padding-inline: 0.18rem;
+  /* Reach under the box padding so cards scroll to the edge, then fade softly into a shadow. */
+  margin-inline: calc(-1 * var(--shelf-pad, 0px));
+  padding: 0.18rem var(--shelf-pad, 0.18rem) 0.3rem;
+  scroll-padding-inline: var(--shelf-pad, 0.18rem);
   scroll-snap-type: inline proximity;
   overscroll-behavior-x: contain;
-  scrollbar-width: thin;
-  scrollbar-color: #c2aa7599 transparent;
+  /* No scrollbar line under the cards while swiping. */
+  scrollbar-width: none;
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 var(--shelf-pad, 1rem),
+    #000 calc(100% - var(--shelf-pad, 1rem)),
+    transparent 100%
+  );
+}
+.shelfCards::-webkit-scrollbar {
+  display: none;
 }
 
 .shelfCards li {
