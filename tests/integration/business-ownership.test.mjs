@@ -478,7 +478,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
       await t.test(
-        "new owner can approve existing booking; completion retains original snapshot credit recipient exactly once",
+        "new owner can approve and complete an existing booking exactly once without any credit",
         async () => {
           appointment = await booking.transition(target.headers, appointment.id, {
             action: "approve",
@@ -489,15 +489,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             action: "complete",
             expectedVersion: appointment.version,
           });
-          const credit = (
-            await pool.query(
-              "SELECT entry_id,recipient_user_id,amount FROM booking_completion_credit WHERE entry_id=$1",
-              [appointment.id],
-            )
-          ).rows;
-          assert.deepEqual(credit, [
-            { entry_id: appointment.id, recipient_user_id: previous.user.id, amount: 5 },
-          ]);
+          assert.equal(appointment.status, "completed");
           await denied(
             () =>
               booking.transition(target.headers, appointment.id, {
@@ -513,7 +505,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
                 [appointment.id],
               )
             ).rows[0].n,
-            1,
+            0,
           );
         },
       );
