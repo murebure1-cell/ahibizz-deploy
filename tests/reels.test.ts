@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { reelMaxBytes } from "../src/lib/reels";
+import { reelLifetimeHours, reelMaxBytes, reelTimeLeft } from "../src/lib/reels";
 import { AccountAccessError } from "../src/server/auth/accounts";
 import { parseReelEngagement, reelBrowser } from "../src/server/reels/engagement";
 import { readReelRange } from "../src/server/reels/range";
-import { parseReelCommand } from "../src/server/reels/service";
+import { isModerationCommand, parseReelCommand } from "../src/server/reels/service";
 import { verifyReelVideo } from "../src/server/reels/video";
 
 function box(type: string, ...parts: Buffer[]) {
@@ -145,4 +145,28 @@ test("anonymous Reel identity is signed, private, and short lived", () => {
   const tampered = `${cookie.slice(0, -3)}xyz`;
   assert.equal(reelBrowser(new Headers({ cookie: tampered }), secret, true, now).id, null);
   assert.equal(reelBrowser(new Headers({ cookie }), secret, true, now + 172_801_000).id, null);
+});
+
+test("moderators can remove a published Reel with a reason; owners can clear an expired one", () => {
+  assert.deepEqual(parseReelCommand({ action: "remove", reason: "  Kršenje pravila  " }), {
+    action: "remove",
+    reason: "Kršenje pravila",
+  });
+  assert.equal(isModerationCommand({ action: "remove", reason: "x" }), true);
+  assert.equal(isModerationCommand({ action: "withdraw", expected: "published" }), false);
+  assert.throws(() => parseReelCommand({ action: "remove", reason: "" }));
+  assert.throws(() => parseReelCommand({ action: "remove" }));
+  assert.deepEqual(parseReelCommand({ action: "withdraw", expected: "expired" }), {
+    action: "withdraw",
+    expected: "expired",
+  });
+  assert.throws(() => parseReelCommand({ action: "withdraw", expected: "removed" }));
+});
+
+test("a published Reel shows how long it stays visible, never past 24 hours", () => {
+  const now = Date.UTC(2026, 10, 23, 12);
+  assert.equal(reelLifetimeHours, 24);
+  assert.equal(reelTimeLeft(new Date(now + 5 * 3600_000 + 60_000).toISOString(), now), "još 5 h");
+  assert.equal(reelTimeLeft(new Date(now + 20 * 60_000).toISOString(), now), "još 20 min");
+  assert.equal(reelTimeLeft(new Date(now - 1000).toISOString(), now), "ističe sada");
 });

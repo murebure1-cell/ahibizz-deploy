@@ -9,6 +9,7 @@ import { parseReelEngagement, readReelEngagement } from "../../../../server/reel
 import { readReelRange } from "../../../../server/reels/range";
 import {
   applyReelCommand,
+  isModerationCommand,
   parseReelCommand,
   readReelFeed,
   reelMediaAccess,
@@ -73,8 +74,7 @@ export async function POST(request: Request, { params }: Params) {
       throw notFound();
     requireWrite(request, "application/json");
     const input = parseReelCommand(await jsonCommand(request));
-    const review = input.action === "approve" || input.action === "reject";
-    if (review !== (area === "moderation")) throw notFound();
+    if (isModerationCommand(input) !== (area === "moderation")) throw notFound();
     if (input.action === "create" || input.action === "submit") {
       const denied = await checkContribution(request);
       if (denied) return denied;

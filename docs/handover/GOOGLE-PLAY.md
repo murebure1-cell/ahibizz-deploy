@@ -15,6 +15,25 @@ Stanje pregleda: 22. 11. 2026. Put je **Trusted Web Activity (TWA) kroz Bubblewr
 | Oznaka distribucije | `/.well-known/ahibizz-distribution.json` vraća `google-play` ili `web`, bez podataka o nalogu. |
 | Privatnost i brisanje | `/privatnost` i `/brisanje-naloga` su javne stranice. Prijavljeni korisnik može poslati zahtjev u aplikaciji; dostupan je i email `podrska@ahibizz.com` bez ponovne instalacije. Stvarni pristup bez prijave kroz hosting i ingress tek treba potvrditi u browseru. |
 
+## Stanje za interni test (23. 11. 2026, grana `claude/play-internal-test`)
+
+| Provjera | Rezultat |
+| --- | --- |
+| Play web build (`AHIBIZZ_DISTRIBUTION=google-play pnpm build`) | Prolazi lokalno. Pokrenut bez baze na `127.0.0.1`: `/privatnost`, `/brisanje-naloga`, `/reels` 200; `/istakni`, `/paketi`, `/podrzi`, `/nalog/isticanja`, `/api/checkout/orders` 404; `ahibizz-distribution.json` = `google-play`; stranica privatnosti u Play izdanju ne spominje web uplatu. |
+| `assetlinks.json` u Play buildu | Sa postavljenim `AHIBIZZ_PLAY_SIGNING_SHA256` vraća 200, paket `com.ahibizz.app`, relaciju `handle_all_urls`. Provjereno samo s izmišljenim testnim otiskom; stvarni otisak još ne postoji. |
+| Trenutni javni host `ahibizz-deploy.octadeploy.com` | Web build: privatnost i brisanje 200 bez prijave; `assetlinks.json` 404; distribucija `web`. Nije Play host. |
+| Android projekat, AAB, potpis, instalacija | Nije urađeno: na ovom računaru nema JDK-a ni Android SDK-a. Ništa nije poslano u Play Console. |
+
+### Šta tačno treba za potpisani AAB i interni test
+
+1. **Finalni Play host** (HTTPS) sa zasebnim Play buildom. Zamijeniti `PLAY_HOST` u `docs/handover/android/twa-manifest.example.json`.
+2. **Play Console nalog** i aplikacija `com.ahibizz.app`, uključen Play App Signing.
+3. **Upload ključ** (keystore) napravljen i sačuvan izvan Gita, s imenovanom odgovornom osobom.
+4. **Build računar**: JDK 17+, Android SDK s platformom **android-36** i build-tools 36, pregledana verzija `@bubblewrap/cli`.
+5. `bubblewrap init --manifest https://PLAY_HOST/app.webmanifest`, zatim uporediti s `docs/handover/android/twa-manifest.example.json`. U generisanom `app/build.gradle` postaviti `compileSdkVersion 36` i `targetSdkVersion 36` (Android 16), ako ih alat sam ne postavi. Provjeriti trenutni [target API zahtjev](https://support.google.com/googleplay/android-developer/answer/11926878).
+6. `bubblewrap build`, upload AAB-a na **Internal testing**, pa iz Play Consolea uzeti SHA-256 **App signing** ključa i postaviti ga u `AHIBIZZ_PLAY_SIGNING_SHA256` na Play hostu.
+7. Instalirati iz internog testa na fizički Android i proći tabelu „Provjera na uređaju“ ispod. Tek tada je izdanje provjereno.
+
 ## Izdanje bez kupovine
 
 Konačna odluka vlasnika od 22. 11. 2026: Play izdanje ne nudi kupovinu, cijene, bankovne upute ni linkove na web kupovinu. Donacije ostaju skrivene. Istaknute djelatnosti i fiksni baner prikazuju se normalno. Direktno otvaranje nedostupne stranice daje kratku poruku i povratak; API za kreiranje narudžbe vraća 404.
@@ -61,7 +80,7 @@ Ovo je radni popis za vlasnika koji popunjava formular, ne već poslata deklarac
 | Ime, email, korisnički identifikator | `auth_user`, Better Auth, `src/server/auth`; profil, podrška i pristup nalogu | Upravljanje nalogom i funkcionalnost; potrebni za prijavljene tokove. Pregled imenika postoji i bez naloga. |
 | Telefon, adresa i dodatni podaci profila/djelatnosti | `personal_profile`, `directory_business`, `directory_business_details` | Opcionalan korisnički sadržaj; dio je javnog profila prema vidljivosti. Provjeriti kategorije Personal info u formularu. |
 | Precizna lokacija | `DeviceLocation`, `device-location`, `geocoding`, pretraga imenika | Opcionalna dozvola; koordinate putuju upitom za blizinu i mogu se koristiti za Photon obrnuto geokodiranje. Ne tvrditi da lokacija ostaje isključivo na uređaju. Tačan period zadržavanja logova nije utvrđen iz koda. |
-| Fotografije, video i korisnički sadržaj | `src/server/people/media.ts`, `business-media`, opisi, recenzije, `api/reels` | Opcionalno uređivanje profila/djelatnosti; javna objava prema vidljivosti/moderaciji. Novo kreiranje/slanje Reela zatvoreno je u Play izdanju; server i dalje prihvata autorizovan upload dijela ranije započetog nacrta. Ne deklarisati da se video nikada ne prikuplja samo zato što forma za novu objavu nije prikazana. |
+| Fotografije, video i korisnički sadržaj | `src/server/people/media.ts`, `business-media`, opisi, recenzije, `api/reels` | Opcionalno uređivanje profila/djelatnosti; javna objava prema vidljivosti/moderaciji. Reels se objavljuju i iz Play izdanja (upload, pregled moderatora, objava). Objavljeni Reel je vidljiv najviše 24 sata; server ga zatim označi kao istekao i obriše video i naslovnicu (`expireReels`, migracija 0055), bez obzira da li iko otvori aplikaciju. Video se prikuplja: deklarisati ga u Data safety. |
 | Poruke, podrška i prijave sadržaja | `message_message`, `support_request` | Korisnička komunikacija, podrška i sigurnost; povezano s nalogom. Nisu SMS ni pristup imeniku telefona. |
 | Termini i podaci rezervacije | `booking_entry`, `rental_booking`, `stay_booking` | Opcionalno korištenje rezervacija; podatke vide učesnici i ovlaštena djelatnost. |
 | Kupovine | Play izdanje ne prikuplja podatke za nove kupovine niti podatke kartice. Arhivski zapisi ranije naplate ostaju u bazi i aplikacijski kod ih ne koristi. | Formular se popunjava prema stvarnom Play buildu i obradi podataka. |

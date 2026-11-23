@@ -584,6 +584,8 @@ export function createDirectoryService({
            WHERE id=$1`,
           [key, currentActor.id],
         );
+        // The owner's own content of this business goes now, without deleting the account.
+        await client.query("SELECT erase_business_content($1)", [key]);
         return { deleted: true as const };
       });
     },
