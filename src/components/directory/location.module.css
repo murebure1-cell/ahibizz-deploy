@@ -97,8 +97,13 @@
   width: 100%;
   background: var(--ui-surface-soft);
 }
+/* Map tiles are tinted grey-blue to match the app: light slate by day, deep navy in dark mode. */
 .map :global(.leaflet-tile-pane) {
-  filter: grayscale(1) saturate(0) contrast(0.9) brightness(1.04);
+  filter: grayscale(1) sepia(0.3) hue-rotate(180deg) saturate(0.9) brightness(1.02) contrast(0.92);
+}
+:global(:root[data-theme="dark"]) .map :global(.leaflet-tile-pane) {
+  filter: grayscale(1) invert(0.9) sepia(0.6) hue-rotate(170deg) saturate(2.6) brightness(0.78)
+    contrast(0.95);
 }
 .map :global(.leaflet-control-attribution) {
   font-size: 9px;
