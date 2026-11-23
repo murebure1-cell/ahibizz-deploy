@@ -57,96 +57,28 @@
 /* The globe rises a little above the card, like it is coming out of it. */
 .stage {
   position: absolute;
-  right: clamp(10px, 4vw, 48px);
-  bottom: 14px;
-  width: clamp(132px, 22vw, 210px);
+  right: clamp(6px, 3.5vw, 44px);
+  bottom: 8px;
+  width: clamp(150px, 24vw, 232px);
   aspect-ratio: 1;
   pointer-events: none;
-  perspective: 600px;
 }
 .glow {
   position: absolute;
-  inset: -18%;
+  inset: -12%;
   border-radius: 50%;
-  background: radial-gradient(circle, #3f8fd255 0%, transparent 65%);
+  background: radial-gradient(circle, #2f6fc066 0%, #e9ca8a14 45%, transparent 66%);
 }
-.sphere {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at 34% 30%,
-    #7cc0f5 0%,
-    #2c74b5 34%,
-    #123d66 68%,
-    #0b2338 100%
-  );
-  box-shadow:
-    inset -14px -12px 28px #04111dcc,
-    0 18px 40px #02080f99;
-}
-.spin {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-}
-.meridian,
-.parallel {
-  position: absolute;
-  inset: 0;
-  border: 1.5px solid #e9ca8a8c;
-  border-radius: 50%;
-}
-.parallel {
-  border-color: #ffffff3d;
-}
-.dot {
-  position: absolute;
-  width: 9px;
-  height: 9px;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  background: #e9ca8a;
-  box-shadow: 0 0 10px #e9ca8a;
-}
-.dotOne {
-  top: 30%;
-  left: 52%;
-}
-.dotTwo {
-  top: 46%;
-  left: 30%;
-}
-.dotThree {
-  top: 58%;
-  left: 62%;
+.globe {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 16px 26px #02080fb3);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .spin {
-    animation: banner-globe-spin 14s linear infinite;
-  }
-  .dot {
-    animation: banner-globe-pulse 2.4s ease-in-out infinite;
-  }
-  .dotTwo {
-    animation-delay: 0.8s;
-  }
-  .dotThree {
-    animation-delay: 1.6s;
-  }
   .stage {
     animation: banner-globe-float 6s ease-in-out infinite;
-  }
-  @keyframes banner-globe-spin {
-    to {
-      rotate: y 360deg;
-    }
-  }
-  @keyframes banner-globe-pulse {
-    50% {
-      scale: 1.35;
-      opacity: 0.7;
-    }
   }
   @keyframes banner-globe-float {
     50% {
@@ -160,6 +92,6 @@
     margin-top: 64px;
   }
   .stage {
-    bottom: 22px;
+    bottom: 16px;
   }
 }
