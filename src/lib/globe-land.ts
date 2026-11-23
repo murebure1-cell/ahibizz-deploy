@@ -1,31 +1,55 @@
 /**
- * Land of the home banner globe as a dot grid: rows every 1.2 degrees of latitude, with dots per row
- * shrinking towards the poles so they stay evenly spaced. One bit per dot says whether it is land.
- * Built from Natural Earth 110m land (public domain, world-atlas 2.0.2).
+ * Land outlines for the home banner globe, from Natural Earth 50m land (public domain, world-atlas
+ * 2.0.2), packed in public/globe/land-50m.bin: Uint32 ring count, Uint32 points per ring, then Int16
+ * [longitude, latitude] pairs in 1/50 degree, delta encoded per ring. Rings crossing the antimeridian are
+ * unwrapped (longitudes may run past ±180) and Antarctica closes through the south pole.
  */
-const landMask =
-  "+P///+H/////gf/B//9/gP8h////D/j/kP/////A/x/g/////wD8/wH8/////wDw/w/A/////z8AQPgdgP//////AwAAAAaA//////8fAAAAeADw///9//8PAAAAgAAA0Pyf////AAAAAIAAAACg//z//wMAAAAAEAAAAAA/+P9/AAAAAACAAAAAAMAAhIwHAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAADwAQAAAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAB8AAAAAAAAAAAAAAAAAAAAAABwAAAAAAAAAADgAwAAAAAAAAAAAAAAAAAAAAgADAAAAAAAAAAA/AAAAAAAAAAAAAAAAAAAAAAYABAAAAAAAAAAAOAPAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAA+AMAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAADg/wAAAAAAAAAAAAAAAAAAAAB8AAAGAAAAAAAAAADwfwAAAAAAAAAAAAAAAAAAAAD8AQACAAAAAAAAAADA/wEAAAAAAAAAAAAAAAAAAADAPwAgAAAAAAAAAAAA8P8BAAAAAAAYAAAAAAAAAOAA6D8AAAAAAAAAAAAAAMD/BwAAAAAA4AcAAAAAAAAAfsD/AwAAAAAAAAAAAAAA+P8BAAAAAAD8AwAAAAAAAID/+f8DAAAAAAAAAAAAAAD4/wMAAAAAAPgPAAAAAAAAAP7//w8AAAAAAAAAAAAAAMD/HwAAAAAAwP8AAAAAAAAA4P///wEAAAAAAAAAAAAAAPD/DwAAAAAA8P8AAAAAAAAA8P///wEAAAAAAAAAAAAAAOD/PwAAAAAA4P8DAAAAAAAAwP///wcAAAAAAAAAAAAAAAD+/wMAAAAAAP4/AAAAAAAAAPD///8BAAAAAAAAAAAAAAAA//8DAAAAAAD+/4ABAAAAAADw////AQAAAAAAAAAAAAAAAPz/HwAAAAAA/P8HDgAAAAAAwP///wcAAAAAAAAAAAAAAADA//8PAAAAAID/f+ABAAAAAADw////ABAAAAAAAAAAAAAAAPD//wcAAAAA4P8/4AEAAAAAAOD//38ACAAAAAAAAAAAAAAA4P//HwAAAADA/3+AAwAAAAAAAPz//wAAAAAAAAAAAAAAAAAA////AAAAAAD+/w88AAAAAAAAgP//AwAAAAAAAAAAAAAAAAD4//8fAAAAAOD//4MHAAAAAAAA4P/3AAAAAAAAAAAAAAAAAAD///8PAAAAAPD//4cHAAAAAAAAwP9xAAAAAAAAAAAAAAAAAID///8fAAAAAMD//x8cAAAAAAAAAP7BAQAEAAAAAAAAAAAAAAD+//9/AAAAAAD+/39gAAAAAAAAAIAPBgAAAAAAAAAAAAAAAADw////DwAAAADg//8PBAAAAAAAAADgQwAAAAAAAAAAAAAAAAAA/v///wMAAAAA+P//AQAAAAAAAAAAEBAAAAAAAAAAAAAAAAAAwP////8BAAAAAP7/fwAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAOD/////AQAAAAD+/z8AAAAAAAAAQCAAjAAEAAAAAAAAAAAAAADg/////wMAAAAA/v9/AAAAAAAAAB4AAN8AAgAAAAAAAAAAAAAA4P////8HAAAAAPz//wAAAAAAAIADAAD4AwAAAAAAAAAAAAAAAID/////HwAAAADg//8HAAAAAAAAAkAB4A8BAAAAAAAAAAAAAAAA/P///z8AAAAAgP//PwAAAAAAABgAAOA/GAAAAAAAAAAAAAAAAMD/////AAAAAAD+//8DAAAAAADA4VOQfYAAAAAAAAAAAAAAAAAA/P///wAAAAAA4P//fwAAAAAAAA4+A5gAAAAAAAAAAAAAAAAAAMD///8AAAAAAAD///8PAAAAAABw8AeAAAAAAAAAAAAAAAAAAAAA/P//BwAAAAAA4P///wEAAAAAAAd/ngAAAAAAAAAAAAAAAAAAAID//38AAAAAAAD+//9/AAAAAAC48AcIAAAAAAAAAAAAAAAAAAAA8P//BwAAAAAA4P///w8AAAAAwAZ4AAAAAAAAAAAAAAAAAAAAAAD//z8AAAAAAAD/////AAAAAAAzgAcAAAAAAAAAAAAAAAAAAAAA+P//AAAAAPgH/////w8AAAAAgAE4AAAAAAAAAAAAAAAAAAAAAMD/PwAAAADg//////9/AAAAAwACQGAAAAAAAAAAAAAAAAAAAACQ/38AAAAA4P///////wEAAAYAAgDQAAAAAAAAAAAAAAAAAAAAyP4/AAAAAOD///////8BAIAFAEIAgAAAAAAAAAAAAAAAAAAAAAb8KwAAAADw////////AQDAAABhABAAAAAAAAAAAAAAAAAAAAADJAAAAAAA/v//////wQAAcAAAfAAUAAAAAAAAAAAAAAAAAADwAAAAAAAAwP//////fwAAAB8A0A8AAAAAAAAAAAAAAAAAAACADwAAAAAAAPz//////z0AAPAAgP8ADgAAAAAAAAAAAAAAAACAfwAAAAAAAPD///////cHAMADAP4DCAAAAAAAAAAAAAAAAADwDwAAAAAAAMD//////+MfAMAPwP4BGAAAAAAAAAAAAAAAAAD8DwAAAAAAAOD///////E/APAP4H8ABAAAAAAAAAAAAAAAAODPA9ABAAAAAPz/////H/8PAP4B/icAAAAAAAAAAAABAAAAgD8YAAQAAAAA4P////9//H8A+B/4nwEAAAAAAAAAAAAAAAAAfmDAAAAAAADA///////8/wH0f/g/AQAAAAAAAAAAAAAAAAA/ADoAAAAAAOD/////P///AP///v8DAAAAAAAAAAAAAAAA5A8AAAAAAAAA/P/////z/wf4/////wQAAAAAAAAAAAAAAJA/ACAAAAAAAOD/////538E+P////8XAAAAAAAAAAAAAADQfwAIAAAAAADg//////N/+P//////AwAAAAAAAAAAAAAA+Q+AAQAAAAAA/P///5//sf//////PwAAAAAAAAAAAAAA9H8ABgAAAAAA4P//////8///////fwAAAAAAAAAAAAAA+v8MAwAAAAAA4P////9//v//////HwAAAAAAAAAAAACg//8/AAAAAAAA/v/f//////////9/AAAAAAAAAAAAAMD//38AAAAAAAD8/4cD/v///////38gAAAAAAAAAAAA8P//PwAAAAAAAP8/AID/////////BwIAAAAAAAAAAMD///8DAAAAAAD4fwAA/v///////wc8AAAAAAAAAADw////BwAAAAAA5D+AoP////////9gPgAAAAAAAAAA////fwAAAAAAIPwBof3////////H4AAAAAAAAAAA////PwAAAAAA+ADG/P///////38YEAAAAAAAAAD4////BwAAAADgB0Di/////////yBAAAAAAAAAAPj///8HAAAAAOAHkfP///////9/DxAAAAAAAAAA/////wEAAAAAf+B8jv///////38AAAAAAAAAAP////8BAAAAgD8YH8D///////8fFAAAAAAAAOD///8fAAAAAIBP/oH/////////YQAAAAAAAOD///9/AQAAAOCff/T///////8/AgAAAAAAAP////8PAAAAgP//y/////////8AAAAAAACA/v///8EAAADw////////////DwAAAAAAAPr////mAAAA+P///////////xcAAAAAAID///+/CAAAAPz//////////78AAAAAAID/////BwAAgP///////////xcAAAAAAPj///P/AACA3P//////////HxAAAACA/v///T8AAKDz//////////+BAQAEAPj///s/AABAQ/T///////8P4AAABgD//x/+AQAAGIL///////8/gAMAEID//wf+AAAAhub///////8DHACAAP//B/wBAAAAhv///////wMEALjw/3/AAwAAAHz8//////9/EQB8/f9/wAEIAADf////////Hwfg////wQEcAADf////////vwf4//9/QMABAPD+////////H/D//79x8MABvP///////3/2////YPGBA7j3////////+P//H48fAOC3//7///8f/v/J1/ADAP71/////x/8/6Z28AcAP2D/////wQN4+vEfAByA////AQDAtw/+AQAg+v9/AADg38E/AAAi/48AAMAgwD8AAMAfAAAA0If/AACBDxQAQBT+BwAYOAAAQJD/QABAAACA3z8YAAQAAHh/EIAAAID/AwAAAOAMAAAAAAYAAA==";
+export const landOutlineUrl = "/globe/land-50m.bin";
 
-const step = 1.2;
-const radians = Math.PI / 180;
-
-/** Unit vectors [x, y, z, ...] of every land dot; y points north, z faces longitude 0. */
-export function landPoints(): Float32Array {
-  const bytes = Uint8Array.from(atob(landMask), (char) => char.charCodeAt(0));
-  const points: number[] = [];
-  let index = 0;
-  for (let lat = -84 + step / 2; lat < 84; lat += step) {
-    const count = Math.max(1, Math.round((360 / step) * Math.cos(lat * radians)));
-    for (let k = 0; k < count; k++, index++) {
-      if (!((bytes[index >> 3] ?? 0) & (1 << (index & 7)))) continue;
-      points.push(...unitVector(lat, -180 + ((k + 0.5) * 360) / count));
+/** Each ring as [longitude, latitude, longitude, latitude, ...] in degrees. */
+export function decodeLand(buffer: ArrayBuffer): Float32Array[] {
+  const header = new Uint32Array(buffer, 0, 1);
+  const count = header[0] ?? 0;
+  const lengths = new Uint32Array(buffer, 4, count);
+  const body = new Int16Array(buffer, 4 * (count + 1));
+  const rings: Float32Array[] = [];
+  let k = 0;
+  for (const length of lengths) {
+    const ring = new Float32Array(length * 2);
+    let x = 0;
+    let y = 0;
+    for (let i = 0; i < length; i++) {
+      x += body[k++] ?? 0;
+      y += body[k++] ?? 0;
+      ring[i * 2] = x / 50;
+      ring[i * 2 + 1] = y / 50;
     }
+    rings.push(ring);
   }
-  return Float32Array.from(points);
+  return rings;
+}
+
+/** Even-odd test against all rings, also one turn east and west for unwrapped rings. */
+export function isLand(rings: Float32Array[], latitude: number, longitude: number) {
+  for (const offset of [0, -360, 360]) {
+    const lng = longitude + offset;
+    let odd = false;
+    for (const ring of rings)
+      for (let i = 0, j = ring.length - 2; i < ring.length; j = i, i += 2) {
+        const xi = ring[i] ?? 0;
+        const yi = ring[i + 1] ?? 0;
+        const xj = ring[j] ?? 0;
+        const yj = ring[j + 1] ?? 0;
+        if (yi > latitude !== yj > latitude && lng < ((xj - xi) * (latitude - yi)) / (yj - yi) + xi)
+          odd = !odd;
+      }
+    if (odd) return true;
+  }
+  return false;
 }
 
 export function unitVector(latitude: number, longitude: number): [number, number, number] {
-  const phi = latitude * radians;
-  const lambda = longitude * radians;
+  const phi = (latitude * Math.PI) / 180;
+  const lambda = (longitude * Math.PI) / 180;
   return [Math.cos(phi) * Math.sin(lambda), Math.sin(phi), Math.cos(phi) * Math.cos(lambda)];
 }
