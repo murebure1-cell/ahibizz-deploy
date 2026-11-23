@@ -41,8 +41,8 @@ export function BusinessChanges({
           <div key={key}>
             <dt>{labels[key as keyof BusinessFields]}</dt>
             <dd>
-              {display(key as keyof BusinessFields, business[key as keyof BusinessFields])} →{" "}
-              {display(key as keyof BusinessFields, value)}
+              {display(key as keyof BusinessFields, business[key as keyof BusinessFields])} ·
+              Predloženo: {display(key as keyof BusinessFields, value)}
             </dd>
           </div>
         ))}

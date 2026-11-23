@@ -130,8 +130,7 @@ test("role-bound erasure deletes private data and preserves closed financial rec
       [listing, subject.id, category, subject.email, otherListing, peer.id],
     );
     const service = randomUUID(),
-      booking = randomUUID(),
-      order = randomUUID();
+      booking = randomUUID();
     await pool.query(
       "INSERT INTO booking_service(id,business_id,name,duration_minutes,price_minor) VALUES($1,$2,'Usluga',30,0)",
       [service, otherListing],
@@ -144,41 +143,24 @@ test("role-bound erasure deletes private data and preserves closed financial rec
               now()+interval '1 day',now()+interval '1 day 30 minutes','Privatni korisnik',$6,'321-543')`,
       [booking, otherListing, peer.id, subject.id, service, subject.email],
     );
-    await pool.query(
-      `INSERT INTO paypal_checkout_order(id,user_id,request_id,fingerprint,environment,kind,offer_version,
-         amount_minor,merchant_id,create_request_id,capture_request_id)
-       VALUES($1,$2,$3,'account-erasure-test','live','support','v1',1200,'fixture-merchant',$4,$5)`,
-      [order, subject.id, randomUUID(), randomUUID(), randomUUID()],
-    );
-    await t.test(
-      "do not erase during a checkout or before handling future commitments",
-      async () => {
-        await assert.rejects(
-          erase(operator.headers, request, subject.email),
-          deny(409, "ERASURE_PAYMENT_PENDING"),
-        );
-        await pool.query(
-          "UPDATE paypal_checkout_order SET status='cancelled',version=2 WHERE id=$1",
-          [order],
-        );
-        await assert.rejects(
-          erase(operator.headers, request, subject.email),
-          deny(409, "ERASURE_BOOKING_PENDING"),
-        );
-        await pool.query("UPDATE booking_entry SET status='cancelled',version=2 WHERE id=$1", [
-          booking,
-        ]);
-        await assert.rejects(
-          erase(operator.headers, request, subject.email),
-          deny(409, "ERASURE_BUSINESS_PENDING"),
-        );
-        await pool.query(
-          `UPDATE directory_business SET status='archived',archived_at=now(),deleted_at=now(),deleted_by=$2
+    await t.test("do not erase before handling future commitments", async () => {
+      await assert.rejects(
+        erase(operator.headers, request, subject.email),
+        deny(409, "ERASURE_BOOKING_PENDING"),
+      );
+      await pool.query("UPDATE booking_entry SET status='cancelled',version=2 WHERE id=$1", [
+        booking,
+      ]);
+      await assert.rejects(
+        erase(operator.headers, request, subject.email),
+        deny(409, "ERASURE_BUSINESS_PENDING"),
+      );
+      await pool.query(
+        `UPDATE directory_business SET status='archived',archived_at=now(),deleted_at=now(),deleted_by=$2
          WHERE id=$1`,
-          [listing, subject.id],
-        );
-      },
-    );
+        [listing, subject.id],
+      );
+    });
 
     await pool.query(
       `INSERT INTO personal_profile(user_id,bio,version,is_public) VALUES
@@ -210,14 +192,6 @@ test("role-bound erasure deletes private data and preserves closed financial rec
     );
     await messages.send(subject.headers, threadId, { body: "Sadržaj za brisanje" }, randomUUID());
     await messages.send(peer.headers, threadId, { body: "Poruka druge osobe" }, randomUUID());
-    const receipt = randomUUID();
-    await pool.query(
-      `INSERT INTO billing_receipt(id,kind,business_id,business_title,source,external_reference,
-          received_at,gross_minor,allocation_status,created_by_user_id)
-       VALUES($1,'photo_video',$2,'Dokumentovani naziv','cash','test-erasure',now(),5400,
-          'not_applicable',$3)`,
-      [receipt, listing, operator.id],
-    );
     await t.test(
       "remove personal data, close the request and preserve unrelated data atomically",
       async () => {
@@ -290,11 +264,6 @@ test("role-bound erasure deletes private data and preserves closed financial rec
             ])
           ).rows,
           [{ title: "Uklonjena djelatnost", contact_email: null }],
-        );
-        assert.equal(
-          (await pool.query("SELECT gross_minor FROM billing_receipt WHERE id=$1", [receipt]))
-            .rows[0].gross_minor,
-          5400,
         );
         assert.equal((await accounts.read(peer.headers)).email, peer.email);
         await assert.rejects(

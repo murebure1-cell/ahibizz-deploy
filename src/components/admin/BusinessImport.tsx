@@ -238,7 +238,7 @@ export function BusinessImport({
     <main id="glavni-sadrzaj" className={styles.layout}>
       <header className={styles.heading}>
         <div>
-          <Link href="/administracija?odjeljak=djelatnosti">← Djelatnosti</Link>
+          <Link href="/administracija?odjeljak=djelatnosti">Djelatnosti</Link>
           <h1>Uvoz djelatnosti</h1>
         </div>
       </header>

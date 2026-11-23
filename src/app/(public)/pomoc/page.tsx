@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import styles from "../../../components/content-hub/content-hub.module.css";
 import { HelpDesk } from "../../../components/content-hub/HelpDesk";
-import { helpTopic, packageSupportContractId } from "../../../lib/help-center";
+import { helpTopic } from "../../../lib/help-center";
 import { getAccountService } from "../../../server/auth/accounts";
 
 export const dynamic = "force-dynamic";
@@ -22,19 +22,14 @@ export default async function HelpPage({
     .catch(() => undefined);
   const query = await searchParams;
   const topic = helpTopic(query.tema);
-  const contract =
-    account && topic === "naplata" && typeof query.ugovor === "string"
-      ? packageSupportContractId(`ugovor--${query.ugovor}`)
-      : null;
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <h1 className={styles.pageTitle}>Kako ti možemo pomoći?</h1>
       <HelpDesk
-        key={`${account?.id ?? "gost"}:${topic ?? ""}:${contract ?? ""}`}
+        key={`${account?.id ?? "gost"}:${topic ?? ""}`}
         actor={account?.id}
         requestId={account ? randomUUID() : undefined}
         initialTopic={topic}
-        packageContract={contract ?? undefined}
       />
       <nav className={styles.toolRow} aria-label="Dodatni izvori pomoći">
         <Link href="/blog" className={styles.secondary}>

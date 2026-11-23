@@ -31,8 +31,7 @@ export function stayError(error: unknown) {
       return "Status ovog boravka se promijenio. Provjeri kalendar.";
     if (error.code === "STAY_HAS_BOOKINGS")
       return "Jedinica ima predstojeći boravak ili blokadu. Provjeri kalendar.";
-    if (error.code.includes("LIMIT"))
-      return "Na besplatnom paketu možeš dodati dvije smještajne jedinice.";
+    if (error.code.includes("LIMIT")) return "Možeš dodati najviše dvije smještajne jedinice.";
     if (
       error.code.includes("OVERLAP") ||
       error.code === "STAY_CONFLICT" ||

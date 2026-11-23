@@ -136,6 +136,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0051_account_erasure.sql",
           "0052_bank_credit_topups.sql",
           "0053_production_credit_purchases.sql",
+          "0054_promotions.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -278,7 +279,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             version: 0,
             photoVersion: null,
             coverVersion: null,
-            canCustomizeCover: false,
+            canCustomizeCover: true,
           });
           assert.equal((await people.read(owner.headers)).canCustomizeCover, true);
           assert.equal(await people.readMedia(member.headers, "photo"), null);
@@ -508,15 +509,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           const before = await people.read(member.headers);
           await denied(
             () =>
-              people.saveMedia(member.headers, "cover", {
-                expectedVersion: before.version,
-                bytes: png,
-              }),
-            403,
-            "COVER_NOT_ALLOWED",
-          );
-          await denied(
-            () =>
               people.saveMedia(member.headers, "photo", {
                 expectedVersion: before.version,
                 bytes: Buffer.from("<svg>not raster</svg>"),
@@ -554,12 +546,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
       await t.test(
-        "explicit server cover grants, revocation privacy and removal require the same signed owner",
+        "every signed account can save a cover without a grant, and removal requires the same signed owner",
         async () => {
-          await pool.query(
-            "INSERT INTO personal_profile_entitlement(user_id,can_customize_cover) VALUES($1,true)",
-            [member.user.id],
-          );
           let profile = await people.read(member.headers);
           assert.equal(profile.canCustomizeCover, true);
           profile = await people.saveMedia(member.headers, "cover", {
@@ -568,18 +556,15 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           });
           assert.equal(profile.coverVersion, profile.version);
           assert.equal((await people.readMedia(member.headers, "cover")).width, 1600);
-          await pool.query(
-            "UPDATE personal_profile_entitlement SET can_customize_cover=false WHERE user_id=$1",
-            [member.user.id],
+          assert.equal(
+            (await pool.query("SELECT count(*)::integer AS n FROM personal_profile_entitlement"))
+              .rows[0].n,
+            0,
           );
-          const revoked = await people.read(member.headers);
-          assert.equal(revoked.canCustomizeCover, false);
-          assert.equal(revoked.coverVersion, null);
-          await denied(() => people.readMedia(member.headers, "cover"), 403, "COVER_NOT_ALLOWED");
           const removed = await people.removeMedia(member.headers, "cover", {
-            expectedVersion: revoked.version,
+            expectedVersion: profile.version,
           });
-          assert.equal(removed.version, revoked.version + 1);
+          assert.equal(removed.version, profile.version + 1);
           assert.equal(removed.coverVersion, null);
           assert.ok(removed.photoVersion);
           assert.equal(

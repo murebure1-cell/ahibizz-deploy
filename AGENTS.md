@@ -8,6 +8,18 @@ Codex and Claude Code use `origin/integration/ahibizz` in the private `murebure1
 2. Start a `codex/<task>` or `claude/<task>` branch from `origin/integration/ahibizz` in a separate worktree. Preserve uncommitted work in other worktrees. Keep each change focused on its task.
 3. Target `integration/ahibizz` for pull requests. Record the changed flows, checks actually run and known gaps. Confirm the combined result before marking the task done.
 
+## Asking Claude Code from Codex
+
+Codex can ask Claude Code a read-only question from its worktree, for example a second review of a diff, a check of a plan or where a flow lives in the code:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\Users\tabak\AppData\Local\AhiBizzNext\tools\ask-claude.ps1 -Dir . -Prompt "Pregledaj git diff origin/integration/ahibizz...HEAD (sadržaj je ispod) i navedi bugove s putanjom i linijom."
+```
+
+- The script starts the newest Claude Code CLI on this computer with only Read, Grep and Glob in the given directory: no edits, shell, web, MCP connectors or skills, and no saved session. Longer input can be piped on stdin.
+- Claude cannot run `git`, tests or builds in this mode. Paste the diff or command output into the prompt when the question depends on it.
+- Treat the answer as review input. The task owner decides, makes the change and records it in the pull request. Each call uses the owner's Claude plan, so keep questions focused.
+
 ## Verification and release
 
 - Use the Node version and pnpm pin from `package.json`. Run `pnpm check` and the relevant flow tests with isolated data. Keep browser checks and payment or other business transaction checks distinct in the handoff.

@@ -7,14 +7,10 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   type AccountSection,
   accountSectionPath,
-  creditTopUpPath,
-  creditTopUpReturn,
   readAccountNavigation,
 } from "../../lib/account-return";
 import { accountShortcuts } from "../../lib/account-shortcuts";
-import { campaignPath } from "../../lib/ad-brief";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
-import { placementOfferPath } from "../../lib/marketing";
 import type { MessageTarget } from "../../lib/messaging";
 import { clearBrowserMessagingRecovery } from "../../lib/messaging-recovery-storage";
 import { type PersonalProfile, profileImageUrl } from "../../lib/people";
@@ -25,7 +21,7 @@ import { Icon, type IconName } from "../Icon";
 import { PersonalProfileWorkspace } from "../people/PersonalProfileWorkspace";
 import { CommunityRulesPrompt } from "../support/CommunityRulesPrompt";
 import { AccountAuthorityBoundary } from "./AccountAuthorityBoundary";
-import { AccountOverview, CurrentPlacements, MembershipOverview } from "./AccountOverview";
+import { AccountOverview } from "./AccountOverview";
 import { AccountSettings } from "./AccountSettings";
 import styles from "./account.module.css";
 
@@ -55,9 +51,6 @@ const ConnectionsPanel = dynamic(
   () => import("../connections/ConnectionsPanel").then((m) => m.ConnectionsPanel),
   { loading: () => paneHeading("Prijatelji") },
 );
-const MarketingWorkspace = dynamic(() =>
-  import("../marketing/MarketingWorkspace").then((m) => m.MarketingWorkspace),
-);
 const accountMenu = [
   { id: "overview", label: "Pregled", icon: "home", primary: true },
   { id: "businesses", label: "Djelatnosti", icon: "shop", primary: true },
@@ -67,9 +60,6 @@ const accountMenu = [
   { id: "connections", label: "Prijatelji", icon: "people", group: "Lični nalog" },
   { id: "saved", label: "Sačuvane djelatnosti", icon: "heart", group: "Lični nalog" },
   { id: "settings", label: "Postavke", icon: "sliders", group: "Lični nalog" },
-  { id: "advertising", label: "Moji oglasi", icon: "star", group: "Poslovanje" },
-  { id: "membership", label: "Pretplate", icon: "crown", group: "Poslovanje" },
-  { id: "credits", label: "Ahi Credits", icon: "card", digital: true, group: "Poslovanje" },
 ] as {
   id: AccountSection;
   label: string;
@@ -123,7 +113,7 @@ function AccountWorkspace({
         : readAccountNavigation(new URLSearchParams(query)),
     [query, initialSection, messageTarget, invalidMessageTarget],
   );
-  const section = IS_PLAY_EDITION && view.section === "credits" ? "overview" : view.section;
+  const section = view.section;
   const focusNotifications =
     section === "settings" &&
     searchParams?.getAll("prikaz").length === 1 &&
@@ -132,21 +122,11 @@ function AccountWorkspace({
     section === "businesses" &&
     searchParams?.getAll("novo").length === 1 &&
     searchParams.get("novo") === "1";
-  const purchaseReturn =
-    section === "credits" && searchParams?.getAll("nastavi").length === 1
-      ? creditTopUpReturn(searchParams.get("nastavi"))
-      : null;
-  const returnPath = view.campaign
-    ? campaignPath(view.campaign)
-    : view.placementTarget
-      ? placementOfferPath(view.placementTarget)
-      : focusNotifications
-        ? accountShortcuts.notificationSettings
-        : startBusinessCreation
-          ? accountShortcuts.newBusiness
-          : purchaseReturn
-            ? creditTopUpPath(purchaseReturn)
-            : accountSectionPath(section);
+  const returnPath = focusNotifications
+    ? accountShortcuts.notificationSettings
+    : startBusinessCreation
+      ? accountShortcuts.newBusiness
+      : accountSectionPath(section);
   const photo = personal ? profileImageUrl(personal, "photo") : null;
   const menu = accountMenu.filter((item) => !IS_PLAY_EDITION || !item.digital);
   const current = menu.find((item) => item.id === section);
@@ -406,33 +386,6 @@ function AccountWorkspace({
                 }
               />
             </AccountPane>
-            {!IS_PLAY_EDITION &&
-              hasAccess &&
-              (section === "credits" || section === "advertising") && (
-                <MarketingWorkspace
-                  key={section}
-                  accountId={initial.id}
-                  mode={section === "credits" ? "credits" : "ads"}
-                  target={view.placementTarget}
-                  campaign={view.campaign}
-                  returnTo={purchaseReturn}
-                  promotionView={
-                    searchParams?.getAll("prikaz").length === 1
-                      ? searchParams.get("prikaz") === "aktivne"
-                        ? "aktivne"
-                        : searchParams.get("prikaz") === "zakazane"
-                          ? "zakazane"
-                          : undefined
-                      : undefined
-                  }
-                />
-              )}
-            {IS_PLAY_EDITION && section === "advertising" && (
-              <CurrentPlacements accountId={initial.id} active={hasAccess} />
-            )}
-            {section === "membership" && (
-              <MembershipOverview accountId={initial.id} active={hasAccess} />
-            )}
           </section>
         </main>
       )}

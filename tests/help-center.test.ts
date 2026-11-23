@@ -10,7 +10,6 @@ test("guide normalizes short natural-language questions and makes ambiguous prom
   assert.equal(matchHelpTopic("Sačuvaj mi noćenje"), "rezervacije");
   assert.equal(matchHelpTopic("Želim objaviti klip za djelatnost"), null);
   assert.equal(matchHelpTopic("Promjena odabrane usluge nešto drugo"), null);
-  assert.equal(matchHelpTopic("Da li je naplaćena kartica?"), "naplata");
   assert.equal(matchHelpTopic("Kome da prijavim sumnjiv sadržaj?"), "sigurnost");
 });
 

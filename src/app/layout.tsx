@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { AudienceNavigation } from "../components/account/AudienceNavigation";
 import { AppProviders } from "../components/design/AppProviders";
 import { appearanceBootstrap } from "../lib/appearance";
 import "./globals.css";
@@ -12,8 +11,8 @@ export const metadata: Metadata = {
   manifest: "/app.webmanifest",
   appleWebApp: { capable: true, title: "AhiBizz", statusBarStyle: "default" },
   icons: {
-    icon: "/preview-app/icons/icon-192.png",
-    apple: "/preview-app/icons/apple-touch-icon.png",
+    icon: "/app-icons/icon-192.png",
+    apple: "/app-icons/apple-touch-icon.png",
   },
 };
 
@@ -34,7 +33,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Preskoči na sadržaj
         </a>
         <AppProviders>{children}</AppProviders>
-        <AudienceNavigation />
       </body>
     </html>
   );

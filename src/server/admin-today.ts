@@ -14,13 +14,8 @@ export async function readAdminTodayQueues(client: PoolClient): Promise<AdminTod
     UNION ALL
     SELECT 'reports',count(*)::int,min(created_at) FROM support_request WHERE resolved_at IS NULL
     UNION ALL
-    SELECT 'receipts',count(*)::int,min(created_at) FROM billing_receipt WHERE allocation_status='pending'
-    UNION ALL
-    SELECT 'settlements',count(*)::int,min(paid_at) FROM live_package_payment WHERE needs_review
-    UNION ALL
-    SELECT 'bankTopUps',count(*)::int,min(t.created_at) FROM ahi_wallet_bank_topup t
-    JOIN marketing_order o ON o.id=t.order_id
-    WHERE t.approved_at IS NULL AND o.status IN ('requested','quoted')
+    SELECT 'promotions',count(*)::int,min(created_at) FROM promotion_order WHERE status='pending'
+
   `);
   return rows.map((row) => ({ ...row, oldestAt: row.oldestAt?.toISOString() ?? null }));
 }

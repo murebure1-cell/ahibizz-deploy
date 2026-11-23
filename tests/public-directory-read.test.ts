@@ -163,7 +163,7 @@ test("public list and detail retain eligibility predicates and the existing publ
     assert.match(query.sql, /JOIN auth_user u ON u.id = b.owner_user_id/);
     assert.match(
       query.sql,
-      /b.status = 'published' AND package_allows_listing\(b\) AND u.approval = 'approved' AND u\."emailVerified" = true/,
+      /b.status = 'published' AND u.approval = 'approved' AND u\."emailVerified" = true/,
     );
     assert.doesNotMatch(query.sql, /\bbytes\b/);
     assert.doesNotMatch(query.sql, /directory_moderation_audit|moderationReturn/);

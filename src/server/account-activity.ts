@@ -23,7 +23,7 @@ const visible = `FROM account_activity a
       m.user_id IS NOT NULL AND NOT m.blocked AND NOT people_contact_blocked(t.left_user_id,t.right_user_id)
       AND (t.kind='person' OR (
         b.deleted_at IS NULL AND b.owner_user_id=t.right_user_id AND b.status='published'
-        AND package_allows_listing(b)
+       
         AND NOT EXISTS (SELECT 1 FROM message_thread_member other WHERE other.thread_id=t.id AND other.blocked)
       ))
     ))`;

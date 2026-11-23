@@ -15,20 +15,12 @@ import styles from "./public-booking.module.css";
 type Page<T> = { entries: T[]; hasMore: boolean };
 type Read<T> = { data?: Page<T>; error?: string } | null;
 
-export function AppointmentsEmpty({
-  view,
-  preview = false,
-}: {
-  view: BookingListView;
-  preview?: boolean;
-}) {
+function AppointmentsEmpty({ view }: { view: BookingListView }) {
   return (
     <div className={styles.empty}>
       <Icon name="calendar" />
       <h3>{view === "history" ? "Još nema ranijih termina." : "Nema aktuelnih termina."}</h3>
-      {view === "upcoming" && (
-        <Link href={preview ? "/pregled/pretraga" : "/pretraga"}>Pronađi djelatnost</Link>
-      )}
+      {view === "upcoming" && <Link href="/pretraga">Pronađi djelatnost</Link>}
     </div>
   );
 }

@@ -64,7 +64,6 @@ export function createDirectoryCreation() {
           headers: {
             "Content-Type": "application/json",
             "Idempotency-Key": value.key,
-            "X-AhiBizz-Paid-Draft": "1",
           },
           body: value.body,
         })) as { business?: DirectoryBusiness } | null;

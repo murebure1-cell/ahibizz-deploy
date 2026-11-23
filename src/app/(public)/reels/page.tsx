@@ -31,7 +31,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Promis
     <main id="glavni-sadrzaj" className={styles.page}>
       <header>
         <Link href={businessId ? `/djelatnosti/${businessId}` : "/"} className={styles.back}>
-          ← {businessId ? "Na djelatnost" : "Početna"}
+          {businessId ? "Na djelatnost" : "Početna"}
         </Link>
         <h1>{businessTitle ? `Reels · ${businessTitle}` : "Reels djelatnosti"}</h1>
       </header>
@@ -46,9 +46,9 @@ export default async function ReelsPage({ searchParams }: { searchParams: Promis
       )}
       {(page > 1 || (results && results.length > pageSize && page < 999)) && (
         <nav className={styles.pagination} aria-label="Stranice reelova">
-          {page > 1 && <Link href={href(page - 1)}>← Prethodna</Link>}
+          {page > 1 && <Link href={href(page - 1)}>Prethodna</Link>}
           {results && results.length > pageSize && page < 999 && (
-            <Link href={href(page + 1)}>Sljedeća →</Link>
+            <Link href={href(page + 1)}>Sljedeća</Link>
           )}
         </nav>
       )}

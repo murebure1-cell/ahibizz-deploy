@@ -23,7 +23,6 @@ import styles from "./workspace.module.css";
 
 type WorkspaceProps = {
   active?: boolean;
-  preview?: boolean;
   expectedAccountId?: string;
   request?: typeof peopleRequest;
   connectionsRequest?: typeof connectionRequest;
@@ -41,9 +40,8 @@ export function PersonalProfileWorkspace(props: WorkspaceProps) {
       expectedAccountId: props.expectedAccountId,
       request: props.request,
       connectionsRequest: props.connectionsRequest,
-      preview: props.preview,
     }),
-    [props.expectedAccountId, props.request, props.connectionsRequest, props.preview],
+    [props.expectedAccountId, props.request, props.connectionsRequest],
   );
   const mounted = useRef({ boundary, key: 0 });
   if (mounted.current.boundary !== boundary)
@@ -60,7 +58,6 @@ function accessDenied(failure: unknown): boolean {
 
 function ProfileWorkspace({
   active = true,
-  preview = false,
   expectedAccountId,
   request = peopleRequest,
   connectionsRequest = connectionRequest,
@@ -133,10 +130,6 @@ function ProfileWorkspace({
   }, []);
   const load = useCallback(
     async (discard = false) => {
-      if (preview && (api.current === peopleRequest || socialApi.current === connectionRequest)) {
-        setError("Profil nije dostupan u ovom prikazu.");
-        return;
-      }
       readController.current?.abort();
       const controller = new AbortController(),
         current = ++revision.current,
@@ -181,7 +174,7 @@ function ProfileWorkspace({
           setLoading(false);
       }
     },
-    [preview, expectedAccountId, readProfile, readSocial, clearPrivate],
+    [expectedAccountId, readProfile, readSocial, clearPrivate],
   );
   useEffect(() => {
     if (active && !profile && !requiresLogin) void load();
@@ -191,14 +184,7 @@ function ProfileWorkspace({
     options: RequestInit,
     intent?: { fields?: PersonalProfileFields; kind?: ProfileImageKind; remove?: boolean },
   ) {
-    if (
-      !active ||
-      !profile ||
-      writing.current ||
-      blocked ||
-      (preview && api.current === peopleRequest)
-    )
-      throw new Error("profile_not_ready");
+    if (!active || !profile || writing.current || blocked) throw new Error("profile_not_ready");
     writing.current = true;
     setBusy(true);
     setError("");
@@ -236,7 +222,7 @@ function ProfileWorkspace({
         changed.current?.(next);
         if (intent?.fields) {
           setEditing(false);
-          setNotice(preview ? "Profil je sačuvan u pregledu." : "Profil je sačuvan.");
+          setNotice("Profil je sačuvan.");
         }
       }
     } catch (failure) {
@@ -281,15 +267,7 @@ function ProfileWorkspace({
       { kind, remove: true },
     );
   async function changeVisibility() {
-    if (
-      !active ||
-      !profile ||
-      !visibility ||
-      writing.current ||
-      editing ||
-      (preview && socialApi.current === connectionRequest)
-    )
-      return;
+    if (!active || !profile || !visibility || writing.current || editing) return;
     writing.current = true;
     revision.current++;
     readController.current?.abort();

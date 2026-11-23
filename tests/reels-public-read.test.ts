@@ -77,7 +77,7 @@ test("public Reel catalog, detail, feed and media use only a lazy database witho
     assert.match(sql, /r\.status='published'/);
     assert.match(sql, /b\.status='published'/);
     assert.match(sql, /b\.owner_user_id=r\.submitted_by/);
-    assert.match(sql, /package_allows_listing\(b\)/);
+    assert.doesNotMatch(sql, /package_allows_listing/);
     assert.match(sql, /u\.approval='approved'/);
     assert.match(sql, /u\."emailVerified"/);
   }

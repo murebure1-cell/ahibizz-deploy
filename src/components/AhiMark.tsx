@@ -11,7 +11,7 @@ export function AhiMark({
 }) {
   return (
     <Image
-      src="/preview-app/icons/source-mark.svg"
+      src="/app-icons/source-mark.svg"
       alt={alt}
       width={size}
       height={size}

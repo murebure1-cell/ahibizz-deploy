@@ -42,7 +42,6 @@ export function BusinessEditor({
   onSave,
   onCancel,
   canPublish = false,
-  preview = false,
   currentStatus,
   bookingEnabled,
   onDirty,
@@ -53,7 +52,6 @@ export function BusinessEditor({
   onSave: (fields: BusinessFields, publish: boolean) => void;
   onCancel: () => void;
   canPublish?: boolean;
-  preview?: boolean;
   currentStatus?: "draft" | "pending" | "published" | "archived";
   bookingEnabled?: boolean;
   onDirty?: () => void;
@@ -68,7 +66,7 @@ export function BusinessEditor({
   const [address, setAddress] = useState(initial?.addressLine ?? "");
   const [city, setCity] = useState(initial?.city ?? "");
   const [country, setCountry] = useState(initial?.countryCode ?? "");
-  const knownBooking = bookingEnabled ?? (preview ? (initial?.bookingEnabled ?? false) : undefined);
+  const knownBooking = bookingEnabled;
   const rentsCars = hasRentalCategory(categories, category, subcategory);
   const offersStays = hasStayCategory(categories, category, subcategory);
   const [bookingChoice, setBookingChoice] = useState(knownBooking);
@@ -331,19 +329,17 @@ export function BusinessEditor({
           >
             {busy
               ? "Spremanje…"
-              : preview
-                ? "Sačuvaj u pregledu"
-                : currentStatus === "published"
-                  ? canPublish
+              : currentStatus === "published"
+                ? canPublish
+                  ? "Sačuvaj izmjene"
+                  : "Pošalji izmjene na pregled"
+                : canPublish
+                  ? "Sačuvaj i objavi"
+                  : currentStatus === "pending"
                     ? "Sačuvaj izmjene"
-                    : "Pošalji izmjene na pregled"
-                  : canPublish
-                    ? "Sačuvaj i objavi"
-                    : currentStatus === "pending"
-                      ? "Sačuvaj izmjene"
-                      : "Sačuvaj nacrt"}
+                    : "Sačuvaj nacrt"}
           </button>
-          {canPublish && !preview && currentStatus !== "published" && (
+          {canPublish && currentStatus !== "published" && (
             <button
               type="submit"
               name="intent"

@@ -128,7 +128,7 @@ async function context(client: PoolClient, signed: SignedSession, id: string): P
   const business = hint.business_id
     ? ((
         await client.query<BusinessRow>(
-          "SELECT id,owner_user_id, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status,title FROM directory_business b WHERE id=$1 FOR UPDATE",
+          "SELECT id,owner_user_id, status,title FROM directory_business b WHERE id=$1 FOR UPDATE",
           [hint.business_id],
         )
       ).rows[0] ?? null)
@@ -161,7 +161,7 @@ const columns = `t.id,t.kind,
  ${threadTitle} AS title,
  CASE WHEN t.kind='business' THEN t.business_id::text ELSE peer.id END AS "targetId",
  (peer.approval='approved' AND peer."emailVerified"=true AND peer.role IN ('member','owner')
-   AND (t.kind='person' OR b.status='published' AND package_allows_listing(b))
+   AND (t.kind='person' OR b.status='published')
    AND NOT (t.kind='business' AND (own.blocked OR theirs.blocked))
    AND NOT COALESCE(own_block.blocked,false) AND NOT COALESCE(peer_block.blocked,false)) AS "canSend",
  (CASE WHEN t.kind='person' THEN COALESCE(own_block.blocked,false) ELSE own.blocked END) AS "blockedByMe",
@@ -354,7 +354,7 @@ export function createMessagingService({
           value.kind === "business"
             ? (
                 await client.query<BusinessRow>(
-                  "SELECT id,owner_user_id, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status,title FROM directory_business b WHERE id=$1",
+                  "SELECT id,owner_user_id, status,title FROM directory_business b WHERE id=$1",
                   [value.targetId],
                 )
               ).rows[0]
@@ -368,7 +368,7 @@ export function createMessagingService({
         const business = hint
           ? ((
               await client.query<BusinessRow>(
-                "SELECT id,owner_user_id, CASE WHEN package_allows_listing(b) THEN status ELSE 'draft' END AS status,title FROM directory_business b WHERE id=$1 FOR UPDATE",
+                "SELECT id,owner_user_id, status,title FROM directory_business b WHERE id=$1 FOR UPDATE",
                 [hint.id],
               )
             ).rows[0] ?? null)
