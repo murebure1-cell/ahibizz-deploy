@@ -242,6 +242,8 @@ export async function listDirectory(
     if (featuredOnly) {
       filters.push(featuredOnly === "category" ? category : featuredOnly === "all" ? all : home);
       highlighted = "TRUE";
+      // Keep pages consistent while a featured rail appends more results.
+      order = publicationOrder;
     }
   }
   let selectedColumns = publicOnly

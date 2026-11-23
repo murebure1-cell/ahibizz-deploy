@@ -97,21 +97,17 @@ test("Reel writes require explicit state and bounded metadata", () => {
     caption: "Prva linija\r\nDruga linija",
     bytes: reelMaxBytes,
     poster: false,
-    priceCredits: 50,
   };
   assert.deepEqual(parseReelCommand(input), {
     ...input,
     title: "Prvi pogled",
     caption: "Prva linija\nDruga linija",
   });
-  const { priceCredits, ...missingQuote } = input;
   for (const invalid of [
     { ...input, bytes: reelMaxBytes + 1 },
     { ...input, title: "  " },
-    missingQuote,
-    { ...input, priceCredits: 0 },
-    { ...input, priceCredits: 1.5 },
-    { ...input, priceCredits: String(priceCredits) },
+    // Paid Reel publication was removed with the old billing.
+    { ...input, priceCredits: 50 },
     { ...input, autoPublish: true },
     { action: "withdraw", expected: "completed" },
     { action: "reject", reason: "" },

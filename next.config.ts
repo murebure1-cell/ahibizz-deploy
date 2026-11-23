@@ -13,6 +13,8 @@ export function createNextConfig(distribution: string): NextConfig {
         "/oglasavanje",
         "/naplata",
         "/podrzi",
+        "/istakni",
+        "/nalog/isticanja",
         "/api/checkout",
         "/api/paketi",
       ];
