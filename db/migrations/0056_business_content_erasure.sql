@@ -1,5 +1,5 @@
 -- When an owner deletes one business (without deleting the account), its own content is removed at
--- once: photos, details, contact, address, location and Reels. Records that belong to other people or
+-- once: photos, details and Reels here; text, contact, address and location in the removal UPDATE. Records that belong to other people or
 -- must be kept stay: bookings keep their own copy of the business name, other people's reviews and
 -- messages stay with their authors, and payment records are not touched.
 CREATE OR REPLACE FUNCTION erase_business_content(target uuid) RETURNS void
@@ -18,8 +18,6 @@ BEGIN
   DELETE FROM directory_business_image_proposal WHERE business_id=target;
   DELETE FROM directory_business_image WHERE business_id=target;
   DELETE FROM directory_business_details WHERE business_id=target;
-  UPDATE directory_business SET title='Uklonjena djelatnost',description=NULL,contact_email=NULL,
-    contact_phone=NULL,website_url=NULL,address_line=NULL,city=NULL,country_code=NULL,latitude=NULL,
-    longitude=NULL,editorial_revision=NULL,is_verified=false,is_featured=false
-    WHERE id=target;
+  -- The listing's own text, contact and location are cleared by the same UPDATE that removes it;
+  -- a removed row is protected by guard_removed_directory_business afterwards.
 END $$;

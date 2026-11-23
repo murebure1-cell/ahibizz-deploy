@@ -579,8 +579,12 @@ export function createDirectoryService({
         if (obligations.bookings) fail(409, "BUSINESS_HAS_BOOKINGS");
         await clearBusinessImageProposals(client, key);
         await client.query(
+          // The listing's own text, contact and location go with the removal itself.
           `UPDATE directory_business SET deleted_at=now(), deleted_by=$2, status='archived',
-            archived_at=COALESCE(archived_at,now()), editorial_revision=NULL, version=version+1, updated_at=now()
+            archived_at=COALESCE(archived_at,now()), editorial_revision=NULL, version=version+1, updated_at=now(),
+            title='Uklonjena djelatnost', description=NULL, contact_email=NULL, contact_phone=NULL,
+            website_url=NULL, address_line=NULL, city=NULL, country_code=NULL, latitude=NULL,
+            longitude=NULL, is_verified=false, is_featured=false
            WHERE id=$1`,
           [key, currentActor.id],
         );
