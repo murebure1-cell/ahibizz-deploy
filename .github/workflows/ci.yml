@@ -267,7 +267,7 @@ jobs:
           trap cleanup EXIT
           container_id=$(docker run --detach --name "$name" --network host \
             --env PORT=3099 --env DATABASE_URL \
-            --env BETTER_AUTH_URL=http://127.0.0.1:3099 \
+            --env BETTER_AUTH_URL=https://route-smoke.ahibizz-ci.invalid \
             --env BETTER_AUTH_SECRET=isolated-ci-only-secret-over-thirty-two-characters \
             --env SMTP_HOST=fixture.invalid --env SMTP_PORT=465 --env SMTP_USER=fixture \
             --env SMTP_PASSWORD=fixture-only --env SMTP_FROM=no-reply@fixture.invalid \
