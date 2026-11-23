@@ -58,12 +58,13 @@ void main() {
   float diffuse = max(dot(n, light), 0.0);
   float facing = max(dot(n, half_), 0.0);
 
-  vec3 sea = mix(vec3(0.012, 0.05, 0.16), vec3(0.09, 0.32, 0.76), diffuse);
-  sea += vec3(0.62, 0.78, 1.0) * pow(facing, 110.0) * 0.45;
-  vec3 gold = mix(vec3(0.42, 0.27, 0.08), vec3(0.93, 0.72, 0.33), diffuse);
-  gold += vec3(1.0, 0.92, 0.66) * pow(facing, 22.0) * 0.45;
+  // AhiBizz palette: navy sea (#0b1a2b to #2f5a85) and the brand gold #e9ca8a.
+  vec3 sea = mix(vec3(0.043, 0.102, 0.169), vec3(0.184, 0.353, 0.522), diffuse);
+  sea += vec3(0.72, 0.8, 0.9) * pow(facing, 120.0) * 0.22;
+  vec3 gold = mix(vec3(0.42, 0.33, 0.17), vec3(0.914, 0.792, 0.541), diffuse);
+  gold += vec3(1.0, 0.95, 0.82) * pow(facing, 24.0) * 0.2;
   vec3 c = mix(sea, gold, isLand);
-  c += vec3(0.32, 0.56, 1.0) * pow(1.0 - n.z, 2.6) * (0.18 + 0.3 * diffuse);
+  c += vec3(0.48, 0.6, 0.74) * pow(1.0 - n.z, 2.8) * (0.08 + 0.16 * diffuse);
   colour = vec4(c * edge, edge);
 }`;
 
@@ -248,9 +249,9 @@ export function GoldGlobe({
           centre,
           radius,
         );
-        sea.addColorStop(0, "#3f86e0");
-        sea.addColorStop(0.6, "#123c8c");
-        sea.addColorStop(1, "#04112e");
+        sea.addColorStop(0, "#2f5a85");
+        sea.addColorStop(0.6, "#173047");
+        sea.addColorStop(1, "#0b1a2b");
         overlay.fillStyle = sea;
         overlay.beginPath();
         overlay.arc(centre, centre, radius, 0, Math.PI * 2);
