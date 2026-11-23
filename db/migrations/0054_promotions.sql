@@ -102,7 +102,7 @@ BEGIN
   IF NEW.status NOT IN ('pending','active') THEN RETURN NEW; END IF;
   SELECT * INTO b FROM directory_business WHERE id=NEW.business_id;
   IF b.deleted_at IS NOT NULL OR b.status<>'published' OR b.owner_user_id<>NEW.owner_id OR
-     NEW.scope_key IS DISTINCT FROM CASE NEW.kind WHEN 'nearby' THEN lower(btrim(b.city)) WHEN 'category' THEN b.category_id::text ELSE '*' END THEN
+     NEW.scope_key IS DISTINCT FROM (CASE NEW.kind WHEN 'nearby' THEN lower(btrim(b.city)) WHEN 'category' THEN b.category_id::text ELSE '*' END) THEN
     RAISE EXCEPTION 'promotion_business_unavailable' USING ERRCODE='23514';
   END IF;
   cap:=CASE NEW.kind WHEN 'home' THEN 6 WHEN 'banner' THEN 1 ELSE 3 END;
