@@ -40,6 +40,21 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Lint, types and unit tests
         run: pnpm check
+      - name: Build the Google Play edition and confirm purchases stay closed
+        env:
+          AHIBIZZ_DISTRIBUTION: google-play
+        run: |
+          set -euo pipefail
+          pnpm build
+          node -e '
+            const rewrites = require("./.next/routes-manifest.json").rewrites.beforeFiles;
+            const closed = new Set(rewrites.filter((r) => r.destination === "/store-unavailable").map((r) => r.source));
+            const required = ["/istakni", "/nalog/isticanja", "/paketi", "/oglasavanje", "/naplata", "/podrzi"];
+            const missing = required.filter((path) => !closed.has(path + "/:path*"));
+            if (missing.length) { console.error("Play build leaves purchase pages open: " + missing.join(", ")); process.exit(1); }
+            console.log("Play edition: " + closed.size + " purchase routes closed.");
+          '
+          rm -rf .next
       - name: Test migrations against isolated PostgreSQL
         env:
           CI: "true"
