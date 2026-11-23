@@ -1,6 +1,6 @@
 "use client";
 
-import { readBusinessLogoSurface } from "./business-logo";
+import { logoHasTransparency, readBusinessLogoSurface } from "./business-logo";
 import { googleMapsKeyMeta, readGoogleMapsKey } from "./google-maps";
 
 // Minimal shapes of the Google Maps JavaScript API used in the app, so no extra type package is needed.
@@ -83,44 +83,92 @@ export function loadGoogleMaps(key: string): Promise<GoogleMapsApi> {
   return loader;
 }
 
+/** Navy with a white rim: strong contrast for white logos on light and dark maps alike. */
+export const mapPinColour = "#1b3a57";
+const pinWidth = 46;
+const pinHeight = 58;
+
+function pinCanvas() {
+  const canvas = document.createElement("canvas");
+  canvas.width = pinWidth;
+  canvas.height = pinHeight;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("No canvas");
+  const radius = pinWidth / 2 - 2;
+  const centre = pinWidth / 2;
+  // Drop shape: a circle with a point at the bottom, the tip is the business location.
+  context.beginPath();
+  context.arc(centre, radius + 2, radius, Math.PI * 0.82, Math.PI * 0.18);
+  context.lineTo(centre, pinHeight - 2);
+  context.closePath();
+  context.fillStyle = mapPinColour;
+  context.fill();
+  context.lineWidth = 2.5;
+  context.strokeStyle = "#ffffff";
+  context.stroke();
+  return { canvas, context, centre, cy: radius + 2, inner: radius - 7 };
+}
+
+/** Plain pin with a white shop symbol, used while a logo loads or when there is none. */
+export function plainMapPin(): string {
+  const { canvas, context, centre, cy } = pinCanvas();
+  context.strokeStyle = "#ffffff";
+  context.lineWidth = 1.8;
+  context.lineJoin = "round";
+  context.beginPath();
+  context.moveTo(centre - 7, cy + 8);
+  context.lineTo(centre - 7, cy - 3);
+  context.lineTo(centre, cy - 8);
+  context.lineTo(centre + 7, cy - 3);
+  context.lineTo(centre + 7, cy + 8);
+  context.moveTo(centre - 3, cy + 8);
+  context.lineTo(centre - 3, cy + 3);
+  context.lineTo(centre + 3, cy + 3);
+  context.lineTo(centre + 3, cy + 8);
+  context.stroke();
+  return canvas.toDataURL("image/png");
+}
+
 /**
- * Draws a business logo into a round badge as a data URL, so map markers show it at a fixed size.
- * Logos are same-origin, so the canvas stays readable; on any failure the caller uses a plain pin.
+ * Map pin with the business logo. Logos with transparency are drawn as a white silhouette on the
+ * navy pin; logos with their own background keep their colours inside a white circle.
+ * Logos are same-origin, so the canvas stays readable; on failure the caller keeps the plain pin.
  */
-export function logoBadge(src: string, size = 56): Promise<string> {
+export function logoMapPin(src: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.decoding = "async";
     image.onload = () => {
       try {
-        // Light (e.g. white) logos get the navy surface used on cards; empty images use a plain pin.
-        const surface = readBusinessLogoSurface(image, src);
-        if (surface === "empty") throw new Error("Empty logo");
-        const fill = surface === "dark" ? "#173047" : "#ffffff";
-        const scale = window.devicePixelRatio > 1 ? 2 : 1;
-        const canvas = document.createElement("canvas");
-        canvas.width = canvas.height = size * scale;
-        const context = canvas.getContext("2d");
-        if (!context) throw new Error("No canvas");
-        context.scale(scale, scale);
-        const radius = size / 2;
-        context.beginPath();
-        context.arc(radius, radius, radius - 1, 0, Math.PI * 2);
-        context.fillStyle = fill;
-        context.fill();
-        context.lineWidth = 3;
-        context.strokeStyle = "#173047";
-        context.stroke();
-        context.save();
-        context.beginPath();
-        context.arc(radius, radius, radius - 6, 0, Math.PI * 2);
-        context.clip();
-        const inner = size - 12;
-        const ratio = Math.min(inner / image.naturalWidth, inner / image.naturalHeight);
+        if (readBusinessLogoSurface(image, src) === "empty") throw new Error("Empty logo");
+        const transparent = logoHasTransparency(image);
+        const { canvas, context, centre, cy, inner } = pinCanvas();
+        const box = inner * 2 - (transparent ? 4 : 0);
+        const ratio = Math.min(box / image.naturalWidth, box / image.naturalHeight);
         const width = image.naturalWidth * ratio,
           height = image.naturalHeight * ratio;
-        context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
-        context.restore();
+        if (transparent) {
+          // Paint the logo shape white on a scratch canvas, then place it on the pin.
+          const mark = document.createElement("canvas");
+          mark.width = Math.ceil(width);
+          mark.height = Math.ceil(height);
+          const markContext = mark.getContext("2d");
+          if (!markContext) throw new Error("No canvas");
+          markContext.drawImage(image, 0, 0, width, height);
+          markContext.globalCompositeOperation = "source-in";
+          markContext.fillStyle = "#ffffff";
+          markContext.fillRect(0, 0, mark.width, mark.height);
+          context.drawImage(mark, centre - width / 2, cy - height / 2);
+        } else {
+          context.save();
+          context.beginPath();
+          context.arc(centre, cy, inner, 0, Math.PI * 2);
+          context.fillStyle = "#ffffff";
+          context.fill();
+          context.clip();
+          context.drawImage(image, centre - width / 2, cy - height / 2, width, height);
+          context.restore();
+        }
         resolve(canvas.toDataURL("image/png"));
       } catch (error) {
         reject(error);

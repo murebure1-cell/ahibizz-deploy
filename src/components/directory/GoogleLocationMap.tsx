@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { LocationPoint } from "../../lib/business-location";
-import { readBusinessLogoSurface } from "../../lib/business-logo";
+import { logoHasTransparency, readBusinessLogoSurface } from "../../lib/business-logo";
 import { googleMapsDark, googleMapsLight } from "../../lib/google-maps";
 import {
   type GoogleMap,
@@ -40,10 +40,13 @@ function createLogoPin(maps: GoogleMapsApi, point: LocationPoint, logoUrl?: stri
       badge.innerHTML = shopIcon;
     });
     image.addEventListener("load", () => {
-      // Light logos get the navy surface; empty images fall back to the shop icon.
-      const surface = readBusinessLogoSurface(image, logo.src);
-      if (surface === "empty") badge.innerHTML = shopIcon;
-      else if (surface) badge.dataset.logoSurface = surface;
+      // Transparent logos become a white mark on the navy pin; opaque ones sit in a white circle.
+      if (readBusinessLogoSurface(image, logo.src) === "empty") {
+        badge.innerHTML = shopIcon;
+        return;
+      }
+      if (logoHasTransparency(image)) image.dataset.white = "true";
+      else image.dataset.opaque = "true";
     });
     image.src = logo.src;
     badge.appendChild(image);

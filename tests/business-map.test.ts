@@ -1,6 +1,40 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mapCities, mapPins } from "../src/lib/business-map";
+import { mapCities, mapCountries, mapPins } from "../src/lib/business-map";
+
+test("countries group their cities and unknown countries fall under Ostalo", () => {
+  const pins = mapPins([
+    { id: "1", title: "a", city: "Tuzla", countryCode: "ba", latitude: 44.5, longitude: 18.6 },
+    { id: "2", title: "b", city: "Sarajevo", countryCode: "BA", latitude: 43.8, longitude: 18.4 },
+    { id: "3", title: "c", city: "Tuzla", countryCode: "BA", latitude: 44.6, longitude: 18.7 },
+    {
+      id: "4",
+      title: "d",
+      city: "Freilassing",
+      countryCode: "DE",
+      latitude: 47.8,
+      longitude: 12.9,
+    },
+    { id: "5", title: "e", city: "Negdje", countryCode: "x1", latitude: 40, longitude: 10 },
+  ]);
+  const countries = mapCountries(pins);
+  assert.deepEqual(
+    countries.map(({ code, count }) => [code, count]),
+    [
+      ["BA", 3],
+      ["DE", 1],
+      [null, 1],
+    ],
+  );
+  assert.equal(countries[2]?.name, "Ostalo");
+  assert.deepEqual(
+    countries[0]?.cities.map(({ name, count }) => [name, count]),
+    [
+      ["Tuzla", 2],
+      ["Sarajevo", 1],
+    ],
+  );
+});
 
 test("map pins keep only valid coordinates and public fields", () => {
   const pins = mapPins([
@@ -25,6 +59,7 @@ test("cities group case-insensitively, average their points and sort by count", 
     id,
     title: id,
     city,
+    country: null,
     latitude,
     longitude,
     logo: null,
