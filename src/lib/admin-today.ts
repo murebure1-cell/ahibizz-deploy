@@ -14,7 +14,7 @@ export const adminQueues = [
   { id: "reports", title: "Zahtjevi i prijave", href: "/administracija/zahtjevi", icon: "shield" },
   {
     id: "promotions",
-    title: "Isticanja na ?ekanju",
+    title: "Isticanja na čekanju",
     href: "/administracija/isticanja",
     icon: "star",
   },
