@@ -3,10 +3,12 @@
   gap: 1.5rem;
 }
 .panel {
+  /* Theme tokens: a fixed white panel left light text unreadable in the dark theme. */
+  color: var(--ui-text);
   padding: clamp(1rem, 3vw, 2rem);
-  border: 1px solid #dce4e8;
+  border: 1px solid var(--ui-border);
   border-radius: 1rem;
-  background: var(--surface, #fff);
+  background: var(--ui-surface);
 }
 .panel h2 {
   margin-bottom: 1rem;
@@ -44,14 +46,14 @@
 .panel textarea {
   width: 100%;
   padding: 0.8rem;
-  border: 1px solid #bccbd4;
+  border: 1px solid var(--ui-border-strong);
   border-radius: 0.5rem;
-  background: var(--surface, #fff);
+  background: var(--ui-surface);
   color: inherit;
   font: inherit;
 }
 .panel button {
-  border: 1px solid #b8c8d0;
+  border: 1px solid var(--ui-border-strong);
   border-radius: 0.5rem;
   padding: 0.7rem 1rem;
   cursor: pointer;
@@ -78,7 +80,7 @@
 .order {
   margin-top: 1rem;
   padding-block: 1.5rem;
-  border-top: 1px solid #dce4e8;
+  border-top: 1px solid var(--ui-border);
   overflow-wrap: anywhere;
 }
 .reference {
@@ -87,8 +89,8 @@
 .instructions {
   margin-block: 1rem;
   padding: 1rem;
-  background: #f2f6f8;
-  color: #162f40;
+  background: var(--ui-surface-soft);
+  color: var(--ui-text);
   border-radius: 0.7rem;
 }
 .instructions summary {
@@ -112,13 +114,13 @@
   border: 1px solid currentColor;
 }
 .error {
-  color: #a32d27;
+  color: var(--ui-danger);
 }
 .notice {
-  color: #24704a;
+  color: var(--ui-success);
 }
 .prices form {
   padding: 1rem;
-  border: 1px solid #dce4e8;
+  border: 1px solid var(--ui-border);
   border-radius: 0.7rem;
 }

@@ -55,7 +55,16 @@
   flex-shrink: 0;
 }
 .current {
-  color: var(--ui-text-secondary);
+  /* The active place is a chip, matching the control beside it. */
+  padding: 8px 13px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  color: var(--ui-text);
+  background: var(--ui-surface-soft);
+  font-weight: 600;
+}
+.current svg {
+  color: var(--ui-accent-text);
 }
 .city {
   position: relative;
@@ -64,9 +73,19 @@
 }
 .city summary {
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 4px;
   list-style: none;
+  padding: 8px 14px;
+  border: 1px solid var(--ui-accent-border);
+  border-radius: 999px;
+  color: var(--ui-accent-text);
+  background: transparent;
+  font-weight: 600;
+}
+.city summary::-webkit-details-marker {
+  display: none;
+}
+.city[open] summary {
+  background: var(--ui-accent-soft);
 }
 .form {
   display: flex;

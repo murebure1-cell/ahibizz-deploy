@@ -43,6 +43,11 @@ export function createNextConfig(distribution: string): NextConfig {
           headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }],
         },
         {
+          // Self-hosted typeface files never change under the same name.
+          source: "/fonts/:file*",
+          headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+        },
+        {
           source: "/app.webmanifest",
           headers: [{ key: "Cache-Control", value: "no-cache, must-revalidate" }],
         },

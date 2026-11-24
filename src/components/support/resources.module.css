@@ -18,7 +18,7 @@
   margin: 0.65rem 0;
   color: var(--ui-text-secondary);
 }
-.page a {
+.page a:not(:global(.button)) {
   color: var(--ui-accent-text);
   text-underline-offset: 0.2em;
 }
