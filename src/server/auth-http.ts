@@ -18,8 +18,14 @@ const fields: Record<string, readonly string[]> = {
   "/send-verification-email": ["email", "callbackURL"],
   "/request-password-reset": ["email", "redirectTo"],
   "/reset-password": ["newPassword", "token"],
+  "/sign-in/social": ["provider", "callbackURL", "errorCallbackURL", "newUserCallbackURL"],
 };
+const redirectFields = ["callbackURL", "redirectTo", "errorCallbackURL", "newUserCallbackURL"];
 const getPaths = new Set(["/get-session", "/verify-email"]);
+/** The only place a social sign-in start may send the browser. */
+const providerAuthorizeOrigins: Record<string, string> = {
+  google: "https://accounts.google.com",
+};
 const prefix = "/api/auth";
 
 function reply(body: unknown, status = 200, headers?: Headers) {
@@ -68,17 +74,28 @@ export function createAuthHttpHandler(options: {
   readUser: UserReader;
   /** Per-address attempt limits; production always passes one (see handleAuthRequest). */
   limitEmail?: EmailRateLimiter;
+  /** Social providers configured on the server; their start and callback routes open only then. */
+  socialProviders?: readonly string[];
 }) {
+  const social = new Set(
+    (options.socialProviders ?? []).filter((id) => Object.hasOwn(providerAuthorizeOrigins, id)),
+  );
   return async function authHttp(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname.startsWith(`${prefix}/`) ? url.pathname.slice(prefix.length) : "";
+    const callback = /^\/callback\/([a-z]+)$/.exec(path)?.[1];
     const allowed =
       request.method === "GET"
-        ? getPaths.has(path) || /^\/reset-password\/[A-Za-z0-9_-]{8,256}$/.test(path)
-        : request.method === "POST" && Object.hasOwn(fields, path);
+        ? getPaths.has(path) ||
+          /^\/reset-password\/[A-Za-z0-9_-]{8,256}$/.test(path) ||
+          (callback !== undefined && social.has(callback))
+        : request.method === "POST" &&
+          Object.hasOwn(fields, path) &&
+          (path !== "/sign-in/social" || social.size > 0);
     if (!allowed) return reply({ code: "NOT_FOUND" }, 404);
     if (request.url.length > 8192) return reply({ code: "INVALID_REQUEST" }, 400);
     let target = request;
+    let provider: string | null = null;
     if (request.method === "POST") {
       if (request.headers.get("origin") !== new URL(options.baseURL).origin)
         return reply({ code: "INVALID_ORIGIN" }, 403);
@@ -91,7 +108,12 @@ export function createAuthHttpHandler(options: {
         const body = await bodyWithinLimit(request);
         if (Object.keys(body).some((key) => !fields[path]?.includes(key)))
           return reply({ code: "UNEXPECTED_FIELD" }, 400);
-        for (const name of ["callbackURL", "redirectTo"]) {
+        if (path === "/sign-in/social") {
+          if (typeof body.provider !== "string" || !social.has(body.provider))
+            return reply({ code: "PROVIDER_NOT_FOUND" }, 404);
+          provider = body.provider;
+        }
+        for (const name of redirectFields) {
           const value = body[name];
           if (
             value !== undefined &&
@@ -157,6 +179,16 @@ export function createAuthHttpHandler(options: {
           return reply(null, 200, headers);
         return reply({ user, session: { expiresAt: data.session?.expiresAt } }, 200, headers);
       }
+      if (path === "/sign-in/social") {
+        // Hand back only the provider's own authorization page; anything else is refused.
+        let next: URL | null = null;
+        try {
+          next = typeof data?.url === "string" ? new URL(data.url) : null;
+        } catch {}
+        if (!next || !provider || next.origin !== providerAuthorizeOrigins[provider])
+          return reply({ code: "AUTH_FAILED" }, 502, headers);
+        return reply({ url: next.href }, 200, headers);
+      }
       // Session tokens never enter JavaScript-visible response bodies.
       return reply({ ok: true }, response.status, headers);
     } catch {
@@ -174,6 +206,7 @@ export async function handleAuthRequest(request: Request) {
       auth,
       baseURL: configuration.baseURL,
       limitEmail: createEmailRateLimiter(getDatabase(), configuration.secret),
+      socialProviders: configuration.google ? ["google"] : [],
       readUser: async (id) => {
         const result = await getDatabase().query(
           'SELECT id, name, email, "emailVerified", role, approval FROM auth_user WHERE id = $1 LIMIT 1',

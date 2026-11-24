@@ -151,3 +151,64 @@ test("per-address limits answer 429 before the auth library and fail open on err
   assert.equal(broken.status, 401);
   assert.equal(called, 2);
 });
+
+test("Google routes open only when configured and only lead to Google or back to this site", async () => {
+  const seen: string[] = [];
+  const google = (libraryUrl: string, providers: string[] = ["google"]) =>
+    createAuthHttpHandler({
+      baseURL,
+      auth: {
+        handler: async (request: Request) => {
+          seen.push(new URL(request.url).pathname);
+          if (request.method === "GET") {
+            const headers = new Headers({ Location: `${baseURL}/nalog` });
+            headers.append("Set-Cookie", "session=fixture; HttpOnly; Secure; SameSite=Lax");
+            return new Response(null, { status: 302, headers });
+          }
+          return Response.json({ url: libraryUrl, redirect: true });
+        },
+      } as unknown as AuthService,
+      readUser: async () => null,
+      socialProviders: providers,
+    });
+  const start = (http: ReturnType<typeof google>, body: Record<string, unknown>) =>
+    http(
+      new Request(`${baseURL}/api/auth/sign-in/social`, {
+        method: "POST",
+        headers: { Origin: baseURL, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    );
+  const authorize = "https://accounts.google.com/o/oauth2/v2/auth?client_id=fixture&state=s";
+  const off = google(authorize, []);
+  assert.equal((await start(off, { provider: "google" })).status, 404);
+  assert.equal((await off(new Request(`${baseURL}/api/auth/callback/google?code=c`))).status, 404);
+  const on = google(authorize);
+  const accepted = await start(on, {
+    provider: "google",
+    callbackURL: "/nalog",
+    errorCallbackURL: "/prijava?google=1",
+  });
+  assert.equal(accepted.status, 200);
+  assert.deepEqual(await accepted.json(), { url: authorize });
+  assert.equal((await start(on, { provider: "github" })).status, 404);
+  assert.equal(
+    (await start(on, { provider: "google", errorCallbackURL: "https://evil.invalid/x" })).status,
+    400,
+  );
+  assert.equal((await start(on, { provider: "google", idToken: "forged" })).status, 400);
+  assert.equal(
+    (await start(google("https://evil.invalid/o/oauth2/auth"), { provider: "google" })).status,
+    502,
+  );
+  const back = await on(new Request(`${baseURL}/api/auth/callback/google?code=c&state=s`));
+  assert.equal(back.status, 302);
+  assert.equal(back.headers.get("location"), `${baseURL}/nalog`);
+  assert.equal(back.headers.getSetCookie().length, 1);
+  assert.equal((await on(new Request(`${baseURL}/api/auth/callback/github?code=c`))).status, 404);
+  assert.ok(
+    seen.every(
+      (path) => path === "/api/auth/sign-in/social" || path === "/api/auth/callback/google",
+    ),
+  );
+});

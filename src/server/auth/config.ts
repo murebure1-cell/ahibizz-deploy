@@ -23,7 +23,28 @@ export type AuthConfiguration = Readonly<{
   database: DatabaseConfiguration;
   smtp: SmtpConfiguration;
   ingress: AuthIngressConfiguration | null;
+  /** Google sign-in; null until both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set. */
+  google: GoogleConfiguration | null;
 }>;
+export type GoogleConfiguration = Readonly<{ clientId: string; clientSecret: string }>;
+
+/**
+ * An incomplete or malformed pair turns Google sign-in off instead of failing every sign-in, so a
+ * typo in the hosting settings cannot lock out email and password users.
+ */
+export function readGoogleConfiguration(env: Environment): GoogleConfiguration | null {
+  const clientId = env.GOOGLE_CLIENT_ID?.trim() ?? "";
+  const clientSecret = env.GOOGLE_CLIENT_SECRET?.trim() ?? "";
+  if (
+    !/^\d{6,30}-[a-z0-9]{10,64}\.apps\.googleusercontent\.com$/.test(clientId) ||
+    clientSecret.length < 16 ||
+    clientSecret.length > 200 ||
+    /\s/.test(clientSecret) ||
+    hasControl(clientSecret)
+  )
+    return null;
+  return Object.freeze({ clientId, clientSecret });
+}
 
 function hasControl(value: string): boolean {
   return [...value].some((character) => {
@@ -105,6 +126,7 @@ export function readAuthConfiguration(env: Environment = process.env): AuthConfi
       database,
       smtp: Object.freeze({ host, port: Number(portText), secure, user, password, from }),
       ingress: readAuthIngressConfiguration(env, baseURL),
+      google: readGoogleConfiguration(env),
     });
   } catch {
     throw new AuthConfigurationError();

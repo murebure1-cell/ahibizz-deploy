@@ -7,3 +7,12 @@ export function authenticationAvailable(): boolean {
     return false;
   }
 }
+
+/** True only when a valid Google client pair is configured on the server. */
+export function googleSignInAvailable(): boolean {
+  try {
+    return readAuthConfiguration()?.google != null;
+  } catch {
+    return false;
+  }
+}

@@ -53,6 +53,43 @@ function errorText(code: unknown) {
   return msg("Zahtjev nije uspio. Pokušaj ponovo.");
 }
 
+/** Codes Better Auth appends to the Google error return (?google=1&error=...). */
+function googleErrorText(code: string) {
+  const normalized = code.toUpperCase();
+  if (["ACCOUNT_PENDING_APPROVAL", "ACCOUNT_SUSPENDED", "EMAIL_NOT_VERIFIED"].includes(normalized))
+    return errorText(normalized);
+  if (normalized === "ACCOUNT_NOT_LINKED")
+    return msg(
+      "Ovaj email već ima nalog koji još nije potvrđen. Potvrdi email preko linka, pa nastavi s Googleom.",
+    );
+  if (normalized === "ACCESS_DENIED") return msg("Prijava preko Googlea je prekinuta.");
+  return msg("Prijava preko Googlea nije uspjela. Pokušaj ponovo.");
+}
+
+/** Google's four-colour mark, as its sign-in branding asks. */
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+      <path
+        fill="#EA4335"
+        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+      />
+      <path
+        fill="#4285F4"
+        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+      />
+    </svg>
+  );
+}
+
 export function AuthForm({
   mode,
   available,
@@ -60,6 +97,8 @@ export function AuthForm({
   verified = false,
   verificationError = false,
   returnTo,
+  google = false,
+  googleError,
 }: {
   mode: AuthMode;
   available: boolean;
@@ -67,12 +106,17 @@ export function AuthForm({
   verified?: boolean;
   verificationError?: boolean;
   returnTo?: string;
+  /** Show "Nastavi s Googleom"; only when the server has a Google client configured. */
+  google?: boolean;
+  /** Error code from a failed Google return, shown when the page opens. */
+  googleError?: string;
 }) {
   const t = useT();
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => (googleError ? t(googleErrorText(googleError)) : ""));
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [complete, setComplete] = useState(false);
   const [visible, setVisible] = useState(false);
   const passwordField = useRef<HTMLInputElement>(null);
@@ -94,6 +138,35 @@ export function AuthForm({
     setVisible(true);
     passwordField.current.focus();
     passwordField.current.select();
+  }
+  async function startGoogle() {
+    if (busy || !available) return;
+    setBusy(true);
+    setError("");
+    try {
+      const back = new URLSearchParams({ google: "1" });
+      if (returnTo) back.set("nastavi", returnTo);
+      const response = await fetch("/api/auth/sign-in/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "google",
+          callbackURL: accountReturnPath(returnTo),
+          errorCallbackURL: `/prijava?${back}`,
+        }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || typeof result?.url !== "string") {
+        setError(t(errorText(response.status === 429 ? "RATE_LIMITED" : result?.code)));
+        setBusy(false);
+        return;
+      }
+      // Leaving for Google's own page; the button stays busy until the browser navigates.
+      window.location.assign(result.url);
+    } catch {
+      setError(t("Prijava preko Googlea nije uspjela. Pokušaj ponovo."));
+      setBusy(false);
+    }
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -325,7 +398,14 @@ export function AuthForm({
             {verificationFeedback}
             {mode === "sign-up" && (
               <label className={styles.remember}>
-                <input name="terms" type="checkbox" required disabled={!available || busy} />
+                <input
+                  name="terms"
+                  type="checkbox"
+                  required
+                  disabled={!available || busy}
+                  checked={termsAccepted}
+                  onChange={(event) => setTermsAccepted(event.target.checked)}
+                />
                 <span>
                   {rich(t("Imam najmanje 18 godina i prihvatam {rules} i {privacy}."), {
                     rules: <Link href="/pravila-zajednice">{t("pravila zajednice")}</Link>,
@@ -343,6 +423,37 @@ export function AuthForm({
               {busy ? t("Trenutak…") : t(copy.action)}
             </button>
           </form>
+        )}
+        {google && !complete && (mode === "sign-in" || mode === "sign-up") && (
+          <div className={styles.social}>
+            <p className={styles.divider}>
+              <span>{t("ili")}</span>
+            </p>
+            <button
+              type="button"
+              className={styles.google}
+              onClick={startGoogle}
+              disabled={!ready || !available || busy || (mode === "sign-up" && !termsAccepted)}
+            >
+              <GoogleMark />
+              {t("Nastavi s Googleom")}
+            </button>
+            <p className={styles.socialNote}>
+              {mode === "sign-up"
+                ? termsAccepted
+                  ? t("Nalog napravljen preko Googlea također čeka odobrenje administratora.")
+                  : t("Za Google prvo označi da imaš najmanje 18 godina i prihvataš pravila.")
+                : rich(
+                    t(
+                      "Nastavkom preko Googlea potvrđuješ da imaš najmanje 18 godina i prihvataš {rules} i {privacy}.",
+                    ),
+                    {
+                      rules: <Link href="/pravila-zajednice">{t("pravila zajednice")}</Link>,
+                      privacy: <Link href="/privatnost">{t("privatnost na AhiBizzu")}</Link>,
+                    },
+                  )}
+            </p>
+          </div>
         )}
         {!complete && (
           <p className={styles.switch}>

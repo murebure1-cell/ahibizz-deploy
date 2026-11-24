@@ -385,6 +385,51 @@ const shell: Record<string, CatalogEntry> = {
   ),
   "Trenutak…": e("One moment…", "Einen Moment…", "لحظة…", "Bir saniye…"),
   "Nemaš nalog?": e("No account yet?", "Noch kein Konto?", "ليس لديك حساب؟", "Hesabın yok mu?"),
+  ili: e("or", "oder", "أو", "veya"),
+  "Nastavi s Googleom": e(
+    "Continue with Google",
+    "Weiter mit Google",
+    "المتابعة باستخدام Google",
+    "Google ile devam et",
+  ),
+  "Nalog napravljen preko Googlea također čeka odobrenje administratora.": e(
+    "An account created with Google also waits for administrator approval.",
+    "Auch ein mit Google erstelltes Konto wartet auf die Freigabe durch einen Administrator.",
+    "الحساب المُنشأ عبر Google ينتظر أيضًا موافقة المسؤول.",
+    "Google ile oluşturulan hesap da yönetici onayını bekler.",
+  ),
+  "Za Google prvo označi da imaš najmanje 18 godina i prihvataš pravila.": e(
+    "For Google, first confirm that you are at least 18 and accept the rules.",
+    "Für Google bestätige zuerst, dass du mindestens 18 Jahre alt bist und die Regeln akzeptierst.",
+    "للمتابعة عبر Google، أكّد أولًا أن عمرك 18 عامًا على الأقل وأنك تقبل القواعد.",
+    "Google için önce en az 18 yaşında olduğunu ve kuralları kabul ettiğini işaretle.",
+  ),
+  "Nastavkom preko Googlea potvrđuješ da imaš najmanje 18 godina i prihvataš {rules} i {privacy}.":
+    e(
+      "By continuing with Google you confirm you are at least 18 and accept {rules} and {privacy}.",
+      "Wenn du mit Google fortfährst, bestätigst du, dass du mindestens 18 bist, und akzeptierst {rules} und {privacy}.",
+      "بالمتابعة عبر Google تؤكد أن عمرك 18 عامًا على الأقل وتقبل {rules} و{privacy}.",
+      "Google ile devam ederek en az 18 yaşında olduğunu onaylar, {rules} ve {privacy} kabul edersin.",
+    ),
+  "Ovaj email već ima nalog koji još nije potvrđen. Potvrdi email preko linka, pa nastavi s Googleom.":
+    e(
+      "This email already has an account that is not confirmed yet. Confirm the email by its link, then continue with Google.",
+      "Für diese E-Mail gibt es schon ein unbestätigtes Konto. Bestätige die E-Mail über den Link und fahre dann mit Google fort.",
+      "يوجد لهذا البريد حساب لم يُؤكَّد بعد. أكّد البريد عبر الرابط ثم تابع باستخدام Google.",
+      "Bu e-postanın henüz onaylanmamış bir hesabı var. E-postayı bağlantıyla onayla, sonra Google ile devam et.",
+    ),
+  "Prijava preko Googlea je prekinuta.": e(
+    "Google sign-in was cancelled.",
+    "Die Anmeldung mit Google wurde abgebrochen.",
+    "تم إلغاء تسجيل الدخول عبر Google.",
+    "Google ile giriş iptal edildi.",
+  ),
+  "Prijava preko Googlea nije uspjela. Pokušaj ponovo.": e(
+    "Google sign-in did not work. Please try again.",
+    "Die Anmeldung mit Google hat nicht geklappt. Versuche es erneut.",
+    "لم ينجح تسجيل الدخول عبر Google. حاول مرة أخرى.",
+    "Google ile giriş başarısız oldu. Tekrar dene.",
+  ),
   "Registruj se": e("Sign up", "Registrieren", "أنشئ حسابًا", "Kayıt ol"),
   "Već imaš nalog? Prijavi se": e(
     "Already have an account? Sign in",
