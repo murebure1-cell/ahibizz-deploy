@@ -1137,6 +1137,12 @@ export const business: Messages = {
     "الموعد المختار محجوز. اختر أول موعد متاح أو تاريخًا لاحقًا.",
     "Seçilen tarih dolu. İlk boş tarihi ya da daha sonraki bir tarihi seç.",
   ],
+  "Ova djelatnost već ima isticanje na tom mjestu u odabranom periodu. Odaberi drugi početak.": [
+    "This business is already promoted in that spot for the chosen period. Choose another start.",
+    "Dieser Betrieb ist in diesem Zeitraum an dieser Stelle bereits hervorgehoben. Wähle einen anderen Beginn.",
+    "هذا النشاط التجاري مميّز بالفعل في هذا المكان خلال الفترة المختارة. اختر بداية أخرى.",
+    "Bu işletme seçilen dönemde bu alanda zaten öne çıkarılıyor. Başka bir başlangıç seç.",
+  ],
   "Narudžba je promijenjena. Osvježi pregled i provjeri stanje.": [
     "The order changed. Refresh the view and check its status.",
     "Die Bestellung wurde geändert. Aktualisiere die Ansicht und prüfe den Stand.",
@@ -1432,6 +1438,13 @@ export const business: Messages = {
       "Zahle den angegebenen Betrag in der Kontowährung und übernimm die Referenz. Wir schalten die Hervorhebung nach Prüfung der Zahlung ein. Solange sie nicht bestätigt ist, kannst du die Bestellung stornieren.",
       "ادفع المبلغ المذكور بعملة الحساب وانسخ المرجع. نفعّل الترويج بعد التحقق من الدفع. يمكنك إلغاء الطلب ما دام الدفع غير مؤكد.",
       "Belirtilen tutarı hesabın para biriminde öde ve referansı aynen yaz. Ödemeyi kontrol ettikten sonra öne çıkarmayı açarız. Ödeme onaylanana kadar siparişi iptal edebilirsin.",
+    ],
+  "Ako uplata ne bude potvrđena do početka perioda, a najmanje 3 dana od narudžbe, narudžba se automatski otkazuje i mjesto se oslobađa.":
+    [
+      "If the payment is not confirmed by the start of the period, and no sooner than 3 days after ordering, the order is cancelled automatically and the place is freed.",
+      "Wird die Zahlung nicht bis zum Beginn des Zeitraums bestätigt, frühestens jedoch 3 Tage nach der Bestellung, wird die Bestellung automatisch storniert und der Platz freigegeben.",
+      "إذا لم يتم تأكيد الدفع قبل بداية الفترة، وبعد 3 أيام على الأقل من الطلب، يُلغى الطلب تلقائيًا ويُحرَّر المكان.",
+      "Ödeme dönem başlayana kadar ve siparişten en az 3 gün içinde onaylanmazsa sipariş otomatik olarak iptal edilir ve yer boşalır.",
     ],
   "Slika banera je sačuvana.": [
     "Banner image saved.",
