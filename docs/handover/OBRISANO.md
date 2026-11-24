@@ -100,3 +100,7 @@ Provjera: svi JSX pozivi u `src`/`tests`, provjera tipova, postojeći transportn
 Po konačnoj odluci vlasnika uklonjeni su aplikacijski moduli za Ahi kredite, novčanik, dopune, pakete i pretplate, kartično i PayPal plaćanje, račune i raspodjelu razvojnog fonda, produkcijske ponude i stari oglasni sistem (kampanje, CPM, isporuka i publika). Uklonjeni su povezani ekrani, API rute, email primjeri, administracija, testovi i operativna dokumentacija. Donacije ostaju. Arhivske tabele, redovi i migracije nisu obrisani ni prepravljeni.
 
 Testni fajlovi uklonjeni u ovoj fazi: 35. Broj svih uklonjenih fajlova i linija navodi se u završnoj predaji prema Git diffu.
+
+## 24. 11. 2026. — Potpuno uklanjanje PayPala
+
+Po odluci vlasnika PayPal je uklonjen i iz donacija: donacije idu samo bankovnom uplatom. Migracija `0057_drop_paypal_archive.sql` briše arhivske tabele `paypal_checkout_order`, `paypal_checkout_event`, `paypal_webhook_event`, `paypal_refund_command` i `paypal_promotion_entitlement` te funkcije koje su ih čitale. Pogled `ahi_credit_movements` i zaštite `guard_production_receipt_link` i `guard_bank_topup_instructions` rade kao da PayPal narudžbi nema. Računovodstveni zapisi (`billing_receipt`), knjiga razvojnog fonda i ostale arhivske narudžbe nisu mijenjani; njihove historijske vrijednosti `paypal` ostaju. Obrisani redovi postoje u backupu `2026-11-24_16-45-28` (čuva se 30 dana).

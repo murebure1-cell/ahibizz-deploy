@@ -3,7 +3,6 @@ import { msg } from "../lib/i18n/translate";
 export const publicSupportSettings = {
   enabled: true,
   recipient: "Ajdin Tabakovic",
-  paypalUrl: "https://paypal.me/AjdinTabakovic",
   bankAccounts: [
     {
       id: "bih",

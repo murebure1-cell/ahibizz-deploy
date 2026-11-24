@@ -4,10 +4,8 @@ import {
   bankTransferText,
   donationAmountMinor,
   donationAmountText,
-  donationPayPalLink,
   readSupportConfig,
   supportIban,
-  supportPayPalUrl,
 } from "../src/lib/support";
 
 // Public format example from SWIFT's IBAN Registry; never production receiving instructions.
@@ -47,42 +45,15 @@ test("support stays closed until explicitly enabled with a recipient and a usabl
   const config = readSupportConfig({ enabled: true, recipient, bankAccounts: [bank] });
   assert.ok(config);
   assert.equal(config.bankAccounts.length, 1);
-  assert.equal(config.paypalUrl, null);
+  assert.equal(Object.hasOwn(config, "paypalUrl"), false);
   assert.equal(config.recipient, recipient);
 });
 
-test("a valid PayPal receiving link can enable support without bank accounts", () => {
-  const paypalUrl = "https://paypal.me/ahi-fixture";
-  const config = readSupportConfig({ enabled: true, recipient, paypalUrl });
-  assert.ok(config);
-  assert.deepEqual(config.bankAccounts, []);
-  assert.equal(config.paypalUrl, paypalUrl);
-});
-
-test("PayPal receiving links reject lookalikes, unsafe schemes, credentials and empty routes", () => {
-  assert.equal(supportPayPalUrl("https://paypal.me/ahi-fixture"), "https://paypal.me/ahi-fixture");
+test("an old PayPal link no longer opens support without bank accounts", () => {
   assert.equal(
-    supportPayPalUrl("https://www.paypal.com/donate?hosted_button_id=FIXTURE"),
-    "https://www.paypal.com/donate?hosted_button_id=FIXTURE",
+    readSupportConfig({ enabled: true, recipient, paypalUrl: "https://paypal.me/ahi-fixture" }),
+    null,
   );
-  for (const url of [
-    "https://paypal.me/",
-    "https://www.paypal.com/donate",
-    "https://www.paypal.com/donate/?hosted_button_id=",
-    "https://www.paypal.com/paypalme/",
-    "https://www.paypal.com/ncp/payment/",
-    "https://paypal.com/",
-    "https://paypal.com.evil.invalid/donate?business=x",
-    "https://paypal.me@evil.invalid/test",
-    "https://user:password@paypal.me/test",
-    "http://paypal.me/test",
-    "javascript:alert(1)",
-    "https://paypal.me:444/test",
-    "https://paypal.me/test#hidden",
-    "https://paypal.me/test/50",
-    "https://paypal.me/test\n",
-  ])
-    assert.equal(supportPayPalUrl(url), null, url);
 });
 
 test("donation amounts accept two decimal formats and reject ambiguous or nonpositive values", () => {
@@ -94,27 +65,6 @@ test("donation amounts accept two decimal formats and reject ambiguous or nonpos
     assert.equal(donationAmountMinor(value), null, value);
   assert.equal(donationAmountText(750, "BAM"), "7,50 KM");
   assert.equal(donationAmountText(750, "EUR"), "7,50 EUR");
-});
-
-test("a chosen amount prefills only the documented PayPal.Me EUR link", () => {
-  assert.deepEqual(donationPayPalLink("https://paypal.me/AhiFixture/", 1000), {
-    href: "https://paypal.me/AhiFixture/10EUR",
-    amountPrefilled: true,
-  });
-  assert.deepEqual(donationPayPalLink("https://paypal.me/AhiFixture", 575), {
-    href: "https://paypal.me/AhiFixture/5.75EUR",
-    amountPrefilled: true,
-  });
-  for (const href of [
-    "https://www.paypal.com/donate?hosted_button_id=FIXTURE",
-    "https://paypal.com/ncp/payment/FIXTURE1",
-    "https://paypal.me/ahifixture?lang=en",
-  ])
-    assert.deepEqual(donationPayPalLink(href, 1000), { href, amountPrefilled: false });
-  assert.equal(donationPayPalLink("https://paypal.me.evil.invalid/AhiFixture", 1000), null);
-  assert.equal(donationPayPalLink("https://paypal.me/AhiFixture/25EUR", 1000), null);
-  assert.equal(donationPayPalLink("https://paypal.me/AhiFixture", 0), null);
-  assert.equal(donationPayPalLink("https://paypal.me/AhiFixture", 1.5), null);
 });
 
 test("IBAN instructions preserve the canonical account and reject altered check digits", () => {
@@ -133,7 +83,6 @@ test("IBAN instructions preserve the canonical account and reject altered check 
 });
 
 test("incomplete or mistyped bank instructions are hidden instead of falling back silently", () => {
-  const paypalUrl = "https://paypal.me/ahi-fixture";
   for (const invalidBank of [
     { ...bank, id: "" },
     { ...bank, id: "Invalid account id" },
@@ -150,15 +99,6 @@ test("incomplete or mistyped bank instructions are hidden instead of falling bac
     { ...bank, address: {} },
     { ...bank, note: [] },
   ]) {
-    const config = readSupportConfig({
-      enabled: true,
-      recipient,
-      paypalUrl,
-      bankAccounts: [invalidBank],
-    });
-    assert.ok(config);
-    assert.deepEqual(config.bankAccounts, []);
-    assert.equal(config.paypalUrl, paypalUrl);
     assert.equal(
       readSupportConfig({ enabled: true, recipient, bankAccounts: [invalidBank] }),
       null,
@@ -195,7 +135,7 @@ test("an invalid account is hidden independently while valid banks remain availa
     config.bankAccounts.map((account) => account.id),
     [bank.id, internationalBank.id],
   );
-  assert.equal(config.paypalUrl, null);
+  assert.equal(Object.hasOwn(config, "paypalUrl"), false);
   assert.equal(bankTransferText(config, "fixture-invalid"), "");
 });
 

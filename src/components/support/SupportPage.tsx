@@ -5,7 +5,6 @@ import {
   bankTransferText,
   donationAmountMinor,
   donationAmountText,
-  donationPayPalLink,
   type SupportConfig,
 } from "../../lib/support";
 import { Icon } from "../Icon";
@@ -17,21 +16,19 @@ const amounts = ["5", "10", "20", "50"];
 
 export function SupportPage({ config }: { config: SupportConfig }) {
   const t = useT();
-  const methods = [
-    ...(config.paypalUrl ? [{ id: "paypal", label: "PayPal" }] : []),
-    ...config.bankAccounts.map((bank) => ({ id: `bank:${bank.id}`, label: bank.label })),
-  ];
+  const methods = config.bankAccounts.map((bank) => ({
+    id: `bank:${bank.id}`,
+    label: bank.label,
+  }));
   const [method, setMethod] = useState(methods[0]?.id ?? "");
   // A preselected common amount keeps the donate action usable on arrival.
   const [choice, setChoice] = useState("10");
   const [customAmount, setCustomAmount] = useState("");
   const bank = config.bankAccounts.find((entry) => method === `bank:${entry.id}`);
-  const currency = method === "paypal" ? "EUR" : bank?.currency;
+  const currency = bank?.currency;
   const amountMinor = currency
     ? donationAmountMinor(choice === "custom" ? customAmount : choice)
     : null;
-  const payment =
-    method === "paypal" && amountMinor ? donationPayPalLink(config.paypalUrl, amountMinor) : null;
   const amountText = currency && amountMinor ? donationAmountText(amountMinor, currency) : null;
   const details = bank
     ? [
@@ -131,30 +128,6 @@ export function SupportPage({ config }: { config: SupportConfig }) {
             )}
           </fieldset>
         )}
-        {method === "paypal" &&
-          (payment ? (
-            <>
-              {!payment.amountPrefilled && (
-                <p className={styles.paymentNote}>
-                  Odabrani iznos je {amountText}. Provjeri iznos na PayPalu prije potvrde.
-                </p>
-              )}
-              <a
-                className={styles.paypalButton}
-                href={payment.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Doniraj ${amountText} putem PayPala (otvara se u novoj kartici)`}
-              >
-                Doniraj {amountText} putem PayPala
-                <Icon name="external" />
-              </a>
-            </>
-          ) : (
-            <button type="button" disabled className={styles.paypalButton}>
-              {t("Doniraj putem PayPala")}
-            </button>
-          ))}
         {bank && (
           <section className={styles.bankDetails} aria-label={t(bank.label)}>
             <h2>{t("Podaci za uplatu")}</h2>
