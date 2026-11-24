@@ -22,7 +22,7 @@
   gap: 20px;
   padding-bottom: 20px;
   color: var(--ui-text-secondary);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .breadcrumb a {
@@ -137,7 +137,7 @@
 .category {
   margin-bottom: 8px;
   color: var(--ui-accent-text);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -155,7 +155,7 @@
   gap: 6px;
   margin-top: 12px;
   color: var(--ui-text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.7;
   overflow-wrap: anywhere;
 }
@@ -193,7 +193,7 @@
   border-radius: 10px;
   background: var(--ui-accent);
   color: var(--ui-on-accent);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -236,7 +236,7 @@
   padding-block: 10px;
   border-bottom: 2px solid transparent;
   color: var(--ui-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -302,7 +302,7 @@
 
 .description {
   color: var(--ui-text-secondary);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.9;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -310,7 +310,7 @@
 
 .address {
   color: var(--ui-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.8;
   overflow-wrap: anywhere;
 }
@@ -387,7 +387,7 @@
   padding: 8px 12px;
 }
 .viewerBar span {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 650;
 }
 .viewer button {
@@ -456,7 +456,7 @@
   gap: 7px;
   margin-bottom: 13px;
   color: var(--ui-text-secondary);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .directions :where(p) svg {
@@ -481,7 +481,7 @@
   border-radius: 9px;
   background: var(--ui-surface-soft);
   color: var(--ui-text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -533,13 +533,13 @@
   display: block;
   margin-bottom: 4px;
   color: var(--ui-text-secondary);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .contactRow strong {
   display: block;
   color: var(--ui-text);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 550;
   line-height: 1.6;
   overflow-wrap: anywhere;
@@ -573,7 +573,7 @@
   border-radius: 10px;
   color: var(--ui-text-secondary);
   background: var(--ui-surface-soft);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
 }
 
@@ -630,7 +630,7 @@
   border: 1px solid var(--ui-border);
   background: var(--ui-surface);
   color: var(--ui-text);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   text-decoration: none;
 }
@@ -685,7 +685,7 @@
 
   .breadcrumb {
     padding-bottom: 13px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .cover {
@@ -721,12 +721,12 @@
 
   .category {
     margin-bottom: 7px;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .locationSummary {
     margin-top: 10px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .quickActions {
@@ -748,7 +748,7 @@
 
   .sectionNavigation a {
     min-height: 46px;
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .layout {
@@ -776,12 +776,12 @@
   }
 
   .description {
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.9;
   }
 
   .address {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .contact {

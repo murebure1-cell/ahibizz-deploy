@@ -87,7 +87,7 @@
   background: transparent;
   color: var(--ui-text);
   outline: none;
-  font-size: 0.88rem;
+  font-size: 0.9375rem;
 }
 
 .searchField input::placeholder {
@@ -110,7 +110,7 @@
   min-height: 44px;
   padding: 10px 15px;
   border-radius: 10px;
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.4;
   text-align: center;
@@ -240,7 +240,7 @@
 }
 
 .personInfo h3 {
-  font-size: 0.93rem;
+  font-size: 0.9375rem;
   font-weight: 650;
   line-height: 1.45;
   letter-spacing: -0.02em;
@@ -263,7 +263,7 @@
   gap: 5px;
   margin-top: 6px;
   color: var(--connections-muted);
-  font-size: 0.78rem;
+  font-size: 0.8125rem;
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
@@ -276,7 +276,7 @@
 .personWork {
   margin-top: 8px;
   color: var(--ui-text-secondary);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1.6;
 }
 
@@ -295,7 +295,7 @@
   border: 1px solid var(--ui-border);
   color: var(--ui-text-secondary);
   border-radius: 7px;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   line-height: 1.5;
   max-width: 100%;
   overflow-wrap: anywhere;
@@ -322,7 +322,7 @@
   border-radius: 8px;
   color: var(--ui-text-secondary);
   cursor: pointer;
-  font-size: 0.79rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -388,7 +388,7 @@
 .empty p,
 .note {
   color: var(--ui-text-secondary);
-  font-size: 0.82rem;
+  font-size: 0.875rem;
   line-height: 1.7;
 }
 
@@ -410,7 +410,7 @@
   border: 1px solid;
   border-radius: 11px;
   margin-bottom: 18px;
-  font-size: 0.82rem;
+  font-size: 0.875rem;
   line-height: 1.65;
 }
 
@@ -441,7 +441,7 @@
 
 .pagination > span {
   color: var(--ui-text-secondary);
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
 }
 
 .profile {
@@ -534,7 +534,7 @@
 .identity .location {
   justify-content: center;
   margin-top: 10px;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 .intro {
   max-width: 640px;
@@ -568,7 +568,7 @@
   background: transparent;
   color: var(--ui-text-secondary);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
   font-weight: 600;
 }
 .profileTabs button[aria-selected="true"] {
@@ -581,7 +581,7 @@
   gap: 10px;
   margin-top: 14px;
   color: var(--ui-text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
   line-height: 1.6;
 }
 .photoGrid {
@@ -606,7 +606,7 @@
   margin-top: 14px;
   background: var(--ui-success-soft);
   color: var(--ui-success);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1.5;
 }
 
@@ -621,7 +621,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--ui-success);
 }
@@ -635,13 +635,13 @@
 
 .profileContent h2 {
   margin-bottom: 12px;
-  font-size: 0.82rem;
+  font-size: 0.875rem;
   font-weight: 650;
   line-height: 1.6;
 }
 
 .bio {
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
   line-height: 1.8;
   color: var(--ui-text-secondary);
   white-space: pre-wrap;
@@ -653,7 +653,7 @@
 }
 
 .profileContent .skills li {
-  font-size: 0.76rem;
+  font-size: 0.8125rem;
   padding: 6px 11px;
 }
 
@@ -759,7 +759,7 @@
 
   .tabs button {
     padding: 8px 10px;
-    font-size: 0.76rem;
+    font-size: 0.8125rem;
   }
 
   .identity {
@@ -799,7 +799,7 @@
   .profileTabs button {
     flex: 1;
     padding: 10px 12px;
-    font-size: 0.82rem;
+    font-size: 0.875rem;
   }
   .photoGrid img {
     height: 150px;

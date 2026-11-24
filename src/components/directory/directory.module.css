@@ -14,7 +14,7 @@
 }
 .header p {
   color: var(--ui-muted);
-  font-size: 13px;
+  font-size: 14px;
   margin-top: 10px;
 }
 .primary,
@@ -23,7 +23,7 @@
 .cancel {
   min-height: 44px;
   font: inherit;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 650;
   border-radius: 12px;
   padding: 11px 18px;
@@ -116,14 +116,14 @@
   color: var(--ui-text);
 }
 .formHeading p {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ui-muted);
   margin-top: 7px;
 }
 .editor label {
   display: grid;
   gap: 8px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 650;
   line-height: 1.5;
   color: var(--ui-text-secondary);
@@ -195,7 +195,7 @@
 .error {
   padding: 13px 16px;
   border-radius: 10px;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
   margin-bottom: 20px;
 }
@@ -226,7 +226,7 @@
 .returnForm label {
   display: grid;
   gap: 8px;
-  font-size: 13px;
+  font-size: 14px;
   margin-bottom: 18px;
 }
 .returnForm input {
@@ -248,7 +248,7 @@
 }
 .proposal {
   margin-block-start: 0.625rem;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   overflow-wrap: anywhere;
 }
 .proposal summary {
@@ -275,7 +275,7 @@
   background: var(--ui-surface-soft);
   border-radius: 7px;
   margin-block: 12px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ui-text-secondary);
   overflow-wrap: anywhere;
 }
@@ -304,7 +304,7 @@
   font-size: 20px;
 }
 .empty p {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ui-muted);
   margin: 12px 0 22px;
 }
@@ -341,12 +341,12 @@
   overflow-wrap: anywhere;
 }
 .businessInfo p {
-  font-size: 12px;
+  font-size: 13px;
   margin-top: 6px;
   color: var(--ui-muted);
 }
 .status {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 650;
   display: inline-flex;
   padding: 3px 8px;
@@ -386,7 +386,7 @@
 .placements h3 {
   grid-column: 1 / -1;
   margin: 0 0 2px;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--ui-text);
 }
 .placements a {
@@ -399,7 +399,7 @@
   border-radius: 9px;
   color: var(--ui-text);
   background: var(--ui-surface-soft);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 650;
 }
 .placements a:hover {
@@ -442,7 +442,7 @@
   margin-bottom: 0;
 }
 .toolbar label {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ui-text-secondary);
   display: flex;
   gap: 7px;
@@ -573,6 +573,6 @@
   margin-top: 25px;
 }
 .pagination span {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ui-muted);
 }

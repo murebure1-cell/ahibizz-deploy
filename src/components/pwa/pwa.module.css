@@ -49,7 +49,7 @@
 .status {
   margin-top: 14px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 15px;
 }
 .status:empty {
   display: none;
@@ -71,7 +71,7 @@
   margin: 18px 0 0;
   padding-left: 21px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 15px;
 }
 .instructions li + li {
   margin-top: 10px;
@@ -87,7 +87,7 @@
   border: 0;
   color: var(--ui-text);
   background: transparent;
-  font-size: 14px;
+  font-size: 15px;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
@@ -96,14 +96,14 @@
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ink);
   background: var(--ui-surface);
 }
 .hint {
   margin-top: 22px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 15px;
 }
 .installed {
   display: flex;

@@ -127,7 +127,7 @@
   background: transparent;
   padding: 13px 0;
   color: var(--home-ink);
-  font-size: 14px;
+  font-size: 15px;
   outline-offset: 0;
 }
 .search input::placeholder {
@@ -151,7 +151,7 @@
   gap: 10px;
   padding: 15px 23px;
   font-weight: 650;
-  font-size: 14px;
+  font-size: 15px;
 }
 .searchSubmit svg {
   width: 19px;
@@ -184,7 +184,7 @@
   border: 1px solid var(--home-line);
   border-radius: 14px;
   background: var(--ui-surface);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   transition:
     border-color 0.16s,
@@ -226,7 +226,7 @@
 }
 .kicker {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 650;
   letter-spacing: 0.13em;
   color: var(--ui-accent-text);
@@ -258,7 +258,7 @@
 }
 .availability {
   color: var(--ui-muted);
-  font-size: 14px;
+  font-size: 15px;
   margin: 0;
 }
 .callout {
@@ -336,7 +336,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
   min-height: 44px;
@@ -368,7 +368,7 @@
   background: var(--ui-surface);
   text-align: left;
   color: var(--ui-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 .empty > span {
   display: grid;
@@ -434,7 +434,7 @@
   padding: 11px 19px;
   background: var(--home-gold);
   color: var(--ui-on-accent);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
   white-space: nowrap;
 }
@@ -584,7 +584,7 @@
     padding: 7px 12px 7px 8px;
     border-radius: 14px;
     background: var(--ui-glass);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 650;
   }
   .categories > a:focus-visible {
@@ -614,12 +614,12 @@
     letter-spacing: -0.04em;
   }
   .kicker {
-    font-size: 8px;
+    font-size: 12px;
     letter-spacing: 0.12em;
     margin-bottom: 6px;
   }
   .subtleLink {
-    font-size: 12px;
+    font-size: 13px;
     gap: 2px;
     align-self: center;
   }
@@ -639,7 +639,7 @@
   }
   .ad .button {
     padding-inline: 12px;
-    font-size: 11px;
+    font-size: 12px;
     gap: 5px;
   }
   .adMark {

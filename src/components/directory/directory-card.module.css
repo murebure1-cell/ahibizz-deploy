@@ -122,7 +122,7 @@
   display: inline-block;
   margin-bottom: 5px;
   color: var(--ui-accent-text);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 650;
 }
 .identity h2 {
@@ -151,7 +151,7 @@
   gap: 7px;
   margin: 11px 0 0;
   color: var(--ui-text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
@@ -173,7 +173,7 @@
   padding-top: 17px;
   border-top: 1px solid var(--ui-border);
   color: var(--ui-muted);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.8;
   overflow: hidden;
   overflow-wrap: anywhere;
@@ -200,7 +200,7 @@
   min-width: 0;
   max-width: 100%;
   color: var(--ui-text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 1.5;
 }
