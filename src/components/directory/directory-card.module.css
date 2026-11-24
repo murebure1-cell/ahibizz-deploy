@@ -8,7 +8,7 @@
   border-radius: 22px;
   background: var(--ui-surface);
   color: var(--ui-text);
-  box-shadow: 0 7px 22px #132c4006;
+  box-shadow: 0 10px 28px #04101a2e;
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
@@ -248,8 +248,8 @@
   background: var(--ui-accent-soft);
 }
 .actions a:last-child {
-  border-color: var(--ui-border);
-  background: var(--ui-surface-soft);
+  border-color: transparent;
+  background: var(--ui-surface-hover);
   color: var(--ui-text);
 }
 .actions svg {
