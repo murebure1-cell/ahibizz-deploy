@@ -121,6 +121,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0054_promotions.sql",
           "0055_reel_lifetime.sql",
           "0056_business_content_erasure.sql",
+          "0057_drop_paypal_archive.sql",
         ],
       );
 

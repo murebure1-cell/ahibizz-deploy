@@ -2,6 +2,10 @@
   --reel-background: #0b1624;
   --reel-panel: #182c40ee;
   --reel-soft-panel: #172c41dd;
+  /* Frosted squares over the video: mostly see-through, held together by the blur. */
+  --reel-glass: linear-gradient(160deg, #ffffff2b, #ffffff08 55%), #0e1f3066;
+  --reel-glass-line: #ffffff40;
+  --reel-glass-blur: blur(16px) saturate(170%);
   --reel-line: #d1e1ec35;
   --reel-text: #f8faff;
   --reel-muted: #c3d0da;
@@ -255,14 +259,19 @@
   flex: none;
   place-items: center;
   padding: 0;
-  border: 1px solid var(--reel-line);
+  border: 1px solid var(--reel-glass-line);
   border-radius: 0.95rem;
-  background: var(--reel-panel);
+  background: var(--reel-glass);
+  box-shadow:
+    inset 0 1px 0 #ffffff33,
+    0 6px 18px #0714212e;
   color: var(--reel-text);
-  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: var(--reel-glass-blur);
+  backdrop-filter: var(--reel-glass-blur);
 }
 
 .iconButton svg {
+  filter: drop-shadow(0 1px 2px #0714218c);
   inline-size: 1.27rem;
   block-size: 1.27rem;
 }
@@ -286,17 +295,23 @@
   align-content: center;
   gap: 0.18rem;
   padding: 0.38rem 0.125rem;
-  border: 1px solid var(--reel-line);
+  border: 1px solid var(--reel-glass-line);
   border-radius: 0.95rem;
-  background: var(--reel-panel);
+  background: var(--reel-glass);
+  box-shadow:
+    inset 0 1px 0 #ffffff33,
+    0 6px 18px #0714212e;
   color: var(--reel-text);
   font-size: 0.68rem;
   line-height: 1.14;
   text-align: center;
-  backdrop-filter: blur(12px);
+  text-shadow: 0 1px 2px #0714219e;
+  -webkit-backdrop-filter: var(--reel-glass-blur);
+  backdrop-filter: var(--reel-glass-blur);
 }
 
 .railAction svg {
+  filter: drop-shadow(0 1px 2px #0714218c);
   inline-size: clamp(1.2rem, 4.7vw, 1.65rem);
   block-size: clamp(1.2rem, 4.7vw, 1.65rem);
 }
