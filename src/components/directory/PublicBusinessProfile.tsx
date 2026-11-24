@@ -95,7 +95,7 @@ export function PublicBusinessProfile({
             <Icon name="arrow" />{" "}
             {backHref.startsWith("/pretraga?") ? t("Nazad na rezultate") : t("Sve djelatnosti")}
           </Link>
-          {business.city && <span>{business.city}</span>}
+          {business.city && <span dir="auto">{business.city}</span>}
         </nav>
       )}
 
@@ -144,13 +144,13 @@ export function PublicBusinessProfile({
         <div className={styles.title}>
           {taxonomy && <p className={styles.category}>{taxonomy}</p>}
           <Title>
-            {business.title}
+            <bdi>{business.title}</bdi>
             {business.verified && <VerificationBadge kind="business" />}
           </Title>
           {hasLocation && (
             <p className={styles.locationSummary}>
               <Icon name="pin" />
-              {location}
+              <bdi>{location}</bdi>
             </p>
           )}
           {Boolean(business.reviews?.count) &&
@@ -234,7 +234,9 @@ export function PublicBusinessProfile({
                 <h2 id="business-about-heading">{t("O djelatnosti")}</h2>
               </div>
               {business.description?.trim() && (
-                <p className={styles.description}>{business.description}</p>
+                <p className={styles.description} dir="auto">
+                  {business.description}
+                </p>
               )}
               <BusinessAmenities details={business.details} />
             </section>
@@ -292,7 +294,9 @@ export function PublicBusinessProfile({
                 </span>
                 <h2 id="business-location-heading">{t("Lokacija")}</h2>
               </div>
-              <p className={styles.address}>{location}</p>
+              <p className={styles.address} dir="auto">
+                {location}
+              </p>
               {point && <PublicProfileMap point={point} logoUrl={logo?.src} />}
               {(driving || walking) && (
                 <div className={styles.directions}>

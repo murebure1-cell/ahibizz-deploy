@@ -192,7 +192,7 @@ export function PeopleSearch({
                 <PersonAvatar person={person} imageUrl={imageUrl} />
                 <div className={styles.personInfo}>
                   <h3>
-                    {person.name}
+                    <bdi>{person.name}</bdi>
                     {person.verified && <VerificationBadge kind="person" />}
                   </h3>
                   {personLocation(person, locale) && (

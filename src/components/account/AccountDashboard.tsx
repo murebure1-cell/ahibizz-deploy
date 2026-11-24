@@ -216,7 +216,7 @@ function AccountWorkspace({
                 )}
               </span>
               <div>
-                <strong>{profile.name}</strong>
+                <strong dir="auto">{profile.name}</strong>
                 <small>{profile.role === "owner" ? t("Administrator") : t("Moj AhiBizz")}</small>
               </div>
             </div>

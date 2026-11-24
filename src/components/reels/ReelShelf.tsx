@@ -56,10 +56,12 @@ export function ReelCards({
                   sizes="30px"
                 />
               </span>
-              <span className={styles.businessName}>{reel.businessTitle}</span>
+              <span className={styles.businessName} dir="auto">
+                {reel.businessTitle}
+              </span>
             </span>
             <span className={styles.cardText}>
-              <strong>{reel.title}</strong>
+              <strong dir="auto">{reel.title}</strong>
               <span className={styles.duration}>
                 <Icon name="play" />
                 {reelDuration(reel.durationMs)}

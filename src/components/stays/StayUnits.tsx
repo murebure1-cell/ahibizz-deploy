@@ -357,7 +357,7 @@ export function StayUnits({
               <UnitPhotos unit={unit} photos={assets} owner={!!actor} />
               <div className={common.topline}>
                 <div className={common.carTitle}>
-                  <h3>{unit.name}</h3>
+                  <h3 dir="auto">{unit.name}</h3>
                   <p>
                     {unit.type === "room" ? t("Soba") : t("Apartman")} · {unit.beds}{" "}
                     {unit.beds === 1 ? "krevet" : "kreveta"}
@@ -367,7 +367,7 @@ export function StayUnits({
                   <span className={common.badge}>{t("Booking isključen")}</span>
                 )}
               </div>
-              {unit.description && <p>{unit.description}</p>}
+              {unit.description && <p dir="auto">{unit.description}</p>}
               <div className={common.topline}>
                 <span className={common.rate}>
                   <strong>{bookingMoney(unit.priceMinor)}</strong> / noć

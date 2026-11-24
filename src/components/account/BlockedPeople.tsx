@@ -92,7 +92,7 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
                 <span className={styles.personIcon}>
                   <Icon name="user" />
                 </span>
-                <strong>{item.name}</strong>
+                <strong dir="auto">{item.name}</strong>
                 <div className={styles.actions}>
                   {confirm === item.id ? (
                     <>

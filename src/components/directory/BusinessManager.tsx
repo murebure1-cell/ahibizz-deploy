@@ -1528,8 +1528,8 @@ export function BusinessManager({
                     )}
                   </span>
                   <div className={styles.businessInfo}>
-                    <h2>{item.title}</h2>
-                    {item.city && <p>{item.city}</p>}
+                    <h2 dir="auto">{item.title}</h2>
+                    {item.city && <p dir="auto">{item.city}</p>}
                     <span className={styles.status} data-status={item.status}>
                       {t(statuses[item.status])}
                     </span>
