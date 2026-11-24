@@ -426,13 +426,20 @@ function ApprovalWorkspace({
           <h3>{view.q ? "Nema rezultata pretrage." : filter?.empty}</h3>
         </div>
       )}
+      {view.approval === "pending" && !readyOnly && !!data?.accounts.length && (
+        // "Danas" counts only accounts that can be approved now; this list also shows the rest.
+        <p className={styles.notice}>
+          Odobriti možeš samo nalog s potvrđenim emailom. Ostali čekaju da korisnik otvori link iz
+          emaila za potvrdu.
+        </p>
+      )}
       <div className={styles.queue} aria-busy={loading}>
         {data?.accounts.map((account) => (
           <article key={account.id}>
             <div className={styles.person}>
               <strong>{account.name}</strong>
               <span>{account.email}</span>
-              <small>{account.emailVerified ? "Email je potvrđen" : "Email nije potvrđen"}</small>
+              <small>{account.emailVerified ? "Email je potvrđen" : "Čeka potvrdu emaila"}</small>
             </div>
             <div className={styles.actions}>
               {expectedAccountId && active && (
