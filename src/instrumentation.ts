@@ -15,5 +15,11 @@ export async function register() {
     } catch {
       console.error("Push worker could not start.");
     }
+    const { startReelExpiryWorker } = await import("./server/reels/expiry-worker");
+    try {
+      startReelExpiryWorker();
+    } catch {
+      console.error("Reel expiry worker could not start.");
+    }
   }
 }

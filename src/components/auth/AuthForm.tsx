@@ -313,7 +313,8 @@ export function AuthForm({
               <label className={styles.remember}>
                 <input name="terms" type="checkbox" required disabled={!available || busy} />
                 <span>
-                  Prihvatam <Link href="/pravila-zajednice">pravila zajednice</Link> i{" "}
+                  Imam najmanje 18 godina i prihvatam{" "}
+                  <Link href="/pravila-zajednice">pravila zajednice</Link> i{" "}
                   <Link href="/privatnost">privatnost na AhiBizzu</Link>.
                 </span>
               </label>

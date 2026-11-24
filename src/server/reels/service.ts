@@ -7,6 +7,7 @@ import {
   type ReelStatus,
   reelAccountLimit,
   reelBusinessLimit,
+  reelLifetimeHours,
   reelMaxBytes,
   reelPartBytes,
 } from "../../lib/reels";
@@ -19,7 +20,9 @@ const notFound = () => new AccountAccessError(404, "REEL_NOT_FOUND");
 const invalid = () => new AccountAccessError(400, "REEL_INPUT");
 const stateChanged = () => new AccountAccessError(409, "REEL_CHANGED");
 
-const visible = `r.status='published' AND b.deleted_at IS NULL AND b.status='published'
+/** A published Reel counts as live only inside its 24-hour window, whether or not the sweep has run. */
+const live = `r.published_at > clock_timestamp() - interval '${reelLifetimeHours} hours'`;
+const visible = `r.status='published' AND ${live} AND b.deleted_at IS NULL AND b.status='published'
   AND b.owner_user_id=r.submitted_by
   AND u.approval='approved' AND u."emailVerified" AND u.role IN ('member','owner')`;
 const publicFields = `r.id, r.business_id AS "businessId", b.title AS "businessTitle",
@@ -30,7 +33,9 @@ const cardFields = `${publicFields}, (
   FROM directory_business_image i WHERE i.business_id=b.id AND i.kind='logo' AND i.slot=0
 ) AS "businessLogo"`;
 const managementFields = `${publicFields}, r.status, r.review_reason AS "reviewReason",
-  r.created_at::text AS "createdAt"`;
+  r.created_at::text AS "createdAt",
+  CASE WHEN r.status='published' THEN to_char((r.published_at + interval '${reelLifetimeHours} hours')
+    AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS "expiresAt"`;
 const fromReels = `FROM business_reel r JOIN directory_business b ON b.id=r.business_id`;
 export const publicReels = `${fromReels} JOIN auth_user u ON u.id=b.owner_user_id WHERE ${visible}`;
 
@@ -147,6 +152,15 @@ export async function manageReels(headers: Headers, admin: boolean, offset = 0) 
            ORDER BY r.created_at DESC,r.id DESC LIMIT 31 OFFSET $2`,
       admin ? [offset] : [actor.id, offset],
     );
+    // Moderators also see every Reel that is live right now, so a single one can be taken down.
+    const liveReels = admin
+      ? (
+          await client.query<ManagedReel>(
+            `SELECT ${managementFields} ${fromReels} WHERE r.status='published' AND ${live}
+             ORDER BY r.published_at DESC,r.id DESC LIMIT 60`,
+          )
+        ).rows
+      : [];
     const businesses = admin
       ? []
       : (
@@ -161,6 +175,7 @@ export async function manageReels(headers: Headers, admin: boolean, offset = 0) 
       accountId: actor.id,
       reels: reels.slice(0, 30),
       hasMore: reels.length > 30,
+      live: liveReels,
       businesses,
     };
   });
@@ -217,7 +232,13 @@ type ReelCommand =
   | { action: "submit" }
   | { action: "withdraw"; expected: ReelStatus }
   | { action: "approve" }
-  | { action: "reject"; reason: string };
+  | { action: "reject"; reason: string }
+  | { action: "remove"; reason: string };
+
+/** Commands only a platform moderator may send, on the moderation route. */
+export function isModerationCommand(input: ReelCommand) {
+  return input.action === "approve" || input.action === "reject" || input.action === "remove";
+}
 
 export function parseReelCommand(value: unknown): ReelCommand {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw invalid();
@@ -251,12 +272,16 @@ export function parseReelCommand(value: unknown): ReelCommand {
       expected === "uploading" ||
       expected === "pending" ||
       expected === "published" ||
-      expected === "rejected"
+      expected === "rejected" ||
+      expected === "expired"
     )
       return { action: "withdraw", expected };
   }
-  if (input.action === "reject" && sameKeys(input, ["action", "reason"]))
-    return { action: "reject", reason: editText(input.reason, 600, true) };
+  if (
+    (input.action === "reject" || input.action === "remove") &&
+    sameKeys(input, ["action", "reason"])
+  )
+    return { action: input.action, reason: editText(input.reason, 600, true) };
   throw invalid();
 }
 
@@ -294,8 +319,8 @@ async function beginUpload(
   }
   const limits = (
     await client.query<{ overall: number; listing: number; recent: number }>(
-      `SELECT count(*) FILTER (WHERE b.owner_user_id=$1 AND b.deleted_at IS NULL AND r.status IN ('uploading','pending','published'))::int AS overall,
-        count(*) FILTER (WHERE r.business_id=$2 AND r.status IN ('uploading','pending','published'))::int AS listing,
+      `SELECT count(*) FILTER (WHERE b.owner_user_id=$1 AND b.deleted_at IS NULL AND (r.status IN ('uploading','pending') OR (r.status='published' AND ${live})))::int AS overall,
+        count(*) FILTER (WHERE r.business_id=$2 AND (r.status IN ('uploading','pending') OR (r.status='published' AND ${live})))::int AS listing,
         count(*) FILTER (WHERE r.created_at>clock_timestamp()-interval '24 hours')::int AS recent
        ${fromReels} WHERE r.submitted_by=$1`,
       [actorId, input.businessId],
@@ -417,6 +442,61 @@ async function reviewReel(
   return status;
 }
 
+/** A moderator takes down one published Reel; its video and poster are deleted at once. */
+export async function removePublishedReel(
+  client: Pick<PoolClient, "query">,
+  id: string,
+  actorId: string,
+  reason: string,
+) {
+  const row = (
+    await client.query<{ status: ReelStatus }>(
+      "SELECT status FROM business_reel WHERE id=$1 FOR UPDATE",
+      [id],
+    )
+  ).rows[0];
+  if (!row) throw notFound();
+  if (row.status === "removed") return "removed" as const;
+  if (row.status !== "published") throw stateChanged();
+  await client.query(
+    `UPDATE business_reel SET status='removed',has_poster=false,reviewed_by=$2,
+       reviewed_at=clock_timestamp(),review_reason=$3 WHERE id=$1`,
+    [id, actorId, reason],
+  );
+  await client.query("DELETE FROM business_reel_part WHERE reel_id=$1", [id]);
+  return "removed" as const;
+}
+
+/**
+ * Server sweep, independent of anyone opening the app: Reels published more than 24 hours ago become
+ * 'expired' and lose their video and poster; uploads abandoned for 24 hours are deleted. Bounded per run.
+ */
+export async function expireReels(database: Pick<Database, "query">, batch = 200) {
+  const { rows } = await database.query(
+    `WITH due AS (
+       SELECT id FROM business_reel WHERE status='published'
+         AND published_at <= clock_timestamp() - interval '${reelLifetimeHours} hours'
+       ORDER BY published_at,id LIMIT $1 FOR UPDATE SKIP LOCKED
+     ), expired AS (
+       UPDATE business_reel r SET status='expired',has_poster=false FROM due WHERE r.id=due.id
+       RETURNING r.id
+     ), media AS (
+       DELETE FROM business_reel_part p USING expired e WHERE p.reel_id=e.id RETURNING 1
+     ), stale AS (
+       SELECT id FROM business_reel WHERE status='uploading'
+         AND created_at <= clock_timestamp() - interval '24 hours'
+       ORDER BY created_at,id LIMIT $1 FOR UPDATE SKIP LOCKED
+     ), abandoned AS (
+       DELETE FROM business_reel r USING stale WHERE r.id=stale.id RETURNING 1
+     )
+     SELECT (SELECT count(*) FROM expired)::int AS expired,
+       (SELECT count(*) FROM media)::int AS parts,
+       (SELECT count(*) FROM abandoned)::int AS abandoned`,
+    [batch],
+  );
+  return rows[0] as { expired: number; parts: number; abandoned: number };
+}
+
 export async function applyReelCommand(headers: Headers, id: string, input: ReelCommand) {
   if (!businessUuid(id)) throw notFound();
   if (!headers.get("x-ahibizz-account-id"))
@@ -424,9 +504,10 @@ export async function applyReelCommand(headers: Headers, id: string, input: Reel
   const { access, pool } = context();
   const session = await access.session(headers);
   return accountTransaction(pool, async (client) => {
-    const admin = input.action === "approve" || input.action === "reject";
-    const actor = await access.authority(client, session, admin);
+    const actor = await access.authority(client, session, isModerationCommand(input));
     switch (input.action) {
+      case "remove":
+        return removePublishedReel(client, id, actor.id, input.reason);
       case "create":
         return beginUpload(client, actor.id, id, input);
       case "submit":
@@ -510,7 +591,7 @@ export async function reelMediaAccess(
     actor
       ? {
           from: `${fromReels} WHERE r.id=$1 AND b.deleted_at IS NULL
-            AND r.status IN ('pending','published') AND
+            AND (r.status='pending' OR (r.status='published' AND ${live})) AND
             ($2='owner' OR (r.submitted_by=$3 AND b.owner_user_id=$3))`,
           values: [id, actor.role, actor.id],
         }

@@ -10,7 +10,7 @@ function deleteError(error: unknown) {
   const code = error instanceof DirectoryRequestError ? error.code : "";
   switch (code) {
     case "BUSINESS_HAS_BOOKINGS":
-      return "Prvo riješi otvorene termine za ovu djelatnost.";
+      return "Djelatnost ima buduće termine ili rezervacije. U kalendaru djelatnosti otkaži ih ili ih završi (gosti dobiju obavijest), pa ponovo izbriši.";
     case "BUSINESS_HAS_PAYMENTS":
       return "Prvo provjeri aktivno isticanje i status uplata za ovu djelatnost.";
     case "VERSION_CONFLICT":
@@ -93,7 +93,12 @@ export function BusinessDeleteAction({
         <h2 id={label}>Izbriši djelatnost?</h2>
         <p id={description}>
           Djelatnost <strong>„{business.title}“</strong> će biti trajno uklonjena s profila i iz
-          imenika.
+          imenika. Brišu se njene fotografije, opis, kontakt, adresa, lokacija i Reels. Tvoj nalog
+          ostaje.
+        </p>
+        <p>
+          Ostaju zapisi koji pripadaju drugima ili se moraju čuvati: prošli termini gostiju,
+          recenzije i poruke drugih korisnika te evidencija uplata.
         </p>
         {error && (
           <p className={styles.error} role="alert">

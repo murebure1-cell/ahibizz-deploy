@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ReelCards } from "../../../components/reels/ReelShelf";
 import styles from "../../../components/reels/reels.module.css";
 import { businessUuid } from "../../../lib/business-today";
-import { IS_PLAY_EDITION } from "../../../lib/distribution";
 import { listPublicReels } from "../../../server/reels/service";
 import { currentReelViewer } from "../../../server/reels/viewer";
 
@@ -52,11 +51,10 @@ export default async function ReelsPage({ searchParams }: { searchParams: Promis
           )}
         </nav>
       )}
-      {!IS_PLAY_EDITION && (
-        <Link href="/nalog/reels" className={styles.primary}>
-          Objavi Reel
-        </Link>
-      )}
+      <Link href="/nalog/reels" className={styles.primary}>
+        Objavi Reel
+      </Link>
+      <p className={styles.caption}>Svaki Reel je vidljiv najviše 24 sata od objave.</p>
     </main>
   );
 }

@@ -8,10 +8,12 @@ import { readAuthConfiguration } from "../../src/server/auth/config.ts";
 import { createDatabase } from "../../src/server/db.ts";
 import { createReelEngagementService } from "../../src/server/reels/engagement.ts";
 import {
+  expireReels,
   listPublicReels,
   readPublicReel,
   readReelFeed,
   reelMediaAccess,
+  removePublishedReel,
 } from "../../src/server/reels/service.ts";
 import { createSupportRequests } from "../../src/server/support-requests.ts";
 import { integrationConfiguration } from "./postgres.test.mjs";
@@ -97,7 +99,8 @@ test("isolated Reel feed and engagement stay bounded, authorized, and idempotent
     for (let index = 0; index < 15; index++) {
       const id = randomUUID();
       const business = index % 2 ? studio : otherStudio;
-      const at = new Date(Date.UTC(2026, 10, 19, 0, index)).toISOString();
+      // Published within the last hour: a Reel is only shown during its first 24 hours.
+      const at = new Date(Date.now() - (60 - index) * 60_000).toISOString();
       await pool.query(
         `INSERT INTO business_reel(id,business_id,submitted_by,title,status,source_size,duration_ms,
           has_poster,reviewed_at,published_at)
@@ -374,6 +377,139 @@ test("isolated Reel feed and engagement stay bounded, authorized, and idempotent
         await assert.rejects(inbox.resolve(actor, requests[0].id), { status: 403 });
         await inbox.resolve(moderator, requests[0].id);
         assert.deepEqual((await inbox.pending(moderator, 0)).requests, []);
+      },
+    );
+
+    async function publishedReel(owner, business, publishedAt) {
+      const id = randomUUID();
+      await pool.query(
+        `INSERT INTO business_reel(id,business_id,submitted_by,title,status,source_size,duration_ms,
+          has_poster,reviewed_at,published_at) VALUES($1,$2,$3,'Lifetime','published',32,3000,true,$4,$4)`,
+        [id, business, owner, publishedAt],
+      );
+      await pool.query(
+        "INSERT INTO business_reel_part(reel_id,part_index,bytes) VALUES($1,-1,$2),($1,0,$3)",
+        [id, Buffer.alloc(16, 1), Buffer.alloc(32, 66)],
+      );
+      return id;
+    }
+    const partCount = async (id) =>
+      (await pool.query("SELECT count(*)::int AS n FROM business_reel_part WHERE reel_id=$1", [id]))
+        .rows[0].n;
+
+    await t.test(
+      "a Reel older than 24 hours is hidden at once, then the sweep expires it and deletes its media",
+      async () => {
+        const old = await publishedReel(
+          accounts[0],
+          studio,
+          new Date(Date.now() - 25 * 3600_000).toISOString(),
+        );
+        const fresh = await publishedReel(
+          accounts[0],
+          studio,
+          new Date(Date.now() - 23 * 3600_000).toISOString(),
+        );
+        // Hidden everywhere before any sweep: list, direct link, feed anchor and media bytes.
+        assert.equal(await readPublicReel(old, null, pool), null);
+        assert.ok((await listPublicReels(null, 100, 0, null, pool)).every(({ id }) => id !== old));
+        assert.deepEqual(
+          await readReelFeed(old, null, null, old, pool).then((page) =>
+            page.items.some(({ id }) => id === old),
+          ),
+          false,
+        );
+        for (const kind of ["video", "poster"])
+          await assert.rejects(reelMediaAccess(new Headers(), old, kind, false, pool), {
+            status: 404,
+          });
+        assert.equal((await readPublicReel(fresh, null, pool)).id, fresh);
+
+        const abandoned = randomUUID();
+        await pool.query(
+          `INSERT INTO business_reel(id,business_id,submitted_by,title,status,source_size,has_poster,created_at)
+           VALUES($1,$2,$3,'Abandoned','uploading',32,false,clock_timestamp()-interval '25 hours')`,
+          [abandoned, studio, accounts[0]],
+        );
+        await pool.query(
+          "INSERT INTO business_reel_part(reel_id,part_index,bytes) VALUES($1,0,$2)",
+          [abandoned, Buffer.alloc(32, 1)],
+        );
+
+        const first = await expireReels(pool);
+        assert.ok(first.expired >= 1 && first.parts >= 2 && first.abandoned === 1);
+        const row = (
+          await pool.query("SELECT status,has_poster FROM business_reel WHERE id=$1", [old])
+        ).rows[0];
+        assert.deepEqual(row, { status: "expired", has_poster: false });
+        assert.equal(await partCount(old), 0);
+        assert.equal(
+          (await pool.query("SELECT 1 FROM business_reel WHERE id=$1", [abandoned])).rowCount,
+          0,
+        );
+        // The fresh Reel and its media are untouched, and a second sweep has nothing left to do.
+        assert.equal(await partCount(fresh), 2);
+        assert.equal((await readPublicReel(fresh, null, pool)).id, fresh);
+        assert.deepEqual(await expireReels(pool), { expired: 0, parts: 0, abandoned: 0 });
+        assert.equal(await readPublicReel(old, null, pool), null);
+      },
+    );
+
+    await t.test(
+      "a moderator removes one published Reel; its media is deleted and the link stops working",
+      async () => {
+        const target = await publishedReel(accounts[1], otherStudio, new Date().toISOString());
+        const neighbour = await publishedReel(accounts[1], otherStudio, new Date().toISOString());
+        const client = await pool.connect();
+        try {
+          assert.equal(
+            await removePublishedReel(client, target, accounts[3], "Kršenje pravila zajednice"),
+            "removed",
+          );
+          assert.equal(
+            await removePublishedReel(client, target, accounts[3], "Ponovljeni zahtjev"),
+            "removed",
+          );
+          const pendingReel = randomUUID();
+          await client.query(
+            `INSERT INTO business_reel(id,business_id,submitted_by,title,status,source_size,duration_ms,has_poster)
+             VALUES($1,$2,$3,'Pending','pending',32,3000,false)`,
+            [pendingReel, otherStudio, accounts[1]],
+          );
+          await assert.rejects(removePublishedReel(client, pendingReel, accounts[3], "x"), {
+            status: 409,
+          });
+          await assert.rejects(removePublishedReel(client, randomUUID(), accounts[3], "x"), {
+            status: 404,
+          });
+        } finally {
+          client.release();
+        }
+        const row = (
+          await pool.query(
+            "SELECT status,review_reason,reviewed_by FROM business_reel WHERE id=$1",
+            [target],
+          )
+        ).rows[0];
+        assert.deepEqual(row, {
+          status: "removed",
+          review_reason: "Kršenje pravila zajednice",
+          reviewed_by: accounts[3],
+        });
+        assert.equal(await partCount(target), 0);
+        assert.equal(await readPublicReel(target, null, pool), null);
+        await assert.rejects(reelMediaAccess(new Headers(), target, "video", false, pool), {
+          status: 404,
+        });
+        assert.equal((await readPublicReel(neighbour, null, pool)).id, neighbour);
+        // A removal always carries a moderator's reason.
+        await assert.rejects(
+          pool.query(
+            "UPDATE business_reel SET status='removed',review_reason=NULL,reviewed_at=NULL WHERE id=$1",
+            [neighbour],
+          ),
+          { code: "23514" },
+        );
       },
     );
   } finally {
