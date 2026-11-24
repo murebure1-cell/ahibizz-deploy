@@ -91,7 +91,7 @@ export function DirectoryResultCard({
           {business.featured && <span className={styles.example}>{t("Istaknuto")}</span>}
           {example && <span className={styles.example}>{t("Primjer")}</span>}
           <h2 data-design="directory-title">
-            <Link href={profile} title={business.title}>
+            <Link href={profile} title={business.title} dir="auto">
               {business.title}
             </Link>
             {business.verified && <VerificationBadge kind="business" />}
@@ -106,7 +106,9 @@ export function DirectoryResultCard({
           )}
         </header>
         {!compact && business.description?.trim() && (
-          <p className={styles.description}>{business.description}</p>
+          <p className={styles.description} dir="auto">
+            {business.description}
+          </p>
         )}
         {!compact && <BusinessAmenities details={business.details} compact />}
       </div>

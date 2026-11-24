@@ -1147,7 +1147,7 @@ export function MessagingInbox({
               >
                 <ThreadAvatar thread={item} />
                 <span className={styles.threadBody}>
-                  <strong>{item.title}</strong>
+                  <strong dir="auto">{item.title}</strong>
                   {item.kind === "business" && (
                     <span className={styles.threadContext}>{t(threadContext(item))}</span>
                   )}
@@ -1307,7 +1307,7 @@ export function MessagingInbox({
                         className={`${styles.messageRow} ${item.from === "me" ? styles.fromMe : ""} ${startsGroup ? styles.groupStart : ""} ${endsGroup ? styles.groupEnd : ""}`}
                       >
                         <div className={styles.bubble}>
-                          <p>{item.body}</p>
+                          <p dir="auto">{item.body}</p>
                           <time dateTime={item.createdAt}>{messageTime.format(date)}</time>
                         </div>
                       </div>

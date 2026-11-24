@@ -74,7 +74,7 @@ export function OwnerCalendarPanel({
         ))}
       {business && (
         <>
-          <h2>{business.title}</h2>
+          <h2 dir="auto">{business.title}</h2>
           {target.kind === "service" && (
             <BusinessBookingManager
               initialDay={target.day}

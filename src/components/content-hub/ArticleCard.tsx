@@ -11,9 +11,11 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
     <article className={styles.card}>
       <div className={styles.boxLabel}>{t(articleCategories[article.category])}</div>
       <h3>
-        <Link href={`/blog/${article.slug}`}>{article.title}</Link>
+        <Link href={`/blog/${article.slug}`} dir="auto">
+          {article.title}
+        </Link>
       </h3>
-      <p>{article.excerpt}</p>
+      <p dir="auto">{article.excerpt}</p>
       <footer className={styles.meta}>
         {t("{count} min čitanja", { count: article.minutes })}
       </footer>
@@ -29,9 +31,13 @@ export function FeaturedArticle({ article }: { article: ArticleSummary }) {
         {t("Izdvojeno")} · {t(articleCategories[article.category])}
       </div>
       <h2>
-        <Link href={`/blog/${article.slug}`}>{article.title}</Link>
+        <Link href={`/blog/${article.slug}`} dir="auto">
+          {article.title}
+        </Link>
       </h2>
-      <p className={styles.featuredExcerpt}>{article.excerpt}</p>
+      <p className={styles.featuredExcerpt} dir="auto">
+        {article.excerpt}
+      </p>
     </article>
   );
 }

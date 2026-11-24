@@ -351,14 +351,18 @@ function PersonProfile({
               <PersonAvatar person={person} imageUrl={imageUrl} large />
             </div>
             <h1>
-              {person.name}
+              <bdi>{person.name}</bdi>
               {person.verified && <VerificationBadge kind="person" />}
             </h1>
             <PlatformBadges
               platformFounder={person.platformFounder}
               platformAdministrator={person.platformAdministrator}
             />
-            {person.bio && <p className={styles.intro}>{person.bio}</p>}
+            {person.bio && (
+              <p className={styles.intro} dir="auto">
+                {person.bio}
+              </p>
+            )}
             {personLocation(person, locale) && (
               <p className={styles.location}>
                 <Icon name="pin" />

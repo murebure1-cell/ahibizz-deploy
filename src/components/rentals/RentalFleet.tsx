@@ -416,7 +416,7 @@ function FleetContent({
                   </div>
                 )}
                 <div className={styles.carTitle}>
-                  <h3>{car.name}</h3>
+                  <h3 dir="auto">{car.name}</h3>
                   <p>
                     {car.brand} {car.model}
                     {car.year ? ` · ${car.year}` : ""}
@@ -430,7 +430,7 @@ function FleetContent({
                 {t(fuels[car.fuel])} · {t(gears[car.transmission])} ·{" "}
                 {t("{count} sjedišta", { count: car.seats })}
               </p>
-              {car.description && <p>{car.description}</p>}
+              {car.description && <p dir="auto">{car.description}</p>}
               <div className={styles.topline}>
                 <span className={styles.rate}>
                   <strong>{bookingMoney(car.priceMinor)}</strong> / {units[car.priceUnit]}

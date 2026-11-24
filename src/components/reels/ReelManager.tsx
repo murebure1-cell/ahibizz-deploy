@@ -254,7 +254,7 @@ export function ReelManager({
                 <select name="business" defaultValue={selected} required>
                   {businesses.map((business) => (
                     <option value={business.id} key={business.id}>
-                      {business.title}
+                      <bdi>{business.title}</bdi>
                     </option>
                   ))}
                 </select>
@@ -314,9 +314,9 @@ export function ReelManager({
           <article key={reel.id} id={`reel-${reel.id}`} className={styles.managed}>
             <div className={styles.entry}>
               <div>
-                <h3>{reel.title}</h3>
+                <h3 dir="auto">{reel.title}</h3>
                 <p>
-                  {reel.businessTitle}
+                  <bdi>{reel.businessTitle}</bdi>
                   {reel.durationMs !== null ? ` · ${reelDuration(reel.durationMs)}` : ""}
                 </p>
               </div>
@@ -427,9 +427,9 @@ export function ReelManager({
               <article key={reel.id} id={`uzivo-${reel.id}`} className={styles.managed}>
                 <div className={styles.entry}>
                   <div>
-                    <h3>{reel.title}</h3>
+                    <h3 dir="auto">{reel.title}</h3>
                     <p>
-                      {reel.businessTitle}
+                      <bdi>{reel.businessTitle}</bdi>
                       {reel.expiresAt ? ` · ${reelTimeLeft(reel.expiresAt)}` : ""}
                     </p>
                   </div>

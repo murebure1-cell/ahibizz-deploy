@@ -298,8 +298,10 @@ function AppointmentsWorkspace({
               <span className={styles.status} data-status={entry.status}>
                 {t(bookingStatusLabels[entry.status])}
               </span>
-              <h3>{entry.serviceName}</h3>
-              <Link href={`/djelatnosti/${entry.businessId}`}>{entry.businessTitle}</Link>
+              <h3 dir="auto">{entry.serviceName}</h3>
+              <Link href={`/djelatnosti/${entry.businessId}`} dir="auto">
+                {entry.businessTitle}
+              </Link>
               <p>{bookingDate(entry.startsAt, entry.timezone, { time: true, locale })}</p>
               <span className={styles.note}>
                 {entry.durationMinutes} min · {bookingMoney(entry.priceMinor)}

@@ -548,7 +548,7 @@ function PurchaseForm({
               >
                 {businesses.map((business) => (
                   <option key={business.id} value={business.id}>
-                    {business.title}
+                    <bdi>{business.title}</bdi>
                     {business.city ? ` · ${business.city}` : ""}
                   </option>
                 ))}
@@ -690,7 +690,9 @@ function OrderCard({
     <article className={styles.order}>
       <div className={styles.heading}>
         <h3>
-          <Link href={`/djelatnosti/${order.businessId}`}>{order.businessTitle}</Link>
+          <Link href={`/djelatnosti/${order.businessId}`} dir="auto">
+            {order.businessTitle}
+          </Link>
         </h3>
         <strong>{t(promotionStatusLabel(order))}</strong>
       </div>
