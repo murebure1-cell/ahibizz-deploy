@@ -39,6 +39,9 @@ type Catalog = {
 type Availability = { available: boolean; firstAvailableAt: string; capacity: number };
 const messages: Record<string, string> = {
   PROMOTION_FULL: msg("Odabrani termin je zauzet. Odaberi prvi slobodan termin ili kasniji datum."),
+  PROMOTION_DUPLICATE: msg(
+    "Ova djelatnost već ima isticanje na tom mjestu u odabranom periodu. Odaberi drugi početak.",
+  ),
   PROMOTION_CHANGED: msg("Narudžba je promijenjena. Osvježi pregled i provjeri stanje."),
   PROMOTION_NOT_PENDING: msg("Ova narudžba više ne čeka potvrdu."),
   PROMOTION_ALREADY_CONFIRMED: msg("Uplata je već potvrđena. Provjeri status narudžbe."),
@@ -721,6 +724,9 @@ function OrderCard({
             <p>
               {t(
                 "Uplati navedeni iznos u valuti računa i prepiši referencu. Isticanje uključujemo nakon provjere uplate. Dok uplata nije potvrđena, možeš otkazati narudžbu.",
+              )}{" "}
+              {t(
+                "Ako uplata ne bude potvrđena do početka perioda, a najmanje 3 dana od narudžbe, narudžba se automatski otkazuje i mjesto se oslobađa.",
               )}
             </p>
             <CopyPaymentDetails text={payment} />

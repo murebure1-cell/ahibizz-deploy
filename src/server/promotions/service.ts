@@ -154,6 +154,35 @@ async function priceList(client: PoolClient) {
   ).rows;
 }
 
+/**
+ * Owner decision 2026-11-24: an unpaid order stops holding its place when its period starts, but
+ * a buyer always has at least 3 days from ordering to pay by bank transfer (an order "from now"
+ * would otherwise be cancelled at once). Past that point the order is cancelled, so the capacity
+ * trigger no longer counts it.
+ */
+export const unpaidPromotionDeadline = `GREATEST(starts_at, created_at + interval '3 days')`;
+
+export async function expireUnpaidPromotions(pool: Pool) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // One sweeper at a time: each cancelled row locks its capacity scope inside the trigger.
+    const { rows } = await client.query<{ locked: boolean }>(
+      "SELECT pg_try_advisory_xact_lock(hashtextextended('ahibizz-promotion-expiry', 0)) AS locked",
+    );
+    if (rows[0]?.locked)
+      await client.query(
+        `UPDATE promotion_order SET status='cancelled'
+          WHERE status='pending' AND ${unpaidPromotionDeadline}<=clock_timestamp()`,
+      );
+    await client.query("COMMIT");
+  } catch {
+    await client.query("ROLLBACK").catch(() => {});
+  } finally {
+    client.release();
+  }
+}
+
 export function createPromotionsService({
   pool,
   auth,
@@ -173,6 +202,8 @@ export function createPromotionsService({
   ): Promise<T> {
     const signed = await access.session(headers);
     if (!signed.expectedAccountId) fail(401, "ACCOUNT_IDENTITY_CHANGED");
+    // Never blocks the request: a failed sweep is simply retried by the next one.
+    await expireUnpaidPromotions(pool);
     try {
       return await accountTransaction(pool, async (client) => {
         const actor = await access.authority(client, signed, admin);
@@ -219,6 +250,18 @@ export function createPromotionsService({
           [value.kind, key],
         )
       ).rows[0];
+      // Owner decision 2026-11-24: one business holds at most one place per spot and period.
+      // The scope row lock above serializes competing orders for the same spot.
+      const requestedEnd = new Date(
+        Date.parse(value.startsAt) + value.durationDays * 86400000,
+      ).toISOString();
+      const duplicate = await client.query(
+        `SELECT 1 FROM promotion_order WHERE business_id=$1 AND kind=$2 AND scope_key=$3
+          AND status IN ('pending','active') AND ends_at>clock_timestamp()
+          AND starts_at<$5::timestamptz AND ends_at>$4::timestamptz LIMIT 1`,
+        [b.id, value.kind, key, value.startsAt, requestedEnd],
+      );
+      if (duplicate.rowCount) fail(409, "PROMOTION_DUPLICATE");
       const available = firstAvailablePromotionStart(
         await reservations(client, value.kind, key),
         value.startsAt,

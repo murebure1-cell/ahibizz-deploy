@@ -336,7 +336,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             ).length,
             1,
           );
-          const second = (await service.create(owner.headers, input("nearby"))).order;
+          // A second order in the same spot and period needs another business.
+          const second = (await service.create(owner.headers, input("nearby", await addBusiness())))
+            .order;
           await assert.rejects(
             service.confirm(admin.headers, second.id, confirmed(second, "BAM", "RACE-STATEMENT")),
             denial(409, "PROMOTION_REFERENCE_USED"),
@@ -353,11 +355,15 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           const expectedEnd = new Date(Date.parse(startsAt) + 7 * 86400000).toISOString();
           for (const kind of ["home", "nearby", "category", "banner"]) {
             const cap = promotionCapacity[kind];
+            // One business holds at most one place per spot and period, so fill with distinct ones.
+            const contenders = [];
+            for (let index = 0; index <= cap; index++)
+              contenders.push(await addBusiness(index % 2 ? other : owner));
             const outcomes = await Promise.allSettled(
-              Array.from({ length: cap + 1 }, (_, index) =>
+              contenders.map((contender, index) =>
                 service.create(
                   index % 2 ? other.headers : owner.headers,
-                  input(kind, index % 2 ? foreignBusiness : businessId, startsAt),
+                  input(kind, contender, startsAt),
                 ),
               ),
             );
@@ -391,6 +397,57 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
                 order.id,
               );
           }
+        },
+      );
+
+      await t.test(
+        "one place per business and unpaid orders expire at the start, never before 3 days",
+        async () => {
+          const first = (await service.create(owner.headers, input("home"))).order;
+          await assert.rejects(
+            service.create(owner.headers, input("home")),
+            denial(409, "PROMOTION_DUPLICATE"),
+          );
+          const elsewhere = (await service.create(owner.headers, input("nearby"))).order;
+          assert.equal(elsewhere.status, "pending");
+          await service.cancel(owner.headers, elsewhere.id);
+          await service.cancel(owner.headers, first.id);
+          const scope = (
+            await pool.query("SELECT id FROM promotion_scope WHERE kind='home' AND scope_key='*'")
+          ).rows[0];
+          // Rows written directly: starts_at and created_at are immutable through the service.
+          const unpaid = async (createdDaysAgo, startedDaysAgo) => {
+            const id = randomUUID();
+            const created = new Date(Date.now() - createdDaysAgo * 86400000).toISOString();
+            const starts = new Date(Date.now() - startedDaysAgo * 86400000).toISOString();
+            await pool.query(
+              `INSERT INTO promotion_order(id,business_id,owner_id,kind,scope_id,scope_key,duration_days,
+                 starts_at,ends_at,amount_bam_minor,amount_eur_minor,payment_reference,bank_details,created_at)
+               VALUES($1,$2,$3,'home',$4,'*',7,$5::timestamptz,$5::timestamptz+interval '168 hours',
+                 2500,1278,$6,'{}'::jsonb,$7::timestamptz)`,
+              [
+                id,
+                await addBusiness(),
+                owner.user.id,
+                scope.id,
+                starts,
+                `AHI-${randomUUID().replaceAll("-", "")}`,
+                created,
+              ],
+            );
+            return id;
+          };
+          const expired = await unpaid(4, 4);
+          const withinPaymentWindow = await unpaid(1, 2);
+          const orders = (await service.list(owner.headers)).orders;
+          const expiredOrder = orders.find((order) => order.id === expired);
+          assert.equal(expiredOrder.status, "cancelled");
+          assert.equal(orders.find((order) => order.id === withinPaymentWindow).status, "pending");
+          await assert.rejects(
+            service.confirm(admin.headers, expired, confirmed(expiredOrder)),
+            denial(409),
+          );
+          await service.cancel(owner.headers, withinPaymentWindow);
         },
       );
 
