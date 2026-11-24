@@ -32,8 +32,10 @@ function memberDigest(member) {
 if (process.argv[2] === "--extract-image-identity") {
   const [, , , archiveFile, evidenceDirectory] = process.argv;
   if (!archiveFile || !evidenceDirectory) throw Error("Missing runtime archive paths");
+  // Run tar beside the archive with a relative name: GNU tar reads "C:\..." as a remote host.
   const extract = (member) =>
-    execFileSync("tar", ["-xOf", archiveFile, member], {
+    execFileSync("tar", ["-xOf", path.basename(archiveFile), member], {
+      cwd: path.dirname(path.resolve(archiveFile)),
       maxBuffer: 2 * 1024 * 1024,
       timeout: 30000,
     });

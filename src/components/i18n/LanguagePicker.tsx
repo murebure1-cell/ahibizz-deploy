@@ -27,10 +27,12 @@ export function LanguagePicker({ className }: { className?: string }) {
         onChange={(event) => {
           const next = event.target.value;
           setValue(next);
+          const secure = window.location.protocol === "https:" ? "; Secure" : "";
+          // biome-ignore lint/suspicious/noDocumentCookie: The Cookie Store API is missing in browsers this app supports; the value is one of our fixed locale codes.
           document.cookie =
             next === "auto"
-              ? `${localeCookie}=; Path=/; Max-Age=0; SameSite=Lax`
-              : `${localeCookie}=${next}; Path=/; Max-Age=31536000; SameSite=Lax`;
+              ? `${localeCookie}=; Path=/; Max-Age=0; SameSite=Lax${secure}`
+              : `${localeCookie}=${next}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
           window.location.reload();
         }}
       >
