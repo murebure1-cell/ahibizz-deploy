@@ -63,7 +63,7 @@ export function SaveSearchButton(props: SavedSearch) {
         {status === "saved" ? t("Pretraga sačuvana") : t("Sačuvaj pretragu")}
       </button>
       {status === "guest" && (
-        <Link href={`/prijava?nastavi=${encodeURIComponent("/pretraga" + props.filters)}`}>
+        <Link href={`/prijava?nastavi=${encodeURIComponent(`/pretraga${props.filters}`)}`}>
           {t("Prijavi se za čuvanje")}
         </Link>
       )}

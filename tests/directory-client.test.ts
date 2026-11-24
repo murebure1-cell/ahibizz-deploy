@@ -69,7 +69,7 @@ test("directory endpoint input cannot escape the private directory path", async 
       "admin?map=missing&status=archived",
       "admin?q=%0A",
       "admin?q=%ZZ",
-      "admin?q=" + "a".repeat(121),
+      `admin?q=${"a".repeat(121)}`,
       "review/id/archive",
       "review/../admin",
       "review/id?next=mine",
