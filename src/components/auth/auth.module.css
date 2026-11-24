@@ -27,16 +27,10 @@
   height: 14px;
   transform: rotate(180deg);
 }
-.eyebrow {
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  color: var(--ui-accent-text);
-  font-weight: 650;
-}
 .card h1 {
   font-size: 36px;
   color: var(--ui-text);
-  margin-top: 12px;
+  margin-top: 20px;
   line-height: 1.14;
   letter-spacing: -0.04em;
 }
@@ -114,7 +108,7 @@
   justify-content: space-between;
   gap: 12px;
   margin-top: 20px;
-  font-size: 12px;
+  font-size: 13px;
 }
 .remember {
   display: flex;
@@ -122,15 +116,32 @@
   gap: 7px;
   color: var(--ui-text-secondary);
 }
+/* The terms checkbox is a direct form label: keep it beside its text, aligned to the first line. */
+.card form > label.remember {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
 .card .remember input {
-  width: 16px;
-  height: 16px;
+  flex: none;
+  width: 18px;
+  height: 18px;
   accent-color: var(--ui-primary);
 }
+.card form > label.remember input {
+  margin-top: 2px;
+}
 .options > a,
-.switch a {
+.switch a,
+.card form > label.remember a {
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+.card form > label.remember a {
+  color: var(--ui-text);
 }
 .submit {
   display: flex;
