@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { catalog } from "../src/lib/i18n/catalog";
+import { catalog, catalogAreas, shellTexts } from "../src/lib/i18n/catalog";
 import { negotiateLocale, resolveLocale } from "../src/lib/i18n/locales";
 import { translate } from "../src/lib/i18n/translate";
 import { sourceTexts } from "./i18n-source";
@@ -34,6 +34,17 @@ test("translation fills values and plural words, and falls back to Bosnian text"
   assert.equal(translate("en", "{count} recenzija", { count: 1 }), "1 review");
   assert.equal(translate("en", "{count} recenzija", { count: 5 }), "5 reviews");
   assert.equal(translate("de", "Ovaj tekst nije u katalogu"), "Ovaj tekst nije u katalogu");
+});
+
+test("each text is translated in exactly one catalog area", () => {
+  const seen = new Map(shellTexts.map((text) => [text, "shell"]));
+  const twice: string[] = [];
+  for (const [area, messages] of Object.entries(catalogAreas))
+    for (const text of Object.keys(messages)) {
+      if (seen.has(text)) twice.push(`${JSON.stringify(text)} in ${seen.get(text)} and ${area}`);
+      seen.set(text, area);
+    }
+  assert.deepEqual(twice, []);
 });
 
 test("every marked interface text has all four translations with the same placeholders", () => {

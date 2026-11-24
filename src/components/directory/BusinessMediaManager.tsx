@@ -19,7 +19,9 @@ import {
   businessMediaNeedsRecovery,
   businessMediaRequest,
 } from "../../lib/business-media-client";
+import { msg } from "../../lib/i18n/translate";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import { BusinessLogo } from "./BusinessLogo";
 import styles from "./business-media.module.css";
 
@@ -40,10 +42,10 @@ type PendingMedia = {
   receipt?: BusinessMediaReceipt;
 };
 const statuses = {
-  draft: "Nacrt",
-  pending: "Na pregledu",
-  published: "Objavljeno",
-  archived: "Arhivirano",
+  draft: msg("Nacrt"),
+  pending: msg("Na pregledu"),
+  published: msg("Objavljeno"),
+  archived: msg("Arhivirano"),
 };
 function safeImage(value: string | null): string | null {
   if (!value || value.includes("\\") || [...value].some((char) => char.charCodeAt(0) <= 32))
@@ -121,6 +123,7 @@ export function BusinessMediaManager({
   expectedAccountId?: string;
   onAccessDenied?: (failure: unknown) => void;
 }) {
+  const t = useT();
   const [manifest, setManifest] = useState<BusinessMediaManifest | null>(null),
     [loading, setLoading] = useState(false),
     [busy, setBusy] = useState(false),
@@ -149,29 +152,32 @@ export function BusinessMediaManager({
   deniedCallback.current = onAccessDenied;
   actor.current = expectedAccountId;
   currentId.current = businessId;
-  const clearDeniedAccess = useCallback((failure: unknown) => {
-    if (!businessMediaAccessDenied(failure)) return false;
-    const command = pendingRef.current;
-    const recovery =
-      command && (command.uncertain || command.receipt || writing.current)
-        ? { ...command, uncertain: true }
-        : null;
-    accessEpoch.current++;
-    revision.current++;
-    writeToken.current++;
-    read.current?.abort();
-    writing.current = false;
-    pendingRef.current = recovery;
-    setManifest(null);
-    setPending(recovery);
-    setBusy(false);
-    setLoading(false);
-    setNotice("");
-    setLoginRequired(true);
-    setError(businessMediaError(failure));
-    deniedCallback.current?.(failure);
-    return true;
-  }, []);
+  const clearDeniedAccess = useCallback(
+    (failure: unknown) => {
+      if (!businessMediaAccessDenied(failure)) return false;
+      const command = pendingRef.current;
+      const recovery =
+        command && (command.uncertain || command.receipt || writing.current)
+          ? { ...command, uncertain: true }
+          : null;
+      accessEpoch.current++;
+      revision.current++;
+      writeToken.current++;
+      read.current?.abort();
+      writing.current = false;
+      pendingRef.current = recovery;
+      setManifest(null);
+      setPending(recovery);
+      setBusy(false);
+      setLoading(false);
+      setNotice("");
+      setLoginRequired(true);
+      setError(t(businessMediaError(failure)));
+      deniedCallback.current?.(failure);
+      return true;
+    },
+    [t],
+  );
   useEffect(() => {
     live.current = true;
     return () => {
@@ -184,7 +190,7 @@ export function BusinessMediaManager({
   const load = useCallback(async () => {
     if (writing.current) return;
     if (preview && request === businessMediaRequest) {
-      setError("Fotografije nisu dostupne u ovom prikazu.");
+      setError(t("Fotografije nisu dostupne u ovom prikazu."));
       return;
     }
     read.current?.abort();
@@ -230,7 +236,7 @@ export function BusinessMediaManager({
           [401, 403, 404].includes(failure.status)
         )
           setManifest(null);
-        setError(businessMediaError(failure));
+        setError(t(businessMediaError(failure)));
       }
     } finally {
       if (
@@ -242,7 +248,7 @@ export function BusinessMediaManager({
       )
         setLoading(false);
     }
-  }, [businessId, preview, request, expectedAccountId, clearDeniedAccess]);
+  }, [businessId, preview, request, expectedAccountId, clearDeniedAccess, t]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: A different business or preview boundary discards that workspace's local view.
   useEffect(() => {
     setManifest(null);
@@ -346,8 +352,8 @@ export function BusinessMediaManager({
         setLoginRequired(false);
         setNotice(
           fresh.status === "pending" || fresh.pendingMedia
-            ? "Izmjene su poslane na pregled."
-            : "Fotografije su ažurirane.",
+            ? t("Izmjene su poslane na pregled.")
+            : t("Fotografije su ažurirane."),
         );
       }
     } catch (failure) {
@@ -365,7 +371,7 @@ export function BusinessMediaManager({
         pendingRef.current = recovery;
         setPending(recovery);
         if (clearDeniedAccess(failure)) return;
-        setError(businessMediaError(failure));
+        setError(t(businessMediaError(failure)));
         if (
           failure instanceof BusinessMediaRequestError &&
           failure.status >= 400 &&
@@ -401,8 +407,8 @@ export function BusinessMediaManager({
     ) {
       setError(
         file.size > 4 * 1024 * 1024
-          ? "Izaberi fotografiju do 4 MB."
-          : "Izaberi ispravnu JPG, PNG ili WebP fotografiju.",
+          ? t("Izaberi fotografiju do 4 MB.")
+          : t("Izaberi ispravnu JPG, PNG ili WebP fotografiju."),
       );
       return;
     }
@@ -433,12 +439,12 @@ export function BusinessMediaManager({
   return (
     <section
       className={styles.workspace}
-      aria-label={loginRequired ? "Fotografije" : `Fotografije: ${businessTitle}`}
+      aria-label={loginRequired ? t("Fotografije") : `Fotografije: ${businessTitle}`}
     >
       <header className={styles.header}>
         <div>
-          <p className={styles.eyebrow}>FOTOGRAFIJE</p>
-          <h2>{loginRequired ? "Fotografije" : businessTitle}</h2>
+          <p className={styles.eyebrow}>{t("FOTOGRAFIJE")}</p>
+          <h2>{loginRequired ? t("Fotografije") : businessTitle}</h2>
         </div>
         {onBack && (
           <button
@@ -448,18 +454,18 @@ export function BusinessMediaManager({
             onClick={onBack}
           >
             <Icon name="arrow" />
-            Nazad
+            {t("Nazad")}
           </button>
         )}
       </header>
       {manifest && (
         <p className={styles.status}>
-          Status profila: <strong>{statuses[manifest.status]}</strong>
+          {t("Status profila:")} <strong>{t(statuses[manifest.status])}</strong>
           {manifest.pendingMedia && " · Fotografije na pregledu"}
         </p>
       )}
       {manifest?.status === "archived" && (
-        <p className={styles.notice}>Prvo vrati djelatnost iz arhive.</p>
+        <p className={styles.notice}>{t("Prvo vrati djelatnost iz arhive.")}</p>
       )}
       {error && (
         <div role="alert" className={styles.error}>
@@ -471,21 +477,21 @@ export function BusinessMediaManager({
               disabled={busy || loading || !active}
               onClick={() => void load()}
             >
-              Učitaj trenutno stanje
+              {t("Učitaj trenutno stanje")}
             </button>
           )}
         </div>
       )}
       {pending && !busy && (
         <div role="status" className={styles.notice}>
-          <p>Prethodna izmjena još nije potvrđena.</p>
+          <p>{t("Prethodna izmjena još nije potvrđena.")}</p>
           <button
             type="button"
             className={styles.secondary}
             disabled={!active}
             onClick={() => void send(pending)}
           >
-            Ponovi isti zahtjev
+            {t("Ponovi isti zahtjev")}
           </button>
         </div>
       )}
@@ -496,14 +502,14 @@ export function BusinessMediaManager({
       )}
       {!manifest && loading && (
         <p role="status" className={styles.empty}>
-          Otvaram fotografije…
+          {t("Otvaram fotografije…")}
         </p>
       )}
       {manifest && (
         <>
           <div className={styles.brandGrid}>
-            <section className={styles.card} aria-label="Logotip djelatnosti">
-              <h3>Logotip</h3>
+            <section className={styles.card} aria-label={t("Logotip djelatnosti")}>
+              <h3>{t("Logotip")}</h3>
               <div className={styles.logo}>
                 {source(manifest.logo) ? (
                   <BusinessLogo
@@ -518,7 +524,7 @@ export function BusinessMediaManager({
               </div>
               <div className={styles.actions}>
                 <UploadButton
-                  label={manifest.logo ? "Promijeni logotip" : "Odaberi logotip"}
+                  label={manifest.logo ? t("Promijeni logotip") : t("Odaberi logotip")}
                   disabled={disabled}
                   onFile={(file) => act("logo", 0, file)}
                 />
@@ -529,13 +535,13 @@ export function BusinessMediaManager({
                     disabled={disabled}
                     onClick={() => act("logo", 0, null)}
                   >
-                    Ukloni logotip
+                    {t("Ukloni logotip")}
                   </button>
                 )}
               </div>
             </section>
-            <section className={styles.card} aria-label="Naslovna fotografija">
-              <h3>Naslovna fotografija</h3>
+            <section className={styles.card} aria-label={t("Naslovna fotografija")}>
+              <h3>{t("Naslovna fotografija")}</h3>
               <div className={styles.cover}>
                 {source(manifest.cover) ? (
                   <Image
@@ -557,7 +563,7 @@ export function BusinessMediaManager({
               </div>
               <div className={styles.actions}>
                 <UploadButton
-                  label={manifest.cover ? "Promijeni naslovnu" : "Odaberi naslovnu"}
+                  label={manifest.cover ? t("Promijeni naslovnu") : t("Odaberi naslovnu")}
                   disabled={disabled}
                   onFile={(file) => act("cover", 0, file)}
                 />
@@ -568,16 +574,16 @@ export function BusinessMediaManager({
                     disabled={disabled}
                     onClick={() => act("cover", 0, null)}
                   >
-                    Ukloni naslovnu
+                    {t("Ukloni naslovnu")}
                   </button>
                 )}
               </div>
             </section>
           </div>
-          <section className={styles.card} aria-label="Galerija djelatnosti">
+          <section className={styles.card} aria-label={t("Galerija djelatnosti")}>
             <div className={styles.galleryHeading}>
-              <h3>Galerija</h3>
-              <p>Do 8 fotografija · JPG, PNG ili WebP · do 4 MB</p>
+              <h3>{t("Galerija")}</h3>
+              <p>{t("Do 8 fotografija · JPG, PNG ili WebP · do 4 MB")}</p>
             </div>
             <div className={styles.gallery}>
               {manifest.gallery.map((asset) => (
@@ -613,7 +619,7 @@ export function BusinessMediaManager({
                 <div className={styles.addPhoto}>
                   <Icon name="shop" />
                   <UploadButton
-                    label="Dodaj fotografiju"
+                    label={t("Dodaj fotografiju")}
                     disabled={disabled}
                     onFile={(file) => act("gallery", nextSlot, file)}
                   />

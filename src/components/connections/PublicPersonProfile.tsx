@@ -25,11 +25,13 @@ import {
   connectionError,
   connectionRequest,
 } from "../../lib/connections-client";
+import { msg } from "../../lib/i18n/translate";
 import { messageLink } from "../../lib/messaging";
 import { workStatusLabels } from "../../lib/people";
 import type { PersonBusinessesRequest } from "../../lib/person-businesses";
 import { reportUrl } from "../../lib/support-requests";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import { personalProfileImage } from "../people/PersonalProfileCard";
 import { PlatformBadges } from "../people/PlatformBadges";
 import { VerificationBadge } from "../VerificationBadge";
@@ -49,14 +51,14 @@ type PendingWrite = {
   uncertain: boolean;
 };
 function relationshipNotice(relationship: Relationship): string {
-  if (relationship.status === "accepted") return "Sada ste prijatelji.";
+  if (relationship.status === "accepted") return msg("Sada ste prijatelji.");
   if (relationship.status === "pending")
     return relationship.direction === "incoming"
-      ? "Imaš zahtjev za prijateljstvo."
-      : "Zahtjev je poslan.";
-  if (relationship.status === "declined") return "Zahtjev je odbijen.";
-  if (relationship.status === "cancelled") return "Zahtjev je povučen.";
-  return "Prijateljstvo je uklonjeno.";
+      ? msg("Imaš zahtjev za prijateljstvo.")
+      : msg("Zahtjev je poslan.");
+  if (relationship.status === "declined") return msg("Zahtjev je odbijen.");
+  if (relationship.status === "cancelled") return msg("Zahtjev je povučen.");
+  return msg("Prijateljstvo je uklonjeno.");
 }
 
 type ProfileProps = {
@@ -91,6 +93,7 @@ function PersonProfile({
   messageHref,
   businessRequest,
 }: ProfileProps) {
+  const { t, locale } = useI18n();
   const [tab, setTab] = useState<"about" | "skills" | "businesses">("about");
   const [contact, setContact] = useState<BlockState | null>(null);
   const tabId = useId(),
@@ -147,7 +150,7 @@ function PersonProfile({
       current = ++revision.current;
     controller.current = nextController;
     if (preview && api.current === connectionRequest) {
-      setError("Pregled profila trenutno nije dostupan.");
+      setError(t("Pregled profila trenutno nije dostupan."));
       return;
     }
     setLoading(true);
@@ -186,14 +189,14 @@ function PersonProfile({
         }
         setError(
           failure instanceof ConnectionRequestError && failure.status === 404
-            ? "Ovaj profil nije javno dostupan."
-            : connectionError(failure),
+            ? t("Ovaj profil nije javno dostupan.")
+            : t(connectionError(failure)),
         );
       }
     } finally {
       if (live.current && current === revision.current) setLoading(false);
     }
-  }, [personId, preview]);
+  }, [personId, preview, t]);
 
   useEffect(() => {
     setTab("about");
@@ -234,11 +237,11 @@ function PersonProfile({
         setPending(null);
         const current = await load();
         if (current && live.current && currentId.current === intent.personId)
-          setNotice(relationshipNotice(current));
+          setNotice(t(relationshipNotice(current)));
       }
     } catch (failure) {
       if (live.current && currentId.current === intent.personId) {
-        setError(connectionError(failure));
+        setError(t(connectionError(failure)));
         const denied =
           failure instanceof ConnectionRequestError && [401, 403].includes(failure.status);
         if (denied) {
@@ -299,7 +302,7 @@ function PersonProfile({
     loginHref ?? `/prijava?nastavi=${encodeURIComponent(`/ljudi/${encodeURIComponent(personId)}`)}`;
 
   return (
-    <section className={styles.workspace} aria-label="Javni lični profil">
+    <section className={styles.workspace} aria-label={t("Javni lični profil")}>
       {!currentPerson && error && (
         <div className={styles.error} role="alert">
           <p>{error}</p>
@@ -309,12 +312,12 @@ function PersonProfile({
             disabled={busy || loading}
             onClick={() => (pending ? void send(pending) : void load())}
           >
-            Pokušaj ponovo
+            {t("Pokušaj ponovo")}
           </button>
         </div>
       )}
       {!currentPerson && !error && (
-        <section className={styles.skeleton} aria-busy="true" aria-label="Profil">
+        <section className={styles.skeleton} aria-busy="true" aria-label={t("Profil")}>
           <span />
           <span />
           <span />
@@ -327,7 +330,7 @@ function PersonProfile({
               <Image
                 className={styles.coverPhoto}
                 src={cover}
-                alt="Naslovna fotografija profila"
+                alt={t("Naslovna fotografija profila")}
                 width={1600}
                 height={600}
                 unoptimized
@@ -356,16 +359,16 @@ function PersonProfile({
               platformAdministrator={person.platformAdministrator}
             />
             {person.bio && <p className={styles.intro}>{person.bio}</p>}
-            {personLocation(person) && (
+            {personLocation(person, locale) && (
               <p className={styles.location}>
                 <Icon name="pin" />
-                {personLocation(person)}
+                {personLocation(person, locale)}
               </p>
             )}
             {person.workStatus !== "not_specified" && (
               <p className={styles.work}>
                 <span aria-hidden="true" />
-                {workStatusLabels[person.workStatus]}
+                {t(workStatusLabels[person.workStatus])}
               </p>
             )}
             <div className={styles.actions}>
@@ -385,11 +388,13 @@ function PersonProfile({
                 </Link>
               ) : viewerId === null ? (
                 <Link className={styles.primary} href={signIn}>
-                  Prijavi se za povezivanje
+                  {t("Prijavi se za povezivanje")}
                 </Link>
               ) : contact?.canContact === false ? (
                 <span className={styles.relationship}>
-                  {contact.blockedByMe ? "Blokiran korisnik" : "Kontakt trenutno nije dostupan"}
+                  {contact.blockedByMe
+                    ? t("Blokiran korisnik")
+                    : t("Kontakt trenutno nije dostupan")}
                 </span>
               ) : relationship?.status === "accepted" ? (
                 <>
@@ -402,7 +407,7 @@ function PersonProfile({
                     disabled={disabled}
                     onClick={() => act("remove")}
                   >
-                    {confirmRemove ? "Potvrdi uklanjanje" : "Ukloni prijatelja"}
+                    {confirmRemove ? t("Potvrdi uklanjanje") : t("Ukloni prijatelja")}
                   </button>
                   {confirmRemove && (
                     <button
@@ -411,7 +416,7 @@ function PersonProfile({
                       disabled={disabled}
                       onClick={() => setConfirmRemove(false)}
                     >
-                      Odustani
+                      {t("Odustani")}
                     </button>
                   )}
                 </>
@@ -432,7 +437,7 @@ function PersonProfile({
                       disabled={disabled}
                       onClick={() => act("decline")}
                     >
-                      Odbij
+                      {t("Odbij")}
                     </button>
                   </>
                 ) : (
@@ -442,7 +447,7 @@ function PersonProfile({
                     disabled={disabled}
                     onClick={() => act("cancel")}
                   >
-                    Povuci zahtjev
+                    {t("Povuci zahtjev")}
                   </button>
                 )
               ) : relationship ? (
@@ -468,7 +473,7 @@ function PersonProfile({
                     disabled={busy || loading}
                     onClick={() => (pending ? void send(pending) : void load())}
                   >
-                    {pending ? "Pokušaj ponovo" : "Osvježi profil"}
+                    {pending ? t("Pokušaj ponovo") : t("Osvježi profil")}
                   </button>
                 </div>
               )}
@@ -479,12 +484,12 @@ function PersonProfile({
               )}
             </div>
           )}
-          <div className={styles.profileTabs} role="tablist" aria-label="Sadržaj profila">
+          <div className={styles.profileTabs} role="tablist" aria-label={t("Sadržaj profila")}>
             {(
               [
-                ["about", "O meni"],
-                ["skills", "Vještine"],
-                ["businesses", "Moje djelatnosti"],
+                ["about", t("O meni")],
+                ["skills", t("Vještine")],
+                ["businesses", t("Moje djelatnosti")],
               ] as const
             ).map(([id, label], index) => (
               <button
@@ -512,21 +517,21 @@ function PersonProfile({
                 id={`${tabId}-about-panel`}
                 aria-labelledby={`${tabId}-about-tab`}
               >
-                <h2>Osnovni podaci</h2>
-                {personLocation(person) && (
+                <h2>{t("Osnovni podaci")}</h2>
+                {personLocation(person, locale) && (
                   <p className={styles.detailRow}>
                     <Icon name="pin" />
-                    {personLocation(person)}
+                    {personLocation(person, locale)}
                   </p>
                 )}
                 {person.workStatus !== "not_specified" && (
                   <p className={styles.detailRow}>
                     <Icon name="shop" />
-                    {workStatusLabels[person.workStatus]}
+                    {t(workStatusLabels[person.workStatus])}
                   </p>
                 )}
-                {!personLocation(person) && person.workStatus === "not_specified" && (
-                  <p className={styles.bio}>Podaci još nisu dodani.</p>
+                {!personLocation(person, locale) && person.workStatus === "not_specified" && (
+                  <p className={styles.bio}>{t("Podaci još nisu dodani.")}</p>
                 )}
               </section>
             )}
@@ -536,7 +541,7 @@ function PersonProfile({
                 id={`${tabId}-skills-panel`}
                 aria-labelledby={`${tabId}-skills-tab`}
               >
-                <h2>Vještine</h2>
+                <h2>{t("Vještine")}</h2>
                 {person.skills.length ? (
                   <ul className={styles.skills}>
                     {person.skills.map((skill) => (
@@ -544,7 +549,7 @@ function PersonProfile({
                     ))}
                   </ul>
                 ) : (
-                  <p className={styles.bio}>Vještine još nisu dodane.</p>
+                  <p className={styles.bio}>{t("Vještine još nisu dodane.")}</p>
                 )}
               </section>
             )}
@@ -574,7 +579,7 @@ function PersonProfile({
                   onContact={setContact}
                 />
               )}
-              <Link href={reportUrl("person", person.id)}>Prijavi profil</Link>
+              <Link href={reportUrl("person", person.id)}>{t("Prijavi profil")}</Link>
             </div>
           )}
         </article>

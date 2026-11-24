@@ -6,6 +6,7 @@ import { BookmarkForm } from "../../../../components/content-hub/BookmarkForm";
 import styles from "../../../../components/content-hub/content-hub.module.css";
 import { articleCategories, blogPath, formatArticleDate } from "../../../../lib/content-hub";
 import { getContentHub } from "../../../../server/content-hub";
+import { getTranslator } from "../../../../server/i18n";
 
 export const dynamic = "force-dynamic";
 const readArticle = cache(async (slug: string) => {
@@ -20,10 +21,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const article = await readArticle((await params).slug);
   return article
     ? { title: article.title, description: article.excerpt }
-    : { title: "AhiBizz blog" };
+    : { title: (await getTranslator())("AhiBizz blog") };
 }
 
 export default async function ReadArticle({ params }: { params: Promise<{ slug: string }> }) {
+  const t = await getTranslator();
   const { slug } = await params;
   const article = await readArticle(slug);
   if (!article) notFound();
@@ -33,12 +35,12 @@ export default async function ReadArticle({ params }: { params: Promise<{ slug: 
   return (
     <main id="glavni-sadrzaj" className={styles.narrow}>
       <Link href="/blog" className={styles.backLink}>
-        Nazad na blog
+        {t("Nazad na blog")}
       </Link>
       <article>
         <header className={styles.articleHeader}>
           <Link href={blogPath({ category: article.category })} className={styles.inlineLink}>
-            {articleCategories[article.category]}
+            {t(articleCategories[article.category])}
           </Link>
           <h1>{article.title}</h1>
           <p className={styles.articleLead}>{article.excerpt}</p>
@@ -70,11 +72,11 @@ export default async function ReadArticle({ params }: { params: Promise<{ slug: 
               href={`/prijava?nastavi=${encodeURIComponent(`/blog/${article.slug}`)}`}
               className={styles.secondary}
             >
-              Prijavi se za čuvanje članka
+              {t("Prijavi se za čuvanje članka")}
             </Link>
           )}
           <Link href="/blog" className={styles.inlineLink}>
-            Pogledaj ostale članke
+            {t("Pogledaj ostale članke")}
           </Link>
         </div>
       </article>

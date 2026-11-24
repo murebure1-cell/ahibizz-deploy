@@ -1,3 +1,6 @@
+import { intlLocale, type Locale } from "./i18n/locales";
+import { msg } from "./i18n/translate";
+
 export type BookingWindow = { weekday: number; startMinute: number; endMinute: number };
 export type BookingServiceOption = {
   id: string;
@@ -47,11 +50,11 @@ export type BookingEntry = BookingSlot & {
   clientPhone: string | null;
 };
 export const bookingStatusLabels: Record<BookingStatus, string> = {
-  requested: "Čeka odobrenje",
-  confirmed: "Potvrđen",
-  cancelled: "Otkazan",
-  completed: "Održan",
-  declined: "Odbijen",
+  requested: msg("Čeka odobrenje"),
+  confirmed: msg("Potvrđen"),
+  cancelled: msg("Otkazan"),
+  completed: msg("Održan"),
+  declined: msg("Odbijen"),
 };
 /** Active appointments remain current until their exact end, including an appointment in progress. */
 export function bookingIsUpcoming(
@@ -84,19 +87,47 @@ export function bookingMoney(minor: number): string {
   return `${whole},${String(minor % 100).padStart(2, "0")} KM`;
 }
 
-export function bookingMonth(value: string): string {
+export function bookingMonth(value: string, locale: Locale = "bs"): string {
   if (!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(value) || value.startsWith("0000")) return "—";
+  if (locale !== "bs")
+    return new Intl.DateTimeFormat(`${intlLocale[locale]}-u-ca-gregory-nu-latn`, {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(`${value}-15T12:00:00Z`));
   return `${bookingMonths[Number(value.slice(5)) - 1]} ${value.slice(0, 4)}`;
+}
+
+/** One-letter weekday names from Monday, as calendars show them. */
+export function bookingWeekdays(locale: Locale = "bs"): string[] {
+  if (locale === "bs") return ["P", "U", "S", "Č", "P", "S", "N"];
+  const format = new Intl.DateTimeFormat(intlLocale[locale], {
+    weekday: "narrow",
+    timeZone: "UTC",
+  });
+  // 2024-01-01 was a Monday.
+  return Array.from({ length: 7 }, (_, day) => format.format(new Date(Date.UTC(2024, 0, 1 + day))));
 }
 
 export function bookingDate(
   iso: string,
   timezone: string,
-  { time = false }: { time?: boolean } = {},
+  { time = false, locale = "bs" }: { time?: boolean; locale?: Locale } = {},
 ): string {
   const date = new Date(iso);
   if (!Number.isFinite(date.getTime())) return "—";
   try {
+    if (locale !== "bs")
+      return new Intl.DateTimeFormat(`${intlLocale[locale]}-u-ca-gregory-nu-latn`, {
+        timeZone: timezone,
+        weekday: "short",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        ...(time
+          ? { hour: "2-digit" as const, minute: "2-digit" as const, hourCycle: "h23" as const }
+          : {}),
+      }).format(date);
     const values = Object.fromEntries(
       new Intl.DateTimeFormat("en-GB-u-ca-gregory-nu-latn", {
         timeZone: timezone,

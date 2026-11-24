@@ -1,3 +1,5 @@
+import { intlLocale, type Locale } from "./i18n/locales";
+
 /**
  * Bosnian number formatting (1.234,56) that does not depend on the runtime having
  * Bosnian ICU data. Some browsers and Node builds silently fall back to English (1,234.56).
@@ -14,6 +16,20 @@ export function bosnianNumber(
     .formatToParts(value)
     .map(({ type, value: part }) => (type === "group" ? "." : type === "decimal" ? "," : part))
     .join("");
+}
+
+/** Number in the reader's interface language, with Latin digits everywhere. */
+export function localNumber(
+  locale: Locale,
+  value: number,
+  options: { minimumFractionDigits?: number; maximumFractionDigits?: number } = {},
+): string {
+  if (locale === "bs") return bosnianNumber(value, options);
+  if (!Number.isFinite(value)) return "—";
+  return new Intl.NumberFormat(`${intlLocale[locale]}-u-nu-latn`, {
+    maximumFractionDigits: 2,
+    ...options,
+  }).format(value);
 }
 
 /** Drop-in replacement for `new Intl.NumberFormat("bs-BA", options)` where only `.format` is used. */

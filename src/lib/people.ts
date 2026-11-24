@@ -1,12 +1,27 @@
+import type { Locale } from "./i18n/locales";
+import { msg } from "./i18n/translate";
+
 export const workStatusLabels = {
-  not_specified: "Nije odabrano",
-  employed: "Zaposlen/a",
-  self_employed: "Samostalni rad",
-  business_owner: "Vlasnik/ca djelatnosti",
-  student: "Student/ica",
-  seeking_work: "Tražim posao",
-  open_to_collaboration: "Otvoren/a za saradnju",
+  not_specified: msg("Nije odabrano"),
+  employed: msg("Zaposlen/a"),
+  self_employed: msg("Samostalni rad"),
+  business_owner: msg("Vlasnik/ca djelatnosti"),
+  student: msg("Student/ica"),
+  seeking_work: msg("Tražim posao"),
+  open_to_collaboration: msg("Otvoren/a za saradnju"),
 } as const;
+
+/** Country name in the reader's language; Bosnian keeps the names listed below. */
+export function countryLabel(code: string | null | undefined, locale: Locale = "bs"): string {
+  if (!code) return "";
+  if (locale !== "bs")
+    try {
+      return new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? code;
+    } catch {
+      return code;
+    }
+  return profileCountries.find(([known]) => known === code)?.[1] ?? code;
+}
 export type WorkStatus = keyof typeof workStatusLabels;
 export const profileCountries = [
   ["BA", "Bosna i Hercegovina"],

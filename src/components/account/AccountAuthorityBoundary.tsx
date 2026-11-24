@@ -8,6 +8,7 @@ import {
 } from "../../lib/account-authority";
 import { accountSettingsRequest } from "../../lib/account-settings";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./authority.module.css";
 
 /**
@@ -30,6 +31,7 @@ export function AccountAuthorityBoundary({
   onConfirmed?: (account: SafeAccountProfile) => void;
   children: (active: boolean) => ReactNode;
 }) {
+  const t = useT();
   const [state, setState] = useState<AccountAuthorityState>({
     visible: true,
     checking: false,
@@ -111,18 +113,18 @@ export function AccountAuthorityBoundary({
         ref={notice}
         className={styles.notice}
         hidden={state.visible}
-        aria-label="Pristup nalogu"
+        aria-label={t("Pristup nalogu")}
         aria-busy={state.checking}
       >
-        <h1>Moj nalog</h1>
+        <h1>{t("Moj nalog")}</h1>
         <p role="status">
           {state.checking
-            ? "Provjeravam prijavu…"
+            ? t("Provjeravam prijavu…")
             : state.denied
-              ? "Prijavi se ponovo svojim nalogom."
+              ? t("Prijavi se ponovo svojim nalogom.")
               : state.unavailable
-                ? "Prijavu trenutno nije moguće potvrditi."
-                : "Potvrdi prijavu za nastavak."}
+                ? t("Prijavu trenutno nije moguće potvrditi.")
+                : t("Potvrdi prijavu za nastavak.")}
         </p>
         <div>
           <button
@@ -130,10 +132,10 @@ export function AccountAuthorityBoundary({
             disabled={state.checking}
             onClick={() => void boundary.current?.revalidate()}
           >
-            Provjeri prijavu
+            {t("Provjeri prijavu")}
           </button>
           <Link href={loginHref} target="_blank" rel="noopener noreferrer">
-            Prijavi se ponovo
+            {t("Prijavi se ponovo")}
           </Link>
         </div>
       </section>

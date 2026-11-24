@@ -1,64 +1,125 @@
 import { accountSectionPath } from "./account-return";
 import { contentSearchKey, searchInput } from "./content-hub";
+import { msg } from "./i18n/translate";
 
 export const reportHelpPath = "/pomoc?tema=sigurnost";
 
 export const helpTopics = {
   nalog: {
-    label: "Pristup nalogu",
+    label: msg("Pristup nalogu"),
     icon: "user",
-    question: "Kako da vratim pristup nalogu?",
-    keywords: ["prijav", "lozink", "sifr", "nalog", "registr", "potvrd", "email", "suspend"],
-    answer:
+    question: msg("Kako da vratim pristup nalogu?"),
+    // Bosnian stems first; English, German and Turkish stems let other languages find the topic.
+    keywords: [
+      "prijav",
+      "lozink",
+      "sifr",
+      "nalog",
+      "registr",
+      "potvrd",
+      "email",
+      "suspend",
+      "password",
+      "login",
+      "account",
+      "passwort",
+      "anmeld",
+      "konto",
+      "sifre",
+      "giris",
+      "hesap",
+    ],
+    answer: msg(
       "Ako si zaboravio lozinku, zatraži novu na prijavi. Ako poruka za potvrdu ne stiže, provjeri neželjenu poštu i da li je adresa tačno unesena. Ako se prijavljuješ, a nalog čeka odobrenje, javi nam se i navedi adresu naloga.",
+    ),
     links: [
-      { label: "Zaboravljena lozinka", href: "/zaboravljena-lozinka" },
-      { label: "Idi na prijavu", href: "/prijava" },
+      { label: msg("Zaboravljena lozinka"), href: "/zaboravljena-lozinka" },
+      { label: msg("Idi na prijavu"), href: "/prijava" },
     ],
   },
   djelatnost: {
-    label: "Moja djelatnost",
+    label: msg("Moja djelatnost"),
     icon: "shop",
-    question: "Kako da objavim djelatnost?",
-    keywords: ["djelat", "preduz", "biznis"],
-    answer:
+    question: msg("Kako da objavim djelatnost?"),
+    keywords: ["djelat", "preduz", "biznis", "business", "betrieb", "firma", "isletme"],
+    answer: msg(
       "U nalogu otvori Djelatnosti i odaberi dodavanje. Unesi grad, opis, kontakt i fotografije. Objava djelatnosti je besplatna.",
-    links: [{ label: "Moje djelatnosti", href: "/nalog?odjeljak=djelatnosti" }],
+    ),
+    links: [{ label: msg("Moje djelatnosti"), href: "/nalog?odjeljak=djelatnosti" }],
   },
   rezervacije: {
-    label: "Booking i termini",
+    label: msg("Booking i termini"),
     icon: "calendar",
-    question: "Gdje mogu provjeriti ili promijeniti termin?",
-    keywords: ["booking", "rezerv", "termin", "otkaz", "dolazak", "najam", "nocenj", "zakaz"],
-    answer:
+    question: msg("Gdje mogu provjeriti ili promijeniti termin?"),
+    keywords: [
+      "booking",
+      "rezerv",
+      "termin",
+      "otkaz",
+      "dolazak",
+      "najam",
+      "nocenj",
+      "zakaz",
+      "appointment",
+      "cancel",
+      "reserv",
+      "buchung",
+      "storn",
+      "randevu",
+      "iptal",
+    ],
+    answer: msg(
       "U Mojim terminima možeš provjeriti status zahtjeva ili otkazati termin. Za drugi termin pošalji novi zahtjev na profilu djelatnosti. Ako ti nijedan termin ne odgovara, javi se djelatnosti kroz poruke.",
+    ),
     links: [
-      { label: "Moji termini", href: "/nalog?odjeljak=termini" },
-      { label: "Otvori poruke", href: "/nalog?odjeljak=poruke" },
+      { label: msg("Moji termini"), href: "/nalog?odjeljak=termini" },
+      { label: msg("Otvori poruke"), href: "/nalog?odjeljak=poruke" },
     ],
   },
   sigurnost: {
-    label: "Sigurnost i privatnost",
+    label: msg("Sigurnost i privatnost"),
     icon: "shield",
-    question: "Kako da prijavim sumnjiv sadržaj ili zaštitim nalog?",
-    keywords: ["sigurn", "privat", "prevar", "sumnj", "sadrzaj", "blok", "bris", "nezelj", "krad"],
-    answer:
+    question: msg("Kako da prijavim sumnjiv sadržaj ili zaštitim nalog?"),
+    keywords: [
+      "sigurn",
+      "privat",
+      "prevar",
+      "sumnj",
+      "sadrzaj",
+      "blok",
+      "bris",
+      "nezelj",
+      "krad",
+      "report",
+      "delete",
+      "scam",
+      "block",
+      "melden",
+      "losch",
+      "betrug",
+      "guvenl",
+      "sil",
+      "engel",
+    ],
+    answer: msg(
       "Za prijavu sadržaja otvori opciju Prijavi na profilu, recenziji, Reelu ili razgovoru. Ako misliš da neko ima pristup tvom nalogu, promijeni lozinku i javi nam se. Za brisanje naloga otvori zaseban zahtjev.",
+    ),
     links: [
-      { label: "Zahtjev za brisanje naloga", href: "/brisanje-naloga" },
-      { label: "Privatnost", href: "/privatnost" },
+      { label: msg("Zahtjev za brisanje naloga"), href: "/brisanje-naloga" },
+      { label: msg("Privatnost"), href: "/privatnost" },
     ],
   },
   reels: {
-    label: "Reels",
+    label: msg("Reels"),
     icon: "play",
-    question: "Kako da objavim kratki video za svoju djelatnost?",
+    question: msg("Kako da objavim kratki video za svoju djelatnost?"),
     keywords: ["reels", "reel", "video", "story", "snim", "klip"],
-    answer:
+    answer: msg(
       "Otvori Moji reels, odaberi djelatnost i dodaj snimak s naslovom koji objašnjava šta je na videu. Prikaži vlastiti rad ili uslugu koja je dostupna na profilu. Reel se prikazuje nakon odobrenja, najviše 24 sata; nakon toga se snimak i naslovnica brišu. Možeš ga povući i ranije.",
+    ),
     links: [
-      { label: "Moji reels", href: "/nalog/reels" },
-      { label: "Pogledaj Reels", href: "/reels" },
+      { label: msg("Moji reels"), href: "/nalog/reels" },
+      { label: msg("Pogledaj Reels"), href: "/reels" },
     ],
   },
 } as const;
@@ -82,11 +143,12 @@ export function helpTopicContent(id: HelpTopicId, playEdition = false): HelpAnsw
     case "djelatnost":
       return {
         ...topic,
-        label: "Moje djelatnosti",
-        question: "Kako da dodam ili uredim djelatnost?",
-        answer:
+        label: msg("Moje djelatnosti"),
+        question: msg("Kako da dodam ili uredim djelatnost?"),
+        answer: msg(
           "U nalogu otvori Djelatnosti i odaberi dodavanje. Unesi grad, opis, kontakt i fotografije. Objava djelatnosti je besplatna.",
-        links: [{ label: "Moje djelatnosti", href: accountSectionPath("businesses") }],
+        ),
+        links: [{ label: msg("Moje djelatnosti"), href: accountSectionPath("businesses") }],
       };
     default:
       return topic;
@@ -121,5 +183,5 @@ export function helpTicketTopic(reference: string): HelpTicketTopic | null {
 
 export function helpTicketLabel(reference: string) {
   const topic = helpTicketTopic(reference);
-  return topic && topic !== "ostalo" ? helpTopics[topic].label : "Ostalo";
+  return topic && topic !== "ostalo" ? helpTopics[topic].label : msg("Ostalo");
 }

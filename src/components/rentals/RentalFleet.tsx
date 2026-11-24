@@ -3,6 +3,7 @@ import Image from "next/image";
 import { type FormEvent, useRef, useState } from "react";
 import { bookingMoney } from "../../lib/booking";
 import { type BusinessMediaAsset, businessMediaUrl } from "../../lib/business-media";
+import { msg } from "../../lib/i18n/translate";
 import type { RentalIntent } from "../../lib/rental-submission";
 import {
   RENTAL_BRANDS,
@@ -11,16 +12,22 @@ import {
   type RentalVehicleInput,
 } from "../../lib/rentals";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import { RentalCalendar } from "./RentalCalendar";
 import { RentalEntry } from "./RentalEntries";
 import { RentalRecovery } from "./RentalRecovery";
 import { rentalError, useRentalRead, writeRental } from "./rental-client";
 import styles from "./rentals.module.css";
 
-const fuels = { petrol: "Benzin", diesel: "Dizel", hybrid: "Hibrid", electric: "Električni" };
-const gears = { manual: "Manuelni", automatic: "Automatski" };
+const fuels = {
+  petrol: msg("Benzin"),
+  diesel: msg("Dizel"),
+  hybrid: msg("Hibrid"),
+  electric: msg("Električni"),
+};
+const gears = { manual: msg("Manuelni"), automatic: msg("Automatski") };
 const units = { hour: "započeti sat", day: "započeta 24 sata" };
-const paymentLabels = { hour: "Po započetom satu", day: "Po započeta 24 sata" };
+const paymentLabels = { hour: msg("Po započetom satu"), day: msg("Po započeta 24 sata") };
 type Photo = Pick<BusinessMediaAsset, "slot" | "kind" | "version" | "width" | "height">;
 
 function VehicleForm({
@@ -40,6 +47,7 @@ function VehicleForm({
   done: () => void;
   cancel: () => void;
 }) {
+  const t = useT();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [photo, setPhoto] = useState<number | null>(car?.photoSlot ?? null);
@@ -51,7 +59,7 @@ function VehicleForm({
     const field = (key: string) => String(data.get(key) ?? "").trim();
     const amount = field("price").replace(",", ".");
     if (!/^\d+(\.\d{1,2})?$/.test(amount)) {
-      setError("Unesi cijenu u KM, s najviše dvije decimale.");
+      setError(t("Unesi cijenu u KM, s najviše dvije decimale."));
       return;
     }
     const [marke, feninga = ""] = amount.split(".");
@@ -78,7 +86,7 @@ function VehicleForm({
       await writeRental(`owner/${businessId}`, actor, input);
       done();
     } catch (failure) {
-      setError(rentalError(failure));
+      setError(t(rentalError(failure)));
     } finally {
       setSaving(false);
     }
@@ -87,12 +95,12 @@ function VehicleForm({
     <form
       className={styles.form}
       onSubmit={save}
-      aria-label={car ? "Uredi automobil" : "Novi automobil"}
+      aria-label={car ? t("Uredi automobil") : t("Novi automobil")}
     >
-      <h3>{car ? "Uredi automobil" : "Novi automobil"}</h3>
+      <h3>{car ? t("Uredi automobil") : t("Novi automobil")}</h3>
       <fieldset disabled={saving} className={styles.fields}>
         <label className={styles.full}>
-          Naziv automobila
+          {t("Naziv automobila")}
           <input
             name="name"
             required
@@ -102,10 +110,10 @@ function VehicleForm({
           />
         </label>
         <label>
-          Marka
-          <select aria-label="Marka" name="brand" required defaultValue={car?.brand ?? ""}>
+          {t("Marka")}
+          <select aria-label={t("Marka")} name="brand" required defaultValue={car?.brand ?? ""}>
             <option disabled value="">
-              Odaberi marku
+              {t("Odaberi marku")}
             </option>
             {RENTAL_BRANDS.map((brand) => (
               <option key={brand}>{brand}</option>
@@ -113,46 +121,46 @@ function VehicleForm({
           </select>
         </label>
         <label>
-          Model
+          {t("Model")}
           <input name="model" required maxLength={80} defaultValue={car?.model} />
         </label>
         <label>
-          Gorivo
-          <select aria-label="Gorivo" name="fuel" required defaultValue={car?.fuel ?? ""}>
+          {t("Gorivo")}
+          <select aria-label={t("Gorivo")} name="fuel" required defaultValue={car?.fuel ?? ""}>
             <option disabled value="">
-              Odaberi gorivo
+              {t("Odaberi gorivo")}
             </option>
             {Object.entries(fuels).map(([v, label]) => (
               <option key={v} value={v}>
-                {label}
+                {t(label)}
               </option>
             ))}
           </select>
         </label>
         <label>
-          Mjenjač
+          {t("Mjenjač")}
           <select
-            aria-label="Mjenjač"
+            aria-label={t("Mjenjač")}
             name="transmission"
             required
             defaultValue={car?.transmission ?? ""}
           >
             <option disabled value="">
-              Odaberi mjenjač
+              {t("Odaberi mjenjač")}
             </option>
             {Object.entries(gears).map(([v, label]) => (
               <option key={v} value={v}>
-                {label}
+                {t(label)}
               </option>
             ))}
           </select>
         </label>
         <label>
-          Broj sjedišta
+          {t("Broj sjedišta")}
           <input type="number" name="seats" required min={1} max={99} defaultValue={car?.seats} />
         </label>
         <label>
-          Godište
+          {t("Godište")}
           <input
             type="number"
             name="year"
@@ -162,7 +170,7 @@ function VehicleForm({
           />
         </label>
         <label>
-          Cijena (KM)
+          {t("Cijena (KM)")}
           <input
             name="price"
             inputMode="decimal"
@@ -171,20 +179,25 @@ function VehicleForm({
           />
         </label>
         <label>
-          Obračun
-          <select aria-label="Obračun" name="unit" required defaultValue={car?.priceUnit ?? ""}>
+          {t("Obračun")}
+          <select
+            aria-label={t("Obračun")}
+            name="unit"
+            required
+            defaultValue={car?.priceUnit ?? ""}
+          >
             <option disabled value="">
-              Odaberi obračun
+              {t("Odaberi obračun")}
             </option>
             {Object.entries(paymentLabels).map(([v, label]) => (
               <option key={v} value={v}>
-                {label}
+                {t(label)}
               </option>
             ))}
           </select>
         </label>
         <label className={styles.full}>
-          Opis <small>(opcionalno)</small>
+          {t("Opis")} <small>(opcionalno)</small>
           <textarea
             name="description"
             maxLength={1000}
@@ -192,10 +205,10 @@ function VehicleForm({
             defaultValue={car?.description ?? ""}
           />
         </label>
-        {mediaOnReview && <p>Novu fotografiju možeš odabrati nakon odobrenja.</p>}
+        {mediaOnReview && <p>{t("Novu fotografiju možeš odabrati nakon odobrenja.")}</p>}
         {photos.length > 0 ? (
           <fieldset className={styles.photoChoice}>
-            <legend>Fotografija automobila</legend>
+            <legend>{t("Fotografija automobila")}</legend>
             <label>
               <input
                 type="radio"
@@ -203,7 +216,7 @@ function VehicleForm({
                 checked={photo === null}
                 onChange={() => setPhoto(null)}
               />{" "}
-              Bez fotografije
+              {t("Bez fotografije")}
             </label>
             {photos.map((asset) => (
               <label key={asset.slot}>
@@ -227,20 +240,20 @@ function VehicleForm({
         ) : (
           <p className={styles.full}>
             {mediaOnReview
-              ? "Automobil možeš sačuvati i bez fotografije."
-              : "Fotografiju možeš dodati u galeriju djelatnosti i zatim odabrati ovdje."}
+              ? t("Automobil možeš sačuvati i bez fotografije.")
+              : t("Fotografiju možeš dodati u galeriju djelatnosti i zatim odabrati ovdje.")}
           </p>
         )}
         <label className={styles.checkbox}>
-          <input name="enabled" type="checkbox" defaultChecked={car?.enabled ?? true} /> Primaj
-          zahtjeve za ovaj automobil
+          <input name="enabled" type="checkbox" defaultChecked={car?.enabled ?? true} />{" "}
+          {t("Primaj zahtjeve za ovaj automobil")}
         </label>
         <div className={styles.actions}>
           <button type="submit" className={styles.primary}>
-            {saving ? "Spremanje…" : "Sačuvaj automobil"}
+            {saving ? t("Spremanje…") : t("Sačuvaj automobil")}
           </button>
           <button type="button" className={styles.secondary} onClick={cancel}>
-            Odustani
+            {t("Odustani")}
           </button>
         </div>
       </fieldset>
@@ -283,6 +296,7 @@ function FleetContent({
 }: FleetProps & {
   onUncertain: (intent: RentalIntent) => void;
 }) {
+  const t = useT();
   const [revision, setRevision] = useState(0);
   const [editor, setEditor] = useState<RentalVehicle | null | undefined>();
   const [selected, setSelected] = useState<string | null>(null);
@@ -316,7 +330,7 @@ function FleetContent({
       setSelected(null);
       refresh();
     } catch (failure) {
-      setError(rentalError(failure));
+      setError(t(rentalError(failure)));
     } finally {
       setWorking(false);
     }
@@ -324,7 +338,7 @@ function FleetContent({
   if (!state && !data)
     return actor ? (
       <p className={styles.muted} role="status">
-        Dohvaćanje automobila…
+        {t("Dohvaćanje automobila…")}
       </p>
     ) : null;
   if (!data)
@@ -332,21 +346,21 @@ function FleetContent({
       <p role="alert" className={styles.error}>
         {state?.error}{" "}
         <button type="button" className={styles.secondary} onClick={refresh}>
-          Pokušaj ponovo
+          {t("Pokušaj ponovo")}
         </button>
       </p>
     );
   if (!actor && !data.vehicles.length) return null;
   if (actor && !data.eligible && !data.vehicles.length) return null;
   return (
-    <section className={styles.panel} aria-label="Automobili za najam">
+    <section className={styles.panel} aria-label={t("Automobili za najam")}>
       <div className={styles.topline}>
-        <h2>{actor ? "Automobili" : "Automobili za najam"}</h2>
+        <h2>{actor ? t("Automobili") : t("Automobili za najam")}</h2>
         {actor && <span className={styles.badge}>{data.vehicles.length} / 2 automobila</span>}
       </div>
       {actor && editor === undefined && Boolean(data.upcoming?.length) && (
         <div className={styles.agenda}>
-          <h3>Zahtjevi za najam</h3>
+          <h3>{t("Zahtjevi za najam")}</h3>
           {data.upcoming?.map((entry) => (
             <RentalEntry key={entry.id} entry={entry} owner actor={actor} changed={refresh} />
           ))}
@@ -356,12 +370,12 @@ function FleetContent({
         <div className={styles.actions}>
           {data.vehicles.length < 2 && (
             <button type="button" className={styles.primary} onClick={() => setEditor(null)}>
-              Dodaj automobil
+              {t("Dodaj automobil")}
             </button>
           )}
           {onPhotos && (
             <button type="button" className={styles.secondary} onClick={onPhotos}>
-              Galerija djelatnosti
+              {t("Galerija djelatnosti")}
             </button>
           )}
         </div>
@@ -408,10 +422,13 @@ function FleetContent({
                     {car.year ? ` · ${car.year}` : ""}
                   </p>
                 </div>
-                {actor && !car.enabled && <span className={styles.badge}>Najam isključen</span>}
+                {actor && !car.enabled && (
+                  <span className={styles.badge}>{t("Najam isključen")}</span>
+                )}
               </div>
               <p className={styles.specs}>
-                {fuels[car.fuel]} · {gears[car.transmission]} · {car.seats} sjedišta
+                {t(fuels[car.fuel])} · {t(gears[car.transmission])} ·{" "}
+                {t("{count} sjedišta", { count: car.seats })}
               </p>
               {car.description && <p>{car.description}</p>}
               <div className={styles.topline}>
@@ -428,7 +445,7 @@ function FleetContent({
                     setArchiveId(null);
                   }}
                 >
-                  <Icon name="calendar" /> {actor ? "Kalendar" : "Provjeri dostupnost"}
+                  <Icon name="calendar" /> {actor ? t("Kalendar") : t("Provjeri dostupnost")}
                 </button>
               </div>
               {actor && (
@@ -442,7 +459,7 @@ function FleetContent({
                         setArchiveId(null);
                       }}
                     >
-                      Uredi automobil
+                      {t("Uredi automobil")}
                     </button>
                   )}
                   {archiveId !== car.id ? (
@@ -454,7 +471,7 @@ function FleetContent({
                         setError("");
                       }}
                     >
-                      Arhiviraj
+                      {t("Arhiviraj")}
                     </button>
                   ) : (
                     <>
@@ -464,7 +481,7 @@ function FleetContent({
                         className={styles.secondary}
                         onClick={() => void archive(car)}
                       >
-                        Potvrdi arhiviranje
+                        {t("Potvrdi arhiviranje")}
                       </button>
                       <button
                         type="button"
@@ -472,7 +489,7 @@ function FleetContent({
                         className={styles.smallAction}
                         onClick={() => setArchiveId(null)}
                       >
-                        Odustani
+                        {t("Odustani")}
                       </button>
                     </>
                   )}

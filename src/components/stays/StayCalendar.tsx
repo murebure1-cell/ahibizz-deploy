@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { accountSectionPath } from "../../lib/account-return";
-import { bookingDate, bookingMoney, bookingMonth } from "../../lib/booking";
+import { bookingDate, bookingMoney, bookingMonth, bookingWeekdays } from "../../lib/booking";
 import { BookingRequestError, bookingAccountId } from "../../lib/booking-client";
 import { addDays, dateKey } from "../../lib/booking-time";
 import { lastArrivalDate, lastStayDate, stayCalendarMonth } from "../../lib/stay-calendar";
@@ -16,13 +16,12 @@ import {
   stayQuote,
 } from "../../lib/stays";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import { LoadingSkeleton } from "../LoadingSkeleton";
 import common from "../rentals/rentals.module.css";
 import { StayEntry } from "./StayEntries";
 import { stayError, useStayRead, writeStay } from "./stay-client";
 import styles from "./stays.module.css";
-
-const weekdays = ["Po", "Ut", "Sr", "Če", "Pe", "Su", "Ne"];
 
 export function StayCalendar({
   unit,
@@ -41,6 +40,7 @@ export function StayCalendar({
   changedOffer: () => void;
   changedBookings: () => void;
 }) {
+  const { t, locale } = useI18n();
   const today = dateKey(new Date(), zone);
   const [month, setMonth] = useState(today.slice(0, 7));
   const [day, setDay] = useState(today);
@@ -170,10 +170,10 @@ export function StayCalendar({
       changedBookings();
       setNotice(
         recover
-          ? "Prethodni zahtjev je potvrđen u evidenciji."
+          ? t("Prethodni zahtjev je potvrđen u evidenciji.")
           : actor
-            ? "Noći su označene kao zauzete."
-            : "Zahtjev je poslan vlasniku.",
+            ? t("Noći su označene kao zauzete.")
+            : t("Zahtjev je poslan vlasniku."),
       );
     } catch (failure) {
       if (failure instanceof StayRecoveryRequired) {
@@ -181,7 +181,7 @@ export function StayCalendar({
         return;
       }
       if (recover && pending && !staySubmissions.pending(pending.account)) setPending(null);
-      setError(stayError(failure));
+      setError(t(stayError(failure)));
       if (failure instanceof BookingRequestError) {
         if (failure.status === 401) setLogin(true);
         if (failure.status === 409) {
@@ -204,16 +204,16 @@ export function StayCalendar({
           <div className={common.month}>
             <button
               type="button"
-              aria-label="Prethodni mjesec"
+              aria-label={t("Prethodni mjesec")}
               disabled={frozen || !previous || (!actor && month <= today.slice(0, 7))}
               onClick={() => browse(previous)}
             >
               <Icon name="chevron" style={{ transform: "rotate(180deg)" }} />
             </button>
-            <strong>{bookingMonth(month)}</strong>
+            <strong>{bookingMonth(month, locale)}</strong>
             <button
               type="button"
-              aria-label="Sljedeći mjesec"
+              aria-label={t("Sljedeći mjesec")}
               disabled={frozen || !next}
               onClick={() => browse(next)}
             >
@@ -221,11 +221,13 @@ export function StayCalendar({
             </button>
           </div>
           <div className={common.days}>
-            {weekdays.map((d) => (
-              <small key={d}>{d}</small>
+            {bookingWeekdays(locale).map((d, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: The seven weekdays never reorder.
+              <small key={index}>{d}</small>
             ))}
-            {weekdays.slice(0, weekdayOffset).map((weekday) => (
-              <span key={weekday} />
+            {Array.from({ length: weekdayOffset }, (_, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: Empty cells before the first day.
+              <span key={`empty-${index}`} />
             ))}
             {Array.from({ length: days }, (_, i) => {
               const value = `${month}-${String(i + 1).padStart(2, "0")}`;
@@ -236,7 +238,8 @@ export function StayCalendar({
                   key={value}
                   className={styles.day}
                   aria-label={
-                    bookingDate(`${value}T12:00:00Z`, "UTC") + (taken ? ", zauzeta noć" : "")
+                    bookingDate(`${value}T12:00:00Z`, "UTC", { locale }) +
+                    (taken ? ", zauzeta noć" : "")
                   }
                   aria-current={value === today ? "date" : undefined}
                   aria-pressed={
@@ -259,14 +262,14 @@ export function StayCalendar({
               <p role="alert">
                 {calendar.error}{" "}
                 <button type="button" className={common.smallAction} onClick={retryRead}>
-                  Pokušaj ponovo
+                  {t("Pokušaj ponovo")}
                 </button>
               </p>
             ) : !calendar?.data ? (
-              <LoadingSkeleton label="Učitavanje kalendara…" rows={2} />
+              <LoadingSkeleton label={t("Učitavanje kalendara…")} rows={2} />
             ) : (
               <>
-                <strong>{bookingDate(`${day}T12:00:00Z`, "UTC")}</strong>
+                <strong>{bookingDate(`${day}T12:00:00Z`, "UTC", { locale })}</strong>
                 {actor && dayEntries.some((e) => "status" in e) ? (
                   dayEntries.map(
                     (e) =>
@@ -286,8 +289,8 @@ export function StayCalendar({
                 ) : (
                   <p>
                     {active.some((e) => e.checkIn <= day && e.checkOut > day)
-                      ? "Zauzeta noć"
-                      : "Slobodna noć"}
+                      ? t("Zauzeta noć")
+                      : t("Slobodna noć")}
                   </p>
                 )}
               </>
@@ -295,11 +298,11 @@ export function StayCalendar({
           </div>
         </div>
         {pending && (
-          <section className={common.range} aria-label="Provjera prethodnog zahtjeva">
-            <h4>Ishod zahtjeva još nije potvrđen.</h4>
+          <section className={common.range} aria-label={t("Provjera prethodnog zahtjeva")}>
+            <h4>{t("Ishod zahtjeva još nije potvrđen.")}</h4>
             <p>
-              {bookingDate(`${pending.body.checkIn}T12:00:00Z`, "UTC")} —{" "}
-              {bookingDate(`${pending.body.checkOut}T12:00:00Z`, "UTC")}
+              {bookingDate(`${pending.body.checkIn}T12:00:00Z`, "UTC", { locale })} —{" "}
+              {bookingDate(`${pending.body.checkOut}T12:00:00Z`, "UTC", { locale })}
             </p>
             <button
               type="button"
@@ -307,9 +310,9 @@ export function StayCalendar({
               disabled={working}
               onClick={(e) => void submit(e, true)}
             >
-              Provjeri isti zahtjev
+              {t("Provjeri isti zahtjev")}
             </button>
-            <Link href={accountSectionPath("appointments")}>Moji termini</Link>
+            <Link href={accountSectionPath("appointments")}>{t("Moji termini")}</Link>
             {error && (
               <p role="alert" className={common.error}>
                 {error}
@@ -319,9 +322,9 @@ export function StayCalendar({
         )}
         {allowNew && !pending && (
           <form className={common.range} onSubmit={submit}>
-            <h4>{actor ? "Označi zauzete noći" : "Rezerviši smještaj"}</h4>
+            <h4>{actor ? t("Označi zauzete noći") : t("Rezerviši smještaj")}</h4>
             <label>
-              {actor ? "Od" : "Dolazak"}
+              {actor ? t("Od") : t("Dolazak")}
               <input
                 type="date"
                 required
@@ -344,7 +347,7 @@ export function StayCalendar({
               />
             </label>
             <label>
-              {actor ? "Do" : "Odlazak"}
+              {actor ? t("Do") : t("Odlazak")}
               <input
                 type="date"
                 required
@@ -361,19 +364,19 @@ export function StayCalendar({
               />
             </label>
             {arrival && departure && !valid && (
-              <p role="status">Odlazak mora biti nakon dolaska.</p>
+              <p role="status">{t("Odlazak mora biti nakon dolaska.")}</p>
             )}
             {extra?.error && (
               <p role="alert">
                 {extra.error}{" "}
                 <button className={common.smallAction} type="button" onClick={retryRead}>
-                  Pokušaj ponovo
+                  {t("Pokušaj ponovo")}
                 </button>
               </p>
             )}
             {occupied && (
               <p role="status" className={common.error}>
-                Smještaj je zauzet u tom periodu.
+                {t("Smještaj je zauzet u tom periodu.")}
               </p>
             )}
             {!actor && valid && (
@@ -389,7 +392,7 @@ export function StayCalendar({
               type="submit"
               disabled={frozen || !valid || !ready || occupied}
             >
-              {working ? "Slanje…" : actor ? "Označi zauzeto" : "Pošalji zahtjev"}
+              {working ? t("Slanje…") : actor ? t("Označi zauzeto") : t("Pošalji zahtjev")}
             </button>
             {error && (
               <p role="alert" className={common.error}>
@@ -398,7 +401,7 @@ export function StayCalendar({
                   <Link
                     href={`/prijava?nastavi=${encodeURIComponent(`/djelatnosti/${unit.businessId}#business-stays`)}`}
                   >
-                    Prijava
+                    {t("Prijava")}
                   </Link>
                 )}
               </p>
@@ -406,7 +409,9 @@ export function StayCalendar({
             {notice && (
               <p role="status" className={common.success}>
                 {notice}{" "}
-                {!actor && <Link href={accountSectionPath("appointments")}>Moji termini</Link>}
+                {!actor && (
+                  <Link href={accountSectionPath("appointments")}>{t("Moji termini")}</Link>
+                )}
               </p>
             )}
           </form>

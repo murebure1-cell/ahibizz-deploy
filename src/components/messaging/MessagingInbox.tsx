@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { accountDate } from "../../lib/display-date";
+import { localDate } from "../../lib/display-date";
+import type { Locale } from "../../lib/i18n/locales";
+import { msg } from "../../lib/i18n/translate";
 import {
   type ChatConversation,
   type ChatMessage,
@@ -38,6 +40,7 @@ import {
 } from "../../lib/messaging-recovery-storage";
 import { reportUrl } from "../../lib/support-requests";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import styles from "./messaging.module.css";
 
 const messageTime = new Intl.DateTimeFormat("bs-BA", {
@@ -73,16 +76,16 @@ function initials(name: string) {
     .join("")
     .toLocaleUpperCase("bs");
 }
-function messageDayLabel(value: Date) {
-  return accountDate(value);
+function messageDayLabel(value: Date, locale: Locale) {
+  return localDate(value, locale);
 }
-function previewDate(value: Date, today: Date) {
+function previewDate(value: Date, today: Date, locale: Locale) {
   if (messageDate.format(value) === messageDate.format(today)) return messageTime.format(value);
-  return messageDayLabel(value);
+  return messageDayLabel(value, locale);
 }
 function threadContext(thread: ChatThread) {
-  if (thread.kind === "person") return "Lični razgovor";
-  return thread.inbox === "business" ? "Upit za djelatnost" : "Djelatnost";
+  if (thread.kind === "person") return msg("Lični razgovor");
+  return thread.inbox === "business" ? msg("Upit za djelatnost") : msg("Djelatnost");
 }
 function ThreadAvatar({ thread }: { thread?: ChatThread }) {
   return (
@@ -133,6 +136,7 @@ export function MessagingInbox({
   /** Only isolated fixtures inject this; live persistence is bound to the signed account. */
   recoveryStore?: MessagingRecoveryStore;
 }) {
+  const { t, locale } = useI18n();
   const [inbox, setInbox] = useState<MessageInbox>("personal");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -256,11 +260,11 @@ export function MessagingInbox({
       }
       setError(
         failure instanceof MessagingStorageError
-          ? "Nacrt se ne može sačuvati na uređaju. Oslobodi prostor pa pokušaj ponovo."
-          : messagingError(failure),
+          ? t("Nacrt se ne može sačuvati na uređaju. Oslobodi prostor pa pokušaj ponovo.")
+          : t(messagingError(failure)),
       );
     },
-    [clearPrivate, store],
+    [clearPrivate, store, t],
   );
   const updateThread = useCallback((thread: ChatThread) => {
     const update = (items: ChatThread[], unreadOnly: boolean) =>
@@ -284,7 +288,7 @@ export function MessagingInbox({
       criteria: MailboxFilters = view.current,
     ) => {
       if (!usable) {
-        setError("Pregled poruka trenutno nije dostupan.");
+        setError(t("Pregled poruka trenutno nije dostupan."));
         return;
       }
       const generation = scope.current,
@@ -343,7 +347,7 @@ export function MessagingInbox({
           setLoading(false);
       }
     },
-    [fail, scopedRequest, usable],
+    [fail, scopedRequest, usable, t],
   );
 
   const loadConversation = useCallback(
@@ -404,7 +408,7 @@ export function MessagingInbox({
             saved = value?.text ?? "";
             draftRevisions.current.set(draftKey, value?.key ?? null);
           } catch {
-            setStorageWarning("Nacrt se trenutno čuva samo dok je aplikacija otvorena.");
+            setStorageWarning(t("Nacrt se trenutno čuva samo dok je aplikacija otvorena."));
           }
           draftCache.current.set(draftKey, saved);
         }
@@ -472,7 +476,7 @@ export function MessagingInbox({
         }
       }
     },
-    [fail, loadList, scopedRequest, updateThread, usable, store],
+    [fail, loadList, scopedRequest, updateThread, usable, store, t],
   );
 
   const commit = useCallback(
@@ -681,17 +685,17 @@ export function MessagingInbox({
       setRecoveryReady(true);
     } catch {
       setStorageWarning(
-        "Nacrt se ne može sačuvati na uređaju. Oslobodi prostor pa osvježi stranicu.",
+        t("Nacrt se ne može sačuvati na uređaju. Oslobodi prostor pa osvježi stranicu."),
       );
     }
-  }, [active, authorityVerified, store, initialTarget, initialBusinessThread, loadConversation]);
+  }, [active, authorityVerified, store, initialTarget, initialBusinessThread, loadConversation, t]);
   useEffect(() => {
     if (!store) return;
     const onStorage = (event: StorageEvent) => {
       if (event.key === store.logoutKey) {
         clearPrivate(true);
         setRequiresLogin(true);
-        setError("Prijavi se ponovo.");
+        setError(t("Prijavi se ponovo."));
         return;
       }
       if (
@@ -718,7 +722,7 @@ export function MessagingInbox({
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, [clearPrivate, store, authorityVerified]);
+  }, [clearPrivate, store, authorityVerified, t]);
   useEffect(() => {
     if (active) void loadList(inbox, page, false, filters);
     return () => {
@@ -877,7 +881,7 @@ export function MessagingInbox({
     try {
       store?.saveSelection(thread.id, thread.inbox);
     } catch {
-      setStorageWarning("Nacrt se trenutno čuva samo dok je aplikacija otvorena.");
+      setStorageWarning(t("Nacrt se trenutno čuva samo dok je aplikacija otvorena."));
     }
     setError("");
     setConversation(conversationCache.current.get(thread.id) ?? null);
@@ -971,7 +975,7 @@ export function MessagingInbox({
       });
     } catch (failure) {
       if (failure instanceof MessagingStorageError) fail(failure);
-      else setError("Napiši poruku do 2.000 znakova.");
+      else setError(t("Napiši poruku do 2.000 znakova."));
     }
   }
   const thread = conversation?.thread;
@@ -980,7 +984,7 @@ export function MessagingInbox({
   const today = new Date();
   const datedMessages = conversation?.items.map((item) => {
     const date = new Date(item.createdAt);
-    return { item, date, day: messageDayLabel(date) };
+    return { item, date, day: messageDayLabel(date, locale) };
   });
   const feedback = (
     <>
@@ -992,9 +996,9 @@ export function MessagingInbox({
               href="/prijava?nastavi=%2Fnalog%3Fodjeljak%3Dporuke"
               target={pending ? "_blank" : undefined}
               rel={pending ? "noopener" : undefined}
-              aria-label={pending ? "Prijavi se u novoj kartici" : undefined}
+              aria-label={pending ? t("Prijavi se u novoj kartici") : undefined}
             >
-              Prijavi se
+              {t("Prijavi se")}
             </Link>
           )}
         </div>
@@ -1008,11 +1012,11 @@ export function MessagingInbox({
         <div role="status" className={styles.pending}>
           <span>
             {pending.receipt
-              ? "Promjena je primljena. Provjeri razgovor."
-              : "Zahtjev nije potvrđen. Provjeri prije nove poruke."}
+              ? t("Promjena je primljena. Provjeri razgovor.")
+              : t("Zahtjev nije potvrđen. Provjeri prije nove poruke.")}
           </span>
           <button type="button" disabled={busy} onClick={() => void commit(pending)}>
-            {busy ? "Provjeravam…" : "Provjeri"}
+            {busy ? t("Provjeravam…") : t("Provjeri")}
           </button>
         </div>
       )}
@@ -1021,26 +1025,26 @@ export function MessagingInbox({
   return (
     <section
       className={styles.workspace}
-      aria-label="Poruke"
+      aria-label={t("Poruke")}
       data-design="messages-panel"
       data-message-chat={active && selected ? "open" : undefined}
     >
       <div className={`${styles.layout} ${selected ? styles.hasSelection : ""}`}>
-        <aside className={styles.sidebar} aria-label="Razgovori">
+        <aside className={styles.sidebar} aria-label={t("Razgovori")}>
           <header className={styles.inboxHeader}>
             <div className={styles.inboxTitle}>
               {heading ? (
-                <h1>Poruke</h1>
+                <h1>{t("Poruke")}</h1>
               ) : (
-                <strong className={styles.sectionLabel}>Razgovori</strong>
+                <strong className={styles.sectionLabel}>{t("Razgovori")}</strong>
               )}
               <button
                 type="button"
                 className={styles.refresh}
                 onClick={refresh}
                 disabled={interactionLocked || !usable}
-                aria-label="Osvježi razgovore"
-                title="Osvježi razgovore"
+                aria-label={t("Osvježi razgovore")}
+                title={t("Osvježi razgovore")}
               >
                 <Icon name="refresh" />
               </button>
@@ -1053,8 +1057,8 @@ export function MessagingInbox({
                 ref={inboxSearch}
                 type="search"
                 autoComplete="off"
-                aria-label="Pretraži razgovore"
-                placeholder="Pretraži razgovore"
+                aria-label={t("Pretraži razgovore")}
+                placeholder={t("Pretraži razgovore")}
                 maxLength={messageSearchLimit}
                 disabled={interactionLocked || !usable}
                 value={search}
@@ -1065,7 +1069,7 @@ export function MessagingInbox({
                   type="button"
                   className={styles.clearSearch}
                   disabled={interactionLocked}
-                  aria-label="Obriši pretragu"
+                  aria-label={t("Obriši pretragu")}
                   onClick={() => {
                     setSearch("");
                     inboxSearch.current?.focus();
@@ -1077,14 +1081,14 @@ export function MessagingInbox({
             </div>
             <div className={styles.listControls}>
               <fieldset className={styles.tabs}>
-                <legend className={styles.srOnly}>Sandučić</legend>
+                <legend className={styles.srOnly}>{t("Sandučić")}</legend>
                 <button
                   type="button"
                   aria-pressed={inbox === "personal"}
                   onClick={() => switchInbox("personal")}
                   disabled={interactionLocked}
                 >
-                  Lično
+                  {t("Lično")}
                 </button>
                 <button
                   type="button"
@@ -1092,18 +1096,18 @@ export function MessagingInbox({
                   onClick={() => switchInbox("business")}
                   disabled={interactionLocked}
                 >
-                  Djelatnosti
+                  {t("Djelatnosti")}
                 </button>
               </fieldset>
               <fieldset className={styles.filterGroup}>
-                <legend className={styles.srOnly}>Status razgovora</legend>
+                <legend className={styles.srOnly}>{t("Status razgovora")}</legend>
                 <button
                   type="button"
                   aria-pressed={!filters.unreadOnly}
                   onClick={() => filterUnread(false)}
                   disabled={interactionLocked}
                 >
-                  Svi
+                  {t("Svi")}
                 </button>
                 <button
                   type="button"
@@ -1111,7 +1115,7 @@ export function MessagingInbox({
                   onClick={() => filterUnread(true)}
                   disabled={interactionLocked}
                 >
-                  Nepročitani
+                  {t("Nepročitani")}
                 </button>
               </fieldset>
             </div>
@@ -1120,11 +1124,11 @@ export function MessagingInbox({
           {showSafetyTip && !filters.query && !filters.unreadOnly && (
             <div className={styles.infoBanner}>
               <Icon name="shield" />
-              <Link href="/pomoc?tema=sigurnost">Savjeti za sigurno dopisivanje</Link>
+              <Link href="/pomoc?tema=sigurnost">{t("Savjeti za sigurno dopisivanje")}</Link>
               <button
                 className={styles.clearSearch}
                 type="button"
-                aria-label="Sakrij savjet"
+                aria-label={t("Sakrij savjet")}
                 onClick={dismissSafetyTip}
               >
                 <Icon name="close" />
@@ -1145,25 +1149,25 @@ export function MessagingInbox({
                 <span className={styles.threadBody}>
                   <strong>{item.title}</strong>
                   {item.kind === "business" && (
-                    <span className={styles.threadContext}>{threadContext(item)}</span>
+                    <span className={styles.threadContext}>{t(threadContext(item))}</span>
                   )}
                   <span className={styles.threadPreview}>
-                    {item.lastMessage?.body ?? "Započni razgovor"}
+                    {item.lastMessage?.body ?? t("Započni razgovor")}
                   </span>
                 </span>
                 <span className={styles.threadMeta}>
                   {item.lastMessage && (
                     <time
                       dateTime={item.lastMessage.createdAt}
-                      title={messageDayLabel(new Date(item.lastMessage.createdAt))}
+                      title={messageDayLabel(new Date(item.lastMessage.createdAt), locale)}
                     >
-                      {previewDate(new Date(item.lastMessage.createdAt), today)}
+                      {previewDate(new Date(item.lastMessage.createdAt), today, locale)}
                     </time>
                   )}
                   {item.unreadCount > 0 && (
                     <span className={styles.unread}>
                       {item.unreadCount > 99 ? "99+" : item.unreadCount}
-                      <span className={styles.srOnly}> nepročitanih poruka</span>
+                      <span className={styles.srOnly}> {t("nepročitanih poruka")}</span>
                     </span>
                   )}
                 </span>
@@ -1174,24 +1178,24 @@ export function MessagingInbox({
                 <Icon name={filters.query ? "search" : "message"} />
                 <strong>
                   {loading && !listReady
-                    ? "Otvaram poruke…"
+                    ? t("Otvaram poruke…")
                     : filters.query
-                      ? "Nema rezultata"
+                      ? t("Nema rezultata")
                       : filters.unreadOnly
-                        ? "Nema nepročitanih razgovora"
-                        : "Još nema razgovora"}
+                        ? t("Nema nepročitanih razgovora")
+                        : t("Još nema razgovora")}
                 </strong>
               </div>
             )}
           </div>
           {(page > 1 || hasMore) && (
-            <nav className={styles.pagination} aria-label="Stranice razgovora">
+            <nav className={styles.pagination} aria-label={t("Stranice razgovora")}>
               <button
                 type="button"
                 disabled={page === 1 || busy || Boolean(pending)}
                 onClick={() => setPage(page - 1)}
               >
-                Prethodna
+                {t("Prethodna")}
               </button>
               <span>{page}</span>
               <button
@@ -1199,14 +1203,14 @@ export function MessagingInbox({
                 disabled={!hasMore || busy || Boolean(pending)}
                 onClick={() => setPage(page + 1)}
               >
-                Sljedeća
+                {t("Sljedeća")}
               </button>
             </nav>
           )}
         </aside>
         <section
           className={styles.conversation}
-          aria-label={shownThread ? `Razgovor: ${shownThread.title}` : "Izabrani razgovor"}
+          aria-label={shownThread ? `Razgovor: ${shownThread.title}` : t("Izabrani razgovor")}
         >
           {selected ? (
             <>
@@ -1214,7 +1218,7 @@ export function MessagingInbox({
                 <button
                   type="button"
                   className={styles.back}
-                  aria-label="Nazad na razgovore"
+                  aria-label={t("Nazad na razgovore")}
                   disabled={interactionLocked}
                   onClick={closeConversation}
                 >
@@ -1223,8 +1227,8 @@ export function MessagingInbox({
                 <div className={styles.conversationIdentity}>
                   <ThreadAvatar thread={shownThread} />
                   <div className={styles.conversationTitle}>
-                    <h2>{shownThread?.title ?? "Razgovor"}</h2>
-                    {shownThread && <span>{threadContext(shownThread)}</span>}
+                    <h2>{shownThread?.title ?? t("Razgovor")}</h2>
+                    {shownThread && <span>{t(threadContext(shownThread))}</span>}
                   </div>
                 </div>
                 {thread && (
@@ -1236,7 +1240,7 @@ export function MessagingInbox({
                       event.currentTarget.querySelector("summary")?.focus();
                     }}
                   >
-                    <summary aria-label="Opcije razgovora" title="Opcije razgovora">
+                    <summary aria-label={t("Opcije razgovora")} title={t("Opcije razgovora")}>
                       <Icon name="more" />
                     </summary>
                     <div className={styles.menuItems}>
@@ -1256,12 +1260,12 @@ export function MessagingInbox({
                           });
                         }}
                       >
-                        {thread.blockedByMe ? "Odblokiraj" : "Blokiraj"}{" "}
+                        {thread.blockedByMe ? t("Odblokiraj") : t("Blokiraj")}{" "}
                         {thread.kind === "person" ? "korisnika" : "razgovor"}
                       </button>
                       {!preview && (
                         <Link href={reportUrl("conversation", thread.id)} className={styles.report}>
-                          Prijavi razgovor
+                          {t("Prijavi razgovor")}
                         </Link>
                       )}
                     </div>
@@ -1273,7 +1277,7 @@ export function MessagingInbox({
                 ref={scroll}
                 className={styles.messages}
                 role="log"
-                aria-label="Historija poruka"
+                aria-label={t("Historija poruka")}
                 aria-live="polite"
                 aria-busy={reading}
               >
@@ -1284,10 +1288,12 @@ export function MessagingInbox({
                     disabled={older || busy || Boolean(pending)}
                     onClick={() => void loadConversation(selected, conversation.items[0]?.sequence)}
                   >
-                    {older ? "Otvaram…" : "Starije poruke"}
+                    {older ? t("Otvaram…") : t("Starije poruke")}
                   </button>
                 )}
-                {reading && !conversation && <p className={styles.centerNote}>Otvaram razgovor…</p>}
+                {reading && !conversation && (
+                  <p className={styles.centerNote}>{t("Otvaram razgovor…")}</p>
+                )}
                 {datedMessages?.map(({ item, date, day }, index) => {
                   const previous = datedMessages[index - 1];
                   const next = datedMessages[index + 1];
@@ -1311,8 +1317,8 @@ export function MessagingInbox({
                 {conversation && conversation.items.length === 0 && (
                   <div className={styles.emptyConversation}>
                     <Icon name="message" />
-                    <strong>Razgovor počinje ovdje</strong>
-                    <span>Pošalji prvu poruku.</span>
+                    <strong>{t("Razgovor počinje ovdje")}</strong>
+                    <span>{t("Pošalji prvu poruku.")}</span>
                   </div>
                 )}
               </div>
@@ -1320,8 +1326,8 @@ export function MessagingInbox({
                 <p className={styles.composerInfo}>
                   <Icon name="info" />
                   {thread.blocked
-                    ? "Razgovor je blokiran."
-                    : "Na ovaj razgovor trenutno ne možeš odgovoriti."}
+                    ? t("Razgovor je blokiran.")
+                    : t("Na ovaj razgovor trenutno ne možeš odgovoriti.")}
                 </p>
               )}
               {preview && onSimulateReply && thread && (
@@ -1339,7 +1345,7 @@ export function MessagingInbox({
                     }
                   }}
                 >
-                  Isprobaj odgovor
+                  {t("Isprobaj odgovor")}
                 </button>
               )}
               {thread?.canSend && (
@@ -1352,14 +1358,14 @@ export function MessagingInbox({
                   }}
                 >
                   <label className={styles.srOnly} htmlFor={`message-${selected}`}>
-                    Tvoja poruka
+                    {t("Tvoja poruka")}
                   </label>
                   <textarea
                     id={`message-${selected}`}
                     rows={2}
                     maxLength={2000}
                     value={draft}
-                    placeholder="Napiši poruku…"
+                    placeholder={t("Napiši poruku…")}
                     disabled={!thread?.canSend || busy || Boolean(pending)}
                     onChange={(event) => {
                       const value = event.target.value;
@@ -1378,7 +1384,7 @@ export function MessagingInbox({
                         } catch {
                           unpersistedDrafts.current.add(`${selectedInbox}:${selected}`);
                           setStorageWarning(
-                            "Nacrt se trenutno čuva samo dok je aplikacija otvorena.",
+                            t("Nacrt se trenutno čuva samo dok je aplikacija otvorena."),
                           );
                         }
                       }
@@ -1394,11 +1400,11 @@ export function MessagingInbox({
                   <button
                     type="submit"
                     className={styles.send}
-                    aria-label="Pošalji poruku"
+                    aria-label={t("Pošalji poruku")}
                     disabled={!thread?.canSend || !draft.trim() || busy || Boolean(pending)}
                   >
                     <Icon name="arrow" />
-                    <span>Pošalji</span>
+                    <span>{t("Pošalji")}</span>
                   </button>
                 </form>
               )}
@@ -1408,7 +1414,7 @@ export function MessagingInbox({
               <span className={styles.welcomeIcon}>
                 <Icon name="message" />
               </span>
-              <h2>Izaberi razgovor</h2>
+              <h2>{t("Izaberi razgovor")}</h2>
             </div>
           )}
         </section>

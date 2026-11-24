@@ -12,7 +12,7 @@ import {
 import { AhiMark } from "../AhiMark";
 import { FavoriteButton } from "../favorites/FavoriteButton";
 import { Icon } from "../Icon";
-import { useT } from "../i18n/LocaleProvider";
+import { useI18n } from "../i18n/LocaleProvider";
 import { VerificationBadge } from "../VerificationBadge";
 import { BusinessAmenities, BusinessOpenStatus } from "./BusinessDetails";
 import { BusinessLogo } from "./BusinessLogo";
@@ -34,7 +34,7 @@ export function DirectoryResultCard({
   compact?: boolean;
   example?: boolean;
 }) {
-  const t = useT();
+  const { t, locale } = useI18n();
   const logo = safeBusinessImage(business.logo, preview);
   const cover = safeBusinessImage(business.image, preview);
   const image = cover && cover.src !== logo?.src ? cover : undefined;
@@ -99,7 +99,9 @@ export function DirectoryResultCard({
           {hasLocation && (
             <p className={styles.location}>
               <Icon name="pin" />
-              <span>{(compact && business.city?.trim()) || businessLocationLabel(business)}</span>
+              <span>
+                {(compact && business.city?.trim()) || businessLocationLabel(business, locale)}
+              </span>
             </p>
           )}
         </header>

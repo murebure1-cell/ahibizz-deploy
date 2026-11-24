@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { type ChangeEvent, type FormEvent, useEffect, useId, useRef, useState } from "react";
 import {
+  countryLabel,
   type PersonalProfile,
   type PersonalProfileFields,
   profileCountries,
@@ -11,6 +12,7 @@ import {
   workStatusLabels,
 } from "../../lib/people";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import { personalProfileImage, profileInitials } from "./PersonalProfileCard";
 import styles from "./profile.module.css";
 
@@ -45,6 +47,7 @@ function ProfileEditor({
   photoUrl,
   coverUrl,
 }: Props) {
+  const { t, locale } = useI18n();
   const prefix = useId();
   const [fields, setFields] = useState<PersonalProfileFields>(() => ({
     name: profile.name,
@@ -92,15 +95,15 @@ function ProfileEditor({
     const skill = skillInput.trim();
     if (!skill) return;
     if (skill.length > 40) {
-      setError("Naziv vještine može imati najviše 40 znakova.");
+      setError(t("Naziv vještine može imati najviše 40 znakova."));
       return;
     }
     if (fields.skills.some((item) => skillKey(item) === skillKey(skill))) {
-      setError("Ta vještina je već dodana.");
+      setError(t("Ta vještina je već dodana."));
       return;
     }
     if (fields.skills.length >= 15) {
-      setError("Možeš dodati najviše 15 vještina.");
+      setError(t("Možeš dodati najviše 15 vještina."));
       return;
     }
     setFields({ ...fields, skills: [...fields.skills, skill] });
@@ -122,7 +125,7 @@ function ProfileEditor({
       skills.length > 15 ||
       skills.some((item) => !item.trim() || item.length > 40)
     ) {
-      setError("Provjeri ime, opis i vještine prije spremanja.");
+      setError(t("Provjeri ime, opis i vještine prije spremanja."));
       return;
     }
     const value: PersonalProfileFields = {
@@ -142,9 +145,9 @@ function ProfileEditor({
     setSkillInput("");
     try {
       await onSave(value);
-      if (live.current) setStatus("Profil je sačuvan.");
+      if (live.current) setStatus(t("Profil je sačuvan."));
     } catch {
-      if (live.current) setError("Promjene nisu sačuvane. Tvoj unos je ostao u obrascu.");
+      if (live.current) setError(t("Promjene nisu sačuvane. Tvoj unos je ostao u obrascu."));
     } finally {
       pending.current = false;
       if (live.current) setWorking(null);
@@ -157,11 +160,11 @@ function ProfileEditor({
       kind === "photo" ? onUploadPhoto : profile.canCustomizeCover ? onUploadCover : undefined;
     if (!file || !callback || busy || pending.current) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size === 0) {
-      setError("Izaberi JPG, PNG ili WEBP fotografiju.");
+      setError(t("Izaberi JPG, PNG ili WEBP fotografiju."));
       return;
     }
     if (file.size > 4 * 1024 * 1024) {
-      setError("Fotografija može imati najviše 4 MB.");
+      setError(t("Fotografija može imati najviše 4 MB."));
       return;
     }
     pending.current = true;
@@ -177,10 +180,10 @@ function ProfileEditor({
       await callback(file);
       if (live.current)
         setStatus(
-          kind === "photo" ? "Profilna fotografija je sačuvana." : "Naslovnica je sačuvana.",
+          kind === "photo" ? t("Profilna fotografija je sačuvana.") : t("Naslovnica je sačuvana."),
         );
     } catch {
-      if (live.current) setError("Fotografija nije sačuvana. Pokušaj ponovo.");
+      if (live.current) setError(t("Fotografija nije sačuvana. Pokušaj ponovo."));
     } finally {
       pending.current = false;
       if (objectUrls.current[kind]) URL.revokeObjectURL(objectUrls.current[kind]);
@@ -204,11 +207,11 @@ function ProfileEditor({
       if (live.current)
         setStatus(
           kind === "photo"
-            ? "Profilna fotografija je uklonjena."
-            : "Vraćena je AhiBizz naslovnica.",
+            ? t("Profilna fotografija je uklonjena.")
+            : t("Vraćena je AhiBizz naslovnica."),
         );
     } catch {
-      if (live.current) setError("Fotografija nije uklonjena. Pokušaj ponovo.");
+      if (live.current) setError(t("Fotografija nije uklonjena. Pokušaj ponovo."));
     } finally {
       pending.current = false;
       if (live.current) setWorking(null);
@@ -218,13 +221,13 @@ function ProfileEditor({
     <form
       className={styles.editor}
       onSubmit={save}
-      aria-label="Uredi lični profil"
+      aria-label={t("Uredi lični profil")}
       aria-busy={locked}
     >
       <div className={styles.editorHeading}>
         <div>
-          <h2>Uredi profil</h2>
-          <p>Tvoje ime, iskustvo i vještine.</p>
+          <h2>{t("Uredi profil")}</h2>
+          <p>{t("Tvoje ime, iskustvo i vještine.")}</p>
         </div>
       </div>
       {error && (
@@ -239,14 +242,14 @@ function ProfileEditor({
       )}
       <fieldset disabled={locked}>
         <div className={styles.mediaSettings}>
-          <section className={styles.mediaChoice} aria-label="Profilna fotografija">
-            <h3>Profilna fotografija</h3>
+          <section className={styles.mediaChoice} aria-label={t("Profilna fotografija")}>
+            <h3>{t("Profilna fotografija")}</h3>
             <div className={styles.mediaAvatar}>
               {photo ? (
                 <Image
                   className={styles.avatarImage}
                   src={photo}
-                  alt="Profilna fotografija"
+                  alt={t("Profilna fotografija")}
                   width={160}
                   height={160}
                   unoptimized
@@ -262,12 +265,16 @@ function ProfileEditor({
                 {onUploadPhoto && (
                   <label className={styles.upload} data-disabled={locked}>
                     <Icon name="user" />
-                    {working === "photo" ? "Spremanje…" : photo ? "Promijeni" : "Dodaj fotografiju"}
+                    {working === "photo"
+                      ? t("Spremanje…")
+                      : photo
+                        ? t("Promijeni")
+                        : t("Dodaj fotografiju")}
                     <input
                       className={styles.fileInput}
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
-                      aria-label="Odaberi profilnu fotografiju"
+                      aria-label={t("Odaberi profilnu fotografiju")}
                       onChange={(event) => void upload(event, "photo")}
                     />
                   </label>
@@ -278,20 +285,20 @@ function ProfileEditor({
                     type="button"
                     onClick={() => void remove("photo")}
                   >
-                    Ukloni
+                    {t("Ukloni")}
                   </button>
                 )}
               </div>
             )}
           </section>
-          <section className={styles.mediaChoice} aria-label="Naslovnica">
-            <h3>Naslovnica</h3>
+          <section className={styles.mediaChoice} aria-label={t("Naslovnica")}>
+            <h3>{t("Naslovnica")}</h3>
             <div className={styles.coverMini}>
               {cover ? (
                 <Image
                   className={styles.coverImage}
                   src={cover}
-                  alt="Naslovna fotografija"
+                  alt={t("Naslovna fotografija")}
                   width={400}
                   height={150}
                   unoptimized
@@ -314,15 +321,15 @@ function ProfileEditor({
                 {onUploadCover && (
                   <label className={styles.upload} data-disabled={locked}>
                     {working === "cover"
-                      ? "Spremanje…"
+                      ? t("Spremanje…")
                       : cover
-                        ? "Promijeni naslovnicu"
-                        : "Dodaj naslovnicu"}
+                        ? t("Promijeni naslovnicu")
+                        : t("Dodaj naslovnicu")}
                     <input
                       className={styles.fileInput}
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
-                      aria-label="Odaberi naslovnicu"
+                      aria-label={t("Odaberi naslovnicu")}
                       onChange={(event) => void upload(event, "cover")}
                     />
                   </label>
@@ -333,17 +340,17 @@ function ProfileEditor({
                     type="button"
                     onClick={() => void remove("cover")}
                   >
-                    Ukloni
+                    {t("Ukloni")}
                   </button>
                 )}
               </div>
             ) : (
-              <p className={styles.fieldHint}>Naslovnica trenutno nije dostupna.</p>
+              <p className={styles.fieldHint}>{t("Naslovnica trenutno nije dostupna.")}</p>
             )}
           </section>
         </div>
         <label className={styles.field} htmlFor={`${prefix}-name`}>
-          Ime i prezime
+          {t("Ime i prezime")}
           <input
             className={styles.input}
             id={`${prefix}-name`}
@@ -357,8 +364,8 @@ function ProfileEditor({
         </label>
         <div className={styles.row}>
           <label className={styles.field} htmlFor={`${prefix}-birth`}>
-            Datum rođenja{" "}
-            <span className={styles.fieldHint}>Privatno · ne prikazuje se na profilu</span>
+            {t("Datum rođenja")}{" "}
+            <span className={styles.fieldHint}>{t("Privatno · ne prikazuje se na profilu")}</span>
             <input
               className={styles.input}
               id={`${prefix}-birth`}
@@ -370,7 +377,7 @@ function ProfileEditor({
             />
           </label>
           <label className={styles.field} htmlFor={`${prefix}-work`}>
-            Trenutni status
+            {t("Trenutni status")}
             <select
               className={styles.input}
               id={`${prefix}-work`}
@@ -382,7 +389,7 @@ function ProfileEditor({
             >
               {Object.entries(workStatusLabels).map(([value, label]) => (
                 <option key={value} value={value}>
-                  {label}
+                  {t(label)}
                 </option>
               ))}
             </select>
@@ -390,7 +397,7 @@ function ProfileEditor({
         </div>
         <div className={styles.row}>
           <label className={styles.field} htmlFor={`${prefix}-city`}>
-            Grad
+            {t("Grad")}
             <input
               className={styles.input}
               id={`${prefix}-city`}
@@ -402,7 +409,7 @@ function ProfileEditor({
             />
           </label>
           <label className={styles.field} htmlFor={`${prefix}-country`}>
-            Država
+            {t("Država")}
             <select
               className={styles.input}
               id={`${prefix}-country`}
@@ -413,10 +420,10 @@ function ProfileEditor({
                 setFields({ ...fields, countryCode: event.target.value || null })
               }
             >
-              <option value="">Nije odabrano</option>
-              {profileCountries.map(([code, label]) => (
+              <option value="">{t("Nije odabrano")}</option>
+              {profileCountries.map(([code]) => (
                 <option key={code} value={code}>
-                  {label}
+                  {countryLabel(code, locale)}
                 </option>
               ))}
               {fields.countryCode && !countryKnown && (
@@ -426,7 +433,7 @@ function ProfileEditor({
           </label>
         </div>
         <label className={styles.field} htmlFor={`${prefix}-bio`}>
-          O meni
+          {t("O meni")}
           <textarea
             className={styles.input}
             id={`${prefix}-bio`}
@@ -436,11 +443,12 @@ function ProfileEditor({
             value={fields.bio ?? ""}
             onChange={(event) => setFields({ ...fields, bio: event.target.value || null })}
           />
-          <span className={styles.fieldHint}>Do 1.200 znakova</span>
+          <span className={styles.fieldHint}>{t("Do 1.200 znakova")}</span>
         </label>
         <div className={styles.skillField}>
           <label className={styles.field} htmlFor={`${prefix}-skill`}>
-            Vještine<span className={styles.fieldHint}>Do 15 vještina · Enter za dodavanje</span>
+            Vještine
+            <span className={styles.fieldHint}>{t("Do 15 vještina · Enter za dodavanje")}</span>
           </label>
           <div className={styles.skillsInput}>
             <input
@@ -448,7 +456,7 @@ function ProfileEditor({
               id={`${prefix}-skill`}
               value={skillInput}
               maxLength={40}
-              placeholder="Dodaj vještinu"
+              placeholder={t("Dodaj vještinu")}
               onChange={(event) => setSkillInput(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.nativeEvent.isComposing) {
@@ -463,7 +471,7 @@ function ProfileEditor({
               disabled={!skillInput.trim() || fields.skills.length >= 15}
               onClick={addSkill}
             >
-              Dodaj
+              {t("Dodaj")}
             </button>
           </div>
           {fields.skills.length > 0 && (
@@ -491,11 +499,11 @@ function ProfileEditor({
         </div>
         <div className={styles.footer}>
           <button className={styles.primary} type="submit">
-            {working === "save" ? "Spremanje…" : "Sačuvaj profil"}
+            {working === "save" ? t("Spremanje…") : t("Sačuvaj profil")}
             <Icon name="check" />
           </button>
           <button className={styles.secondary} type="button" onClick={onCancel}>
-            Odustani
+            {t("Odustani")}
           </button>
         </div>
       </fieldset>

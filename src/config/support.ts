@@ -1,3 +1,4 @@
+import { msg } from "../lib/i18n/translate";
 /** Public receiving instructions only. Never put account credentials or card data here. */
 export const publicSupportSettings = {
   enabled: true,
@@ -6,14 +7,14 @@ export const publicSupportSettings = {
   bankAccounts: [
     {
       id: "bih",
-      label: "Uplata iz BiH",
+      label: msg("Uplata iz BiH"),
       currency: "BAM",
       name: "Raiffeisenbank",
       accountNumber: "1613000073375996",
     },
     {
       id: "eu",
-      label: "Uplata iz EU",
+      label: msg("Uplata iz EU"),
       currency: "EUR",
       name: "Wise",
       iban: "BE95 9678 9089 6058",

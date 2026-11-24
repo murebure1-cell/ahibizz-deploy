@@ -11,7 +11,9 @@ import {
   pageGoogleMapsKey,
   plainMapPin,
 } from "../../lib/google-maps-loader";
+import { countryLabel } from "../../lib/people";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import styles from "./globe.module.css";
 
 type Camera = {
@@ -50,6 +52,9 @@ function camera(latitude: number, longitude: number, range: number, tilt = 0): C
 
 /** Full-screen 3D globe of every business with a location, grouped by country and city. */
 export function BusinessGlobe({ pins, countries }: { pins: MapPin[]; countries: MapCountry[] }) {
+  const { t, locale } = useI18n();
+  const placeName = (place: MapCountry) =>
+    place.code ? countryLabel(place.code, locale) || place.name : t("Ostalo");
   const holder = useRef<HTMLElement>(null);
   const globe = useRef<GlobeElement | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "unavailable">("loading");
@@ -171,15 +176,15 @@ export function BusinessGlobe({ pins, countries }: { pins: MapPin[]; countries: 
       <header className={styles.top}>
         <div>
           <strong>AhiBizz</strong>
-          <span>Naša mreža, naša snaga</span>
+          <span>{t("Naša mreža, naša snaga")}</span>
         </div>
-        <Link href="/" className={styles.close} aria-label="Zatvori mapu">
+        <Link href="/" className={styles.close} aria-label={t("Zatvori mapu")}>
           <Icon name="close" />
         </Link>
       </header>
       {state === "loading" && (
         <p className={styles.loading} role="status">
-          Učitavam mapu…
+          {t("Učitavam mapu…")}
         </p>
       )}
       {selected && (
@@ -188,13 +193,13 @@ export function BusinessGlobe({ pins, countries }: { pins: MapPin[]; countries: 
             <strong>{selected.title}</strong>
             {selected.city && <span>{selected.city}</span>}
           </div>
-          <Link href={`/djelatnosti/${selected.id}`}>Otvori</Link>
-          <button type="button" aria-label="Zatvori" onClick={() => setSelected(null)}>
+          <Link href={`/djelatnosti/${selected.id}`}>{t("Otvori")}</Link>
+          <button type="button" aria-label={t("Zatvori")} onClick={() => setSelected(null)}>
             <Icon name="close" />
           </button>
         </div>
       )}
-      <section className={styles.sheet} aria-label="Djelatnosti po državama i gradovima">
+      <section className={styles.sheet} aria-label={t("Djelatnosti po državama i gradovima")}>
         {country ? (
           <>
             <div className={styles.sheetHead}>
@@ -202,7 +207,7 @@ export function BusinessGlobe({ pins, countries }: { pins: MapPin[]; countries: 
                 <Icon name="chevron" /> Sve države
               </button>
               <h2>
-                {country.name} <span>{country.count}</span>
+                {placeName(country)} <span>{country.count}</span>
               </h2>
             </div>
             <div className={styles.chips}>
@@ -233,15 +238,15 @@ export function BusinessGlobe({ pins, countries }: { pins: MapPin[]; countries: 
               <h2>
                 {total ? (
                   <>
-                    Djelatnosti po državama <span>{total}</span>
+                    {t("Djelatnosti po državama")} <span>{total}</span>
                   </>
                 ) : (
-                  "Još nema djelatnosti s lokacijom"
+                  t("Još nema djelatnosti s lokacijom")
                 )}
               </h2>
               {state === "ready" && !spinning && (
                 <button type="button" className={styles.back} onClick={spin}>
-                  Cijeli svijet
+                  {t("Cijeli svijet")}
                 </button>
               )}
             </div>
@@ -263,7 +268,7 @@ export function BusinessGlobe({ pins, countries }: { pins: MapPin[]; countries: 
                       );
                   }}
                 >
-                  {item.name} <span>{item.count}</span>
+                  {placeName(item)} <span>{item.count}</span>
                 </button>
               ))}
             </div>

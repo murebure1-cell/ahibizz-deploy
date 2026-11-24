@@ -8,6 +8,7 @@ import {
 } from "../../lib/business-location";
 import { addressAtPoint, searchLocations } from "../../lib/geocoding";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import { LocationMap } from "./LocationMap";
 import styles from "./location.module.css";
 
@@ -26,6 +27,7 @@ export function LocationPicker({
   onChange: (selection: LocationSelection) => void;
   onPending: (pending: boolean) => void;
 }) {
+  const t = useT();
   const id = useId();
   const [query, setQuery] = useState("");
   const [candidate, setCandidate] = useState<LocationPoint | null>(value);
@@ -75,7 +77,7 @@ export function LocationPicker({
   }
   async function search() {
     if (query.trim().length < 3) {
-      setError("Upiši barem tri znaka.");
+      setError(t("Upiši barem tri znaka."));
       return;
     }
     const task = begin("search");
@@ -84,10 +86,10 @@ export function LocationPicker({
       const found = await searchLocations(query, task.controller.signal);
       if (!alive.current || task.current !== revision.current) return;
       setResults(found);
-      if (!found.length) setNotice("Nema rezultata. Pokušaj adresu ili označi mjesto na karti.");
+      if (!found.length) setNotice(t("Nema rezultata. Pokušaj adresu ili označi mjesto na karti."));
     } catch {
       if (alive.current && task.current === revision.current)
-        setError("Pretraga trenutno nije dostupna. Koristi GPS ili označi mjesto na karti.");
+        setError(t("Pretraga trenutno nije dostupna. Koristi GPS ili označi mjesto na karti."));
     } finally {
       finish(task.current);
     }
@@ -102,7 +104,7 @@ export function LocationPicker({
     setResults([]);
     setQuery(result.label);
     setError("");
-    setNotice("Lokacija je odabrana.");
+    setNotice(t("Lokacija je odabrana."));
     pending.current(false);
     change.current({
       point: result.point,
@@ -134,13 +136,13 @@ export function LocationPicker({
       });
       setNotice(
         address
-          ? "Lokacija je odabrana. Provjeri adresu ispod."
-          : "Lokacija je odabrana. Adresu možeš dopuniti ispod.",
+          ? t("Lokacija je odabrana. Provjeri adresu ispod.")
+          : t("Lokacija je odabrana. Adresu možeš dopuniti ispod."),
       );
     } catch {
       if (alive.current && task.current === revision.current) {
         change.current({ point, address: { addressLine: null, city: null, countryCode: null } });
-        setNotice("Lokacija je odabrana. Adresu možeš dopuniti ispod.");
+        setNotice(t("Lokacija je odabrana. Adresu možeš dopuniti ispod."));
       }
     } finally {
       finish(task.current);
@@ -150,7 +152,7 @@ export function LocationPicker({
     const task = begin("gps");
     if (!task) return;
     if (!navigator.geolocation) {
-      setError("GPS nije podržan. Odaberi mjesto na karti ili putem pretrage.");
+      setError(t("GPS nije podržan. Odaberi mjesto na karti ili putem pretrage."));
       finish(task.current);
       return;
     }
@@ -164,7 +166,7 @@ export function LocationPicker({
         };
         finish(task.current);
         if (!isLocationPoint(point)) {
-          setError("Lokacija nije dostupna. Pokušaj ponovo.");
+          setError(t("Lokacija nije dostupna. Pokušaj ponovo."));
           return;
         }
         void commitPoint(point, true);
@@ -173,8 +175,10 @@ export function LocationPicker({
         if (!alive.current || task.current !== revision.current) return;
         setError(
           failure.code === 1
-            ? "Pristup lokaciji nije dozvoljen. Uključi ga u pregledniku ili odaberi mjesto na karti."
-            : "Lokacija nije dostupna. Pokušaj ponovo ili koristi pretragu.",
+            ? t(
+                "Pristup lokaciji nije dozvoljen. Uključi ga u pregledniku ili odaberi mjesto na karti.",
+              )
+            : t("Lokacija nije dostupna. Pokušaj ponovo ili koristi pretragu."),
         );
         finish(task.current);
       },
@@ -182,7 +186,7 @@ export function LocationPicker({
     );
   }
   return (
-    <section className={styles.picker} aria-label="Odaberi lokaciju djelatnosti">
+    <section className={styles.picker} aria-label={t("Odaberi lokaciju djelatnosti")}>
       <button
         type="button"
         className={styles.gps}
@@ -190,16 +194,16 @@ export function LocationPicker({
         onClick={locate}
       >
         <Icon name="pin" />
-        {phase === "gps" ? "Pronalazim lokaciju…" : "Koristi moju lokaciju"}
+        {phase === "gps" ? t("Pronalazim lokaciju…") : t("Koristi moju lokaciju")}
       </button>
       <div className={styles.search}>
-        <label htmlFor={id}>Adresa ili naziv firme</label>
+        <label htmlFor={id}>{t("Adresa ili naziv firme")}</label>
         <div>
           <input
             id={id}
             value={query}
             maxLength={160}
-            placeholder="Naziv, ulica ili grad"
+            placeholder={t("Naziv, ulica ili grad")}
             disabled={disabled || phase !== "idle"}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -216,7 +220,7 @@ export function LocationPicker({
             type="button"
             disabled={disabled || phase !== "idle"}
             onClick={() => void search()}
-            aria-label="Pretraži lokacije"
+            aria-label={t("Pretraži lokacije")}
           >
             <Icon name="search" />
           </button>
@@ -267,21 +271,21 @@ export function LocationPicker({
           disabled={disabled || phase !== "idle"}
           onClick={() => void commitPoint(candidate)}
         >
-          Koristi označeno mjesto
+          {t("Koristi označeno mjesto")}
         </button>
       )}
       {phase === "reverse" && (
         <p role="status" className={styles.notice}>
-          Prepoznajem adresu…
+          {t("Prepoznajem adresu…")}
         </p>
       )}
       <div className={styles.footer}>
         <span>
           {pendingPin
-            ? "Potvrdi označeno mjesto."
+            ? t("Potvrdi označeno mjesto.")
             : value
-              ? "Lokacija je postavljena."
-              : "Dodirni kartu za odabir mjesta."}
+              ? t("Lokacija je postavljena.")
+              : t("Dodirni kartu za odabir mjesta.")}
         </span>
         {value && !pendingPin && (
           <button
@@ -294,12 +298,12 @@ export function LocationPicker({
               change.current({ point: null });
             }}
           >
-            Ukloni
+            {t("Ukloni")}
           </button>
         )}
       </div>
       <small className={styles.credit}>
-        Upit i odabrana tačka šalju se servisu{" "}
+        {t("Upit i odabrana tačka šalju se servisu")}{" "}
         <a href="https://photon.komoot.io/" target="_blank" rel="noreferrer">
           Photon
         </a>{" "}

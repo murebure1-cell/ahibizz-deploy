@@ -1,3 +1,5 @@
+import { msg } from "./i18n/translate";
+
 export class BookingRequestError extends Error {
   constructor(
     readonly code: string,
@@ -65,24 +67,25 @@ export function bookingWrite(method: string, body: unknown, idempotencyKey?: str
 }
 export function bookingError(error: unknown) {
   const code = error instanceof BookingRequestError ? error.code : "";
-  if (code === "AUTHENTICATION_REQUIRED") return "Prijavi se da nastaviš.";
-  if (code === "ACCOUNT_IDENTITY_CHANGED") return "Prijavi se ponovo svojim nalogom.";
+  if (code === "AUTHENTICATION_REQUIRED") return msg("Prijavi se da nastaviš.");
+  if (code === "ACCOUNT_IDENTITY_CHANGED") return msg("Prijavi se ponovo svojim nalogom.");
   if (["ACCOUNT_PENDING_APPROVAL", "EMAIL_NOT_VERIFIED", "ACCOUNT_SUSPENDED"].includes(code))
-    return "Nalog još nema pristup zakazivanju.";
+    return msg("Nalog još nema pristup zakazivanju.");
   if (["SLOT_UNAVAILABLE", "BOOKING_CONFLICT"].includes(code))
-    return "Termin je u međuvremenu zauzet. Izaberi drugi.";
+    return msg("Termin je u međuvremenu zauzet. Izaberi drugi.");
   if (code === "VERSION_CONFLICT")
-    return "Podaci su izmijenjeni. Osvježi pregled i pokušaj ponovo.";
-  if (code === "SELF_BOOKING_NOT_ALLOWED") return "Za svoj posao dodaj ručni termin u kalendaru.";
-  if (code === "BOOKING_DISABLED") return "Booking trenutno nije dostupan.";
-  if (code === "BOOKING_SERVICE_NOT_FOUND") return "Usluga više nije dostupna. Izaberi drugu.";
+    return msg("Podaci su izmijenjeni. Osvježi pregled i pokušaj ponovo.");
+  if (code === "SELF_BOOKING_NOT_ALLOWED")
+    return msg("Za svoj posao dodaj ručni termin u kalendaru.");
+  if (code === "BOOKING_DISABLED") return msg("Booking trenutno nije dostupan.");
+  if (code === "BOOKING_SERVICE_NOT_FOUND") return msg("Usluga više nije dostupna. Izaberi drugu.");
   if (code === "BOOKING_CONFIGURATION_CHANGED")
-    return "Usluge ili raspored su izmijenjeni. Provjeri novi odabir.";
+    return msg("Usluge ili raspored su izmijenjeni. Provjeri novi odabir.");
   if (code === "INVALID_BOOKING_INPUT" || code === "UNEXPECTED_FIELD")
-    return "Provjeri unesene podatke.";
+    return msg("Provjeri unesene podatke.");
   if (code === "BOOKING_NOT_FOUND" || code === "BUSINESS_NOT_FOUND")
-    return "Termin ili djelatnost nisu dostupni.";
+    return msg("Termin ili djelatnost nisu dostupni.");
   if (code === "INVALID_BOOKING_TRANSITION")
-    return "Ova promjena više nije dostupna za taj termin.";
-  return "Zahtjev nije uspio. Pokušaj ponovo.";
+    return msg("Ova promjena više nije dostupna za taj termin.");
+  return msg("Zahtjev nije uspio. Pokušaj ponovo.");
 }

@@ -4,20 +4,22 @@ import { ArticleCard, FeaturedArticle } from "../../../components/content-hub/Ar
 import styles from "../../../components/content-hub/content-hub.module.css";
 import { Icon } from "../../../components/Icon";
 import { type ArticleCategory, articleCategories, blogPath } from "../../../lib/content-hub";
+import { msg } from "../../../lib/i18n/translate";
 import { AccountAccessError } from "../../../server/auth/accounts";
 import { articleFilters, getContentHub } from "../../../server/content-hub";
+import { getTranslator, titled } from "../../../server/i18n";
 
 export const dynamic = "force-dynamic";
-export const metadata = {
-  title: "AhiBizz blog",
-  description: "Vodiči, poslovni savjeti i novosti za AhiBizz zajednicu.",
-};
+export const generateMetadata = titled("AhiBizz blog", {
+  description: msg("Vodiči, poslovni savjeti i novosti za AhiBizz zajednicu."),
+});
 
 export default async function BlogPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const t = await getTranslator();
   const filters = articleFilters(await searchParams);
   const service = getContentHub();
   let data: Awaited<ReturnType<NonNullable<typeof service>["publicPage"]>> | undefined;
@@ -36,21 +38,21 @@ export default async function BlogPage({
     <main id="glavni-sadrzaj" className={styles.page}>
       <header className={styles.hero}>
         <div>
-          <h1>AhiBizz blog</h1>
+          <h1>{t("AhiBizz blog")}</h1>
           <p className={styles.heroLead}>
-            Vodiči za lakše korištenje, savjeti za tvoj posao i novosti iz zajednice.
+            {t("Vodiči za lakše korištenje, savjeti za tvoj posao i novosti iz zajednice.")}
           </p>
           <search>
             <form action="/blog" className={styles.search}>
               <label className={styles.searchLabel} htmlFor="blog-search">
-                Pretraži članke
+                {t("Pretraži članke")}
               </label>
               <input
                 id="blog-search"
                 type="search"
                 name="q"
                 maxLength={100}
-                placeholder="Npr. termin ili oglas"
+                placeholder={t("Npr. termin ili oglas")}
                 defaultValue={filters.q}
               />
               {filters.category && <input type="hidden" name="tema" value={filters.category} />}
@@ -63,12 +65,12 @@ export default async function BlogPage({
         </div>
         <div aria-hidden="true" className={styles.heroImage} />
       </header>
-      <nav className={styles.categories} aria-label="Teme bloga">
+      <nav className={styles.categories} aria-label={t("Teme bloga")}>
         <Link
           href={blogPath()}
           aria-current={!filters.category && !filters.saved && !filters.q ? "page" : undefined}
         >
-          Sve teme
+          {t("Sve teme")}
         </Link>
         {categories.map(([category, label]) => (
           <Link
@@ -76,7 +78,7 @@ export default async function BlogPage({
             href={blogPath({ category })}
             aria-current={filters.category === category && !filters.saved ? "page" : undefined}
           >
-            {label}
+            {t(label)}
           </Link>
         ))}
         <Link
@@ -92,27 +94,27 @@ export default async function BlogPage({
         <section aria-labelledby="blog-results" className={styles.section}>
           <h2 id="blog-results">
             {filters.saved
-              ? "Sačuvani članci"
+              ? t("Sačuvani članci")
               : filters.q
-                ? "Rezultati pretrage"
+                ? t("Rezultati pretrage")
                 : filters.category
-                  ? articleCategories[filters.category]
-                  : "Najnoviji članci"}
+                  ? t(articleCategories[filters.category])
+                  : t("Najnoviji članci")}
           </h2>
           {signIn ? (
             <p>
-              Sačuvani članci pripadaju tvom nalogu.{" "}
+              {t("Sačuvani članci pripadaju tvom nalogu.")}{" "}
               <Link className={styles.inlineLink} href="/prijava?nastavi=%2Fblog%3Fsacuvano%3D1">
-                Prijavi se
+                {t("Prijavi se")}
               </Link>
             </p>
           ) : !data ? (
-            <p role="status">Članci trenutno nisu dostupni. Pokušaj ponovo kasnije.</p>
+            <p role="status">{t("Članci trenutno nisu dostupni. Pokušaj ponovo kasnije.")}</p>
           ) : !visibleArticles.length ? (
             <p>
               {filters.saved && !filters.q
-                ? "Još nema sačuvanih članaka."
-                : "Nema članaka za ovaj izbor."}
+                ? t("Još nema sačuvanih članaka.")
+                : t("Nema članaka za ovaj izbor.")}
             </p>
           ) : (
             <div className={styles.cards}>
@@ -122,13 +124,13 @@ export default async function BlogPage({
             </div>
           )}
           {data && (filters.page > 1 || data.more) && (
-            <nav className={styles.pageFooter} aria-label="Stranice članaka">
+            <nav className={styles.pageFooter} aria-label={t("Stranice članaka")}>
               {filters.page > 1 && (
                 <Link
                   className={styles.secondary}
                   href={blogPath({ ...filters, page: filters.page - 1 })}
                 >
-                  Prethodna
+                  {t("Prethodna")}
                 </Link>
               )}
               <span>Stranica {filters.page}</span>
@@ -137,7 +139,7 @@ export default async function BlogPage({
                   className={styles.secondary}
                   href={blogPath({ ...filters, page: filters.page + 1 })}
                 >
-                  Sljedeća
+                  {t("Sljedeća")}
                 </Link>
               )}
             </nav>

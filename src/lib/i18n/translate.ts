@@ -29,6 +29,18 @@ function fill(locale: Locale, text: string, vars?: Vars) {
   });
 }
 
+/**
+ * Bosnian has three count forms (1 recenzija, 2 recenzije, 5 recenzija). Pick the Bosnian key
+ * here; each translation then uses its own {count|…} plural.
+ */
+export function bosnianForm<T extends string>(count: number, one: T, few: T, other: T): T {
+  const last = count % 10;
+  const teen = count % 100;
+  if (last === 1 && teen !== 11) return one;
+  if (last >= 2 && last <= 4 && (teen < 12 || teen > 14)) return few;
+  return other;
+}
+
 export function translate(locale: Locale, text: string, vars?: Vars) {
   if (locale === "bs") return fill(locale, text, vars);
   return fill(locale, catalog[text]?.[locale] ?? text, vars);

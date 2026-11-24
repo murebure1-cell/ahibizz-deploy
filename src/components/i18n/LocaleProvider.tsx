@@ -21,3 +21,8 @@ export function useLocale() {
 export function useT() {
   return useContext(LocaleContext).t;
 }
+
+/** Translation together with the language, for screens that also format dates and numbers. */
+export function useI18n() {
+  return useContext(LocaleContext);
+}

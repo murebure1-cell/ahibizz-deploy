@@ -9,21 +9,24 @@ import {
   type CalendarKind,
   ownerCalendarPath,
 } from "../../lib/business-today";
+import { msg } from "../../lib/i18n/translate";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./business-today.module.css";
 
 const label: Record<CalendarKind, string> = {
-  service: "Termini",
-  rental: "Najam vozila",
-  stay: "Smještaj",
+  service: msg("Termini"),
+  rental: msg("Najam vozila"),
+  stay: msg("Smještaj"),
 };
 const status: Record<string, string> = {
-  requested: "Na čekanju",
-  confirmed: "Potvrđeno",
-  completed: "Održano",
+  requested: msg("Na čekanju"),
+  confirmed: msg("Potvrđeno"),
+  completed: msg("Održano"),
 };
 
 export function BusinessToday({ accountId, active }: { accountId: string; active: boolean }) {
+  const t = useT();
   const [choice, setChoice] = useState<string | null | undefined>(undefined);
   const [data, setData] = useState<BusinessTodayData | null>(null);
   const [failed, setFailed] = useState(false);
@@ -109,11 +112,11 @@ export function BusinessToday({ accountId, active }: { accountId: string; active
   if (failed)
     return (
       <section className={styles.panel}>
-        <h2>Danas u mojoj djelatnosti</h2>
+        <h2>{t("Danas u mojoj djelatnosti")}</h2>
         <p role="status">
-          Pregled trenutno nije dostupan.{" "}
+          {t("Pregled trenutno nije dostupan.")}{" "}
           <button onClick={() => setRetry(retry + 1)} type="button">
-            Pokušaj ponovo
+            {t("Pokušaj ponovo")}
           </button>
         </p>
       </section>
@@ -122,12 +125,16 @@ export function BusinessToday({ accountId, active }: { accountId: string; active
   const businessId = data.selectedId;
   const changing = Boolean(choice && choice !== businessId);
   return (
-    <section className={styles.panel} aria-label="Danas u mojoj djelatnosti" aria-busy={changing}>
+    <section
+      className={styles.panel}
+      aria-label={t("Danas u mojoj djelatnosti")}
+      aria-busy={changing}
+    >
       <header>
-        <h2>Danas u mojoj djelatnosti</h2>
+        <h2>{t("Danas u mojoj djelatnosti")}</h2>
         {data.businesses.length > 1 ? (
           <select
-            aria-label="Odaberi djelatnost"
+            aria-label={t("Odaberi djelatnost")}
             value={choice ?? businessId}
             onChange={(event) => {
               const id = event.target.value;
@@ -154,18 +161,18 @@ export function BusinessToday({ accountId, active }: { accountId: string; active
             return (
               <div key={group.kind} className={styles.group}>
                 <div className={styles.title}>
-                  <h3>{label[group.kind]}</h3>
+                  <h3>{t(label[group.kind])}</h3>
                   <Link href={href} prefetch={false}>
-                    Kalendar <Icon name="chevron" />
+                    {t("Kalendar")} <Icon name="chevron" />
                   </Link>
                 </div>
                 {group.total === 0 ? (
                   <p className={styles.empty}>
                     {group.kind === "service"
-                      ? "Danas nema termina."
+                      ? t("Danas nema termina.")
                       : group.kind === "rental"
-                        ? "Danas nema najmova."
-                        : "Danas nema boravaka."}
+                        ? t("Danas nema najmova.")
+                        : t("Danas nema boravaka.")}
                   </p>
                 ) : (
                   <ul>
@@ -173,7 +180,7 @@ export function BusinessToday({ accountId, active }: { accountId: string; active
                       <li key={entry.id}>
                         <span>{entry.name}</span>
                         <small>
-                          {entry.time} · {status[entry.status]}
+                          {entry.time} · {t(status[entry.status] ?? "")}
                         </small>
                       </li>
                     ))}
@@ -194,7 +201,7 @@ export function BusinessToday({ accountId, active }: { accountId: string; active
                     })}
                     prefetch={false}
                   >
-                    Za potvrdu <strong>{group.pending}</strong>
+                    {t("Za potvrdu")} <strong>{group.pending}</strong>
                     <Icon name="chevron" />
                   </Link>
                 )}

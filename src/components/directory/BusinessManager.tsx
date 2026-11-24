@@ -46,10 +46,12 @@ import {
   uncertainDirectoryMutation,
 } from "../../lib/directory-mutation-recovery";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
+import { msg } from "../../lib/i18n/translate";
 import type { DirectoryBusiness } from "../../server/directory/types";
 import { ProfileVerification } from "../admin/ProfileVerification";
 import { BusinessBookingManager } from "../booking/BusinessBookingManager";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import { RentalFleet } from "../rentals/RentalFleet";
 import { StayUnits } from "../stays/StayUnits";
 import { BusinessChanges } from "./BusinessChanges";
@@ -68,36 +70,38 @@ import { BusinessOwnershipManager } from "./BusinessOwnershipManager";
 import styles from "./directory.module.css";
 
 const statuses = {
-  draft: "Nacrt",
-  pending: "Na pregledu",
-  published: "Objavljeno",
-  archived: "Arhivirano",
+  draft: msg("Nacrt"),
+  pending: msg("Na pregledu"),
+  published: msg("Objavljeno"),
+  archived: msg("Arhivirano"),
 };
 function ReturnedBusinessNote({ business }: { business?: DirectoryBusiness | null }) {
+  const t = useT();
   const note = business?.moderationReturn;
   if (business?.status !== "draft" || !note || note.version !== business.version) return null;
   return (
-    <div className={styles.returnNote} role="note" aria-label="Razlog vraćanja u nacrt">
-      <strong>Razlog vraćanja u nacrt</strong>
+    <div className={styles.returnNote} role="note" aria-label={t("Razlog vraćanja u nacrt")}>
+      <strong>{t("Razlog vraćanja u nacrt")}</strong>
       <p>{note.reason}</p>
     </div>
   );
 }
 function errorMessage(error: unknown) {
   const code = error instanceof RequestError ? error.code : "";
-  if (code === "BUSINESS_LIMIT_REACHED") return "Već imaš djelatnost koja čeka aktivaciju.";
+  if (code === "BUSINESS_LIMIT_REACHED") return msg("Već imaš djelatnost koja čeka aktivaciju.");
   if (code === "PACKAGE_PAYMENT_REQUIRED")
-    return "Nacrt je sačuvan. Za objavu je potreban aktivan paket.";
-  if (code === "REVIEW_REQUIRED") return "Prvo pregledaj i odobri ili odbij predložene izmjene.";
+    return msg("Nacrt je sačuvan. Za objavu je potreban aktivan paket.");
+  if (code === "REVIEW_REQUIRED")
+    return msg("Prvo pregledaj i odobri ili odbij predložene izmjene.");
   if (code === "VERSION_CONFLICT")
-    return "Djelatnost je u međuvremenu izmijenjena. Otvori je ponovo.";
+    return msg("Djelatnost je u međuvremenu izmijenjena. Otvori je ponovo.");
   if (code === "IDEMPOTENCY_CONFLICT")
-    return "Ovaj zahtjev je već poslan. Osvježi spisak i provjeri sačuvanu djelatnost.";
+    return msg("Ovaj zahtjev je već poslan. Osvježi spisak i provjeri sačuvanu djelatnost.");
   if (code === "AUTHENTICATION_REQUIRED" || code === "ACCOUNT_SUSPENDED")
-    return "Prijava je istekla. Prijavi se ponovo.";
-  if (code === "ACCOUNT_IDENTITY_CHANGED") return "Prijavi se ponovo svojim nalogom.";
-  if (code === "INVALID_DIRECTORY_INPUT") return "Provjeri unesene podatke.";
-  return "Zahtjev nije uspio. Pokušaj ponovo.";
+    return msg("Prijava je istekla. Prijavi se ponovo.");
+  if (code === "ACCOUNT_IDENTITY_CHANGED") return msg("Prijavi se ponovo svojim nalogom.");
+  if (code === "INVALID_DIRECTORY_INPUT") return msg("Provjeri unesene podatke.");
+  return msg("Zahtjev nije uspio. Pokušaj ponovo.");
 }
 function write(method: string, body: unknown, requestId?: string): RequestInit {
   return {
@@ -192,6 +196,7 @@ export function BusinessManager({
   adminVerification?: boolean;
   mediaImageUrl?: (id: string, asset: BusinessMediaAsset, area: "mine" | "public") => string | null;
 }) {
+  const t = useT();
   const [items, setItems] = useState<DirectoryBusiness[] | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [editing, setEditing] = useState<DirectoryBusiness | null | undefined>(undefined);
@@ -293,54 +298,57 @@ export function BusinessManager({
     () => bookingActorRequest(expectedAccountId, bookingApi),
     [expectedAccountId, bookingApi],
   );
-  const clearPrivate = useCallback((preserveCreation = false) => {
-    if (preserveCreation) creation.current.retainUncertain();
-    epoch.current++;
-    reads.current++;
-    bookingReads.current++;
-    writing.current?.abort();
-    writing.current = null;
-    loadedSelection.current = "";
-    setSearchText("");
-    setSearchQuery("");
-    setItems(null);
-    setCategories([]);
-    setHasMore(false);
-    setEditing(undefined);
-    setDetailsBusiness(null);
-    setRentalBusiness(null);
-    setStayBusiness(null);
-    setOwnershipBusiness(null);
-    setReturning(null);
-    setReturnReason("");
-    // An unknown child command must keep its mounted recovery state, without a private title.
-    setBookingBusiness((current) =>
-      preserveCreation && current ? { id: current.id, title: "Booking" } : null,
-    );
-    setMediaBusiness((current) =>
-      preserveCreation && current ? { id: current.id, title: "Fotografije" } : null,
-    );
-    setBookingOption(null);
-    setBookingNote("");
-    setBookingLoading(false);
-    setNotice("");
-    setBusy(false);
-    setLoading(false);
-    setReadError("");
-    if (!preserveCreation) creation.current = createDirectoryCreation();
-    setPendingCreate(creation.current.intent);
-    if (!preserveCreation) mutation.current = null;
-    setPendingMutation(mutation.current);
-  }, []);
+  const clearPrivate = useCallback(
+    (preserveCreation = false) => {
+      if (preserveCreation) creation.current.retainUncertain();
+      epoch.current++;
+      reads.current++;
+      bookingReads.current++;
+      writing.current?.abort();
+      writing.current = null;
+      loadedSelection.current = "";
+      setSearchText("");
+      setSearchQuery("");
+      setItems(null);
+      setCategories([]);
+      setHasMore(false);
+      setEditing(undefined);
+      setDetailsBusiness(null);
+      setRentalBusiness(null);
+      setStayBusiness(null);
+      setOwnershipBusiness(null);
+      setReturning(null);
+      setReturnReason("");
+      // An unknown child command must keep its mounted recovery state, without a private title.
+      setBookingBusiness((current) =>
+        preserveCreation && current ? { id: current.id, title: "Booking" } : null,
+      );
+      setMediaBusiness((current) =>
+        preserveCreation && current ? { id: current.id, title: t("Fotografije") } : null,
+      );
+      setBookingOption(null);
+      setBookingNote("");
+      setBookingLoading(false);
+      setNotice("");
+      setBusy(false);
+      setLoading(false);
+      setReadError("");
+      if (!preserveCreation) creation.current = createDirectoryCreation();
+      setPendingCreate(creation.current.intent);
+      if (!preserveCreation) mutation.current = null;
+      setPendingMutation(mutation.current);
+    },
+    [t],
+  );
   const denied = useCallback(
     (failure: unknown) => {
       if (!directoryAccessDenied(failure)) return false;
       clearPrivate(true);
       setLoginRequired(true);
-      setError("Prijavi se ponovo svojim nalogom.");
+      setError(t("Prijavi se ponovo svojim nalogom."));
       return true;
     },
-    [clearPrivate],
+    [clearPrivate, t],
   );
   useEffect(() => {
     live.current = true;
@@ -417,14 +425,14 @@ export function BusinessManager({
         if (!current(access)) return;
         if (denied(failure)) return;
         if (current(access) && !controller.signal.aborted && revision === bookingReads.current)
-          setBookingNote("Booking postavke nisu učitane. Ostaju nepromijenjene.");
+          setBookingNote(t("Booking postavke nisu učitane. Ostaju nepromijenjene."));
       })
       .finally(() => {
         if (!controller.signal.aborted && revision === bookingReads.current)
           setBookingLoading(false);
       });
     return () => controller.abort();
-  }, [active, editingId, booking, denied, current]);
+  }, [active, editingId, booking, denied, current, t]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: refresh explicitly invalidates the fetched list after writes and on request.
   useEffect(() => {
     if (
@@ -470,7 +478,7 @@ export function BusinessManager({
             setItems(null);
             loadedSelection.current = "";
           }
-          setReadError(errorMessage(error));
+          setReadError(t(errorMessage(error)));
         }
       })
       .finally(() => {
@@ -510,21 +518,21 @@ export function BusinessManager({
     setPendingMutation(null);
   }
   function mutationNotice(intent: DirectoryMutation) {
-    if (intent.action === "approve-changes") return "Izmjene su objavljene.";
-    if (intent.action === "reject-changes") return "Izmjene su odbijene.";
+    if (intent.action === "approve-changes") return t("Izmjene su objavljene.");
+    if (intent.action === "reject-changes") return t("Izmjene su odbijene.");
     if (intent.action === "edit" && !isOwner && intent.before.status === "published")
-      return "Podaci su sačuvani.";
+      return t("Podaci su sačuvani.");
     return intent.action === "return-to-draft"
-      ? "Djelatnost je vraćena u nacrt."
+      ? t("Djelatnost je vraćena u nacrt.")
       : intent.action === "archive"
-        ? "Djelatnost je arhivirana."
+        ? t("Djelatnost je arhivirana.")
         : intent.action === "recover"
-          ? "Djelatnost je vraćena u nacrte."
+          ? t("Djelatnost je vraćena u nacrte.")
           : intent.desiredStatus === "published"
-            ? "Djelatnost je objavljena."
+            ? t("Djelatnost je objavljena.")
             : intent.desiredStatus === "pending"
-              ? "Izmjene su poslane na pregled."
-              : "Nacrt je sačuvan.";
+              ? t("Izmjene su poslane na pregled.")
+              : t("Nacrt je sačuvan.");
   }
   async function inspectMutation(
     intent: DirectoryMutation,
@@ -541,7 +549,7 @@ export function BusinessManager({
       cacheBusiness(data.business);
       setLoginRequired(false);
       if (state === "pending") {
-        setError("Prethodna izmjena još nije potvrđena. Provjeri ponovo.");
+        setError(t("Prethodna izmjena još nije potvrđena. Provjeri ponovo."));
         return;
       }
       forgetMutation();
@@ -560,9 +568,9 @@ export function BusinessManager({
       );
       setError(
         state === "changed"
-          ? "Djelatnost je u međuvremenu izmijenjena. Provjeri učitano stanje."
+          ? t("Djelatnost je u međuvremenu izmijenjena. Provjeri učitano stanje.")
           : needsPublication
-            ? "Podaci su sačuvani. Objava nije potvrđena."
+            ? t("Podaci su sačuvani. Objava nije potvrđena.")
             : "",
       );
       if (state === "matched" && !needsPublication) setNotice(mutationNotice(intent));
@@ -577,7 +585,7 @@ export function BusinessManager({
     } catch (failure) {
       if (!current(access) || controller.signal.aborted || mutation.current !== intent) return;
       if (denied(failure)) return;
-      setError("Prethodna izmjena nije potvrđena. Provjeri ponovo.");
+      setError(t("Prethodna izmjena nije potvrđena. Provjeri ponovo."));
     }
   }
   async function checkPreviousMutation() {
@@ -790,14 +798,14 @@ export function BusinessManager({
       }
       setNotice(
         business.editorialRevision
-          ? "Izmjene su poslane na pregled."
+          ? t("Izmjene su poslane na pregled.")
           : editingBusiness && business.version === editingBusiness.version
-            ? "Podaci su sačuvani."
+            ? t("Podaci su sačuvani.")
             : business.status === "published"
-              ? "Djelatnost je objavljena."
+              ? t("Djelatnost je objavljena.")
               : business.status === "pending"
-                ? "Izmjene su poslane na pregled."
-                : "Nacrt je sačuvan.",
+                ? t("Izmjene su poslane na pregled.")
+                : t("Nacrt je sačuvan."),
       );
       setEditing(undefined);
     } catch (error) {
@@ -822,25 +830,25 @@ export function BusinessManager({
           cacheBusiness(latest.business);
           bookingPermitted = directoryMutationFieldsMatch(directoryFields, latest.business);
           if (latest.business.status === "published") {
-            setNotice("Djelatnost je objavljena.");
+            setNotice(t("Djelatnost je objavljena."));
             setEditing(undefined);
           } else {
             setEditing(latest.business);
-            setError("Podaci su sačuvani. Objava nije potvrđena.");
+            setError(t("Podaci su sačuvani. Objava nije potvrđena."));
           }
         } catch (failure) {
           if (!current(access) || controller.signal.aborted) return;
           if (denied(failure)) return;
           setEditing(undefined);
-          setError("Podaci su sačuvani. Osvježi spisak radi provjere objave.");
+          setError(t("Podaci su sačuvani. Osvježi spisak radi provjere objave."));
         }
       } else {
         setPendingCreate(creation.current.intent);
         setLoginRequired(error instanceof RequestError && error.status === 401);
         setError(
           creation.current.intent
-            ? "Ishod unosa nije potvrđen. Ponovi isti unos da provjerimo sačuvanu djelatnost."
-            : errorMessage(error),
+            ? t("Ishod unosa nije potvrđen. Ponovi isti unos da provjerimo sačuvanu djelatnost.")
+            : t(errorMessage(error)),
         );
       }
     } finally {
@@ -879,7 +887,7 @@ export function BusinessManager({
         trimmedReason.length < 2 ||
         trimmedReason.length > 500)
     ) {
-      setError("Upiši razlog od 2 do 500 znakova.");
+      setError(t("Upiši razlog od 2 do 500 znakova."));
       return;
     }
     const controller = new AbortController();
@@ -959,7 +967,7 @@ export function BusinessManager({
             if (denied(failure)) return;
           }
         }
-        setError(errorMessage(error));
+        setError(t(errorMessage(error)));
       }
     } finally {
       if (writing.current === controller) {
@@ -998,7 +1006,7 @@ export function BusinessManager({
     return (
       <div className={styles.workspace}>
         <button type="button" className={styles.secondary} onClick={() => setStayBusiness(null)}>
-          Nazad na djelatnosti
+          {t("Nazad na djelatnosti")}
         </button>
         <h2>{stayBusiness.title}</h2>
         {active && (
@@ -1018,7 +1026,7 @@ export function BusinessManager({
     return (
       <div className={styles.workspace}>
         <button type="button" className={styles.secondary} onClick={() => setRentalBusiness(null)}>
-          Nazad na djelatnosti
+          {t("Nazad na djelatnosti")}
         </button>
         <h2>{rentalBusiness.title}</h2>
         {active && (
@@ -1128,7 +1136,7 @@ export function BusinessManager({
       <div className={styles.header}>
         {!embedded && (
           <div>
-            <h1>{all && isOwner ? "Sve djelatnosti" : "Moje djelatnosti"}</h1>
+            <h1>{all && isOwner ? t("Sve djelatnosti") : t("Moje djelatnosti")}</h1>
           </div>
         )}
         {editing === undefined && (
@@ -1145,7 +1153,7 @@ export function BusinessManager({
             }}
           >
             <Icon name="shop" />
-            Dodaj djelatnost
+            {t("Dodaj djelatnost")}
           </button>
         )}
       </div>
@@ -1161,35 +1169,35 @@ export function BusinessManager({
             href="/prijava?nastavi=%2Fnalog%3Fodjeljak%3Ddjelatnosti"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Obnovi prijavu u novoj kartici"
+            aria-label={t("Obnovi prijavu u novoj kartici")}
           >
-            Obnovi prijavu
+            {t("Obnovi prijavu")}
           </Link>
         </div>
       )}
       {pendingCreate && !busy && (
         <div className={styles.notice} role="status">
-          <p>Prethodni unos još nije potvrđen.</p>
+          <p>{t("Prethodni unos još nije potvrđen.")}</p>
           <button
             type="button"
             className={styles.primary}
             disabled={!active}
             onClick={() => void save(pendingCreate.fields, pendingCreate.publish, pendingCreate)}
           >
-            Ponovi isti unos
+            {t("Ponovi isti unos")}
           </button>
         </div>
       )}
       {pendingMutation && !busy && (
         <div className={styles.notice} role="status">
-          <p>Prethodna izmjena još nije potvrđena.</p>
+          <p>{t("Prethodna izmjena još nije potvrđena.")}</p>
           <button
             type="button"
             className={styles.primary}
             disabled={!active}
             onClick={() => void checkPreviousMutation()}
           >
-            Provjeri prethodnu izmjenu
+            {t("Provjeri prethodnu izmjenu")}
           </button>
         </div>
       )}
@@ -1203,7 +1211,7 @@ export function BusinessManager({
           {bookingNote}
         </p>
       )}
-      {bookingLoading && <p role="status">Dohvaćanje booking postavki…</p>}
+      {bookingLoading && <p role="status">{t("Dohvaćanje booking postavki…")}</p>}
       {editing !== undefined ? (
         <>
           <ReturnedBusinessNote business={editing} />
@@ -1247,22 +1255,22 @@ export function BusinessManager({
                 type="button"
                 className={styles.secondary}
                 disabled={locked || editorDirty}
-                title={editorDirty ? "Prvo sačuvaj izmjene djelatnosti" : undefined}
+                title={editorDirty ? t("Prvo sačuvaj izmjene djelatnosti") : undefined}
                 onClick={() => setDetailsBusiness(editing)}
               >
                 <Icon name="clock" />
-                Radno vrijeme i sadržaji
+                {t("Radno vrijeme i sadržaji")}
               </button>
               {isOwner && (
                 <button
                   type="button"
                   className={styles.secondary}
                   disabled={locked || editorDirty}
-                  title={editorDirty ? "Prvo sačuvaj izmjene djelatnosti" : undefined}
+                  title={editorDirty ? t("Prvo sačuvaj izmjene djelatnosti") : undefined}
                   onClick={() => setOwnershipBusiness(editing)}
                 >
                   <Icon name="user" />
-                  Dodijeli vlasnika
+                  {t("Dodijeli vlasnika")}
                 </button>
               )}
               {isOwner && adminVerification && active && expectedAccountId && (
@@ -1306,7 +1314,9 @@ export function BusinessManager({
           {returning && (
             <form
               className={styles.returnForm}
-              aria-label={rejectRevision ? "Odbijanje izmjena" : "Vraćanje djelatnosti u nacrt"}
+              aria-label={
+                rejectRevision ? t("Odbijanje izmjena") : t("Vraćanje djelatnosti u nacrt")
+              }
               onSubmit={(event) => {
                 event.preventDefault();
                 void move(
@@ -1317,10 +1327,10 @@ export function BusinessManager({
               }}
             >
               <fieldset disabled={commandLocked}>
-                <h2>{rejectRevision ? "Odbij izmjene" : "Vrati u nacrt"}</h2>
+                <h2>{rejectRevision ? t("Odbij izmjene") : t("Vrati u nacrt")}</h2>
                 <p>{returning.title}</p>
                 <label htmlFor={returnReasonId}>
-                  {rejectRevision ? "Razlog odbijanja" : "Razlog vraćanja"}
+                  {rejectRevision ? t("Razlog odbijanja") : t("Razlog vraćanja")}
                   <input
                     id={returnReasonId}
                     ref={returnInput}
@@ -1334,7 +1344,11 @@ export function BusinessManager({
                 </label>
                 <div className={styles.returnActions}>
                   <button type="submit" className={styles.primary}>
-                    {busy ? "Spremanje…" : rejectRevision ? "Odbij izmjene" : "Vrati u nacrt"}
+                    {busy
+                      ? t("Spremanje…")
+                      : rejectRevision
+                        ? t("Odbij izmjene")
+                        : t("Vrati u nacrt")}
                   </button>
                   <button
                     type="button"
@@ -1345,7 +1359,7 @@ export function BusinessManager({
                       setError("");
                     }}
                   >
-                    {rejectRevision ? "Odustani" : "Odustani od vraćanja"}
+                    {rejectRevision ? t("Odustani") : t("Odustani od vraćanja")}
                   </button>
                 </div>
               </fieldset>
@@ -1353,7 +1367,7 @@ export function BusinessManager({
           )}
           <div className={styles.listControls}>
             {isOwner && (
-              <search aria-label="Pretraga djelatnosti">
+              <search aria-label={t("Pretraga djelatnosti")}>
                 <form
                   className={styles.manageSearch}
                   onSubmit={(event) => {
@@ -1364,8 +1378,8 @@ export function BusinessManager({
                   <input
                     type="search"
                     name="q"
-                    aria-label="Naziv ili grad"
-                    placeholder="Naziv ili grad"
+                    aria-label={t("Naziv ili grad")}
+                    placeholder={t("Naziv ili grad")}
                     maxLength={120}
                     disabled={locked}
                     value={searchText}
@@ -1376,7 +1390,7 @@ export function BusinessManager({
                     }}
                   />
                   <button type="submit" className={styles.secondary} disabled={locked}>
-                    Pretraži
+                    {t("Pretraži")}
                   </button>
                   {(searchQuery || searchText) && (
                     <button
@@ -1385,7 +1399,7 @@ export function BusinessManager({
                       disabled={locked}
                       onClick={() => applySearch("")}
                     >
-                      Očisti pretragu
+                      {t("Očisti pretragu")}
                     </button>
                   )}
                 </form>
@@ -1405,7 +1419,7 @@ export function BusinessManager({
                         setPage(1);
                       }}
                     />
-                    Sve djelatnosti
+                    {t("Sve djelatnosti")}
                   </label>
                 )}
                 {isOwner && (
@@ -1420,7 +1434,7 @@ export function BusinessManager({
                         setPage(1);
                       }}
                     />
-                    Na pregledu
+                    {t("Na pregledu")}
                   </label>
                 )}
                 {isOwner && embedded && (
@@ -1435,7 +1449,7 @@ export function BusinessManager({
                         setPage(1);
                       }}
                     />
-                    Bez lokacije na mapi
+                    {t("Bez lokacije na mapi")}
                   </label>
                 )}
                 <label>
@@ -1448,7 +1462,7 @@ export function BusinessManager({
                       setPage(1);
                     }}
                   />
-                  Arhivirane
+                  {t("Arhivirane")}
                 </label>
               </div>
               <button
@@ -1460,33 +1474,33 @@ export function BusinessManager({
                   setRefresh((value) => value + 1);
                 }}
               >
-                Osvježi
+                {t("Osvježi")}
               </button>
             </div>
           </div>
-          {!items && !error && !readError && <p role="status">Dohvaćanje djelatnosti…</p>}
+          {!items && !error && !readError && <p role="status">{t("Dohvaćanje djelatnosti…")}</p>}
           {categories.length === 0 && items && isOwner && (
-            <p className={styles.notice}>Prvo dodaj kategoriju u administraciji.</p>
+            <p className={styles.notice}>{t("Prvo dodaj kategoriju u administraciji.")}</p>
           )}
           {items?.length === 0 && (
             <div className={styles.empty}>
               <Icon name="shop" />
               <h2>
                 {searchQuery
-                  ? "Nema rezultata za ovu pretragu."
+                  ? t("Nema rezultata za ovu pretragu.")
                   : reviewOnly
-                    ? "Nema djelatnosti na pregledu."
+                    ? t("Nema djelatnosti na pregledu.")
                     : missingMap
-                      ? "Sve objavljene djelatnosti imaju lokaciju na mapi."
+                      ? t("Sve objavljene djelatnosti imaju lokaciju na mapi.")
                       : archived
-                        ? "Nema arhiviranih djelatnosti."
-                        : "Tvoj sljedeći korak počinje ovdje."}
+                        ? t("Nema arhiviranih djelatnosti.")
+                        : t("Tvoj sljedeći korak počinje ovdje.")}
               </h2>
               {!searchQuery && !reviewOnly && !missingMap && (
                 <p>
                   {archived
-                    ? "Ovdje ćeš pronaći arhivirane profile."
-                    : "Dodaj osnovne podatke o svom poslu."}
+                    ? t("Ovdje ćeš pronaći arhivirane profile.")
+                    : t("Dodaj osnovne podatke o svom poslu.")}
                 </p>
               )}
             </div>
@@ -1517,7 +1531,7 @@ export function BusinessManager({
                     <h2>{item.title}</h2>
                     {item.city && <p>{item.city}</p>}
                     <span className={styles.status} data-status={item.status}>
-                      {statuses[item.status]}
+                      {t(statuses[item.status])}
                     </span>
                     <ReturnedBusinessNote business={item} />
                     {item.revisionRejection && (
@@ -1536,7 +1550,7 @@ export function BusinessManager({
                         onClick={() => setStayBusiness(item)}
                       >
                         <Icon name="bed" />
-                        {item.status === "archived" ? "Kalendar smještaja" : "Smještaj"}
+                        {item.status === "archived" ? t("Kalendar smještaja") : t("Smještaj")}
                       </button>
                     )}
                     {item.status === "archived" && item.hasRentalVehicles && (
@@ -1551,7 +1565,7 @@ export function BusinessManager({
                     )}
                     {item.status === "published" && (
                       <Link className={styles.secondary} href={`/djelatnosti/${item.id}`}>
-                        Javni profil
+                        {t("Javni profil")}
                       </Link>
                     )}
                     {item.status === "published" && item.ownerId === expectedAccountId && (
@@ -1575,7 +1589,7 @@ export function BusinessManager({
                             setBookingNote("");
                           }}
                         >
-                          Uredi
+                          {t("Uredi")}
                         </button>
                         <button
                           type="button"
@@ -1588,7 +1602,7 @@ export function BusinessManager({
                             setBookingNote("");
                           }}
                         >
-                          Fotografije
+                          {t("Fotografije")}
                         </button>
                         {(!stays || cars) && (
                           <button
@@ -1604,7 +1618,7 @@ export function BusinessManager({
                             }}
                           >
                             <Icon name={cars ? "car" : "calendar"} />
-                            {cars ? "Automobili" : "Booking"}
+                            {cars ? t("Automobili") : "Booking"}
                           </button>
                         )}
                         {!IS_PLAY_EDITION &&
@@ -1624,7 +1638,7 @@ export function BusinessManager({
                             disabled={locked || loading || (!isOwner && item.status === "pending")}
                             onClick={() => move(item, "publish")}
                           >
-                            {isOwner ? "Objavi" : "Pošalji na pregled"}
+                            {isOwner ? t("Objavi") : t("Pošalji na pregled")}
                           </button>
                         )}
                         {isOwner && (item.editorialRevision || item.pendingMedia) && (
@@ -1635,7 +1649,7 @@ export function BusinessManager({
                               disabled={locked || loading}
                               onClick={() => void move(item, "approve-changes")}
                             >
-                              Odobri izmjene
+                              {t("Odobri izmjene")}
                             </button>
                             <button
                               type="button"
@@ -1649,7 +1663,7 @@ export function BusinessManager({
                                 setNotice("");
                               }}
                             >
-                              Odbij izmjene
+                              {t("Odbij izmjene")}
                             </button>
                           </>
                         )}
@@ -1666,7 +1680,7 @@ export function BusinessManager({
                               setNotice("");
                             }}
                           >
-                            Vrati u nacrt
+                            {t("Vrati u nacrt")}
                           </button>
                         )}
                         <button
@@ -1675,7 +1689,7 @@ export function BusinessManager({
                           disabled={locked || loading}
                           onClick={() => move(item, "archive")}
                         >
-                          Arhiviraj
+                          {t("Arhiviraj")}
                         </button>
                       </>
                     ) : (
@@ -1685,7 +1699,7 @@ export function BusinessManager({
                         disabled={locked || loading}
                         onClick={() => move(item, "recover")}
                       >
-                        Vrati u nacrte
+                        {t("Vrati u nacrte")}
                       </button>
                     )}
                     {expectedAccountId && (isOwner || expectedAccountId === item.ownerId) && (
@@ -1712,7 +1726,7 @@ export function BusinessManager({
                 disabled={page === 1 || locked || loading}
                 onClick={() => setPage(page - 1)}
               >
-                Prethodna
+                {t("Prethodna")}
               </button>
               <span>{page}</span>
               <button
@@ -1721,7 +1735,7 @@ export function BusinessManager({
                 disabled={!canContinue || locked || loading}
                 onClick={() => setPage(page + 1)}
               >
-                Sljedeća
+                {t("Sljedeća")}
               </button>
             </div>
           )}

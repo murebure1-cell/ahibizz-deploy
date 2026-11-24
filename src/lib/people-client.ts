@@ -1,3 +1,4 @@
+import { msg } from "./i18n/translate";
 import { type PersonalProfile, readProfileBadges, workStatusLabels } from "./people";
 
 export class ProfileRequestError extends Error {
@@ -39,17 +40,17 @@ export function peopleAccountRequest(
 }
 export function profileError(error: unknown) {
   const code = error instanceof ProfileRequestError ? error.code : "";
-  if (code === "AUTHENTICATION_REQUIRED") return "Prijavi se ponovo.";
-  if (code === "ACCOUNT_IDENTITY_CHANGED") return "Prijavi se ponovo svojim nalogom.";
+  if (code === "AUTHENTICATION_REQUIRED") return msg("Prijavi se ponovo.");
+  if (code === "ACCOUNT_IDENTITY_CHANGED") return msg("Prijavi se ponovo svojim nalogom.");
   if (code === "VERSION_CONFLICT")
-    return "Profil je izmijenjen na drugom mjestu. Otvori sačuvani profil.";
-  if (code === "COVER_NOT_ALLOWED") return "Vlastita naslovnica nije uključena u tvoj paket.";
+    return msg("Profil je izmijenjen na drugom mjestu. Otvori sačuvani profil.");
+  if (code === "COVER_NOT_ALLOWED") return msg("Vlastita naslovnica nije uključena u tvoj paket.");
   if (["MEDIA_INVALID", "INVALID_CONTENT_TYPE"].includes(code))
-    return "Izaberi ispravnu JPG, PNG ili WebP fotografiju.";
+    return msg("Izaberi ispravnu JPG, PNG ili WebP fotografiju.");
   if (["MEDIA_TOO_LARGE", "REQUEST_TOO_LARGE"].includes(code))
-    return "Fotografija je prevelika. Najviše 4 MB.";
-  if (code === "INVALID_PROFILE_INPUT") return "Provjeri unesene podatke.";
-  return "Promjena nije potvrđena. Provjeri sačuvani profil.";
+    return msg("Fotografija je prevelika. Najviše 4 MB.");
+  if (code === "INVALID_PROFILE_INPUT") return msg("Provjeri unesene podatke.");
+  return msg("Promjena nije potvrđena. Provjeri sačuvani profil.");
 }
 export function readPersonalProfile(value: unknown): PersonalProfile {
   if (!value || typeof value !== "object") throw new Error("invalid_profile_response");

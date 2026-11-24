@@ -10,9 +10,11 @@ import {
   blocksRequest,
 } from "../../lib/account-blocks";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./blocks.module.css";
 
 export function BlockedPeople({ accountId, initial }: { accountId: string; initial: BlockedList }) {
+  const t = useT();
   const [data, setData] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -41,12 +43,12 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
       setData(list);
       setConfirm(null);
       if (operation) {
-        setMessage("Postavka je sačuvana.");
+        setMessage(t("Postavka je sačuvana."));
         router.refresh();
       }
     } catch (failure) {
       if (!controller.signal.aborted) {
-        setError(blockRequestMessage(failure));
+        setError(t(blockRequestMessage(failure)));
         setConfirm(null);
       }
     } finally {
@@ -59,7 +61,7 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
 
   return (
     <div className={styles.workspace} aria-busy={busy}>
-      <section className={styles.filterPanel} aria-label="Vidljivost u pretrazi">
+      <section className={styles.filterPanel} aria-label={t("Vidljivost u pretrazi")}>
         <label className={styles.option}>
           <input
             type="checkbox"
@@ -77,12 +79,12 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
             }}
           />
           <span>
-            <strong>Sakrij djelatnosti blokiranih korisnika u pretrazi</strong>
-            <span>Važi za pretragu i prijedloge u Reelsima dok koristiš svoj nalog.</span>
+            <strong>{t("Sakrij djelatnosti blokiranih korisnika u pretrazi")}</strong>
+            <span>{t("Važi za pretragu i prijedloge u Reelsima dok koristiš svoj nalog.")}</span>
           </span>
         </label>
       </section>
-      <section className={styles.listPanel} aria-label="Blokirani korisnici">
+      <section className={styles.listPanel} aria-label={t("Blokirani korisnici")}>
         {data.items.length > 0 ? (
           <ul className={styles.list}>
             {data.items.map((item) => (
@@ -114,7 +116,7 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
                           });
                         }}
                       >
-                        Potvrdi odblokiranje
+                        {t("Potvrdi odblokiranje")}
                       </button>
                       <button
                         type="button"
@@ -122,7 +124,7 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
                         className={styles.quiet}
                         onClick={() => setConfirm(null)}
                       >
-                        Odustani
+                        {t("Odustani")}
                       </button>
                     </>
                   ) : (
@@ -132,7 +134,7 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
                       onClick={() => setConfirm(item.id)}
                       aria-label={`Odblokiraj ${item.name}`}
                     >
-                      Odblokiraj
+                      {t("Odblokiraj")}
                     </button>
                   )}
                 </div>
@@ -140,16 +142,16 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
             ))}
           </ul>
         ) : (
-          <p className={styles.empty}>Nemaš blokiranih korisnika.</p>
+          <p className={styles.empty}>{t("Nemaš blokiranih korisnika.")}</p>
         )}
         {(data.page > 1 || data.hasMore) && (
-          <nav className={styles.pagination} aria-label="Stranice blokiranih korisnika">
+          <nav className={styles.pagination} aria-label={t("Stranice blokiranih korisnika")}>
             <button
               type="button"
               disabled={busy || data.page === 1}
               onClick={() => void update(data.page - 1)}
             >
-              Prethodna
+              {t("Prethodna")}
             </button>
             <span>Stranica {data.page}</span>
             <button
@@ -157,7 +159,7 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
               disabled={busy || !data.hasMore}
               onClick={() => void update(data.page + 1)}
             >
-              Sljedeća
+              {t("Sljedeća")}
             </button>
           </nav>
         )}
@@ -167,7 +169,7 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
         <div className={styles.feedback} role="alert">
           <p>{error}</p>
           <button disabled={busy} onClick={() => void update(data.page)} type="button">
-            Učitaj trenutno stanje
+            {t("Učitaj trenutno stanje")}
           </button>
         </div>
       )}

@@ -11,6 +11,7 @@ import {
 } from "../../lib/account-return";
 import { accountShortcuts } from "../../lib/account-shortcuts";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
+import { msg } from "../../lib/i18n/translate";
 import { forgetRememberedArea } from "../../lib/location-area-storage";
 import type { MessageTarget } from "../../lib/messaging";
 import { clearBrowserMessagingRecovery } from "../../lib/messaging-recovery-storage";
@@ -19,6 +20,7 @@ import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { useAppAppearance } from "../appearance/AppAppearance";
 import { SavedBusinesses } from "../favorites/SavedBusinesses";
 import { Icon, type IconName } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import { PersonalProfileWorkspace } from "../people/PersonalProfileWorkspace";
 import { CommunityRulesPrompt } from "../support/CommunityRulesPrompt";
 import { AccountAuthorityBoundary } from "./AccountAuthorityBoundary";
@@ -26,41 +28,43 @@ import { AccountOverview } from "./AccountOverview";
 import { AccountSettings } from "./AccountSettings";
 import styles from "./account.module.css";
 
-function paneHeading(label: string) {
+function PaneHeading({ label }: { label: string }) {
+  const t = useT();
   return (
     <h2 className={styles.paneHeading} aria-busy="true">
-      {label}
+      {t(label)}
     </h2>
   );
 }
+const paneHeading = (label: string) => <PaneHeading label={label} />;
 const OwnerCalendarPanel = dynamic(() =>
   import("./OwnerCalendarPanel").then((m) => m.OwnerCalendarPanel),
 );
 const BusinessManager = dynamic(
   () => import("../directory/BusinessManager").then((m) => m.BusinessManager),
-  { loading: () => paneHeading("Djelatnosti") },
+  { loading: () => paneHeading(msg("Djelatnosti")) },
 );
 const MessagingInbox = dynamic(
   () => import("../messaging/MessagingInbox").then((m) => m.MessagingInbox),
-  { loading: () => paneHeading("Poruke") },
+  { loading: () => paneHeading(msg("Poruke")) },
 );
 const CustomerAppointments = dynamic(
   () => import("../booking/CustomerAppointments").then((m) => m.CustomerAppointments),
-  { loading: () => paneHeading("Moji termini") },
+  { loading: () => paneHeading(msg("Moji termini")) },
 );
 const ConnectionsPanel = dynamic(
   () => import("../connections/ConnectionsPanel").then((m) => m.ConnectionsPanel),
-  { loading: () => paneHeading("Prijatelji") },
+  { loading: () => paneHeading(msg("Prijatelji")) },
 );
 const accountMenu = [
-  { id: "overview", label: "Pregled", icon: "home", primary: true },
-  { id: "businesses", label: "Djelatnosti", icon: "shop", primary: true },
-  { id: "messages", label: "Poruke", icon: "message", primary: true },
-  { id: "profile", label: "Moj profil", icon: "user", group: "Lični nalog" },
-  { id: "appointments", label: "Moji termini", icon: "calendar", group: "Lični nalog" },
-  { id: "connections", label: "Prijatelji", icon: "people", group: "Lični nalog" },
-  { id: "saved", label: "Sačuvane djelatnosti", icon: "heart", group: "Lični nalog" },
-  { id: "settings", label: "Postavke", icon: "sliders", group: "Lični nalog" },
+  { id: "overview", label: msg("Pregled"), icon: "home", primary: true },
+  { id: "businesses", label: msg("Djelatnosti"), icon: "shop", primary: true },
+  { id: "messages", label: msg("Poruke"), icon: "message", primary: true },
+  { id: "profile", label: msg("Moj profil"), icon: "user", group: msg("Lični nalog") },
+  { id: "appointments", label: msg("Moji termini"), icon: "calendar", group: msg("Lični nalog") },
+  { id: "connections", label: msg("Prijatelji"), icon: "people", group: msg("Lični nalog") },
+  { id: "saved", label: msg("Sačuvane djelatnosti"), icon: "heart", group: msg("Lični nalog") },
+  { id: "settings", label: msg("Postavke"), icon: "sliders", group: msg("Lični nalog") },
 ] as {
   id: AccountSection;
   label: string;
@@ -95,6 +99,7 @@ function AccountWorkspace({
   messageTarget,
   invalidMessageTarget = false,
 }: AccountDashboardProps) {
+  const t = useT();
   const [profile, setProfile] = useState(initial),
     [personal, setPersonal] = useState<PersonalProfile | null>(null),
     [error, setError] = useState(""),
@@ -151,7 +156,7 @@ function AccountWorkspace({
         onClick={() => changeSection(item.id)}
       >
         <Icon name={item.icon} />
-        <span>{item.label}</span>
+        <span>{t(item.label)}</span>
       </button>
     );
   }
@@ -167,7 +172,7 @@ function AccountWorkspace({
       });
       const result = await response.json();
       if (!response.ok || result.ok !== true) {
-        setError("Odjava nije uspjela. Pokušaj ponovo.");
+        setError(t("Odjava nije uspjela. Pokušaj ponovo."));
         return;
       }
       clearBrowserMessagingRecovery(initial.id);
@@ -175,7 +180,7 @@ function AccountWorkspace({
       resetAppearance();
       window.location.assign("/prijava");
     } catch {
-      setError("Odjava nije uspjela. Pokušaj ponovo.");
+      setError(t("Odjava nije uspjela. Pokušaj ponovo."));
     } finally {
       setBusy(false);
     }
@@ -212,11 +217,11 @@ function AccountWorkspace({
               </span>
               <div>
                 <strong>{profile.name}</strong>
-                <small>{profile.role === "owner" ? "Administrator" : "Moj AhiBizz"}</small>
+                <small>{profile.role === "owner" ? t("Administrator") : t("Moj AhiBizz")}</small>
               </div>
             </div>
             <div className={styles.navigationViewport}>
-              <nav aria-label="Moj nalog">
+              <nav aria-label={t("Moj nalog")}>
                 {menu.filter((item) => item.primary).map(tab)}
                 <button
                   ref={moreControl}
@@ -225,21 +230,27 @@ function AccountWorkspace({
                   data-current={Boolean(current && !current.primary)}
                   aria-expanded={moreMenu}
                   aria-controls="account-other-sections"
-                  aria-label={`Više odjeljaka naloga${current && !current.primary ? `, odabrano: ${current.label}` : ""}`}
+                  aria-label={
+                    current && !current.primary
+                      ? t("Više odjeljaka naloga, odabrano: {section}", {
+                          section: t(current.label),
+                        })
+                      : t("Više odjeljaka naloga")
+                  }
                   onClick={() => setMoreMenu(!moreMenu)}
                 >
                   <Icon name="menu" />
-                  <span>Više</span>
+                  <span>{t("Više")}</span>
                 </button>
                 <div
                   id="account-other-sections"
                   className={styles.otherSections}
                   data-expanded={moreMenu}
                 >
-                  {(["Lični nalog", "Poslovanje"] as const).map((group) => (
-                    <section className={styles.menuGroup} aria-label={group} key={group}>
+                  {([msg("Lični nalog"), msg("Poslovanje")] as const).map((group) => (
+                    <section className={styles.menuGroup} aria-label={t(group)} key={group}>
                       <span className={styles.groupLabel} aria-hidden="true">
-                        {group}
+                        {t(group)}
                       </span>
                       {menu.filter((item) => item.group === group).map(tab)}
                     </section>
@@ -247,7 +258,7 @@ function AccountWorkspace({
                   {profile.role === "owner" && (
                     <Link href="/administracija" className={styles.adminLink}>
                       <Icon name="shield" />
-                      Administracija
+                      {t("Administracija")}
                     </Link>
                   )}
                 </div>
@@ -256,8 +267,8 @@ function AccountWorkspace({
             <button
               className={styles.logout}
               type="button"
-              aria-label="Odjava"
-              title="Odjava"
+              aria-label={t("Odjava")}
+              title={t("Odjava")}
               disabled={busy}
               onClick={logout}
             >
@@ -272,7 +283,7 @@ function AccountWorkspace({
               >
                 <path d="M10 4H5v16h5M9 12h12m-4-4 4 4-4 4" />
               </svg>
-              <span>Odjava</span>
+              <span>{t("Odjava")}</span>
             </button>
           </aside>
           <section
@@ -341,12 +352,12 @@ function AccountWorkspace({
               />
             </AccountPane>
             <AccountPane selected={section === "saved"}>
-              <nav aria-label="Sačuvano" className={styles.savedLinks} hidden={!hasAccess}>
+              <nav aria-label={t("Sačuvano")} className={styles.savedLinks} hidden={!hasAccess}>
                 <Link className="text-link" href="/sacuvane-pretrage">
-                  Sačuvane pretrage
+                  {t("Sačuvane pretrage")}
                 </Link>
                 <Link className="text-link" href="/blog?sacuvano=1">
-                  Sačuvani članci
+                  {t("Sačuvani članci")}
                 </Link>
               </nav>
               <SavedBusinesses
@@ -363,7 +374,7 @@ function AccountWorkspace({
             <AccountPane selected={section === "messages"}>
               {view.invalidMessageTarget && (
                 <p role="alert" className={styles.feedback}>
-                  Link za razgovor nije ispravan.
+                  {t("Link za razgovor nije ispravan.")}
                 </p>
               )}
               <MessagingInbox

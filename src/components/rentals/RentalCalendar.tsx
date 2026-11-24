@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { type FormEvent, useRef, useState } from "react";
 import { accountSectionPath } from "../../lib/account-return";
-import { bookingDate, bookingMoney, bookingMonth } from "../../lib/booking";
+import { bookingDate, bookingMoney, bookingMonth, bookingWeekdays } from "../../lib/booking";
 import { BookingRequestError, bookingAccountId } from "../../lib/booking-client";
 import { addDays, dateKey, localInstant } from "../../lib/booking-time";
 import {
@@ -17,6 +17,7 @@ import {
   rentalQuote,
 } from "../../lib/rentals";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import { RentalEntry } from "./RentalEntries";
 import { rentalError, useRentalRead, writeRental } from "./rental-client";
 import styles from "./rentals.module.css";
@@ -48,6 +49,7 @@ export function RentalCalendar({
   onChangedOffer: () => void;
   onUncertain: (intent: RentalIntent) => void;
 }) {
+  const { t, locale } = useI18n();
   const today = dateKey(new Date(), zone);
   const [selected, setSelected] = useState(today);
   const [month, setMonth] = useState(today.slice(0, 7));
@@ -147,13 +149,13 @@ export function RentalCalendar({
       setMonth(dateKey(new Date(from), zone).slice(0, 7));
       setRevision((v) => v + 1);
       if (actor) onChangedOffer();
-      setSuccess(actor ? "Period je označen kao zauzet." : "Zahtjev je poslan vlasniku.");
+      setSuccess(actor ? t("Period je označen kao zauzet.") : t("Zahtjev je poslan vlasniku."));
     } catch (failure) {
       if (failure instanceof RentalRecoveryRequired) {
         onUncertain(failure.intent);
         return;
       }
-      setError(rentalError(failure));
+      setError(t(rentalError(failure)));
       if (failure instanceof BookingRequestError) {
         if (failure.status === 401) setLogin(true);
         if (failure.status === 409) {
@@ -171,7 +173,7 @@ export function RentalCalendar({
   return (
     <section className={styles.calendar} aria-label={`Kalendar za ${car.name}`}>
       <div className={styles.topline}>
-        <h3>Kalendar</h3>
+        <h3>{t("Kalendar")}</h3>
         <span className={styles.muted}>{zone}</span>
       </div>
       <div className={styles.columns}>
@@ -179,16 +181,16 @@ export function RentalCalendar({
           <div className={styles.month}>
             <button
               type="button"
-              aria-label="Prethodni mjesec"
+              aria-label={t("Prethodni mjesec")}
               onClick={() => browse(-1)}
               disabled={busy || (!actor && month <= today.slice(0, 7))}
             >
               <Icon name="chevron" style={{ transform: "rotate(180deg)" }} />
             </button>
-            <strong>{bookingMonth(month)}</strong>
+            <strong>{bookingMonth(month, locale)}</strong>
             <button
               type="button"
-              aria-label="Sljedeći mjesec"
+              aria-label={t("Sljedeći mjesec")}
               disabled={busy}
               onClick={() => browse(1)}
             >
@@ -196,8 +198,9 @@ export function RentalCalendar({
             </button>
           </div>
           <div className={styles.days}>
-            {["Po", "Ut", "Sr", "Če", "Pe", "Su", "Ne"].map((day) => (
-              <small key={day}>{day}</small>
+            {bookingWeekdays(locale).map((day, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: The seven weekdays never reorder.
+              <small key={index}>{day}</small>
             ))}
             {Array.from({ length: weekday }, (_, i) => (
               <span key={`pad-${addDays(`${month}-01`, i - weekday)}`} />
@@ -209,7 +212,7 @@ export function RentalCalendar({
                 <button
                   key={day}
                   type="button"
-                  aria-label={`${bookingDate(`${day}T12:00:00Z`, "UTC")}${taken ? ", ima zauzetih termina" : ""}`}
+                  aria-label={`${bookingDate(`${day}T12:00:00Z`, "UTC", { locale })}${taken ? ", ima zauzetih termina" : ""}`}
                   aria-current={day === today ? "date" : undefined}
                   aria-pressed={day === selected}
                   data-busy={taken || undefined}
@@ -222,7 +225,7 @@ export function RentalCalendar({
             })}
           </div>
           <div className={styles.dayAgenda} aria-live="polite">
-            <strong>{bookingDate(`${selected}T12:00:00Z`, "UTC")}</strong>
+            <strong>{bookingDate(`${selected}T12:00:00Z`, "UTC", { locale })}</strong>
             {state?.error ? (
               <p role="alert">
                 {state.error}{" "}
@@ -231,13 +234,13 @@ export function RentalCalendar({
                   className={styles.smallAction}
                   onClick={() => setRevision((v) => v + 1)}
                 >
-                  Pokušaj ponovo
+                  {t("Pokušaj ponovo")}
                 </button>
               </p>
             ) : !state?.data ? (
-              <p>Dohvaćanje kalendara…</p>
+              <p>{t("Dohvaćanje kalendara…")}</p>
             ) : dayEntries.length === 0 ? (
-              <p>Nema zauzetih termina.</p>
+              <p>{t("Nema zauzetih termina.")}</p>
             ) : (
               dayEntries.map((entry) =>
                 actor && "status" in entry ? (
@@ -250,8 +253,8 @@ export function RentalCalendar({
                   />
                 ) : (
                   <p key={entry.startsAt}>
-                    Zauzeto · {bookingDate(entry.startsAt, zone, { time: true })} —{" "}
-                    {bookingDate(entry.endsAt, zone, { time: true })}
+                    Zauzeto · {bookingDate(entry.startsAt, zone, { time: true, locale })} —{" "}
+                    {bookingDate(entry.endsAt, zone, { time: true, locale })}
                   </p>
                 ),
               )
@@ -260,9 +263,9 @@ export function RentalCalendar({
         </div>
         {allowNew && (
           <form className={styles.range} onSubmit={submit}>
-            <h4>{actor ? "Označi zauzeti period" : "Zatraži najam"}</h4>
+            <h4>{actor ? t("Označi zauzeti period") : t("Zatraži najam")}</h4>
             <label>
-              {actor ? "Početak blokade" : "Preuzimanje"}
+              {actor ? t("Početak blokade") : t("Preuzimanje")}
               <input
                 type="datetime-local"
                 required
@@ -281,7 +284,7 @@ export function RentalCalendar({
               />
             </label>
             <label>
-              {actor ? "Kraj blokade" : "Vraćanje"}
+              {actor ? t("Kraj blokade") : t("Vraćanje")}
               <input
                 type="datetime-local"
                 required
@@ -298,8 +301,8 @@ export function RentalCalendar({
             {pickup && dropoff && !valid && (
               <p role="status">
                 {!from || !to
-                  ? "Izaberi drugi sat zbog promjene vremena."
-                  : "Početak mora biti u budućnosti, a kraj nakon početka."}
+                  ? t("Izaberi drugi sat zbog promjene vremena.")
+                  : t("Početak mora biti u budućnosti, a kraj nakon početka.")}
               </p>
             )}
             {beyondMonth && extra?.error && (
@@ -310,18 +313,18 @@ export function RentalCalendar({
                   className={styles.smallAction}
                   onClick={() => setRevision((v) => v + 1)}
                 >
-                  Pokušaj ponovo
+                  {t("Pokušaj ponovo")}
                 </button>
               </p>
             )}
             {occupied && (
               <p role="status" className={styles.error}>
-                Automobil je zauzet u tom periodu.
+                {t("Automobil je zauzet u tom periodu.")}
               </p>
             )}
             {!actor && total !== null && (
               <div className={styles.total}>
-                <span>Ukupno</span>
+                <span>{t("Ukupno")}</span>
                 <strong>{bookingMoney(total)}</strong>
               </div>
             )}
@@ -330,7 +333,7 @@ export function RentalCalendar({
               className={styles.primary}
               disabled={!valid || !rangeReady || occupied || busy || (!actor && total === null)}
             >
-              {busy ? "Slanje…" : actor ? "Označi zauzeto" : "Pošalji zahtjev"}
+              {busy ? t("Slanje…") : actor ? t("Označi zauzeto") : t("Pošalji zahtjev")}
             </button>
             {error && (
               <p className={styles.error} role="alert">
@@ -339,7 +342,7 @@ export function RentalCalendar({
                   <Link
                     href={`/prijava?nastavi=${encodeURIComponent(`/djelatnosti/${car.businessId}#business-rentals`)}`}
                   >
-                    Prijava
+                    {t("Prijava")}
                   </Link>
                 )}
               </p>
@@ -347,7 +350,9 @@ export function RentalCalendar({
             {success && (
               <p role="status" className={styles.success}>
                 {success}{" "}
-                {!actor && <Link href={accountSectionPath("appointments")}>Moji termini</Link>}
+                {!actor && (
+                  <Link href={accountSectionPath("appointments")}>{t("Moji termini")}</Link>
+                )}
               </p>
             )}
           </form>

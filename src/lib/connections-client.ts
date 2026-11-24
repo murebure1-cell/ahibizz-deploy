@@ -1,3 +1,4 @@
+import { msg } from "./i18n/translate";
 export class ConnectionRequestError extends Error {
   constructor(
     readonly status: number,
@@ -44,11 +45,11 @@ export function connectionAccountRequest(
 }
 export function connectionError(error: unknown): string {
   const code = error instanceof ConnectionRequestError ? error.code : "";
-  if (code === "AUTHENTICATION_REQUIRED") return "Prijavi se ponovo.";
-  if (code === "ACCOUNT_IDENTITY_CHANGED") return "Prijavi se ponovo svojim nalogom.";
-  if (code === "PUBLIC_PROFILE_REQUIRED") return "Prvo uključi javni profil u svom nalogu.";
-  if (code === "CONTACT_UNAVAILABLE") return "Kontakt trenutno nije dostupan.";
-  if (["PERSON_NOT_FOUND", "NOT_FOUND"].includes(code)) return "Profil nije javno dostupan.";
+  if (code === "AUTHENTICATION_REQUIRED") return msg("Prijavi se ponovo.");
+  if (code === "ACCOUNT_IDENTITY_CHANGED") return msg("Prijavi se ponovo svojim nalogom.");
+  if (code === "PUBLIC_PROFILE_REQUIRED") return msg("Prvo uključi javni profil u svom nalogu.");
+  if (code === "CONTACT_UNAVAILABLE") return msg("Kontakt trenutno nije dostupan.");
+  if (["PERSON_NOT_FOUND", "NOT_FOUND"].includes(code)) return msg("Profil nije javno dostupan.");
   if (
     [
       "VERSION_CONFLICT",
@@ -58,7 +59,7 @@ export function connectionError(error: unknown): string {
       "CONNECTION_ACTION_NOT_ALLOWED",
     ].includes(code)
   )
-    return "Zahtjev je izmijenjen. Učitaj trenutni pregled.";
-  if (code === "INVALID_CONNECTION_INPUT") return "Provjeri unesene podatke.";
-  return "Promjena nije potvrđena. Pokušaj ponovo ili učitaj trenutni pregled.";
+    return msg("Zahtjev je izmijenjen. Učitaj trenutni pregled.");
+  if (code === "INVALID_CONNECTION_INPUT") return msg("Provjeri unesene podatke.");
+  return msg("Promjena nije potvrđena. Pokušaj ponovo ili učitaj trenutni pregled.");
 }

@@ -6,11 +6,15 @@ import { blockedPeoplePath } from "../../../lib/account-blocks";
 import { createAccountBlocksService } from "../../../server/account-blocks";
 import { AccountAccessError, getAccountService } from "../../../server/auth/accounts";
 import { getAuthDatabasePool, getAuthService } from "../../../server/auth/service";
+import { getTranslator, titled } from "../../../server/i18n";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Blokirani korisnici", robots: { index: false, follow: false } };
+export const generateMetadata = titled("Blokirani korisnici", {
+  robots: { index: false, follow: false },
+});
 
 export default async function BlockedPeoplePage() {
+  const t = await getTranslator();
   try {
     const req = await headers();
     const auth = getAuthService(),
@@ -24,10 +28,11 @@ export default async function BlockedPeoplePage() {
     return (
       <main id="glavni-sadrzaj" className={`container ${styles.page}`}>
         <header className={styles.heading}>
-          <h1>Blokirani korisnici</h1>
+          <h1>{t("Blokirani korisnici")}</h1>
           <p>
-            Blokada zaustavlja nove poruke i zahtjeve za prijateljstvo između vas. Razgovori koje
-            već imaš ostaju u porukama.
+            {t(
+              "Blokada zaustavlja nove poruke i zahtjeve za prijateljstvo između vas. Razgovori koje već imaš ostaju u porukama.",
+            )}
           </p>
         </header>
         <BlockedPeople key={account.id} accountId={account.id} initial={blocks} />
@@ -39,8 +44,8 @@ export default async function BlockedPeoplePage() {
     return (
       <main id="glavni-sadrzaj" className={`container ${styles.page}`}>
         <header className={styles.heading}>
-          <h1>Blokirani korisnici</h1>
-          <p>Lista trenutno nije dostupna. Pokušaj ponovo kasnije.</p>
+          <h1>{t("Blokirani korisnici")}</h1>
+          <p>{t("Lista trenutno nije dostupna. Pokušaj ponovo kasnije.")}</p>
         </header>
       </main>
     );

@@ -4,8 +4,9 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
 import { type AccountOverviewFacts, readOverview } from "../../lib/account-overview";
 import type { AccountSection } from "../../lib/account-return";
-import { accountDate } from "../../lib/display-date";
+import { localDate } from "../../lib/display-date";
 import { Icon, type IconName } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import { BusinessToday } from "./BusinessToday";
 import { NextAppointmentCard } from "./NextAppointmentCard";
 import styles from "./overview.module.css";
@@ -51,11 +52,12 @@ function useAccountRead<T>(
 }
 
 function ReadError({ retry }: { retry: () => void }) {
+  const { t } = useI18n();
   return (
     <p role="status" className={styles.failure}>
-      Podaci trenutno nisu dostupni.{" "}
+      {t("Podaci trenutno nisu dostupni.")}{" "}
       <button type="button" onClick={retry}>
-        Pokušaj ponovo
+        {t("Pokušaj ponovo")}
       </button>
     </p>
   );
@@ -100,15 +102,16 @@ export function AccountSummary({
   error?: ReactNode;
   children?: ReactNode;
 }) {
+  const { t, locale } = useI18n();
   const entries: {
     label: string;
     icon: IconName;
     count: number | undefined;
     pane: AccountSection;
   }[] = [
-    { label: "Moje djelatnosti", icon: "shop", count: result?.businesses, pane: "businesses" },
+    { label: t("Moje djelatnosti"), icon: "shop", count: result?.businesses, pane: "businesses" },
     {
-      label: "Nepročitani razgovori",
+      label: t("Nepročitani razgovori"),
       icon: "message",
       count: result?.unreadThreads,
       pane: "messages",
@@ -118,10 +121,11 @@ export function AccountSummary({
     <div className={styles.workspace}>
       <header className={styles.masthead} data-design="account-summary">
         <div>
-          <h1>Pregled naloga</h1>
+          <h1>{t("Pregled naloga")}</h1>
           {result && (
             <p>
-              Na AhiBizzu od <time dateTime={result.joinedAt}>{accountDate(result.joinedAt)}</time>
+              {t("Na AhiBizzu od")}{" "}
+              <time dateTime={result.joinedAt}>{localDate(result.joinedAt, locale)}</time>
             </p>
           )}
         </div>

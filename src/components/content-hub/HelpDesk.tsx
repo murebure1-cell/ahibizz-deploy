@@ -14,6 +14,7 @@ import {
 } from "../../lib/help-center";
 import { supportEmail } from "../../lib/support-requests";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import { submitSupportRequest } from "../support/request-actions";
 import resources from "../support/resources.module.css";
 import styles from "./content-hub.module.css";
@@ -27,9 +28,10 @@ export function HelpDesk({
   requestId?: string;
   initialTopic: HelpTopicId | null;
 }) {
+  const t = useT();
   const [question, setQuestion] = useState("");
   const [previous, setPrevious] = useState(
-    initialTopic ? helpTopicContent(initialTopic, IS_PLAY_EDITION).question : "",
+    initialTopic ? t(helpTopicContent(initialTopic, IS_PLAY_EDITION).question) : "",
   );
   const [matched, setMatched] = useState<HelpTopicId | null>(initialTopic);
   const [topic, setTopic] = useState<HelpTicketTopic>(initialTopic ?? "ostalo");
@@ -52,11 +54,11 @@ export function HelpDesk({
   return (
     <div className={styles.helpGrid}>
       <section className={styles.chat} aria-labelledby="help-guide">
-        <h2 id="help-guide">Pitaj AhiBizz vodič</h2>
+        <h2 id="help-guide">{t("Pitaj AhiBizz vodič")}</h2>
         <search>
           <form className={styles.search} onSubmit={ask}>
             <label htmlFor="help-question" className={styles.searchLabel}>
-              Šta želiš saznati?
+              {t("Šta želiš saznati?")}
             </label>
             <input
               id="help-question"
@@ -65,27 +67,27 @@ export function HelpDesk({
               onChange={(event) => setQuestion(event.target.value)}
               required
               maxLength={100}
-              placeholder="Npr. Kako da promijenim termin?"
+              placeholder={t("Npr. Kako da promijenim termin?")}
             />
             <button type="submit">
-              <Icon name="search" /> Traži
+              <Icon name="search" /> {t("Traži")}
             </button>
           </form>
         </search>
         <fieldset className={styles.quick}>
-          <legend>Brza pitanja</legend>
+          <legend>{t("Brza pitanja")}</legend>
           {helpTopicIds.map((id) => (
             <button
               key={id}
               type="button"
               aria-pressed={matched === id}
               onClick={() => {
-                setPrevious(helpTopicContent(id, IS_PLAY_EDITION).question);
+                setPrevious(t(helpTopicContent(id, IS_PLAY_EDITION).question));
                 setMatched(id);
               }}
             >
               <Icon name={helpTopicContent(id, IS_PLAY_EDITION).icon} />
-              {helpTopicContent(id, IS_PLAY_EDITION).label}
+              {t(helpTopicContent(id, IS_PLAY_EDITION).label)}
             </button>
           ))}
         </fieldset>
@@ -96,20 +98,20 @@ export function HelpDesk({
               <div className={styles.reply}>
                 {answer ? (
                   <>
-                    <strong>{answer.label}</strong>
-                    <p>{answer.answer}</p>
+                    <strong>{t(answer.label)}</strong>
+                    <p>{t(answer.answer)}</p>
                     <ul>
                       {answer.links.map((link) => (
                         <li key={link.href}>
                           <Link href={link.href} className={styles.inlineLink}>
-                            {link.label}
+                            {t(link.label)}
                           </Link>
                         </li>
                       ))}
                     </ul>
                   </>
                 ) : (
-                  <p>Probaj kraće pitanje, odaberi temu iznad ili piši podršci.</p>
+                  <p>{t("Probaj kraće pitanje, odaberi temu iznad ili piši podršci.")}</p>
                 )}
               </div>
               {actor && !result.sent && (
@@ -123,7 +125,7 @@ export function HelpDesk({
                     detailsField.current?.focus();
                   }}
                 >
-                  Prenesi pitanje u zahtjev
+                  {t("Prenesi pitanje u zahtjev")}
                 </button>
               )}
             </>
@@ -131,12 +133,12 @@ export function HelpDesk({
         </div>
       </section>
       <section className={styles.ticket} id="kontakt" aria-labelledby="help-contact">
-        <h2 id="help-contact">Kontaktiraj podršku</h2>
-        <p className={styles.caption}>Opiši problem. Odgovor dobivaš emailom.</p>
+        <h2 id="help-contact">{t("Kontaktiraj podršku")}</h2>
+        <p className={styles.caption}>{t("Opiši problem. Odgovor dobivaš emailom.")}</p>
         {actor && requestId ? (
           result.sent ? (
             <p className={styles.reply} role="status">
-              {result.message}
+              {t(result.message)}
             </p>
           ) : (
             <form action={action} className={resources.form}>
@@ -144,21 +146,21 @@ export function HelpDesk({
               <input type="hidden" name="subject" value="help" />
               <input type="hidden" name="reference" value={`${topic}--${requestId}`} />
               <label>
-                Tema
+                {t("Tema")}
                 <select
                   value={topic}
                   onChange={(event) => setTopic(helpTopic(event.target.value) ?? "ostalo")}
                 >
-                  <option value="ostalo">Ostalo</option>
+                  <option value="ostalo">{t("Ostalo")}</option>
                   {helpTopicIds.map((id) => (
                     <option key={id} value={id}>
-                      {helpTopicContent(id, IS_PLAY_EDITION).label}
+                      {t(helpTopicContent(id, IS_PLAY_EDITION).label)}
                     </option>
                   ))}
                 </select>
               </label>
               <label htmlFor="support-details">
-                Opis problema
+                {t("Opis problema")}
                 <textarea
                   ref={detailsField}
                   id="support-details"
@@ -168,22 +170,22 @@ export function HelpDesk({
                   maxLength={800}
                   value={detail}
                   onChange={(event) => setDetail(event.target.value)}
-                  placeholder="Kada se desilo i na kojoj stranici?"
+                  placeholder={t("Kada se desilo i na kojoj stranici?")}
                 />
               </label>
               <p className={styles.caption}>
-                Izostavi lozinke, kodove za prijavu i podatke kartice.
+                {t("Izostavi lozinke, kodove za prijavu i podatke kartice.")}
               </p>
-              {result.message && <p role="alert">{result.message}</p>}
+              {result.message && <p role="alert">{t(result.message)}</p>}
               <button className={styles.accent} type="submit" disabled={pending}>
-                {pending ? "Šaljem…" : "Pošalji zahtjev"}
+                {pending ? t("Šaljem…") : t("Pošalji zahtjev")}
               </button>
             </form>
           )
         ) : (
           <p className={styles.contact}>
             <Link href="/prijava?nastavi=%2Fpomoc" className={styles.secondary}>
-              Prijavi se za slanje zahtjeva
+              {t("Prijavi se za slanje zahtjeva")}
             </Link>
           </p>
         )}

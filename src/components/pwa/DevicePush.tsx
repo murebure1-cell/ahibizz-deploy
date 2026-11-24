@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { msg } from "../../lib/i18n/translate";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./permissions.module.css";
 
 type Device = {
@@ -15,12 +17,12 @@ type Device = {
 };
 const settings = "/nalog?odjeljak=postavke";
 const tests: Record<string, string> = {
-  scheduled: "Zatvori aplikaciju. Probna obavijest je zakazana za 30 sekundi.",
-  accepted: "Servis je preuzeo obavijest. Čekamo potvrdu uređaja.",
-  unconfirmed: "Servis je preuzeo obavijest. Uređaj još nije potvrdio prikaz.",
-  shown: "Uređaj je prikazao probnu obavijest.",
-  opened: "Probna obavijest je otvorena.",
-  failed: "Slanje probne obavijesti nije uspjelo.",
+  scheduled: msg("Zatvori aplikaciju. Probna obavijest je zakazana za 30 sekundi."),
+  accepted: msg("Servis je preuzeo obavijest. Čekamo potvrdu uređaja."),
+  unconfirmed: msg("Servis je preuzeo obavijest. Uređaj još nije potvrdio prikaz."),
+  shown: msg("Uređaj je prikazao probnu obavijest."),
+  opened: msg("Probna obavijest je otvorena."),
+  failed: msg("Slanje probne obavijesti nije uspjelo."),
 };
 async function api(action: string, actor?: string, sub?: PushSubscription) {
   const headers = new Headers();
@@ -46,6 +48,7 @@ export function DevicePush({
   actor?: string;
   onEnabled?: (enabled: boolean) => void;
 }) {
+  const t = useT();
   const [device, setDevice] = useState<Device | null>(null),
     [status, setStatus] = useState("loading"),
     [note, setNote] = useState(""),
@@ -199,17 +202,17 @@ export function DevicePush({
       const code = error instanceof Error ? error.message : "";
       if (code === "PUSH_REBIND" && sub) {
         if (await sub.unsubscribe().catch(() => false)) setReload((n) => n + 1);
-        setNote("Ponovo odaberi uključenje da povežeš ovaj nalog.");
+        setNote(t("Ponovo odaberi uključenje da povežeš ovaj nalog."));
       } else if (Notification.permission === "denied") {
         setStatus("denied");
         setDevice(null);
       } else
         setNote(
           code === "PUSH_TEST_LIMIT"
-            ? "Za novu probu pričekaj jednu minutu."
+            ? t("Za novu probu pričekaj jednu minutu.")
             : code === "TOO_MANY_DEVICES"
-              ? "Dostignut je broj povezanih uređaja."
-              : "Promjena nije potvrđena. Pokušaj ponovo.",
+              ? t("Dostignut je broj povezanih uređaja.")
+              : t("Promjena nije potvrđena. Pokušaj ponovo."),
         );
     } finally {
       if (current === epoch.current) {
@@ -220,19 +223,19 @@ export function DevicePush({
   }
   const detail =
     status === "ios"
-      ? "Dodaj AhiBizz na početni ekran iPhonea i otvori ga odatle (iOS 16.4 ili noviji)."
+      ? t("Dodaj AhiBizz na početni ekran iPhonea i otvori ga odatle (iOS 16.4 ili noviji).")
       : status === "unsupported"
-        ? "Ovaj preglednik ne podržava push obavijesti."
+        ? t("Ovaj preglednik ne podržava push obavijesti.")
         : status === "denied"
-          ? "Dozvoli obavijesti u postavkama uređaja."
+          ? t("Dozvoli obavijesti u postavkama uređaja.")
           : status === "login"
-            ? "Prijavi se za obavijesti o porukama."
+            ? t("Prijavi se za obavijesti o porukama.")
             : status === "error"
-              ? "Trenutno ne možemo provjeriti obavijesti."
+              ? t("Trenutno ne možemo provjeriti obavijesti.")
               : enabled
-                ? "Uključene na ovom uređaju."
+                ? t("Uključene na ovom uređaju.")
                 : status === "ready"
-                  ? "Nove poruke na ovom uređaju."
+                  ? t("Nove poruke na ovom uređaju.")
                   : "";
   return (
     <>
@@ -241,7 +244,7 @@ export function DevicePush({
           <Icon name="message" />
         </span>
         <div className={styles.description}>
-          <h3>Obavijesti</h3>
+          <h3>{t("Obavijesti")}</h3>
           <p role="status">{detail}</p>
         </div>
         {status === "ready" && (
@@ -250,15 +253,15 @@ export function DevicePush({
             disabled={busy}
             onClick={() => void change(enabled ? "disable" : "enable")}
           >
-            {enabled ? "Isključi" : "Dozvoli obavijesti"}
+            {enabled ? t("Isključi") : t("Dozvoli obavijesti")}
           </button>
         )}
         {status === "login" && (
-          <Link href={`/prijava?nastavi=${encodeURIComponent(settings)}`}>Prijava</Link>
+          <Link href={`/prijava?nastavi=${encodeURIComponent(settings)}`}>{t("Prijava")}</Link>
         )}
         {status === "error" && (
           <button type="button" onClick={() => setReload((n) => n + 1)}>
-            Pokušaj ponovo
+            {t("Pokušaj ponovo")}
           </button>
         )}
       </div>
@@ -269,12 +272,12 @@ export function DevicePush({
           disabled={busy}
           onClick={() => void change("test")}
         >
-          Probaj za 30 s
+          {t("Probaj za 30 s")}
         </button>
       )}
       {(note || (enabled && device?.test && tests[device.test])) && (
         <p className={styles.note} role="status">
-          {note || tests[device?.test ?? ""]}
+          {note || t(tests[device?.test ?? ""] ?? "")}
         </p>
       )}
     </>

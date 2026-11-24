@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { bosnianDateTime } from "../../lib/display-date";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
+import { msg } from "../../lib/i18n/translate";
 import {
   bamToEuroMinor,
   isPromotionDuration,
@@ -23,6 +24,7 @@ import {
 } from "../../lib/promotions";
 import { AccountAuthorityBoundary } from "../account/AccountAuthorityBoundary";
 import { ConfirmButton } from "../ConfirmButton";
+import { useT } from "../i18n/LocaleProvider";
 import { LoadingSkeleton } from "../LoadingSkeleton";
 import { CopyPaymentDetails } from "../support/CopyPaymentDetails";
 import styles from "./promotions.module.css";
@@ -36,36 +38,36 @@ type Catalog = {
 };
 type Availability = { available: boolean; firstAvailableAt: string; capacity: number };
 const messages: Record<string, string> = {
-  PROMOTION_FULL: "Odabrani termin je zauzet. Odaberi prvi slobodan termin ili kasniji datum.",
-  PROMOTION_CHANGED: "Narudžba je promijenjena. Osvježi pregled i provjeri stanje.",
-  PROMOTION_NOT_PENDING: "Ova narudžba više ne čeka potvrdu.",
-  PROMOTION_ALREADY_CONFIRMED: "Uplata je već potvrđena. Provjeri status narudžbe.",
-  PROMOTION_ALREADY_PROCESSED: "Narudžba je već obrađena. Provjeri njen status.",
-  PROMOTION_AMOUNT_MISMATCH: "Iznos ne odgovara narudžbi. Provjeri iznos i valutu s izvoda.",
-  PROMOTION_REFERENCE_MISMATCH: "Referenca ne odgovara narudžbi.",
-  PROMOTION_REFERENCE_USED: "Oznaka s izvoda je već iskorištena.",
-  INVALID_PROMOTION_REFERENCE: "Upiši tačnu referencu ili oznaku s izvoda.",
-  INVALID_PROMOTION_PAYMENT: "Provjeri iznos i valutu s izvoda.",
-  INVALID_PROMOTION_DATE: "Odaberi sadašnji ili kasniji početak.",
-  PROMOTION_PAYMENT_UNAVAILABLE: "Upute za uplatu trenutno nisu dostupne.",
-  PROMOTION_PERIOD_ENDED: "Odabrani period je završen. Napravi novu narudžbu.",
-  PAYMENT_MISMATCH: "Iznos, valuta ili referenca ne odgovaraju narudžbi.",
-  INVALID_PAYMENT: "Provjeri iznos, valutu i referencu uplate.",
-  BANK_UNAVAILABLE: "Upute za uplatu trenutno nisu dostupne.",
-  PROMOTION_IMAGE_REQUIRED: "Dodaj sliku banera prije potvrde.",
-  INVALID_PROMOTION: "Provjeri djelatnost, vrstu, trajanje i početak.",
-  PROMOTION_EXPIRED: "Odabrani period je završen. Napravi novu narudžbu.",
-  INVALID_IMAGE: "Odaberi JPG, PNG ili WebP sliku do 4 MB.",
-  IMAGE_TOO_LARGE: "Slika može imati najviše 4 MB.",
-  ACCOUNT_IDENTITY_CHANGED: "Nalog je promijenjen. Prijavi se ponovo.",
-  AUTHENTICATION_REQUIRED: "Prijavi se ponovo.",
+  PROMOTION_FULL: msg("Odabrani termin je zauzet. Odaberi prvi slobodan termin ili kasniji datum."),
+  PROMOTION_CHANGED: msg("Narudžba je promijenjena. Osvježi pregled i provjeri stanje."),
+  PROMOTION_NOT_PENDING: msg("Ova narudžba više ne čeka potvrdu."),
+  PROMOTION_ALREADY_CONFIRMED: msg("Uplata je već potvrđena. Provjeri status narudžbe."),
+  PROMOTION_ALREADY_PROCESSED: msg("Narudžba je već obrađena. Provjeri njen status."),
+  PROMOTION_AMOUNT_MISMATCH: msg("Iznos ne odgovara narudžbi. Provjeri iznos i valutu s izvoda."),
+  PROMOTION_REFERENCE_MISMATCH: msg("Referenca ne odgovara narudžbi."),
+  PROMOTION_REFERENCE_USED: msg("Oznaka s izvoda je već iskorištena."),
+  INVALID_PROMOTION_REFERENCE: msg("Upiši tačnu referencu ili oznaku s izvoda."),
+  INVALID_PROMOTION_PAYMENT: msg("Provjeri iznos i valutu s izvoda."),
+  INVALID_PROMOTION_DATE: msg("Odaberi sadašnji ili kasniji početak."),
+  PROMOTION_PAYMENT_UNAVAILABLE: msg("Upute za uplatu trenutno nisu dostupne."),
+  PROMOTION_PERIOD_ENDED: msg("Odabrani period je završen. Napravi novu narudžbu."),
+  PAYMENT_MISMATCH: msg("Iznos, valuta ili referenca ne odgovaraju narudžbi."),
+  INVALID_PAYMENT: msg("Provjeri iznos, valutu i referencu uplate."),
+  BANK_UNAVAILABLE: msg("Upute za uplatu trenutno nisu dostupne."),
+  PROMOTION_IMAGE_REQUIRED: msg("Dodaj sliku banera prije potvrde."),
+  INVALID_PROMOTION: msg("Provjeri djelatnost, vrstu, trajanje i početak."),
+  PROMOTION_EXPIRED: msg("Odabrani period je završen. Napravi novu narudžbu."),
+  INVALID_IMAGE: msg("Odaberi JPG, PNG ili WebP sliku do 4 MB."),
+  IMAGE_TOO_LARGE: msg("Slika može imati najviše 4 MB."),
+  ACCOUNT_IDENTITY_CHANGED: msg("Nalog je promijenjen. Prijavi se ponovo."),
+  AUTHENTICATION_REQUIRED: msg("Prijavi se ponovo."),
 };
 class RequestError extends Error {
   constructor(
     public code: string,
     public firstAvailableAt?: string,
   ) {
-    super(messages[code] ?? "Radnja nije završena. Osvježi pregled i pokušaj ponovo.");
+    super(messages[code] ?? msg("Radnja nije završena. Osvježi pregled i pokušaj ponovo."));
   }
 }
 
@@ -104,7 +106,7 @@ function readCatalog(value: unknown): Catalog {
         price.amountBamMinor > 0,
     )
   )
-    throw new Error("Pregled trenutno nije dostupan.");
+    throw new Error(msg("Pregled trenutno nije dostupan."));
   return data;
 }
 
@@ -122,20 +124,20 @@ function localDisplay(iso: string) {
 }
 function moneyInput(value: FormDataEntryValue | null) {
   const text = typeof value === "string" ? value.trim().replace(",", ".") : "";
-  if (!/^\d{1,7}(?:\.\d{1,2})?$/.test(text)) throw new Error("Upiši ispravan iznos.");
+  if (!/^\d{1,7}(?:\.\d{1,2})?$/.test(text)) throw new Error(msg("Upiši ispravan iznos."));
   const [whole, decimal = ""] = text.split(".");
   return Number(whole) * 100 + Number(decimal.padEnd(2, "0"));
 }
 function imageFile(value: FormDataEntryValue | null, required: boolean) {
   if (!(value instanceof File) || !value.size) {
-    if (required) throw new Error("Dodaj sliku banera.");
+    if (required) throw new Error(msg("Dodaj sliku banera."));
     return null;
   }
   if (
     !["image/jpeg", "image/png", "image/webp"].includes(value.type) ||
     value.size > 4 * 1024 * 1024
   )
-    throw new Error("Odaberi JPG, PNG ili WebP sliku do 4 MB.");
+    throw new Error(msg("Odaberi JPG, PNG ili WebP sliku do 4 MB."));
   return value;
 }
 async function imageBase64(file: File) {
@@ -155,10 +157,11 @@ export function PromotionWorkspace({
   admin?: boolean;
   businessId?: string;
 }) {
+  const t = useT();
   if (IS_PLAY_EDITION)
     return (
       <p>
-        Ovaj odjeljak nije dostupan u aplikaciji. <Link href="/nalog">Moj nalog</Link>
+        {t("Ovaj odjeljak nije dostupan u aplikaciji.")} <Link href="/nalog">{t("Moj nalog")}</Link>
       </p>
     );
   return (
@@ -191,6 +194,7 @@ function Workspace({
   initialBusiness?: string;
   active: boolean;
 }) {
+  const t = useT();
   const [data, setData] = useState<Catalog | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -232,7 +236,7 @@ function Workspace({
         if (!controller.signal.aborted) setData(value);
       })
       .catch((failure) => {
-        if (!controller.signal.aborted) setError(failure.message);
+        if (!controller.signal.aborted) setError(t(failure.message));
       });
     return () => controller.abort();
   }, [request, base, active, revision]);
@@ -254,7 +258,7 @@ function Workspace({
       await action();
       setNotice(success);
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Radnja nije završena.");
+      setError(failure instanceof Error ? t(failure.message) : t("Radnja nije završena."));
     } finally {
       mutating.current = false;
       setBusy(false);
@@ -274,12 +278,12 @@ function Workspace({
         </p>
       )}
       {!data && !error ? (
-        <LoadingSkeleton label="Učitavam isticanja…" />
+        <LoadingSkeleton label={t("Učitavam isticanja…")} />
       ) : !data ? (
         <p role="status">
-          Pregled nije učitan.{" "}
+          {t("Pregled nije učitan.")}{" "}
           <button type="button" onClick={refresh}>
-            Osvježi
+            {t("Osvježi")}
           </button>
         </p>
       ) : (
@@ -297,28 +301,39 @@ function Workspace({
               base={base}
             />
           ) : (
-            <p>Nova isticanja trenutno nisu dostupna. Postojeće narudžbe možeš pregledati ispod.</p>
+            <p>
+              {t(
+                "Nova isticanja trenutno nisu dostupna. Postojeće narudžbe možeš pregledati ispod.",
+              )}
+            </p>
           )}
           <section className={styles.panel}>
             <div className={styles.heading}>
-              <h2>{admin ? "Narudžbe isticanja" : "Moja isticanja"}</h2>
+              <h2>{admin ? t("Narudžbe isticanja") : t("Moja isticanja")}</h2>
               <button type="button" disabled={busy} onClick={refresh}>
-                Osvježi
+                {t("Osvježi")}
               </button>
             </div>
             <label>
-              Prikaz{" "}
+              {t("Prikaz")}{" "}
               <select value={filter} onChange={(event) => setFilter(event.target.value)}>
-                {["Sve", "Na čekanju", "Aktivno", "Zakazano", "Završeno", "Otkazano"].map(
-                  (value) => (
-                    <option key={value}>{value}</option>
-                  ),
-                )}
+                {[
+                  msg("Sve"),
+                  msg("Na čekanju"),
+                  msg("Aktivno"),
+                  msg("Zakazano"),
+                  msg("Završeno"),
+                  msg("Otkazano"),
+                ].map((value) => (
+                  <option key={value} value={value}>
+                    {t(value)}
+                  </option>
+                ))}
               </select>
             </label>
             {!data.orders.filter(
               (order) => filter === "Sve" || promotionStatusLabel(order) === filter,
-            ).length && <p>Nema isticanja u ovom prikazu.</p>}
+            ).length && <p>{t("Nema isticanja u ovom prikazu.")}</p>}
             {data.orders
               .filter((order) => filter === "Sve" || promotionStatusLabel(order) === filter)
               .map((order) => (
@@ -337,8 +352,8 @@ function Workspace({
           </section>
           {admin && (
             <section className={styles.panel}>
-              <h2>Cijene isticanja</h2>
-              <p>Cijene su u KM. Promjena vrijedi za nove narudžbe.</p>
+              <h2>{t("Cijene isticanja")}</h2>
+              <p>{t("Cijene su u KM. Promjena vrijedi za nove narudžbe.")}</p>
               <div className={styles.prices}>
                 {data.prices.map((price) => (
                   <form
@@ -353,13 +368,14 @@ function Workspace({
                             { ...price, amountBamMinor: moneyInput(fields.get("price")) },
                             "PUT",
                           ),
-                        "Cijena je sačuvana.",
+                        t("Cijena je sačuvana."),
                       );
                     }}
                   >
                     <fieldset disabled={busy || !active}>
                       <legend>
-                        {promotionLabels[price.kind]} · {price.durationDays} dana
+                        {t(promotionLabels[price.kind])} ·{" "}
+                        {t("{count} dana", { count: price.durationDays })}
                       </legend>
                       <label>
                         Cijena u KM{" "}
@@ -370,7 +386,7 @@ function Workspace({
                           required
                         />
                       </label>
-                      <button type="submit">Sačuvaj cijenu</button>
+                      <button type="submit">{t("Sačuvaj cijenu")}</button>
                     </fieldset>
                   </form>
                 ))}
@@ -407,6 +423,7 @@ function PurchaseForm({
   act: Act;
   base: string;
 }) {
+  const t = useT();
   const [businessId, setBusinessId] = useState(
     businesses.some((row) => row.id === initialBusiness)
       ? (initialBusiness as string)
@@ -436,7 +453,7 @@ function PurchaseForm({
       typeof result.available !== "boolean" ||
       !Number.isFinite(Date.parse(result.firstAvailableAt))
     )
-      throw new Error("Termin trenutno nije dostupan.");
+      throw new Error(msg("Termin trenutno nije dostupan."));
     setAvailability(result);
     return result;
   }
@@ -457,22 +474,22 @@ function PurchaseForm({
     return (
       <p>
         {admin ? (
-          "Nema objavljenih djelatnosti."
+          t("Nema objavljenih djelatnosti.")
         ) : (
           <>
-            Prvo objavi svoju djelatnost.{" "}
-            <Link href="/nalog?odjeljak=djelatnosti">Moje djelatnosti</Link>
+            {t("Prvo objavi svoju djelatnost.")}{" "}
+            <Link href="/nalog?odjeljak=djelatnosti">{t("Moje djelatnosti")}</Link>
           </>
         )}
       </p>
     );
   return (
     <section className={styles.panel}>
-      <h2>{admin ? "Ručno uključi isticanje" : "Istakni djelatnost"}</h2>
+      <h2>{admin ? t("Ručno uključi isticanje") : t("Istakni djelatnost")}</h2>
       <p>
         {admin
-          ? "Uključi isticanje bez uplate i upiši razlog."
-          : "Odaberi mjesto i period. Upute za bankovnu uplatu dobit ćeš uz narudžbu."}
+          ? t("Uključi isticanje bez uplate i upiši razlog.")
+          : t("Odaberi mjesto i period. Upute za bankovnu uplatu dobit ćeš uz narudžbu.")}
       </p>
       <form
         onSubmit={(event) => {
@@ -506,20 +523,24 @@ function PurchaseForm({
                     });
                   } catch {
                     throw new Error(
-                      "Narudžba je sačuvana. Slika nije dodana; pokušaj ponovo u njenom pregledu ispod.",
+                      t(
+                        "Narudžba je sačuvana. Slika nije dodana; pokušaj ponovo u njenom pregledu ispod.",
+                      ),
                     );
                   }
                 }
               }
             },
-            admin ? "Isticanje je uključeno." : "Narudžba je sačuvana. Upute za uplatu su ispod.",
+            admin
+              ? t("Isticanje je uključeno.")
+              : t("Narudžba je sačuvana. Upute za uplatu su ispod."),
           );
         }}
       >
         <fieldset disabled={busy || checking}>
           <div className={styles.fields}>
             <label>
-              Djelatnost{" "}
+              {t("Djelatnost")}{" "}
               <select
                 value={businessId}
                 onChange={(event) => setBusinessId(event.target.value)}
@@ -534,20 +555,20 @@ function PurchaseForm({
               </select>
             </label>
             <label>
-              Mjesto{" "}
+              {t("Mjesto")}{" "}
               <select
                 value={kind}
                 onChange={(event) => setKind(event.target.value as PromotionKind)}
               >
                 {promotionKinds.map((value) => (
                   <option key={value} value={value}>
-                    {promotionLabels[value]}
+                    {t(promotionLabels[value])}
                   </option>
                 ))}
               </select>
             </label>
             <label>
-              Trajanje{" "}
+              {t("Trajanje")}{" "}
               <select
                 value={durationDays}
                 onChange={(event) => setDuration(Number(event.target.value) as PromotionDuration)}
@@ -560,7 +581,7 @@ function PurchaseForm({
               </select>
             </label>
             <label>
-              Početak{" "}
+              {t("Početak")}{" "}
               <input
                 type="datetime-local"
                 step="1"
@@ -571,22 +592,22 @@ function PurchaseForm({
               />
             </label>
           </div>
-          <p>Vrijeme je prikazano prema tvom uređaju.</p>
+          <p>{t("Vrijeme je prikazano prema tvom uređaju.")}</p>
           {kind === "banner" && (
             <label>
-              Slika banera{" "}
+              {t("Slika banera")}{" "}
               <input type="file" name="image" accept="image/jpeg,image/png,image/webp" required />
-              <small>JPG, PNG ili WebP do 4 MB.</small>
+              <small>{t("JPG, PNG ili WebP do 4 MB.")}</small>
             </label>
           )}
           {admin && (
             <label>
-              Napomena <textarea name="note" required maxLength={1000} rows={3} />
+              {t("Napomena")} <textarea name="note" required maxLength={1000} rows={3} />
             </label>
           )}
           {!admin && price && (
             <p className={styles.total}>
-              Iznos:{" "}
+              {t("Iznos:")}{" "}
               <strong>
                 {promotionMoney(price.amountBamMinor)} ·{" "}
                 {promotionMoney(bamToEuroMinor(price.amountBamMinor), "EUR")}
@@ -596,7 +617,7 @@ function PurchaseForm({
           {problem && <p role="alert">{problem}</p>}
           {availability && (
             <p role="status">
-              {availability.available ? "Termin je slobodan." : "Odabrani termin je zauzet."}
+              {availability.available ? t("Termin je slobodan.") : t("Odabrani termin je zauzet.")}
             </p>
           )}
           {availability && !availability.available && (
@@ -614,14 +635,14 @@ function PurchaseForm({
                 setChecking(true);
                 setProblem("");
                 void check()
-                  .catch((failure) => setProblem(failure.message))
+                  .catch((failure) => setProblem(t(failure.message)))
                   .finally(() => setChecking(false));
               }}
             >
-              Provjeri termin
+              {t("Provjeri termin")}
             </button>
             <button type="submit" className="button button-navy" disabled={!price}>
-              {admin ? "Uključi isticanje" : "Naruči isticanje"}
+              {admin ? t("Uključi isticanje") : t("Naruči isticanje")}
             </button>
           </div>
         </fieldset>
@@ -649,6 +670,7 @@ function OrderCard({
   base: string;
   accountId: string;
 }) {
+  const t = useT();
   const [currency, setCurrency] = useState<"BAM" | "EUR">(order.bank?.currency ?? "BAM");
   const bank = order.bank;
   const payment = bank
@@ -670,10 +692,10 @@ function OrderCard({
         <h3>
           <Link href={`/djelatnosti/${order.businessId}`}>{order.businessTitle}</Link>
         </h3>
-        <strong>{promotionStatusLabel(order)}</strong>
+        <strong>{t(promotionStatusLabel(order))}</strong>
       </div>
       <p>
-        {promotionLabels[order.kind]} · {order.durationDays} dana
+        {t(promotionLabels[order.kind])} · {t("{count} dana", { count: order.durationDays })}
       </p>
       <p>
         <time dateTime={order.startsAt}>{localDisplay(order.startsAt)}</time> do{" "}
@@ -692,11 +714,12 @@ function OrderCard({
         bank &&
         (order.kind !== "banner" || order.hasImage) && (
           <details className={styles.instructions} open>
-            <summary>Upute za uplatu</summary>
+            <summary>{t("Upute za uplatu")}</summary>
             <pre>{payment}</pre>
             <p>
-              Uplati navedeni iznos u valuti računa i prepiši referencu. Isticanje uključujemo nakon
-              provjere uplate. Dok uplata nije potvrđena, možeš otkazati narudžbu.
+              {t(
+                "Uplati navedeni iznos u valuti računa i prepiši referencu. Isticanje uključujemo nakon provjere uplate. Dok uplata nije potvrđena, možeš otkazati narudžbu.",
+              )}
             </p>
             <CopyPaymentDetails text={payment} />
           </details>
@@ -713,15 +736,15 @@ function OrderCard({
                 body: file,
                 headers: { "Content-Type": file.type },
               });
-            }, "Slika banera je sačuvana.");
+            }, t("Slika banera je sačuvana."));
           }}
         >
           <fieldset disabled={busy}>
             <label>
-              {order.hasImage ? "Zamijeni sliku banera" : "Dodaj sliku banera"}
+              {order.hasImage ? t("Zamijeni sliku banera") : t("Dodaj sliku banera")}
               <input type="file" name="image" accept="image/jpeg,image/png,image/webp" required />
             </label>
-            <button type="submit">Sačuvaj sliku</button>
+            <button type="submit">{t("Sačuvaj sliku")}</button>
           </fieldset>
         </form>
       )}
@@ -742,18 +765,18 @@ function OrderCard({
                     ? { statementReference: String(fields.get("statement")).trim() }
                     : {}),
                 }),
-              "Uplata je potvrđena.",
+              t("Uplata je potvrđena."),
             );
           }}
         >
           <fieldset disabled={busy}>
-            <legend>Potvrdi uplatu s izvoda</legend>
+            <legend>{t("Potvrdi uplatu s izvoda")}</legend>
             <div className={styles.fields}>
               <label>
-                Iznos s izvoda <input name="amount" inputMode="decimal" required />
+                {t("Iznos s izvoda")} <input name="amount" inputMode="decimal" required />
               </label>
               <label>
-                Valuta{" "}
+                {t("Valuta")}{" "}
                 <select
                   value={currency}
                   onChange={(event) => setCurrency(event.target.value as "BAM" | "EUR")}
@@ -763,18 +786,18 @@ function OrderCard({
                 </select>
               </label>
               <label>
-                Referenca uplate <input name="reference" autoComplete="off" maxLength={36} />
+                {t("Referenca uplate")} <input name="reference" autoComplete="off" maxLength={36} />
               </label>
               <label>
-                Oznaka s izvoda <input name="statement" maxLength={200} />
+                {t("Oznaka s izvoda")} <input name="statement" maxLength={200} />
               </label>
             </div>
-            <p>Upiši referencu uplate ili jedinstvenu oznaku s izvoda.</p>
+            <p>{t("Upiši referencu uplate ili jedinstvenu oznaku s izvoda.")}</p>
             <button type="submit" disabled={order.kind === "banner" && !order.hasImage}>
-              Potvrdi uplatu
+              {t("Potvrdi uplatu")}
             </button>
             {order.kind === "banner" && !order.hasImage && (
-              <p>Vlasnik prvo treba dodati sliku banera.</p>
+              <p>{t("Vlasnik prvo treba dodati sliku banera.")}</p>
             )}
           </fieldset>
         </form>
@@ -782,14 +805,14 @@ function OrderCard({
       {(order.status === "pending" || (admin && order.status === "active")) && (
         <ConfirmButton
           disabled={busy}
-          title="Otkazati isticanje?"
+          title={t("Otkazati isticanje?")}
           description="Narudžba ostaje u historiji kao otkazana, a mjesto se oslobađa."
           confirmLabel="Otkaži isticanje"
           onConfirm={() =>
-            void act(() => command(`${base}/${order.id}/cancel`, {}), "Isticanje je otkazano.")
+            void act(() => command(`${base}/${order.id}/cancel`, {}), t("Isticanje je otkazano."))
           }
         >
-          Otkaži isticanje
+          {t("Otkaži isticanje")}
         </ConfirmButton>
       )}
     </article>
@@ -797,6 +820,7 @@ function OrderCard({
 }
 
 function BannerPreview({ order, accountId }: { order: PromotionOrder; accountId: string }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [source, setSource] = useState("");
   const [error, setError] = useState("");
@@ -824,17 +848,17 @@ function BannerPreview({ order, accountId }: { order: PromotionOrder; accountId:
         }
       })
       .catch(() => {
-        if (!controller.signal.aborted) setError("Slika trenutno nije dostupna.");
+        if (!controller.signal.aborted) setError(t("Slika trenutno nije dostupna."));
       });
     return () => {
       controller.abort();
       if (objectURL) URL.revokeObjectURL(objectURL);
     };
-  }, [open, accountId, order]);
+  }, [open, accountId, order, t]);
   return (
     <div>
       <button type="button" onClick={() => setOpen(!open)}>
-        {open ? "Zatvori sliku" : "Pregledaj sliku banera"}
+        {open ? t("Zatvori sliku") : t("Pregledaj sliku banera")}
       </button>
       {open && error && <p role="alert">{error}</p>}
       {open && source && (

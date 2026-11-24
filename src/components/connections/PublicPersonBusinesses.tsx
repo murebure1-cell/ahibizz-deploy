@@ -9,6 +9,7 @@ import {
   readPersonBusinessesPage,
 } from "../../lib/person-businesses";
 import { DirectoryResultCard } from "../directory/DirectoryResultCard";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./person-businesses.module.css";
 
 export function PublicPersonBusinesses({
@@ -20,6 +21,7 @@ export function PublicPersonBusinesses({
   request?: PersonBusinessesRequest;
   preview?: boolean;
 }) {
+  const t = useT();
   const [page, setPage] = useState(1);
   const [data, setData] = useState<PersonBusinessesPage | null>(null);
   const [error, setError] = useState("");
@@ -34,7 +36,7 @@ export function PublicPersonBusinesses({
     setError("");
     setLoading(true);
     if (preview && request === personBusinessesRequest) {
-      setError("Djelatnosti nisu dostupne u ovom pregledu.");
+      setError(t("Djelatnosti nisu dostupne u ovom pregledu."));
       setLoading(false);
       return () => controller.abort();
     }
@@ -47,8 +49,8 @@ export function PublicPersonBusinesses({
         if (!controller.signal.aborted && current === revision.current)
           setError(
             failure instanceof PersonBusinessesError && failure.status === 404
-              ? "Ovaj profil nije javno dostupan."
-              : "Djelatnosti trenutno nisu dostupne.",
+              ? t("Ovaj profil nije javno dostupan.")
+              : t("Djelatnosti trenutno nisu dostupne."),
           );
       })
       .finally(() => {
@@ -61,31 +63,31 @@ export function PublicPersonBusinesses({
   }, [personId, page, request, preview, refresh]);
   const hasMore = data?.page === page && data.hasMore;
   return (
-    <section className={styles.workspace} aria-label="Moje djelatnosti" aria-busy={loading}>
-      <h2>Moje djelatnosti</h2>
-      {loading && <p role="status">Dohvaćanje djelatnosti…</p>}
+    <section className={styles.workspace} aria-label={t("Moje djelatnosti")} aria-busy={loading}>
+      <h2>{t("Moje djelatnosti")}</h2>
+      {loading && <p role="status">{t("Dohvaćanje djelatnosti…")}</p>}
       {error && (
         <div role="alert">
           <p>{error}</p>
           <button type="button" onClick={() => setRefresh((value) => value + 1)}>
-            Pokušaj ponovo
+            {t("Pokušaj ponovo")}
           </button>
         </div>
       )}
-      {data?.items.length === 0 && <p>Nema objavljenih djelatnosti.</p>}
+      {data?.items.length === 0 && <p>{t("Nema objavljenih djelatnosti.")}</p>}
       <div className={styles.list}>
         {data?.items.map((business) => (
           <DirectoryResultCard key={business.id} business={business} />
         ))}
       </div>
       {(page > 1 || hasMore) && (
-        <nav className={styles.pagination} aria-label="Stranice djelatnosti">
+        <nav className={styles.pagination} aria-label={t("Stranice djelatnosti")}>
           <button
             type="button"
             disabled={loading || page === 1}
             onClick={() => setPage((value) => value - 1)}
           >
-            Prethodna
+            {t("Prethodna")}
           </button>
           <span>{page}</span>
           <button
@@ -93,7 +95,7 @@ export function PublicPersonBusinesses({
             disabled={loading || !hasMore || page >= 999}
             onClick={() => setPage((value) => value + 1)}
           >
-            Sljedeća
+            {t("Sljedeća")}
           </button>
         </nav>
       )}

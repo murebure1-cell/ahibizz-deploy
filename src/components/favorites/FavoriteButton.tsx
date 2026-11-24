@@ -70,7 +70,7 @@ export function FavoriteButton({
       </button>
       {error && (
         <span className={styles.error}>
-          <span role="alert">{error}</span>
+          <span role="alert">{t(error)}</span>
           {error.startsWith("Promjena nije potvrđena.") && (
             <button
               className={styles.recovery}

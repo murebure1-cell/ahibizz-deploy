@@ -1,15 +1,16 @@
 import { businessUuid } from "./business-today";
 import { helpTicketTopic } from "./help-center";
+import { msg } from "./i18n/translate";
 
 export const supportEmail = "podrska@ahibizz.com";
 export const supportSubjects = {
-  deletion: "Brisanje naloga",
-  person: "Lični profil",
-  business: "Djelatnost",
-  review: "Recenzija",
-  conversation: "Razgovor",
-  reel: "Reel",
-  help: "Korisnička podrška",
+  deletion: msg("Brisanje naloga"),
+  person: msg("Lični profil"),
+  business: msg("Djelatnost"),
+  review: msg("Recenzija"),
+  conversation: msg("Razgovor"),
+  reel: msg("Reel"),
+  help: msg("Korisnička podrška"),
 } as const;
 export type SupportSubject = keyof typeof supportSubjects;
 export type SupportTarget = { subject: SupportSubject; reference: string };

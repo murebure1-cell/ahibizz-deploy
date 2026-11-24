@@ -2,6 +2,7 @@
 
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { isAhiBizzAndroidLaunch } from "../../lib/android-association";
+import { useT } from "../i18n/LocaleProvider";
 import { AppPermissionPrompt } from "./AppPermissions";
 
 type InstallPrompt = Event & {
@@ -23,6 +24,7 @@ type PwaState = {
 const PwaContext = createContext<PwaState | null>(null);
 
 export function AppPwaProvider({ children }: { children: ReactNode }) {
+  const t = useT();
   const [installed, setInstalled] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [prompting, setPrompting] = useState(false);
@@ -70,7 +72,9 @@ export function AppPwaProvider({ children }: { children: ReactNode }) {
       setCanPrompt(false);
       setAccepted(true);
       setNote(
-        "Instalacija je pokrenuta. Dovrši je u pregledniku, pa otvori AhiBizz s početnog ekrana.",
+        t(
+          "Instalacija je pokrenuta. Dovrši je u pregledniku, pa otvori AhiBizz s početnog ekrana.",
+        ),
       );
     };
     window.addEventListener("beforeinstallprompt", ready);
@@ -96,7 +100,7 @@ export function AppPwaProvider({ children }: { children: ReactNode }) {
       delete document.documentElement.dataset.appDisplay;
       if (viewport && browserViewport) viewport.content = browserViewport;
     };
-  }, []);
+  }, [t]);
 
   async function install() {
     if (installed || accepted || busy.current) return;
@@ -104,8 +108,10 @@ export function AppPwaProvider({ children }: { children: ReactNode }) {
     if (!event) {
       setNote(
         platform === "ios"
-          ? "U meniju Dijeli odaberi Dodaj na početni ekran. Ako opcija nedostaje, otvori ovu stranicu u Safariju."
-          : "U Chromeovom meniju odaberi Dodaj na početni ekran, pa Instaliraj aplikaciju.",
+          ? t(
+              "U meniju Dijeli odaberi Dodaj na početni ekran. Ako opcija nedostaje, otvori ovu stranicu u Safariju.",
+            )
+          : t("U Chromeovom meniju odaberi Dodaj na početni ekran, pa Instaliraj aplikaciju."),
       );
       return;
     }
@@ -120,13 +126,15 @@ export function AppPwaProvider({ children }: { children: ReactNode }) {
       if (choice.outcome === "accepted") {
         setAccepted(true);
         setNote(
-          "Instalacija je pokrenuta. Dovrši je u pregledniku, pa otvori AhiBizz s početnog ekrana.",
+          t(
+            "Instalacija je pokrenuta. Dovrši je u pregledniku, pa otvori AhiBizz s početnog ekrana.",
+          ),
         );
       } else {
-        setNote("Instalaciju možeš kasnije pokrenuti iz menija preglednika.");
+        setNote(t("Instalaciju možeš kasnije pokrenuti iz menija preglednika."));
       }
     } catch {
-      setNote("Pokreni instalaciju kroz meni preglednika ili prati upute ispod.");
+      setNote(t("Pokreni instalaciju kroz meni preglednika ili prati upute ispod."));
     } finally {
       busy.current = false;
       setPrompting(false);

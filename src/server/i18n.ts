@@ -14,7 +14,17 @@ export async function getTranslator() {
   return translator(await getLocale());
 }
 
-/** generateMetadata for a page whose title is fixed Bosnian text: export const generateMetadata = titled(text). */
+/**
+ * generateMetadata for a page whose title is fixed Bosnian text: export const generateMetadata =
+ * titled(text). A description marked with msg() is translated too.
+ */
 export function titled(title: string, extra: Omit<Metadata, "title"> = {}) {
-  return async (): Promise<Metadata> => ({ ...extra, title: (await getTranslator())(title) });
+  return async (): Promise<Metadata> => {
+    const t = await getTranslator();
+    return {
+      ...extra,
+      title: t(title),
+      ...(typeof extra.description === "string" ? { description: t(extra.description) } : {}),
+    };
+  };
 }

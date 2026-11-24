@@ -10,6 +10,7 @@ import {
   plainMapPin,
 } from "../../lib/google-maps-loader";
 import { safeBusinessImage } from "../../lib/public-business";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./location.module.css";
 
 type Map3D = HTMLElement & { colorScheme: string };
@@ -37,6 +38,7 @@ export function ProfileMap3D({
   logoUrl?: string;
   onUnavailable: () => void;
 }) {
+  const t = useT();
   const holder = useRef<HTMLElement>(null);
   const unavailable = useRef(onUnavailable);
   unavailable.current = onUnavailable;
@@ -102,7 +104,7 @@ export function ProfileMap3D({
   }, [apiKey, point.latitude, point.longitude, logoUrl]);
   return (
     <div className={styles.mapWrap}>
-      <section ref={holder} className={styles.map} aria-label="Karta lokacije djelatnosti" />
+      <section ref={holder} className={styles.map} aria-label={t("Karta lokacije djelatnosti")} />
     </div>
   );
 }

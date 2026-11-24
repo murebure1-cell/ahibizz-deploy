@@ -15,14 +15,16 @@ import {
   getAccountService,
   type SafeAccountProfile,
 } from "../../../server/auth/accounts";
+import { getTranslator, titled } from "../../../server/i18n";
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Moj nalog" };
+export const generateMetadata = titled("Moj nalog");
 
 export default async function AccountPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const t = await getTranslator();
   const query = await searchParams;
   let messageTarget: MessageTarget | undefined,
     invalidMessageTarget = false;
@@ -67,9 +69,9 @@ export default async function AccountPage({
   if (!profile)
     return (
       <main id="glavni-sadrzaj" className="container" style={{ paddingBlock: 70 }}>
-        <h1>Nalog trenutno nije dostupan.</h1>
-        <p style={{ marginBlock: 18 }}>Pokušaj ponovo kasnije.</p>
-        <Link href="/prijava">Na prijavu</Link>
+        <h1>{t("Nalog trenutno nije dostupan.")}</h1>
+        <p style={{ marginBlock: 18 }}>{t("Pokušaj ponovo kasnije.")}</p>
+        <Link href="/prijava">{t("Na prijavu")}</Link>
       </main>
     );
   return (

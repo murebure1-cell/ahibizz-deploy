@@ -14,6 +14,7 @@ import {
   onGoogleMapsAuthFailure,
 } from "../../lib/google-maps-loader";
 import { safeBusinessImage } from "../../lib/public-business";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./location.module.css";
 
 const editPin = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
@@ -88,6 +89,7 @@ export function GoogleLocationMap({
   onPoint: (point: LocationPoint) => void;
   onUnavailable: () => void;
 }) {
+  const t = useT();
   const element = useRef<HTMLElement>(null);
   const map = useRef<GoogleMap | null>(null);
   const marker = useRef<GoogleMarker | null>(null);
@@ -176,7 +178,7 @@ export function GoogleLocationMap({
         map: instance,
         position,
         icon: editPin,
-        title: "Odabrana lokacija",
+        title: t("Odabrana lokacija"),
         draggable: !locked.current,
       });
       marker.current.addListener("dragend", () => {
@@ -194,7 +196,7 @@ export function GoogleLocationMap({
 
   return (
     <div className={styles.mapWrap}>
-      <section ref={element} className={styles.map} aria-label="Karta lokacije djelatnosti" />
+      <section ref={element} className={styles.map} aria-label={t("Karta lokacije djelatnosti")} />
     </div>
   );
 }

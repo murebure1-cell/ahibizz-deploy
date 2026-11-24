@@ -1,15 +1,16 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { msg } from "../../lib/i18n/translate";
 import { AccountAccessError } from "../../server/auth/accounts";
 import { getSupportRequests } from "../../server/support-requests";
 
 export type RequestResult = { sent: boolean; message: string };
 const requestErrors: Record<number, string> = {
-  401: "Prijava je istekla. Prijavi se ponovo ili piši podršci.",
-  403: "Prijava je istekla. Prijavi se ponovo ili piši podršci.",
-  404: "Ovaj sadržaj više nije dostupan za prijavu.",
-  429: "Dostignut je dnevni broj prijava. Za hitnu pomoć obrati se podršci.",
+  401: msg("Prijava je istekla. Prijavi se ponovo ili piši podršci."),
+  403: msg("Prijava je istekla. Prijavi se ponovo ili piši podršci."),
+  404: msg("Ovaj sadržaj više nije dostupan za prijavu."),
+  429: msg("Dostignut je dnevni broj prijava. Za hitnu pomoć obrati se podršci."),
 };
 export async function submitSupportRequest(
   _: RequestResult,
@@ -19,9 +20,12 @@ export async function submitSupportRequest(
   const actor = form.get("actor"),
     subject = form.get("subject");
   if (!service || typeof actor !== "string" || !actor)
-    return { sent: false, message: "Zahtjev trenutno nije dostupan. Možeš ga poslati emailom." };
+    return {
+      sent: false,
+      message: msg("Zahtjev trenutno nije dostupan. Možeš ga poslati emailom."),
+    };
   if (subject === "deletion" && form.get("confirm") !== "yes")
-    return { sent: false, message: "Potvrdi da želiš zatražiti brisanje naloga." };
+    return { sent: false, message: msg("Potvrdi da želiš zatražiti brisanje naloga.") };
   const sessionHeaders = new Headers(await headers());
   sessionHeaders.set("X-AhiBizz-Account-ID", actor);
   try {
@@ -31,18 +35,19 @@ export async function submitSupportRequest(
       sent: true,
       message:
         subject === "deletion"
-          ? "Zahtjev za brisanje je zaprimljen."
+          ? msg("Zahtjev za brisanje je zaprimljen.")
           : subject === "help"
-            ? "Zahtjev je zaprimljen. Odgovor stiže na email povezan s nalogom."
-            : "Prijava je dostavljena administratoru.",
+            ? msg("Zahtjev je zaprimljen. Odgovor stiže na email povezan s nalogom.")
+            : msg("Prijava je dostavljena administratoru."),
     };
   } catch (error) {
     if (error instanceof AccountAccessError && error.code === "PACKAGE_REVIEW_UNAVAILABLE")
-      return { sent: false, message: "Za ovaj ugovor trenutno nema rata za provjeru." };
+      return { sent: false, message: msg("Za ovaj ugovor trenutno nema rata za provjeru.") };
     const status = error instanceof AccountAccessError ? error.status : 503;
     return {
       sent: false,
-      message: requestErrors[status] ?? "Zahtjev nije potvrđen. Pokušaj ponovo ili piši podršci.",
+      message:
+        requestErrors[status] ?? msg("Zahtjev nije potvrđen. Pokušaj ponovo ili piši podršci."),
     };
   }
 }

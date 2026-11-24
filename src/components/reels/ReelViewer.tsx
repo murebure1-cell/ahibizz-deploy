@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { businessMediaUrl } from "../../lib/business-media";
+import type { Translate } from "../../lib/i18n/translate";
 import { messageLink } from "../../lib/messaging";
 import { bosnianFormatter } from "../../lib/number-format";
 import { reelPath } from "../../lib/reel-navigation";
@@ -16,6 +17,7 @@ import {
 import { reportUrl } from "../../lib/support-requests";
 import { BusinessLogo } from "../directory/BusinessLogo";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./reel-viewer.module.css";
 
 const numbers = bosnianFormatter();
@@ -31,16 +33,16 @@ async function reelRequest<T>(path: string, options: RequestInit = {}): Promise<
   return (await response.json()) as T;
 }
 
-function ageLabel(value: string | null) {
+function ageLabel(value: string | null, t: Translate) {
   if (!value) return null;
   const publishedAt = Date.parse(value);
   if (!Number.isFinite(publishedAt)) return null;
   const days = Math.max(0, Math.floor((Date.now() - publishedAt) / 86400000));
-  if (!days) return "Danas";
-  if (days === 1) return "Jučer";
-  if (days < 30) return `Prije ${days} dana`;
-  if (days < 365) return `Prije ${Math.floor(days / 30)} mj.`;
-  return `Prije ${Math.floor(days / 365)} god.`;
+  if (!days) return t("Danas");
+  if (days === 1) return t("Jučer");
+  if (days < 30) return t("Prije {count} dana", { count: days });
+  if (days < 365) return t("Prije {count} mj.", { count: Math.floor(days / 30) });
+  return t("Prije {count} god.", { count: Math.floor(days / 365) });
 }
 
 function ReelSlide({
@@ -58,6 +60,7 @@ function ReelSlide({
   onMute: (muted: boolean) => void;
   closePath: string;
 }) {
+  const t = useT();
   const router = useRouter();
   const video = useRef<HTMLVideoElement | null>(null);
   const viewed = useRef(false);
@@ -175,7 +178,7 @@ function ReelSlide({
         views: Math.max(current?.views ?? 0, result.views),
       }));
     } catch {
-      setStatus("Reakcija nije sačuvana. Pokušaj ponovo.");
+      setStatus(t("Reakcija nije sačuvana. Pokušaj ponovo."));
     } finally {
       writingLike.current = false;
       setLikePending(false);
@@ -194,7 +197,7 @@ function ReelSlide({
     }
     try {
       await navigator.clipboard.writeText(url);
-      setStatus("Link je kopiran.");
+      setStatus(t("Link je kopiran."));
     } catch {
       setManualShare(url);
     }
@@ -250,7 +253,9 @@ function ReelSlide({
             type="button"
             className={styles.playSurface}
             onClick={togglePlayback}
-            aria-label={failed ? "Ponovo učitaj video" : playing ? "Pauziraj video" : "Pusti video"}
+            aria-label={
+              failed ? t("Ponovo učitaj video") : playing ? t("Pauziraj video") : t("Pusti video")
+            }
           >
             {!playing && (
               <span className={styles.playButton}>
@@ -270,7 +275,7 @@ function ReelSlide({
             <strong className={styles.author}>{reel.businessTitle}</strong>
             {reel.publishedAt && (
               <time className={styles.meta} dateTime={reel.publishedAt} suppressHydrationWarning>
-                {ageLabel(reel.publishedAt)}
+                {ageLabel(reel.publishedAt, t)}
               </time>
             )}
           </span>
@@ -279,7 +284,7 @@ function ReelSlide({
           <button
             type="button"
             className={styles.iconButton}
-            aria-label={muted ? "Uključi zvuk" : "Isključi zvuk"}
+            aria-label={muted ? t("Uključi zvuk") : t("Isključi zvuk")}
             onClick={() => {
               const element = video.current;
               if (element) element.muted = !muted;
@@ -293,7 +298,7 @@ function ReelSlide({
             replace
             prefetch={false}
             className={styles.iconButton}
-            aria-label="Zatvori Reels"
+            aria-label={t("Zatvori Reels")}
           >
             <Icon name="close" />
           </Link>
@@ -304,7 +309,7 @@ function ReelSlide({
         <button
           type="button"
           className={styles.railAction}
-          aria-label="Sviđa mi se"
+          aria-label={t("Sviđa mi se")}
           aria-describedby={engagement ? `reel-likes-${reel.id}` : undefined}
           aria-pressed={engagement?.liked ?? false}
           disabled={!engagement || likePending}
@@ -314,7 +319,7 @@ function ReelSlide({
           {engagement && (
             <span className={styles.railLabel} id={`reel-likes-${reel.id}`}>
               {numbers.format(engagement.likes)}
-              <span className={styles.srOnly}> lajkova</span>
+              <span className={styles.srOnly}> {t("lajkova")}</span>
             </span>
           )}
         </button>
@@ -324,27 +329,27 @@ function ReelSlide({
           className={styles.railAction}
         >
           <Icon name="message" />
-          <span className={styles.railLabel}>Poruka</span>
+          <span className={styles.railLabel}>{t("Poruka")}</span>
         </Link>
         <button type="button" className={styles.railAction} onClick={() => void share()}>
           <Icon name="share" />
-          <span className={styles.railLabel}>Podijeli</span>
+          <span className={styles.railLabel}>{t("Podijeli")}</span>
         </button>
         <Link
           href={reportUrl("reel", reel.id)}
           prefetch={false}
           className={styles.railAction}
-          aria-label="Prijavi Reel"
+          aria-label={t("Prijavi Reel")}
         >
           <Icon name="shield" />
-          <span className={styles.railLabel}>Prijavi</span>
+          <span className={styles.railLabel}>{t("Prijavi")}</span>
         </Link>
         <span className={styles.railAction}>
           <Icon name="eye" />
           {engagement && (
             <span className={styles.railLabel}>{numbers.format(engagement.views)}</span>
           )}
-          <span className={styles.srOnly}> pregleda</span>
+          <span className={styles.srOnly}> {t("pregleda")}</span>
         </span>
       </div>
 
@@ -368,7 +373,7 @@ function ReelSlide({
             {reel.city && <span className={styles.teaserMeta}>{reel.city}</span>}
           </div>
           <Link href={businessPath} prefetch={false} className={styles.profileButton}>
-            Pogledaj djelatnost
+            {t("Pogledaj djelatnost")}
           </Link>
         </div>
       </div>
@@ -380,11 +385,11 @@ function ReelSlide({
       {manualShare && (
         <div className={styles.status}>
           <label>
-            Link za dijeljenje
+            {t("Link za dijeljenje")}
             <input readOnly value={manualShare} onFocus={(event) => event.target.select()} />
           </label>
           <button type="button" onClick={() => setManualShare(null)}>
-            Zatvori
+            {t("Zatvori")}
           </button>
         </div>
       )}
@@ -395,7 +400,7 @@ function ReelSlide({
         max={duration}
         value={Math.min(position, duration)}
         step={0.1}
-        aria-label="Pozicija u videu"
+        aria-label={t("Pozicija u videu")}
         disabled={!active || failed}
         style={
           { "--reel-progress": `${Math.min(100, (position / duration) * 100)}%` } as CSSProperties
@@ -422,6 +427,7 @@ export function ReelViewer({
   businessId: string | null;
   closePath: string;
 }) {
+  const t = useT();
   const router = useRouter();
   const feed = useRef<HTMLElement | null>(null);
   const more = useRef<AbortController | null>(null);
@@ -505,7 +511,7 @@ export function ReelViewer({
 
   return (
     <main id="glavni-sadrzaj" className={styles.viewer} data-reel-feed>
-      <section ref={feed} className={styles.feed} aria-label="Reels djelatnosti">
+      <section ref={feed} className={styles.feed} aria-label={t("Reels djelatnosti")}>
         {items.map((reel, index) => (
           <ReelSlide
             key={reel.id}
@@ -522,10 +528,10 @@ export function ReelViewer({
         <div className={styles.feedEnd}>
           {loadError ? (
             <button type="button" className={styles.profileButton} onClick={() => void loadMore()}>
-              Pokušaj ponovo
+              {t("Pokušaj ponovo")}
             </button>
           ) : (
-            <span role="status">Učitavam još reelova…</span>
+            <span role="status">{t("Učitavam još reelova…")}</span>
           )}
         </div>
       )}

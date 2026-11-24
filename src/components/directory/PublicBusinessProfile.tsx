@@ -17,6 +17,7 @@ import { reportUrl } from "../../lib/support-requests";
 import { AhiMark } from "../AhiMark";
 import { FavoriteButton } from "../favorites/FavoriteButton";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import { BusinessReviews } from "../reviews/BusinessReviews";
 import { VerificationBadge } from "../VerificationBadge";
 import { BusinessAmenities, BusinessHours } from "./BusinessDetails";
@@ -47,6 +48,7 @@ export function PublicBusinessProfile({
   offerSections?: ReactNode;
   sponsor?: ReactNode;
 }) {
+  const { t, locale } = useI18n();
   const links = businessContactLinks(business);
   const point = publicBusinessPoint(business);
   const driving = businessDirections(business, "driving");
@@ -57,11 +59,13 @@ export function PublicBusinessProfile({
       /^[a-z]{2}$/i.test(business.countryCode ?? ""),
   );
   const location = hasAddress
-    ? businessLocationLabel(business)
+    ? businessLocationLabel(business, locale)
     : point
-      ? "Lokacija je označena na karti."
-      : businessLocationLabel(business);
-  const taxonomy = [business.categoryName, business.subcategoryName].filter(Boolean).join(" · ");
+      ? t("Lokacija je označena na karti.")
+      : businessLocationLabel(business, locale);
+  const taxonomy = [business.categoryName, business.subcategoryName]
+    .flatMap((name) => (name ? [t(name)] : []))
+    .join(" · ");
   const photo = safeBusinessImage(business.image, preview);
   const logo = safeBusinessImage(business.logo, preview);
   const cover = photo && photo.src !== logo?.src ? photo : undefined;
@@ -79,17 +83,17 @@ export function PublicBusinessProfile({
 
   return (
     <article
-      aria-label="Poslovni profil"
+      aria-label={t("Poslovni profil")}
       className={styles.profile}
       data-design="business-profile"
       data-preview={preview || undefined}
       data-embedded={backHref === null || undefined}
     >
       {backHref !== null && (
-        <nav className={styles.breadcrumb} aria-label="Povratak na djelatnosti">
+        <nav className={styles.breadcrumb} aria-label={t("Povratak na djelatnosti")}>
           <Link href={backHref}>
             <Icon name="arrow" />{" "}
-            {backHref.startsWith("/pretraga?") ? "Nazad na rezultate" : "Sve djelatnosti"}
+            {backHref.startsWith("/pretraga?") ? t("Nazad na rezultate") : t("Sve djelatnosti")}
           </Link>
           {business.city && <span>{business.city}</span>}
         </nav>
@@ -100,7 +104,7 @@ export function PublicBusinessProfile({
           <Image
             src={cover.src}
             data-design="business-photo"
-            alt={cover.alt}
+            alt={t(cover.alt)}
             fill
             sizes="(max-width: 700px) 100vw, 1160px"
             loading="eager"
@@ -123,11 +127,11 @@ export function PublicBusinessProfile({
               }
             }}
           >
-            <summary aria-label="Opcije djelatnosti">
+            <summary aria-label={t("Opcije djelatnosti")}>
               <span aria-hidden="true">•••</span>
             </summary>
             <Link className={styles.reportLink} href={reportUrl("business", business.id)}>
-              <Icon name="shield" /> Prijavi djelatnost
+              <Icon name="shield" /> {t("Prijavi djelatnost")}
             </Link>
           </details>
         )}
@@ -135,7 +139,7 @@ export function PublicBusinessProfile({
 
       <header className={styles.identity}>
         <div className={styles.logo}>
-          <BusinessLogo src={logo?.src} alt={logo?.alt ?? ""} sizes="72px" priority />
+          <BusinessLogo src={logo?.src} alt={logo ? t(logo.alt) : ""} sizes="72px" priority />
         </div>
         <div className={styles.title}>
           {taxonomy && <p className={styles.category}>{taxonomy}</p>}
@@ -167,27 +171,27 @@ export function PublicBusinessProfile({
             <Link
               className={styles.secondary}
               href={contactMessage}
-              aria-label="Poruka — pošalji poruku"
+              aria-label={t("Pošalji poruku")}
             >
-              <Icon name="message" /> Poruka
+              <Icon name="message" /> {t("Poruka")}
             </Link>
           )}
           {links.phone ? (
             <a className={styles.primary} href={links.phone}>
               <Icon name="phone" />
-              Pozovi
+              {t("Pozovi")}
             </a>
           ) : links.email ? (
-            <a className={styles.primary} href={links.email} aria-label="Pošalji email">
+            <a className={styles.primary} href={links.email} aria-label={t("Pošalji email")}>
               <Icon name="mail" />
-              Email
+              {t("Email")}
             </a>
           ) : (
             links.website && (
               <a
                 className={styles.primary}
                 href={links.website}
-                aria-label="Web stranica"
+                aria-label={t("Web stranica")}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -200,19 +204,19 @@ export function PublicBusinessProfile({
       </header>
       {sponsor}
 
-      <nav className={styles.sectionNavigation} aria-label="Na ovoj stranici">
-        {hasAbout && <a href="#business-about">O djelatnosti</a>}
-        {business.details?.hours && <a href="#business-hours">Radno vrijeme</a>}
+      <nav className={styles.sectionNavigation} aria-label={t("Na ovoj stranici")}>
+        {hasAbout && <a href="#business-about">{t("O djelatnosti")}</a>}
+        {business.details?.hours && <a href="#business-hours">{t("Radno vrijeme")}</a>}
         {offerLinks}
         {hasAppointments && (
           <a className={styles.appointmentsLink} href="#business-appointments">
-            Termini
+            {t("Termini")}
           </a>
         )}
-        {gallery.length > 0 && <a href="#business-gallery">Galerija</a>}
-        {hasLocation && <a href="#business-location">Lokacija</a>}
-        {!preview && <a href="#recenzije">Recenzije</a>}
-        {hasContact && <a href="#business-contact">Kontakt</a>}
+        {gallery.length > 0 && <a href="#business-gallery">{t("Galerija")}</a>}
+        {hasLocation && <a href="#business-location">{t("Lokacija")}</a>}
+        {!preview && <a href="#recenzije">{t("Recenzije")}</a>}
+        {hasContact && <a href="#business-contact">{t("Kontakt")}</a>}
       </nav>
 
       <div className={styles.layout}>
@@ -227,7 +231,7 @@ export function PublicBusinessProfile({
                 <span>
                   <Icon name="shop" />
                 </span>
-                <h2 id="business-about-heading">O djelatnosti</h2>
+                <h2 id="business-about-heading">{t("O djelatnosti")}</h2>
               </div>
               {business.description?.trim() && (
                 <p className={styles.description}>{business.description}</p>
@@ -246,7 +250,7 @@ export function PublicBusinessProfile({
                 <span>
                   <Icon name="clock" />
                 </span>
-                <h2 id="business-hours-heading">Radno vrijeme</h2>
+                <h2 id="business-hours-heading">{t("Radno vrijeme")}</h2>
               </div>
               <BusinessHours details={business.details} />
             </section>
@@ -257,7 +261,7 @@ export function PublicBusinessProfile({
             <section
               className={styles.appointments}
               id="business-appointments"
-              aria-label="Termini"
+              aria-label={t("Termini")}
             >
               {children}
             </section>
@@ -270,7 +274,7 @@ export function PublicBusinessProfile({
               aria-labelledby="business-gallery-heading"
             >
               <div className={styles.sectionHeading}>
-                <h2 id="business-gallery-heading">Galerija</h2>
+                <h2 id="business-gallery-heading">{t("Galerija")}</h2>
               </div>
               <BusinessGallery key={business.id} businessId={business.id} photos={gallery} />
             </section>
@@ -286,27 +290,27 @@ export function PublicBusinessProfile({
                 <span>
                   <Icon name="pin" />
                 </span>
-                <h2 id="business-location-heading">Lokacija</h2>
+                <h2 id="business-location-heading">{t("Lokacija")}</h2>
               </div>
               <p className={styles.address}>{location}</p>
               {point && <PublicProfileMap point={point} logoUrl={logo?.src} />}
               {(driving || walking) && (
                 <div className={styles.directions}>
                   <p>
-                    Upute na Google Mapsu <Icon name="external" />
+                    {t("Upute na Google Mapsu")} <Icon name="external" />
                   </p>
                   <div>
                     {driving && (
                       <a href={driving} target="_blank" rel="noopener noreferrer">
                         <Icon name="car" />
-                        Automobilom
+                        {t("Automobilom")}
                         <Icon name="external" />
                       </a>
                     )}
                     {walking && (
                       <a href={walking} target="_blank" rel="noopener noreferrer">
                         <Icon name="pin" />
-                        Pješice
+                        {t("Pješice")}
                         <Icon name="external" />
                       </a>
                     )}
@@ -328,13 +332,13 @@ export function PublicBusinessProfile({
               <span>
                 <Icon name="phone" />
               </span>
-              <h2 id="business-contact-heading">Kontakt</h2>
+              <h2 id="business-contact-heading">{t("Kontakt")}</h2>
             </div>
             {links.phone && (
               <a className={styles.contactRow} href={links.phone}>
                 <Icon name="phone" />
                 <span>
-                  <small>Telefon</small>
+                  <small>{t("Telefon")}</small>
                   <strong>{displayPhone(business.contactPhone)}</strong>
                 </span>
                 <Icon name="chevron" />
@@ -344,7 +348,7 @@ export function PublicBusinessProfile({
               <a className={styles.contactRow} href={links.email}>
                 <Icon name="mail" />
                 <span>
-                  <small>Email</small>
+                  <small>{t("Email")}</small>
                   <strong>{business.contactEmail}</strong>
                 </span>
                 <Icon name="chevron" />
@@ -359,8 +363,8 @@ export function PublicBusinessProfile({
               >
                 <Icon name="external" />
                 <span>
-                  <small>Web stranica</small>
-                  <strong>Posjeti stranicu</strong>
+                  <small>{t("Web stranica")}</small>
+                  <strong>{t("Posjeti stranicu")}</strong>
                 </span>
                 <Icon name="external" />
               </a>
@@ -368,14 +372,14 @@ export function PublicBusinessProfile({
             {!links.phone && !links.email && !links.website && contactMessage && (
               <Link className={styles.contactRow} href={contactMessage}>
                 <Icon name="message" />
-                <span>Pošalji poruku djelatnosti</span>
+                <span>{t("Pošalji poruku djelatnosti")}</span>
                 <Icon name="chevron" />
               </Link>
             )}
             {point && (
               <a className={styles.contactLocation} href="#business-location">
                 <Icon name="pin" />
-                <span>Pogledaj lokaciju na karti</span>
+                <span>{t("Pogledaj lokaciju na karti")}</span>
                 <Icon name="arrow" />
               </a>
             )}

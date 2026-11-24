@@ -1,4 +1,10 @@
 import type { TargetLocale } from "./locales";
+import { account } from "./messages/account";
+import { booking } from "./messages/booking";
+import { business } from "./messages/business";
+import { content } from "./messages/content";
+import { directory } from "./messages/directory";
+import type { Messages } from "./messages/types";
 
 export type CatalogEntry = Record<TargetLocale, string>;
 
@@ -6,8 +12,8 @@ const e = (en: string, de: string, ar: string, tr: string): CatalogEntry => ({ e
 
 // Keyed by the Bosnian text exactly as written in the code. tests/i18n.test.ts fails when a text
 // marked with t(), msg() or titled() has no entry here. {name} is a value and {n|one|other} a
-// plural word; both must stay in every language.
-export const catalog: Record<string, CatalogEntry> = {
+// plural word; both must stay in every language. Newer areas live in ./messages, one file each.
+const shell: Record<string, CatalogEntry> = {
   // Shell, navigation and page titles
   "AhiBizz — lokalno počinje s ljudima": e(
     "AhiBizz — local starts with people",
@@ -806,3 +812,18 @@ export const catalog: Record<string, CatalogEntry> = {
   ),
   "Prehrambeni proizvodi": e("Food products", "Lebensmittel", "المنتجات الغذائية", "Gıda ürünleri"),
 };
+
+/** Area files; a text belongs to exactly one of them (tests/i18n.test.ts checks this). */
+export const catalogAreas: Record<string, Messages> = {
+  directory,
+  booking,
+  account,
+  business,
+  content,
+};
+
+export const catalog: Record<string, CatalogEntry> = { ...shell };
+for (const area of Object.values(catalogAreas))
+  for (const [text, [en, de, ar, tr]] of Object.entries(area)) catalog[text] = { en, de, ar, tr };
+
+export const shellTexts = Object.keys(shell);

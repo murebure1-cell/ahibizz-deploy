@@ -1,5 +1,6 @@
 import { PeopleSearch } from "../../../components/connections/PeopleSearch";
-export const metadata = { title: "Ljudi" };
+import { titled } from "../../../server/i18n";
+export const generateMetadata = titled("Ljudi");
 export default function PeoplePage() {
   return (
     <main id="glavni-sadrzaj" className="container" style={{ paddingBlock: 40 }}>

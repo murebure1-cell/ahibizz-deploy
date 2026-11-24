@@ -4,6 +4,7 @@ import Form from "next/form";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import type { CategoryOption } from "./BusinessEditor";
 import styles from "./public-search.module.css";
 
@@ -26,6 +27,7 @@ export function DirectorySearchForm({
   openNow?: boolean;
   checkedAt?: string;
 }) {
+  const t = useT();
   const prefix = useId();
   const [category, setCategory] = useState(categoryId);
   const [subcategory, setSubcategory] = useState(subcategoryId);
@@ -70,14 +72,14 @@ export function DirectorySearchForm({
         />
       )}
       <label htmlFor={`${prefix}-query`}>
-        Naziv ili usluga
+        {t("Naziv ili usluga")}
         <input
           id={`${prefix}-query`}
           name="q"
           type="search"
           defaultValue={query}
           maxLength={120}
-          placeholder="Šta tražiš?"
+          placeholder={t("Šta tražiš?")}
         />
       </label>
       <button
@@ -87,21 +89,22 @@ export function DirectorySearchForm({
         aria-expanded={filtersOpen}
         onClick={() => setFiltersOpen((value) => !value)}
       >
-        <Icon name="sliders" /> Filteri{appliedFilters > 0 && ` (${appliedFilters})`}
+        <Icon name="sliders" /> {t("Filteri")}
+        {appliedFilters > 0 && ` (${appliedFilters})`}
       </button>
       <div className={styles.filters} id={`${prefix}-filters`} data-open={filtersOpen}>
         <label htmlFor={`${prefix}-city`}>
-          Grad ili mjesto
+          {t("Grad ili mjesto")}
           <input
             id={`${prefix}-city`}
             name="mjesto"
             defaultValue={city}
             maxLength={100}
-            placeholder="Npr. Tuzla"
+            placeholder={t("Npr. Tuzla")}
           />
         </label>
         <label htmlFor={`${prefix}-category`}>
-          Kategorija
+          {t("Kategorija")}
           <select
             id={`${prefix}-category`}
             name="categoryId"
@@ -111,29 +114,29 @@ export function DirectorySearchForm({
               setSubcategory("");
             }}
           >
-            <option value="">Sve kategorije</option>
+            <option value="">{t("Sve kategorije")}</option>
             {categories
               .filter((item) => item.parentId === null)
               .map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name}
+                  {t(item.name)}
                 </option>
               ))}
           </select>
         </label>
         {children.length > 0 && (
           <label htmlFor={`${prefix}-subcategory`}>
-            Podkategorija
+            {t("Podkategorija")}
             <select
               id={`${prefix}-subcategory`}
               name="subcategoryId"
               value={subcategory}
               onChange={(event) => setSubcategory(event.target.value)}
             >
-              <option value="">Sve podkategorije</option>
+              <option value="">{t("Sve podkategorije")}</option>
               {children.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name}
+                  {t(item.name)}
                 </option>
               ))}
             </select>
@@ -141,12 +144,12 @@ export function DirectorySearchForm({
         )}
         <label className={styles.hoursFilter}>
           <input type="checkbox" name="otvoreno" value="1" defaultChecked={openNow} />
-          Otvoreno sada
+          {t("Otvoreno sada")}
         </label>
       </div>
       <button type="submit">
         <Icon name="search" />
-        Pretraži
+        {t("Pretraži")}
       </button>
     </Form>
   );

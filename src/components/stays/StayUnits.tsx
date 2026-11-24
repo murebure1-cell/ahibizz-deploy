@@ -11,6 +11,7 @@ import {
 import type { StayCatalog, StayUnit, StayUnitInput } from "../../lib/stays";
 import { BusinessMediaManager } from "../directory/BusinessMediaManager";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import common from "../rentals/rentals.module.css";
 import { StayCalendar } from "./StayCalendar";
 import { StayEntry } from "./StayEntries";
@@ -38,6 +39,7 @@ function UnitForm({
   saved: () => void;
   onPhotos: () => void;
 }) {
+  const t = useT();
   const [editedSlots, setSlots] = useState<number[] | null>(null);
   const slots = (editedSlots ?? unit?.photoSlots ?? []).filter(
     (slot) => !photosConfirmed || photos.some((photo) => photo.slot === slot),
@@ -53,7 +55,7 @@ function UnitForm({
     const field = (key: string) => String(data.get(key) ?? "").trim();
     const price = field("price").replace(",", ".");
     if (!/^\d+(\.\d{1,2})?$/.test(price) || Number(price) > 100000) {
-      setError("Unesi cijenu od 0 do 100.000 KM, s najviše dvije decimale.");
+      setError(t("Unesi cijenu od 0 do 100.000 KM, s najviše dvije decimale."));
       return;
     }
     const [whole, fraction = ""] = price.split(".");
@@ -76,7 +78,7 @@ function UnitForm({
       await writeStay(`owner/${businessId}`, actor, input);
       saved();
     } catch (e) {
-      setError(stayError(e));
+      setError(t(stayError(e)));
     } finally {
       working.current = false;
       setSaving(false);
@@ -84,14 +86,14 @@ function UnitForm({
   }
   return (
     <form
-      aria-label={unit ? "Uredi jedinicu" : "Nova jedinica"}
+      aria-label={unit ? t("Uredi jedinicu") : t("Nova jedinica")}
       onSubmit={save}
       className={common.form}
     >
-      <h3>{unit ? "Uredi jedinicu" : "Nova jedinica"}</h3>
+      <h3>{unit ? t("Uredi jedinicu") : t("Nova jedinica")}</h3>
       <fieldset className={common.fields} disabled={saving}>
         <label className={common.full}>
-          Naziv jedinice
+          {t("Naziv jedinice")}
           <input
             name="name"
             required
@@ -101,14 +103,14 @@ function UnitForm({
           />
         </label>
         <label>
-          Vrsta smještaja
+          {t("Vrsta smještaja")}
           <select name="type" defaultValue={unit?.type ?? "room"}>
-            <option value="room">Soba</option>
-            <option value="apartment">Apartman</option>
+            <option value="room">{t("Soba")}</option>
+            <option value="apartment">{t("Apartman")}</option>
           </select>
         </label>
         <label>
-          Broj kreveta
+          {t("Broj kreveta")}
           <input
             name="beds"
             type="number"
@@ -119,7 +121,7 @@ function UnitForm({
           />
         </label>
         <label>
-          Cijena po noći (KM)
+          {t("Cijena po noći (KM)")}
           <input
             name="price"
             inputMode="decimal"
@@ -128,7 +130,7 @@ function UnitForm({
           />
         </label>
         <label className={common.full}>
-          Opis <small>(opcionalno)</small>
+          {t("Opis")} <small>(opcionalno)</small>
           <textarea
             name="description"
             maxLength={1000}
@@ -137,8 +139,8 @@ function UnitForm({
           />
         </label>
         <fieldset className={common.photoChoice}>
-          <legend>Fotografije jedinice</legend>
-          {mediaOnReview && <p>Novu fotografiju možeš odabrati nakon odobrenja.</p>}
+          <legend>{t("Fotografije jedinice")}</legend>
+          {mediaOnReview && <p>{t("Novu fotografiju možeš odabrati nakon odobrenja.")}</p>}
           {photos.map((p) => (
             <label key={p.slot}>
               <input
@@ -163,19 +165,19 @@ function UnitForm({
             </label>
           ))}
           <button type="button" className={common.secondary} onClick={onPhotos}>
-            Upravljaj fotografijama
+            {t("Upravljaj fotografijama")}
           </button>
         </fieldset>
         <label className={common.checkbox}>
-          <input type="checkbox" name="enabled" defaultChecked={unit?.enabled ?? true} /> Primaj
-          zahtjeve za ovu jedinicu
+          <input type="checkbox" name="enabled" defaultChecked={unit?.enabled ?? true} />{" "}
+          {t("Primaj zahtjeve za ovu jedinicu")}
         </label>
         <div className={common.actions}>
           <button className={common.primary} type="submit">
-            {saving ? "Spremanje…" : "Sačuvaj jedinicu"}
+            {saving ? t("Spremanje…") : t("Sačuvaj jedinicu")}
           </button>
           <button className={common.secondary} type="button" onClick={cancel}>
-            Odustani
+            {t("Odustani")}
           </button>
         </div>
       </fieldset>
@@ -197,6 +199,7 @@ function UnitPhotos({
   photos: BusinessMediaAsset[];
   owner: boolean;
 }) {
+  const t = useT();
   const available = unit.photoSlots.flatMap((slot) => photos.filter((p) => p.slot === slot));
   const [selected, setSelected] = useState<number | null>(null);
   const main = available.find((p) => p.slot === selected) ?? available[0];
@@ -219,7 +222,7 @@ function UnitPhotos({
             <button
               type="button"
               key={photo.slot}
-              aria-label={`Prikaži fotografiju ${index + 1}`}
+              aria-label={t("Prikaži fotografiju {number}", { number: index + 1 })}
               aria-pressed={photo.slot === main.slot}
               onClick={() => setSelected(photo.slot)}
             >
@@ -249,6 +252,7 @@ export function StayUnits({
   initialCatalog?: StayCatalog;
   onMediaChanged?: (manifest: BusinessMediaManifest) => void;
 }) {
+  const t = useT();
   const [revision, setRevision] = useState(0);
   const [editor, setEditor] = useState<StayUnit | null | undefined>(undefined);
   const [selected, setSelected] = useState<string | null>(null);
@@ -280,7 +284,7 @@ export function StayUnits({
       setSelected(null);
       refresh();
     } catch (e) {
-      setError(stayError(e));
+      setError(t(stayError(e)));
     } finally {
       setBusy(false);
     }
@@ -291,21 +295,21 @@ export function StayUnits({
       <p role="alert" className={common.error}>
         {cat.error}{" "}
         <button type="button" className={common.secondary} onClick={refresh}>
-          Pokušaj ponovo
+          {t("Pokušaj ponovo")}
         </button>
       </p>
     );
-  if (!data) return actor ? <p role="status">Dohvaćanje smještaja…</p> : null;
+  if (!data) return actor ? <p role="status">{t("Dohvaćanje smještaja…")}</p> : null;
   if (!data.units.length && (!actor || !data.eligible)) return null;
   return (
-    <section className={common.panel} aria-label="Smještajne jedinice">
+    <section className={common.panel} aria-label={t("Smještajne jedinice")}>
       <div className={common.topline}>
-        <h2>Smještaj</h2>
+        <h2>{t("Smještaj")}</h2>
         {actor && <span className={common.badge}>{data.units.length} / 2 jedinice</span>}
       </div>
       {actor && Boolean(data.upcoming?.length) && editor === undefined && (
         <div className={common.agenda}>
-          <h3>Zahtjevi za smještaj</h3>
+          <h3>{t("Zahtjevi za smještaj")}</h3>
           {data.upcoming?.map((entry) => (
             <StayEntry key={entry.id} owner actor={actor} entry={entry} changed={refresh} />
           ))}
@@ -321,7 +325,7 @@ export function StayUnits({
               setError("");
             }}
           >
-            Dodaj jedinicu
+            {t("Dodaj jedinicu")}
           </button>
         </div>
       )}
@@ -355,11 +359,13 @@ export function StayUnits({
                 <div className={common.carTitle}>
                   <h3>{unit.name}</h3>
                   <p>
-                    {unit.type === "room" ? "Soba" : "Apartman"} · {unit.beds}{" "}
+                    {unit.type === "room" ? t("Soba") : t("Apartman")} · {unit.beds}{" "}
                     {unit.beds === 1 ? "krevet" : "kreveta"}
                   </p>
                 </div>
-                {actor && !unit.enabled && <span className={common.badge}>Booking isključen</span>}
+                {actor && !unit.enabled && (
+                  <span className={common.badge}>{t("Booking isključen")}</span>
+                )}
               </div>
               {unit.description && <p>{unit.description}</p>}
               <div className={common.topline}>
@@ -377,7 +383,7 @@ export function StayUnits({
                   }}
                 >
                   <Icon name="calendar" />
-                  {actor ? "Kalendar" : "Provjeri dostupnost"}
+                  {actor ? t("Kalendar") : t("Provjeri dostupnost")}
                 </button>
               </div>
               {actor && (
@@ -392,7 +398,7 @@ export function StayUnits({
                         setArchiving(null);
                       }}
                     >
-                      Uredi jedinicu
+                      {t("Uredi jedinicu")}
                     </button>
                   )}
                   {archiving !== unit.id ? (
@@ -404,7 +410,7 @@ export function StayUnits({
                         setError("");
                       }}
                     >
-                      Arhiviraj
+                      {t("Arhiviraj")}
                     </button>
                   ) : (
                     <>
@@ -414,7 +420,7 @@ export function StayUnits({
                         className={common.secondary}
                         onClick={() => void archive(unit)}
                       >
-                        Potvrdi arhiviranje
+                        {t("Potvrdi arhiviranje")}
                       </button>
                       <button
                         type="button"
@@ -422,7 +428,7 @@ export function StayUnits({
                         className={common.smallAction}
                         onClick={() => setArchiving(null)}
                       >
-                        Odustani
+                        {t("Odustani")}
                       </button>
                     </>
                   )}

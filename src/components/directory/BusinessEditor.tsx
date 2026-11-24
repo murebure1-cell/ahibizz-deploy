@@ -2,8 +2,9 @@
 
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { initialLocationPoint } from "../../lib/business-location";
-import { profileCountries } from "../../lib/people";
+import { countryLabel, profileCountries } from "../../lib/people";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import styles from "./directory.module.css";
 import { LocationPicker } from "./LocationPicker";
 
@@ -56,6 +57,7 @@ export function BusinessEditor({
   bookingEnabled?: boolean;
   onDirty?: () => void;
 }) {
+  const { t, locale } = useI18n();
   const prefix = useId();
   const [category, setCategory] = useState(initial?.categoryId ?? "");
   const [subcategory, setSubcategory] = useState(initial?.subcategoryId ?? "");
@@ -109,7 +111,7 @@ export function BusinessEditor({
       onSubmit={submit}
       onChange={onDirty}
       className={styles.editor}
-      aria-label="Podaci djelatnosti"
+      aria-label={t("Podaci djelatnosti")}
     >
       <fieldset disabled={busy}>
         <div className={styles.formHeading}>
@@ -117,23 +119,23 @@ export function BusinessEditor({
             <Icon name="shop" />
           </span>
           <div>
-            <h2>{initial?.title ? "Uredi djelatnost" : "Predstavi svoj posao."}</h2>
+            <h2>{initial?.title ? t("Uredi djelatnost") : t("Predstavi svoj posao.")}</h2>
           </div>
         </div>
         <label htmlFor={`${prefix}-title`}>
-          Naziv djelatnosti
+          {t("Naziv djelatnosti")}
           <input
             id={`${prefix}-title`}
             name="title"
             defaultValue={initial?.title ?? ""}
             maxLength={120}
             required
-            placeholder="Kako se zove tvoj posao?"
+            placeholder={t("Kako se zove tvoj posao?")}
           />
         </label>
         <div className={styles.twoColumns}>
           <label htmlFor={`${prefix}-category`}>
-            Kategorija
+            {t("Kategorija")}
             <select
               id={`${prefix}-category`}
               value={category}
@@ -143,7 +145,7 @@ export function BusinessEditor({
                 setSubcategory("");
               }}
             >
-              <option value="">Izaberi kategoriju</option>
+              <option value="">{t("Izaberi kategoriju")}</option>
               {roots.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
@@ -152,7 +154,7 @@ export function BusinessEditor({
             </select>
           </label>
           <label htmlFor={`${prefix}-subcategory`}>
-            Podkategorija
+            {t("Podkategorija")}
             <select
               id={`${prefix}-subcategory`}
               value={subcategory}
@@ -160,7 +162,7 @@ export function BusinessEditor({
               disabled={!category || children.length === 0}
             >
               <option value="">
-                {children.length ? "Izaberi podkategoriju" : "Bez podkategorije"}
+                {children.length ? t("Izaberi podkategoriju") : t("Bez podkategorije")}
               </option>
               {children.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -171,23 +173,23 @@ export function BusinessEditor({
           </label>
         </div>
         <label htmlFor={`${prefix}-description`}>
-          O tvom poslu
+          {t("O tvom poslu")}
           <textarea
             id={`${prefix}-description`}
             name="description"
             rows={4}
             defaultValue={initial?.description ?? ""}
             maxLength={4000}
-            placeholder="Ukratko opiši šta nudiš."
+            placeholder={t("Ukratko opiši šta nudiš.")}
           />
         </label>
         <div className={styles.formDivider}>
           <Icon name="phone" />
-          <h3>Kontakt</h3>
+          <h3>{t("Kontakt")}</h3>
         </div>
         <div className={styles.twoColumns}>
           <label htmlFor={`${prefix}-phone`}>
-            Telefon
+            {t("Telefon")}
             <input
               id={`${prefix}-phone`}
               name="contactPhone"
@@ -199,7 +201,7 @@ export function BusinessEditor({
             />
           </label>
           <label htmlFor={`${prefix}-email`}>
-            Poslovni email
+            {t("Poslovni email")}
             <input
               id={`${prefix}-email`}
               name="contactEmail"
@@ -212,7 +214,7 @@ export function BusinessEditor({
           </label>
         </div>
         <label htmlFor={`${prefix}-website`}>
-          Web stranica
+          {t("Web stranica")}
           <input
             id={`${prefix}-website`}
             name="websiteUrl"
@@ -225,7 +227,7 @@ export function BusinessEditor({
         </label>
         <div className={styles.formDivider}>
           <Icon name="pin" />
-          <h3>Lokacija</h3>
+          <h3>{t("Lokacija")}</h3>
         </div>
         <LocationPicker
           value={point}
@@ -243,7 +245,7 @@ export function BusinessEditor({
         />
         <fieldset disabled={locationPending}>
           <label htmlFor={`${prefix}-address`}>
-            Adresa
+            {t("Adresa")}
             <input
               id={`${prefix}-address`}
               name="addressLine"
@@ -255,7 +257,7 @@ export function BusinessEditor({
           </label>
           <div className={styles.twoColumns}>
             <label htmlFor={`${prefix}-city`}>
-              Grad
+              {t("Grad")}
               <input
                 id={`${prefix}-city`}
                 name="city"
@@ -266,17 +268,17 @@ export function BusinessEditor({
               />
             </label>
             <label htmlFor={`${prefix}-country`}>
-              Država
+              {t("Država")}
               <select
                 id={`${prefix}-country`}
                 name="countryCode"
                 value={country}
                 onChange={(event) => setCountry(event.target.value)}
               >
-                <option value="">Izaberi državu</option>
-                {profileCountries.map(([code, label]) => (
+                <option value="">{t("Izaberi državu")}</option>
+                {profileCountries.map(([code]) => (
                   <option key={code} value={code}>
-                    {label}
+                    {countryLabel(code, locale)}
                   </option>
                 ))}
                 {country && !profileCountries.some(([code]) => code === country) && (
@@ -288,18 +290,19 @@ export function BusinessEditor({
         </fieldset>
         {rentsCars && !initial && (
           <p>
-            Nakon spremanja djelatnosti u odjeljku Automobili možeš dodati dva auta i uključiti
-            online najam.
+            {t(
+              "Nakon spremanja djelatnosti u odjeljku Automobili možeš dodati dva auta i uključiti online najam.",
+            )}
           </p>
         )}
         {offersStays && !initial && (
-          <p>Nakon spremanja u odjeljku Smještaj možeš dodati dvije sobe ili apartmana.</p>
+          <p>{t("Nakon spremanja u odjeljku Smještaj možeš dodati dvije sobe ili apartmana.")}</p>
         )}
         {!rentsCars && !offersStays && knownBooking !== undefined && (
           <div>
             <div className={styles.formDivider}>
               <Icon name="calendar" />
-              <h3>Termini</h3>
+              <h3>{t("Termini")}</h3>
             </div>
             <label htmlFor={`${prefix}-booking`}>
               <span style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44 }}>
@@ -313,10 +316,10 @@ export function BusinessEditor({
                     setBookingChoice(event.target.checked);
                   }}
                 />{" "}
-                Omogući online booking
+                {t("Omogući online booking")}
               </span>
             </label>
-            <p>Usluge i raspored postavljaš u svom kalendaru.</p>
+            <p>{t("Usluge i raspored postavljaš u svom kalendaru.")}</p>
           </div>
         )}
         <div className={styles.formActions}>
@@ -328,16 +331,16 @@ export function BusinessEditor({
             disabled={locationPending}
           >
             {busy
-              ? "Spremanje…"
+              ? t("Spremanje…")
               : currentStatus === "published"
                 ? canPublish
-                  ? "Sačuvaj izmjene"
-                  : "Pošalji izmjene na pregled"
+                  ? t("Sačuvaj izmjene")
+                  : t("Pošalji izmjene na pregled")
                 : canPublish
-                  ? "Sačuvaj i objavi"
+                  ? t("Sačuvaj i objavi")
                   : currentStatus === "pending"
-                    ? "Sačuvaj izmjene"
-                    : "Sačuvaj nacrt"}
+                    ? t("Sačuvaj izmjene")
+                    : t("Sačuvaj nacrt")}
           </button>
           {canPublish && currentStatus !== "published" && (
             <button
@@ -347,11 +350,11 @@ export function BusinessEditor({
               className={styles.secondary}
               disabled={locationPending}
             >
-              {currentStatus === "pending" ? "Sačuvaj izmjene" : "Sačuvaj nacrt"}
+              {currentStatus === "pending" ? t("Sačuvaj izmjene") : t("Sačuvaj nacrt")}
             </button>
           )}
           <button type="button" className={styles.cancel} onClick={onCancel}>
-            Odustani
+            {t("Odustani")}
           </button>
         </div>
       </fieldset>

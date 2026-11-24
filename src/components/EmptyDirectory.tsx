@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { Icon } from "./Icon";
+import { useT } from "./i18n/LocaleProvider";
 
 export function EmptyDirectory({
   filtered = false,
@@ -8,6 +11,7 @@ export function EmptyDirectory({
   filtered?: boolean;
   withoutOpenFilter?: string;
 }) {
+  const t = useT();
   return (
     <div className="empty-directory">
       <span className="empty-icon">
@@ -15,24 +19,24 @@ export function EmptyDirectory({
       </span>
       <h2>
         {withoutOpenFilter
-          ? "Nema rezultata za „Otvoreno sada“."
+          ? t("Nema rezultata za „Otvoreno sada“.")
           : filtered
-            ? "Nema rezultata za ovu pretragu."
-            : "Pripremamo prostor za prve djelatnosti."}
+            ? t("Nema rezultata za ovu pretragu.")
+            : t("Pripremamo prostor za prve djelatnosti.")}
       </h2>
       {!withoutOpenFilter && (
         <p>
           {filtered
-            ? "Pokušaj s drugim nazivom ili proširi područje pretrage."
-            : "Ovdje ćeš pronaći prve objavljene profile."}
+            ? t("Pokušaj s drugim nazivom ili proširi područje pretrage.")
+            : t("Ovdje ćeš pronaći prve objavljene profile.")}
         </p>
       )}
       <Link className="text-link" href={withoutOpenFilter ?? (filtered ? "/pretraga" : "/o-nama")}>
         {withoutOpenFilter
-          ? "Prikaži i ostale djelatnosti"
+          ? t("Prikaži i ostale djelatnosti")
           : filtered
-            ? "Ukloni uslove pretrage"
-            : "Upoznaj AhiBizz"}
+            ? t("Ukloni uslove pretrage")
+            : t("Upoznaj AhiBizz")}
         <Icon name="arrow" />
       </Link>
     </div>

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { DirectoryResultCard } from "../../../components/directory/DirectoryResultCard";
@@ -10,6 +9,7 @@ import {
   type DirectorySearchParams,
   directorySearchSuffix,
 } from "../../../lib/directory-navigation";
+import { msg } from "../../../lib/i18n/translate";
 import { canonicalSavedSearch } from "../../../lib/saved-search";
 import { getSearchBlockViewer } from "../../../server/account-blocks";
 import {
@@ -19,9 +19,10 @@ import {
   type PublicDirectoryBusiness,
 } from "../../../server/directory";
 import { publicBusinessView } from "../../../server/directory/public-view";
+import { getTranslator, titled } from "../../../server/i18n";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Istraži djelatnosti" };
+export const generateMetadata = titled("Istraži djelatnosti");
 const text = (value: string | string[] | undefined, max: number) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
 export default async function SearchPage({
@@ -30,6 +31,7 @@ export default async function SearchPage({
   searchParams: Promise<DirectorySearchParams>;
 }) {
   const params = await searchParams;
+  const t = await getTranslator();
   const query = text(params.q, 120),
     city = text(params.mjesto, 100),
     categoryId = text(params.categoryId, 128),
@@ -84,25 +86,33 @@ export default async function SearchPage({
   function pageHref(next: number) {
     return `/pretraga${directorySearchSuffix({ ...params, page: String(next) })}`;
   }
+  function categoryName(id: string) {
+    const name = categories.find((item) => item.id === id)?.name;
+    return name ? t(name) : undefined;
+  }
   const sourceQuery = directorySearchSuffix(params);
   const savedQuery = canonicalSavedSearch(directorySearchSuffix({ ...params, page: undefined }));
   const activeFilters = [
     { key: "q", label: query },
     { key: "mjesto", label: city },
-    { key: "categoryId", label: categories.find((item) => item.id === categoryId)?.name },
-    { key: "subcategoryId", label: categories.find((item) => item.id === subcategoryId)?.name },
-    { key: "otvoreno", label: openNow ? "Otvoreno sada" : "" },
+    { key: "categoryId", label: categoryName(categoryId) },
+    { key: "subcategoryId", label: categoryName(subcategoryId) },
+    { key: "otvoreno", label: openNow ? t("Otvoreno sada") : "" },
     {
       key: "istaknute",
       label:
-        featuredOnly === "category" ? "Istaknuto u kategoriji" : featuredOnly ? "Istaknuto" : "",
+        featuredOnly === "category"
+          ? t("Istaknuto u kategoriji")
+          : featuredOnly
+            ? t("Istaknuto")
+            : "",
     },
   ] as const;
   const filtered = Boolean(query || city || categoryId || subcategoryId || featuredOnly || openNow);
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <header className={styles.intro}>
-        <h1>Pretraga djelatnosti</h1>
+        <h1>{t("Pretraga djelatnosti")}</h1>
       </header>
       <DirectorySearchForm
         featuredOnly={featuredOnly}
@@ -116,10 +126,10 @@ export default async function SearchPage({
         categories={categories}
       />
       <div>
-        <section aria-label="Rezultati pretrage">
+        <section aria-label={t("Rezultati pretrage")}>
           <div className={styles.resultsHeading}>
             <h2>
-              {filtered ? "Rezultati pretrage" : "Sve djelatnosti"}
+              {filtered ? t("Rezultati pretrage") : t("Sve djelatnosti")}
               {total !== undefined && (
                 <span className={styles.count} aria-live="polite">
                   {" "}
@@ -127,7 +137,7 @@ export default async function SearchPage({
                 </span>
               )}
             </h2>
-            {filtered && !invalidFilters && <Link href="/pretraga">Očisti pretragu</Link>}
+            {filtered && !invalidFilters && <Link href="/pretraga">{t("Očisti pretragu")}</Link>}
             {filtered && available && savedQuery && (
               <SaveSearchButton
                 key={savedQuery}
@@ -137,13 +147,13 @@ export default async function SearchPage({
                     .map((item) => item.label)
                     .filter(Boolean)
                     .join(" · ")
-                    .slice(0, 100) || "Pretraga djelatnosti"
+                    .slice(0, 100) || t(msg("Pretraga djelatnosti"))
                 }
               />
             )}
           </div>
           {filtered && available && (
-            <ul className={styles.activeFilters} aria-label="Primijenjeni filteri">
+            <ul className={styles.activeFilters} aria-label={t("Primijenjeni filteri")}>
               {activeFilters.map(({ key, label }) => {
                 if (!label) return null;
                 const remaining = { ...params, page: undefined, [key]: undefined };
@@ -152,7 +162,7 @@ export default async function SearchPage({
                   <li key={key}>
                     <Link
                       href={`/pretraga${directorySearchSuffix(remaining)}`}
-                      aria-label={`Ukloni filter: ${label}`}
+                      aria-label={t("Ukloni filter: {label}", { label })}
                     >
                       <span>{label}</span>
                       <span aria-hidden="true">×</span>
@@ -164,15 +174,15 @@ export default async function SearchPage({
           )}
           {invalidFilters ? (
             <div role="alert" className={styles.unavailable}>
-              <h2>Provjeri filtere pretrage.</h2>
+              <h2>{t("Provjeri filtere pretrage.")}</h2>
               <Link className="text-link" href="/pretraga">
-                Poništi filtere
+                {t("Poništi filtere")}
               </Link>
             </div>
           ) : !available ? (
             <div role="status" className={styles.unavailable}>
-              <h2>Imenik trenutno nije dostupan.</h2>
-              <p>Pokušaj ponovo kasnije.</p>
+              <h2>{t("Imenik trenutno nije dostupan.")}</h2>
+              <p>{t("Pokušaj ponovo kasnije.")}</p>
             </div>
           ) : items.length ? (
             <div className={styles.grid}>
@@ -196,10 +206,10 @@ export default async function SearchPage({
             />
           )}
           {available && (page > 1 || hasMore) && (
-            <nav className={styles.pagination} aria-label="Stranice rezultata">
-              {page > 1 && <Link href={pageHref(page - 1)}>Prethodna</Link>}
-              <span>Stranica {page}</span>
-              {hasMore && <Link href={pageHref(page + 1)}>Sljedeća</Link>}
+            <nav className={styles.pagination} aria-label={t("Stranice rezultata")}>
+              {page > 1 && <Link href={pageHref(page - 1)}>{t("Prethodna")}</Link>}
+              <span>{t("Stranica {page}", { page })}</span>
+              {hasMore && <Link href={pageHref(page + 1)}>{t("Sljedeća")}</Link>}
             </nav>
           )}
         </section>

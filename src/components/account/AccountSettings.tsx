@@ -12,18 +12,20 @@ import {
   readAccountSettings,
 } from "../../lib/account-settings";
 import type { Appearance } from "../../lib/appearance";
+import { msg } from "../../lib/i18n/translate";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { useAppAppearance } from "../appearance/AppAppearance";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import { DevicePush } from "../pwa/DevicePush";
 import permissionStyles from "../pwa/permissions.module.css";
 import { AccountPassword } from "./AccountPassword";
 import styles from "./account.module.css";
 
 const choices = [
-  { value: "system", label: "Prema uređaju", symbol: "◐" },
-  { value: "light", label: "Svijetlo", symbol: "☀" },
-  { value: "dark", label: "Tamno", symbol: "☾" },
+  { value: "system", label: msg("Prema uređaju"), symbol: "◐" },
+  { value: "light", label: msg("Svijetlo"), symbol: "☀" },
+  { value: "dark", label: msg("Tamno"), symbol: "☾" },
 ] as const;
 
 type Props = {
@@ -45,6 +47,7 @@ function SettingsWorkspace({
   request = accountSettingsRequest,
   onConfirmed,
 }: Props) {
+  const t = useT();
   const { setAppearance, resetAppearance } = useAppAppearance();
   const [account, setAccount] = useState(initial);
   const scopedRequest = useMemo(
@@ -142,14 +145,14 @@ function SettingsWorkspace({
       if (!live.current || boundary.current !== scopedRequest || current !== revision.current)
         return;
       setBlocked(true);
-      setError(accountSettingsError(failure));
+      setError(t(accountSettingsError(failure)));
       denied(failure);
     } finally {
       window.clearTimeout(timeout);
       if (live.current && boundary.current === scopedRequest && current === revision.current)
         setLoading(false);
     }
-  }, [initial.id, scopedRequest, setAppearance, denied]);
+  }, [initial.id, scopedRequest, setAppearance, denied, t]);
   useEffect(() => {
     if (!active) {
       attempted.current = false;
@@ -184,13 +187,13 @@ function SettingsWorkspace({
       setAppearance(account.appearance);
       setAccount(account);
       changed.current?.(account);
-      setNotice("Postavke su sačuvane.");
+      setNotice(t("Postavke su sačuvane."));
     } catch (failure) {
       if (!live.current || boundary.current !== scopedRequest || current !== revision.current)
         return;
       // A network failure may happen after COMMIT. Read the saved value before a new intent.
       setBlocked(true);
-      setError(accountSettingsError(failure));
+      setError(t(accountSettingsError(failure)));
       denied(failure);
     } finally {
       window.clearTimeout(timeout);
@@ -205,8 +208,8 @@ function SettingsWorkspace({
     <div className={styles.settings} aria-busy={loading || saving}>
       <header className={styles.settingsHeading}>
         <div>
-          <span className={styles.settingsEyebrow}>Moj nalog</span>
-          <h1>Postavke</h1>
+          <span className={styles.settingsEyebrow}>{t("Moj nalog")}</span>
+          <h1>{t("Postavke")}</h1>
         </div>
         <span className={styles.settingsMark} aria-hidden="true">
           <Icon name="sliders" />
@@ -215,25 +218,25 @@ function SettingsWorkspace({
       {active && !accessLost && request === accountSettingsRequest && (
         <>
           <section className={styles.settingsCard} aria-labelledby="identity-heading">
-            <h2 id="identity-heading">Korisničke informacije</h2>
+            <h2 id="identity-heading">{t("Korisničke informacije")}</h2>
             <dl className={styles.settingsIdentity}>
               <div>
-                <dt>Ime i prezime</dt>
+                <dt>{t("Ime i prezime")}</dt>
                 <dd>{account.name}</dd>
               </div>
               <div>
-                <dt>Email za prijavu</dt>
+                <dt>{t("Email za prijavu")}</dt>
                 <dd>{account.email}</dd>
               </div>
               <div>
-                <dt>Verifikacija emaila</dt>
+                <dt>{t("Verifikacija emaila")}</dt>
                 <dd>
                   {account.emailVerified ? (
                     <>
-                      <Icon name="check" /> Potvrđen
+                      <Icon name="check" /> {t("Potvrđen")}
                     </>
                   ) : (
-                    "Čeka potvrdu"
+                    t("Čeka potvrdu")
                   )}
                 </dd>
               </div>
@@ -251,12 +254,12 @@ function SettingsWorkspace({
         </>
       )}
       <section className={styles.settingsCard} aria-labelledby="appearance-heading">
-        <h2 id="appearance-heading">Izgled</h2>
+        <h2 id="appearance-heading">{t("Izgled")}</h2>
         <fieldset
           className={styles.appearanceChoices}
           disabled={loading || saving || !loaded || blocked}
         >
-          <legend className={styles.srOnly}>Tema aplikacije</legend>
+          <legend className={styles.srOnly}>{t("Tema aplikacije")}</legend>
           {choices.map((choice) => (
             <label key={choice.value} data-selected={draft === choice.value}>
               <input
@@ -276,7 +279,7 @@ function SettingsWorkspace({
               </span>
               <span className={styles.themeLabel}>
                 <span aria-hidden="true">{choice.symbol}</span>
-                {choice.label}
+                {t(choice.label)}
                 {draft === choice.value && <Icon name="check" />}
               </span>
             </label>
@@ -288,7 +291,7 @@ function SettingsWorkspace({
             disabled={loading || saving || !loaded || blocked || draft === confirmed}
             onClick={() => void save()}
           >
-            {saving ? "Spremam…" : "Sačuvaj"}
+            {saving ? t("Spremam…") : t("Sačuvaj")}
           </button>
           <button
             type="button"
@@ -296,7 +299,7 @@ function SettingsWorkspace({
             disabled={loading || saving}
             onClick={() => void load()}
           >
-            Osvježi postavke
+            {t("Osvježi postavke")}
           </button>
         </div>
         {error && (
@@ -314,13 +317,13 @@ function SettingsWorkspace({
             className={styles.settingsLogin}
             href="/prijava?nastavi=%2Fnalog%3Fodjeljak%3Dpostavke"
           >
-            Prijavi se ponovo
+            {t("Prijavi se ponovo")}
           </Link>
         )}
       </section>
       {active && !accessLost && request === accountSettingsRequest && (
         <section
-          aria-label="Obavijesti na uređaju"
+          aria-label={t("Obavijesti na uređaju")}
           className={styles.settingsCard}
           ref={deviceNotifications}
           tabIndex={-1}
@@ -331,7 +334,7 @@ function SettingsWorkspace({
         </section>
       )}
       <section className={styles.settingsCard} aria-labelledby="privacy-heading">
-        <h2 id="privacy-heading">Privatnost i podaci</h2>
+        <h2 id="privacy-heading">{t("Privatnost i podaci")}</h2>
         <div className={styles.settingsLinks}>
           <Link href={blockedPeoplePath}>
             <Icon name="user" /> Blokirani korisnici
