@@ -281,3 +281,65 @@
   min-height: 44px;
   font-size: 14px;
 }
+
+/* Google sign-in: Google's neutral button (white, its own mark) so it reads as theirs. */
+.social {
+  margin-top: 22px;
+}
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--ui-border);
+}
+.google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 47px;
+  padding: 12px;
+  border: 1px solid #dadce0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1f1f1f;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+.google:hover:not(:disabled) {
+  background: #f8f9fa;
+}
+.google:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.google svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.socialNote {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ui-muted);
+  text-align: center;
+}
+.card .social .socialNote a {
+  color: var(--ui-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
