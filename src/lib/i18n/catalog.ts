@@ -208,11 +208,11 @@ const shell: Record<string, CatalogEntry> = {
     "Yalnızca burada kullandığın bir şifre seç.",
   ),
   "Sačuvaj lozinku": e("Save password", "Passwort speichern", "احفظ كلمة المرور", "Şifreyi kaydet"),
-  "Tvoj nalog čeka odobrenje.": e(
-    "Your account is awaiting approval.",
-    "Dein Konto wartet auf Freigabe.",
-    "حسابك بانتظار الموافقة.",
-    "Hesabın onay bekliyor.",
+  "Tvoj nalog čeka odobrenje. Javit ćemo ti emailom čim bude odobren.": e(
+    "Your account is awaiting approval. We will email you as soon as it is approved.",
+    "Dein Konto wartet auf Freigabe. Wir schreiben dir, sobald es freigegeben ist.",
+    "حسابك بانتظار الموافقة. سنرسل لك بريدًا إلكترونيًا فور الموافقة عليه.",
+    "Hesabın onay bekliyor. Onaylanır onaylanmaz sana e-posta göndereceğiz.",
   ),
   "Nalog trenutno nije aktivan. Obrati se podršci.": e(
     "This account is currently not active. Please contact support.",
@@ -322,12 +322,13 @@ const shell: Record<string, CatalogEntry> = {
     "تحقّق من بريدك الإلكتروني.",
     "E-postanı kontrol et.",
   ),
-  "Potvrdi email. Nakon odobrenja možeš se prijaviti.": e(
-    "Confirm your email. You can sign in once your account is approved.",
-    "Bestätige deine E-Mail. Nach der Freigabe kannst du dich anmelden.",
-    "أكّد بريدك الإلكتروني. يمكنك تسجيل الدخول بعد الموافقة على حسابك.",
-    "E-postanı onayla. Hesabın onaylandıktan sonra giriş yapabilirsin.",
-  ),
+  "Otvori link koji smo ti poslali na email. Zatim nalog pregleda administrator, a kad bude odobren, javimo ti emailom.":
+    e(
+      "Open the link we sent to your email. An administrator then reviews your account, and we email you once it is approved.",
+      "Öffne den Link, den wir dir per E-Mail geschickt haben. Danach prüft ein Administrator dein Konto, und wir schreiben dir, sobald es freigegeben ist.",
+      "افتح الرابط الذي أرسلناه إلى بريدك الإلكتروني. بعد ذلك يراجع أحد المسؤولين حسابك، وسنرسل لك بريدًا عند الموافقة عليه.",
+      "E-postana gönderdiğimiz bağlantıyı aç. Ardından bir yönetici hesabını inceler; onaylandığında sana e-posta göndeririz.",
+    ),
   "Ako nalog postoji, stići će ti link za novu lozinku.": e(
     "If the account exists, you will receive a link for a new password.",
     "Wenn das Konto existiert, erhältst du einen Link für ein neues Passwort.",
