@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { authReturnLinks } from "../../lib/auth-return";
 import { favoriteId } from "../../lib/favorites";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import { useFavorites } from "./FavoritesProvider";
 import styles from "./favorites.module.css";
 
@@ -16,6 +17,7 @@ export function FavoriteButton({
   title: string;
   compact?: boolean;
 }) {
+  const t = useT();
   const context = useFavorites(),
     register = context?.register;
   useEffect(() => {
@@ -26,10 +28,10 @@ export function FavoriteButton({
     state = states.get(businessId),
     error = errors.get(businessId);
   const label = error
-    ? "Provjeri sačuvani profil"
+    ? t("Provjeri sačuvani profil")
     : state?.saved
-      ? "Ukloni iz sačuvanih"
-      : "Sačuvaj profil";
+      ? t("Ukloni iz sačuvanih")
+      : t("Sačuvaj profil");
   const icon = <Icon name="heart" fill={state?.saved ? "currentColor" : "none"} />;
   if (status === "anonymous")
     return (
@@ -38,11 +40,11 @@ export function FavoriteButton({
         data-compact={compact}
         id={compact ? undefined : "sacuvaj"}
         href={authReturnLinks(`/djelatnosti/${businessId}#sacuvaj`).login}
-        title="Prijavi se i sačuvaj profil"
-        aria-label={`Prijavi se i sačuvaj — ${title}`}
+        title={t("Prijavi se i sačuvaj profil")}
+        aria-label={`${t("Prijavi se i sačuvaj")} — ${title}`}
       >
         {icon}
-        {!compact && "Sačuvaj"}
+        {!compact && t("Sačuvaj")}
       </Link>
     );
   return (
@@ -54,7 +56,7 @@ export function FavoriteButton({
         type="button"
         aria-label={`${label} — ${title}`}
         aria-pressed={Boolean(state?.saved)}
-        title={status === "denied" ? "Sačuvani profili nisu dostupni ovom nalogu" : label}
+        title={status === "denied" ? t("Sačuvani profili nisu dostupni ovom nalogu") : label}
         disabled={
           busy.has(businessId) ||
           status === "checking" ||
@@ -64,7 +66,7 @@ export function FavoriteButton({
         onClick={() => (error || status === "unavailable" ? refresh() : toggle(businessId))}
       >
         {icon}
-        {!compact && (error ? "Provjeri" : state?.saved ? "Sačuvano" : "Sačuvaj")}
+        {!compact && (error ? t("Provjeri") : state?.saved ? t("Sačuvano") : t("Sačuvaj"))}
       </button>
       {error && (
         <span className={styles.error}>
@@ -76,7 +78,7 @@ export function FavoriteButton({
               disabled={busy.has(businessId)}
               onClick={() => retry(businessId)}
             >
-              Ponovi isti pokušaj
+              {t("Ponovi isti pokušaj")}
             </button>
           )}
         </span>

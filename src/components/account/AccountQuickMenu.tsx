@@ -7,16 +7,19 @@ import type { Appearance } from "../../lib/appearance";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { HeaderMenuAccount } from "../../lib/header-access";
 import type { NavigationDestination } from "../../lib/header-navigation";
+import { msg } from "../../lib/i18n/translate";
 import { forgetRememberedArea } from "../../lib/location-area-storage";
 import { clearBrowserMessagingRecovery } from "../../lib/messaging-recovery-storage";
 import { useAppAppearance } from "../appearance/AppAppearance";
 import { Icon } from "../Icon";
+import { LanguagePicker } from "../i18n/LanguagePicker";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./account-quick-menu.module.css";
 
 const appearanceOptions = [
-  ["system", "Uređaj"],
-  ["light", "Svijetla"],
-  ["dark", "Tamna"],
+  ["system", msg("Uređaj")],
+  ["light", msg("Svijetla")],
+  ["dark", msg("Tamna")],
 ] as const;
 
 export function AccountQuickMenu({
@@ -32,6 +35,7 @@ export function AccountQuickMenu({
   close: () => void;
   confirmed: (next: HeaderMenuAccount) => void;
 }) {
+  const t = useT();
   const { setAppearance, resetAppearance } = useAppAppearance();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -54,7 +58,7 @@ export function AccountQuickMenu({
         onClick={close}
       >
         <Icon name={icon} />
-        <span>{label}</span>
+        <span>{t(label)}</span>
         <Icon name="chevron" className={styles.chevron} />
       </Link>
     );
@@ -80,7 +84,7 @@ export function AccountQuickMenu({
       setAppearance(appearance);
       confirmed({ ...account, appearance });
     } catch {
-      setError("Tema nije promijenjena. Otvori meni ponovo i pokušaj.");
+      setError(t("Tema nije promijenjena. Otvori meni ponovo i pokušaj."));
     } finally {
       setSaving(false);
     }
@@ -102,7 +106,7 @@ export function AccountQuickMenu({
       close();
       window.location.assign("/prijava");
     } catch {
-      setError("Odjava nije uspjela. Pokušaj ponovo.");
+      setError(t("Odjava nije uspjela. Pokušaj ponovo."));
       setSaving(false);
     }
   }
@@ -113,14 +117,17 @@ export function AccountQuickMenu({
           {initials || "A"}
         </span>
         <span className={styles.profileText}>
-          <span>Moj AhiBizz</span>
+          <span>{t("Moj AhiBizz")}</span>
           <strong>{account.name}</strong>
         </span>
         <Icon name="arrow" />
       </Link>
       <div className={styles.tiles}>
-        {link({ href: path.businesses, label: "Moje djelatnosti", icon: "shop" }, styles.tile)}
-        {link({ href: "/nalog?odjeljak=poruke", label: "Poruke", icon: "message" }, styles.tile)}
+        {link({ href: path.businesses, label: msg("Moje djelatnosti"), icon: "shop" }, styles.tile)}
+        {link(
+          { href: "/nalog?odjeljak=poruke", label: msg("Poruke"), icon: "message" },
+          styles.tile,
+        )}
       </div>
       <div className={styles.groups}>
         <details
@@ -128,11 +135,11 @@ export function AccountQuickMenu({
         >
           <summary>
             <Icon name="calendar" />
-            <span>Termini</span>
+            <span>{t("Termini")}</span>
             <Icon name="chevron" className={styles.chevron} />
           </summary>
-          {link({ href: path.appointments, label: "Aktuelni termini", icon: "calendar" })}
-          {link({ href: path.appointmentHistory, label: "Historija termina", icon: "clock" })}
+          {link({ href: path.appointments, label: msg("Aktuelni termini"), icon: "calendar" })}
+          {link({ href: path.appointmentHistory, label: msg("Historija termina"), icon: "clock" })}
         </details>
         <details
           open={
@@ -143,35 +150,35 @@ export function AccountQuickMenu({
         >
           <summary>
             <Icon name="heart" />
-            <span>Sačuvano</span>
+            <span>{t("Sačuvano")}</span>
             <Icon name="chevron" className={styles.chevron} />
           </summary>
-          {link({ href: path.saved, label: "Djelatnosti", icon: "shop" })}
-          {link({ href: path.savedSearches, label: "Pretrage", icon: "search" })}
-          {link({ href: "/blog?sacuvano=1", label: "Članci", icon: "info" })}
+          {link({ href: path.saved, label: msg("Djelatnosti"), icon: "shop" })}
+          {link({ href: path.savedSearches, label: msg("Pretrage"), icon: "search" })}
+          {link({ href: "/blog?sacuvano=1", label: msg("Članci"), icon: "info" })}
         </details>
       </div>
       <div className={styles.publish}>
-        {link({ href: path.newBusiness, label: "Dodaj djelatnost", icon: "shop" })}
+        {link({ href: path.newBusiness, label: msg("Dodaj djelatnost"), icon: "shop" })}
         {link({
           href: path.manageReels,
-          label: "Objavi Reel",
+          label: msg("Objavi Reel"),
           icon: "play",
         })}
       </div>
       <div className={styles.links}>
-        {link({ href: path.notifications, label: "Obavijesti", icon: "bell" })}
-        {link({ href: path.settings, label: "Postavke", icon: "sliders" })}
-        {link({ href: path.blocked, label: "Blokirani korisnici", icon: "shield" })}
-        {link({ href: "/pomoc", label: "Centar za pomoć", icon: "message" })}
-        {link({ href: "/blog", label: "AhiBizz blog", icon: "info" })}
+        {link({ href: path.notifications, label: msg("Obavijesti"), icon: "bell" })}
+        {link({ href: path.settings, label: msg("Postavke"), icon: "sliders" })}
+        {link({ href: path.blocked, label: msg("Blokirani korisnici"), icon: "shield" })}
+        {link({ href: "/pomoc", label: msg("Centar za pomoć"), icon: "message" })}
+        {link({ href: "/blog", label: msg("AhiBizz blog"), icon: "info" })}
         {!IS_PLAY_EDITION &&
           supportAvailable &&
-          link({ href: "/podrzi", label: "Doniraj", icon: "heart" })}
+          link({ href: "/podrzi", label: msg("Doniraj"), icon: "heart" })}
       </div>
       <div className={styles.preferences}>
         <fieldset>
-          <legend>Izgled</legend>
+          <legend>{t("Izgled")}</legend>
           <div className={styles.themes}>
             {appearanceOptions.map(([value, label]) => (
               <button
@@ -181,18 +188,19 @@ export function AccountQuickMenu({
                 disabled={saving}
                 onClick={() => void changeTheme(value)}
               >
-                {label}
+                {t(label)}
               </button>
             ))}
           </div>
         </fieldset>
+        <LanguagePicker className={styles.language} />
         <button
           type="button"
           className={styles.logout}
           disabled={saving}
           onClick={() => void logout()}
         >
-          <Icon name="external" /> Odjavi se
+          <Icon name="external" /> {t("Odjavi se")}
         </button>
         {error && <p role="alert">{error}</p>}
       </div>

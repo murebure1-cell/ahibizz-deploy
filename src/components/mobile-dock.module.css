@@ -50,6 +50,13 @@
       background-color 160ms ease,
       color 160ms ease;
   }
+  /* Longer words in other languages end with an ellipsis instead of running into the next item. */
+  .link > span:last-child {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .link:focus-visible {
     outline-color: #f0d087;
     outline-offset: -2px;

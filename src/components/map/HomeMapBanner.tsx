@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { mapPins } from "../../lib/business-map";
 import { getPublicDirectoryService } from "../../server/directory/read-service";
+import { getTranslator } from "../../server/i18n";
 import { Icon } from "../Icon";
 import { GoldGlobe } from "./GoldGlobe";
 import styles from "./home-map-banner.module.css";
@@ -24,15 +25,15 @@ async function bannerPlaces(): Promise<[number, number][]> {
 
 /** Home banner for the world map: title on the left, a turning blue-and-gold globe rising out of the card. */
 export async function HomeMapBanner() {
-  const places = await bannerPlaces();
+  const [places, t] = await Promise.all([bannerPlaces(), getTranslator()]);
   return (
     <section className={styles.banner} aria-labelledby="home-map-heading">
       <Link href="/mapa" className={styles.link} aria-labelledby="home-map-heading">
         <span className={styles.text}>
-          <span className={styles.kicker}>Naša mreža, naša snaga</span>
-          <h2 id="home-map-heading">AhiBizz mapa svijeta</h2>
+          <span className={styles.kicker}>{t("Naša mreža, naša snaga")}</span>
+          <h2 id="home-map-heading">{t("AhiBizz mapa svijeta")}</h2>
           <span className={styles.cta}>
-            Otvori mapu <Icon name="chevron" />
+            {t("Otvori mapu")} <Icon name="chevron" />
           </span>
         </span>
       </Link>

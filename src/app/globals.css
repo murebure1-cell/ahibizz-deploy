@@ -704,6 +704,27 @@ a {
   color: #95a7af;
   font-size: 10px;
 }
+/* Right-to-left (Arabic): mirror direction icons. `scale` composes with existing rotations. */
+[dir="rtl"] :is(svg[data-icon="arrow"], svg[data-icon="chevron"]) {
+  scale: -1 1;
+}
+.language-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.language-picker select {
+  padding: 4px 8px;
+  border: 1px solid #ffffff2b;
+  border-radius: 8px;
+  color: #e3e9e6;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+}
+.language-picker option {
+  color: #142c40;
+}
 .search-intro {
   padding-block: 60px 42px;
   background: var(--ui-surface-soft);

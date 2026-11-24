@@ -1,12 +1,13 @@
 import { isTimeZone } from "./booking-time";
+import { msg } from "./i18n/translate";
 
 export const businessAmenities = [
-  { id: "wifi", label: "Wi-Fi", icon: "wifi" },
-  { id: "parking", label: "Parking", icon: "parking" },
-  { id: "accessible", label: "Pristupačan ulaz", icon: "accessible" },
-  { id: "pets", label: "Kućni ljubimci", icon: "pets" },
-  { id: "card-payment", label: "Kartično plaćanje", icon: "payment" },
-  { id: "family", label: "Za porodice", icon: "family" },
+  { id: "wifi", label: msg("Wi-Fi"), icon: "wifi" },
+  { id: "parking", label: msg("Parking"), icon: "parking" },
+  { id: "accessible", label: msg("Pristupačan ulaz"), icon: "accessible" },
+  { id: "pets", label: msg("Kućni ljubimci"), icon: "pets" },
+  { id: "card-payment", label: msg("Kartično plaćanje"), icon: "payment" },
+  { id: "family", label: msg("Za porodice"), icon: "family" },
 ] as const;
 export type BusinessAmenityId = (typeof businessAmenities)[number]["id"];
 export type BusinessHoursDay = {
@@ -19,13 +20,13 @@ export type BusinessDetails = {
   amenities: BusinessAmenityId[];
 };
 export const businessWeekdays = [
-  "Ponedjeljak",
-  "Utorak",
-  "Srijeda",
-  "Četvrtak",
-  "Petak",
-  "Subota",
-  "Nedjelja",
+  msg("Ponedjeljak"),
+  msg("Utorak"),
+  msg("Srijeda"),
+  msg("Četvrtak"),
+  msg("Petak"),
+  msg("Subota"),
+  msg("Nedjelja"),
 ] as const;
 
 export function emptyBusinessDetails(): BusinessDetails {
