@@ -138,9 +138,15 @@ export function createAuthHttpHandler(options: {
             );
           }
         }
+        // The browser follows the URL in the JSON reply, so the library needs no Location header.
+        const forwarded = path === "/sign-in/social" ? { ...body, disableRedirect: true } : body;
         const headers = new Headers(request.headers);
         headers.delete("content-length");
-        target = new Request(request.url, { method: "POST", headers, body: JSON.stringify(body) });
+        target = new Request(request.url, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(forwarded),
+        });
       } catch {
         return reply({ code: "INVALID_REQUEST" }, 400);
       }
@@ -151,6 +157,17 @@ export function createAuthHttpHandler(options: {
       headers.set("Cache-Control", "no-store");
       headers.set("Pragma", "no-cache");
       if (response.status >= 500) return reply({ code: "AUTH_UNAVAILABLE" }, 503, headers);
+      // Starting Google sign-in may still carry a Location to Google's own page; the JSON URL
+      // below is checked against the same origin, so drop the header instead of refusing.
+      if (
+        path === "/sign-in/social" &&
+        provider &&
+        response.status < 300 &&
+        headers.has("Location") &&
+        new URL(headers.get("Location") ?? "", options.baseURL).origin ===
+          providerAuthorizeOrigins[provider]
+      )
+        headers.delete("Location");
       const location = headers.get("Location");
       if (location && new URL(location, options.baseURL).origin !== new URL(options.baseURL).origin)
         return reply({ code: "INVALID_REDIRECT" }, 400);
