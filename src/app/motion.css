@@ -11,14 +11,13 @@
   --motion-base: 240ms;
   --motion-slow: 360ms;
   --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --motion-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @media (prefers-reduced-motion: no-preference) {
   /* Page transition: every page renders its own main element, so each navigation arrives softly. */
   /* Full-screen pages are excluded: a moving parent would shift their fixed layer. */
   #glavni-sadrzaj:not([data-fullscreen]) {
-    animation: ahibizz-page-in var(--motion-slow) var(--motion-ease) backwards;
+    animation: ahibizz-page-in var(--motion-base) var(--motion-ease) backwards;
   }
 
   /* Home categories and account metrics follow one after another. */
@@ -89,7 +88,7 @@
 
   /* Saving a favorite pops the heart once, right after the press. */
   button[data-saved="true"]:focus svg {
-    animation: ahibizz-pop var(--motion-slow) var(--motion-spring);
+    animation: ahibizz-pop var(--motion-base) var(--motion-ease);
   }
 
   /* Confirmations and errors slide in instead of appearing abruptly. */

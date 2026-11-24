@@ -271,9 +271,9 @@
 
 .returnNote {
   padding: 12px 14px;
-  border-inline-start: 2px solid var(--ui-accent-border);
+  border: 1px solid var(--ui-border);
   background: var(--ui-surface-soft);
-  border-radius: 7px;
+  border-radius: 10px;
   margin-block: 12px;
   font-size: 13px;
   color: var(--ui-text-secondary);
