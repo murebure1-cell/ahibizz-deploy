@@ -8,13 +8,11 @@ import styles from "./home.module.css";
 
 export function HomeCategories({
   categories,
-  searchAction,
   sponsor,
   t = translator("bs"),
 }: {
   t?: Translate;
   categories: readonly HomeCategory[];
-  searchAction: string;
   sponsor?: ReactNode;
 }) {
   return (
@@ -25,9 +23,6 @@ export function HomeCategories({
     >
       <div className={styles.browseHeading}>
         <h2>{t("Kategorije")}</h2>
-        <Link href={searchAction} className={styles.subtleLink}>
-          {t("Sve djelatnosti")} <Icon name="arrow" />
-        </Link>
       </div>
       {categories.length > 0 && (
         <HomeRail label={t("Kategorije")} className={styles.categories}>

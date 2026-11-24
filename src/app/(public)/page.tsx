@@ -33,13 +33,11 @@ type Listings = Promise<PublicDirectoryBusiness[] | null>;
 async function HomeDirectoryCategories({
   data,
   place,
-  href,
   sponsor,
   t,
 }: {
   data: Categories;
   place: string;
-  href: string;
   sponsor: ReactNode;
   t: Translate;
 }) {
@@ -47,7 +45,6 @@ async function HomeDirectoryCategories({
     <HomeCategories
       t={t}
       categories={homeCategories((await data) ?? [], place)}
-      searchAction={href}
       sponsor={sponsor}
     />
   );
@@ -187,7 +184,6 @@ export default async function HomePage({
   const featured = service?.homeAllPromotions().catch(() => null) ?? Promise.resolve(null);
   const newest = service?.homeNewest().catch(() => null) ?? Promise.resolve(null);
   const example = service?.readPublic(homeExampleId).catch(() => null) ?? Promise.resolve(null);
-  const href = place ? `/pretraga?${new URLSearchParams({ mjesto: place })}` : "/pretraga";
   const titles = design.sectionTitles ?? {};
   const nearbyTitle = t(titles.nearby || msg("Djelatnosti u blizini"));
   return (
@@ -206,14 +202,8 @@ export default async function HomePage({
       banner={banner ? { ...banner, id: banner.businessId, city: banner.city ?? "" } : null}
       slots={{
         categories: (
-          <Suspense fallback={<HomeCategories t={t} categories={[]} searchAction={href} />}>
-            <HomeDirectoryCategories
-              data={classification}
-              place={place}
-              href={href}
-              sponsor={null}
-              t={t}
-            />
+          <Suspense fallback={<HomeCategories t={t} categories={[]} />}>
+            <HomeDirectoryCategories data={classification} place={place} sponsor={null} t={t} />
           </Suspense>
         ),
         featured: (

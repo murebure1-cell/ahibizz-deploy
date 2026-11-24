@@ -567,18 +567,6 @@ const shell: Record<string, CatalogEntry> = {
     "نتائج موقعك السابق",
     "Önceki konumun için sonuçlar",
   ),
-  "Moja lokacija · {km} km": e(
-    "My location · {km} km",
-    "Mein Standort · {km} km",
-    "موقعي · {km} كم",
-    "Konumum · {km} km",
-  ),
-  "Lokacija je isključena": e(
-    "Location is turned off",
-    "Standort ist deaktiviert",
-    "الموقع متوقف",
-    "Konum kapalı",
-  ),
   "Pronalazimo lokaciju…": e(
     "Finding your location…",
     "Standort wird ermittelt…",
