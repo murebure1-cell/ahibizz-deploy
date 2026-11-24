@@ -2,6 +2,21 @@
   display: grid;
   gap: 12px;
 }
+/* Whole-page placeholder: same width and top spacing as the pages it stands in for. */
+.route {
+  width: min(1160px, calc(100% - 32px));
+  min-height: 70vh;
+  margin: 0 auto;
+  padding: 32px 0 96px;
+}
+.title {
+  display: block;
+  width: min(320px, 62%);
+  height: 30px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  background: var(--ui-surface-soft);
+}
 .row {
   display: grid;
   gap: 10px;
