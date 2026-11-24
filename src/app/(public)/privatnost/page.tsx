@@ -5,8 +5,8 @@ import { supportEmail } from "../../../lib/support-requests";
 
 export const metadata = { title: "Privatnost i podrška" };
 
-// Keep this page in line with what the code actually stores and sends. Open owner decisions (legal
-// controller, retention of financial records and server logs) are listed in docs/handover/PRIVATNOST.md.
+// Keep this page in line with what the code actually stores and sends. Owner decisions and the ones
+// still open (retention of financial records and server logs) are listed in docs/handover/PRIVATNOST.md.
 export default function PrivacyPage() {
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
@@ -15,6 +15,17 @@ export default function PrivacyPage() {
         Ovdje piše koje podatke AhiBizz koristi, zašto, ko ih vidi i koliko dugo ostaju. Isto važi
         za web i za Android aplikaciju.
       </p>
+
+      <section className={styles.section}>
+        <h2>Ko je odgovoran za podatke</h2>
+        <p>
+          Upravljač podataka je Ajdin Tabaković, Tuzla, Bosna i Hercegovina. Za sva pitanja o
+          privatnosti piši na <a href={`mailto:${supportEmail}`}>{supportEmail}</a>.
+        </p>
+        <p>
+          AhiBizz je namijenjen osobama od 18 ili više godina. Mlađe osobe ne mogu otvoriti nalog.
+        </p>
+      </section>
 
       <section className={styles.section}>
         <h2>Obavezni podaci za nalog</h2>
@@ -91,9 +102,9 @@ export default function PrivacyPage() {
       <section className={styles.section}>
         <h2>Ko još obrađuje podatke</h2>
         <p>
-          Pružalac hostinga i baze podataka, pružalac email usluge, push servis preglednika ili
-          telefona, Photon (komoot) za adrese te Google Maps ili OpenStreetMap za karte. Aplikacija
-          ne koristi oglasni identifikator uređaja.
+          OctaDeploy za hosting aplikacije i baze podataka, pružalac email usluge, push servis
+          preglednika ili telefona, Photon (komoot) za adrese te Google Maps ili OpenStreetMap za
+          karte. Aplikacija ne koristi oglasni identifikator uređaja.
         </p>
         <p>
           {IS_PLAY_EDITION
@@ -120,8 +131,8 @@ export default function PrivacyPage() {
         <h2>Tvoja prava</h2>
         <p>
           Podatke profila i djelatnosti ispravljaš sam u nalogu. Možeš zatražiti uvid u svoje
-          podatke, njihovu ispravku ili brisanje te postaviti pitanje o obradi. Odgovaramo s adrese
-          podrške.
+          podatke, njihovu ispravku ili brisanje te postaviti pitanje o obradi. Zahtjeve obrađujemo
+          najkasnije u roku od 30 dana i odgovaramo s adrese podrške.
         </p>
         <a href={`mailto:${supportEmail}`}>{supportEmail}</a>
         <ul>

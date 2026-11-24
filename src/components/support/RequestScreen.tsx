@@ -43,7 +43,7 @@ export async function RequestScreen({ target }: { target: SupportTarget }) {
         <>
           <p>
             Zahtjev obuhvata cijeli nalog. Podrška provjerava da zahtjev šalje vlasnik naloga i
-            obrađuje ga ručno.
+            obrađuje ga najkasnije u roku od 30 dana.
           </p>
           <section className={styles.section}>
             <h2>Želiš obrisati samo dio?</h2>

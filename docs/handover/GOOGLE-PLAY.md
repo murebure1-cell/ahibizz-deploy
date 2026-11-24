@@ -24,14 +24,27 @@ Stanje pregleda: 22. 11. 2026. Put je **Trusted Web Activity (TWA) kroz Bubblewr
 | Trenutni javni host `ahibizz-deploy.octadeploy.com` | Web build: privatnost i brisanje 200 bez prijave; `assetlinks.json` 404; distribucija `web`. Nije Play host. |
 | Android projekat, AAB, potpis, instalacija | Nije urađeno: na ovom računaru nema JDK-a ni Android SDK-a. Ništa nije poslano u Play Console. |
 
+### Play servis `app.ahibizz.com` (odluka 24. 11. 2026)
+
+Play build ima vlastiti servis na istoj bazi; web `ahibizz-deploy` (app 213) ostaje nepromijenjen. Svaki korak u OctaDeployu i DNS-u radi se tek uz Ajdinovu potvrdu.
+
+1. U OctaDeployu nova aplikacija (npr. `ahibizz-play`) iz istog repozitorija `murebure1-cell/ahibizz-deploy`, grana `main`, Next.js.
+2. Varijable: iste kao app 213 (ista `DATABASE_URL`, SMTP, ključevi), uz razlike:
+   - `AHIBIZZ_DISTRIBUTION=google-play` (mora biti dostupna i pri buildu),
+   - `BETTER_AUTH_URL=https://app.ahibizz.com`,
+   - `AHIBIZZ_PLAY_SIGNING_SHA256=<SHA-256 App signing ključa iz Play Consolea>` (kad postoji).
+3. DNS kod Octagon Solution (`dns1/dns2.octagonsolution.com`): zapis za `app.ahibizz.com` prema OctaDeploy serveru (trenutno `178.105.125.128`, isti kao `ahibizz-deploy.octadeploy.com`), zatim domena i TLS u OctaDeployu. Postojeći `ahibizz.com` (stara aplikacija i mail na `65.21.171.158`) se ne mijenja.
+4. Oba servisa rade migracije pri startu i pozadinske poslove; reels istek, push i approval emailovi uzimaju posao uz `SKIP LOCKED`, pa nema dvostrukog slanja. Approval email poslan s Play servisa vodi na `app.ahibizz.com/prijava`.
+5. Provjera nakon pokretanja: `https://app.ahibizz.com/.well-known/ahibizz-distribution.json` = `google-play`, `/privatnost` i `/brisanje-naloga` 200 bez prijave, kupovne stranice 404, `assetlinks.json` 200 s pravim otiskom.
+
 ### Šta tačno treba za potpisani AAB i interni test
 
 1. **Finalni Play host** (HTTPS) sa zasebnim Play buildom. Zamijeniti `PLAY_HOST` u `docs/handover/android/twa-manifest.example.json`.
 2. **Play Console nalog** i aplikacija `com.ahibizz.app`, uključen Play App Signing.
 3. **Upload ključ** (keystore) napravljen i sačuvan izvan Gita, s imenovanom odgovornom osobom.
-4. **Build računar**: JDK 17+, Android SDK s platformom **android-36** i build-tools 36, pregledana verzija `@bubblewrap/cli`.
-5. `bubblewrap init --manifest https://PLAY_HOST/app.webmanifest`, zatim uporediti s `docs/handover/android/twa-manifest.example.json`. U generisanom `app/build.gradle` postaviti `compileSdkVersion 36` i `targetSdkVersion 36` (Android 16), ako ih alat sam ne postavi. Provjeriti trenutni [target API zahtjev](https://support.google.com/googleplay/android-developer/answer/11926878).
-6. `bubblewrap build`, upload AAB-a na **Internal testing**, pa iz Play Consolea uzeti SHA-256 **App signing** ključa i postaviti ga u `AHIBIZZ_PLAY_SIGNING_SHA256` na Play hostu.
+4. **Build računar** (24. 11. 2026. postavljen na Ajdinovom računaru, izvan repozitorija): `AhiBizzNext\tools\android` s Temurin JDK 17.0.21, Android cmdline-tools 23, platformom **android-36**, build-tools 36.1.0 i platform-tools; licencu Android SDK-a prihvatio je Ajdin.
+5. Projekat se pravi neinteraktivno skriptom `docs/handover/android/generate-twa.mjs` (`@bubblewrap/core` 1.24.1, paket `com.ahibizz.app`, host `app.ahibizz.com`) u `AhiBizzNext\android-twa`. Alat postavlja `targetSdkVersion 35`; u `app/build.gradle` se postavlja **`targetSdkVersion 36`** (`compileSdkVersion 36` već jeste). Provjeriti trenutni [target API zahtjev](https://support.google.com/googleplay/android-developer/answer/11926878).
+6. `gradlew bundleRelease` daje nepotpisani AAB; potpisati ga upload ključem (`jarsigner` ili signingConfig iz `twa-manifest.json`), upload na **Internal testing**, pa iz Play Consolea uzeti SHA-256 **App signing** ključa i postaviti ga u `AHIBIZZ_PLAY_SIGNING_SHA256` na Play hostu. `gradlew assembleDebug` daje probni APK potpisan debug ključem: dobar za instalaciju, ali bez TWA verifikacije (prikazaće browser traku dok assetlinks ne sadrži i debug otisak).
 7. Instalirati iz internog testa na fizički Android i proći tabelu „Provjera na uređaju“ ispod. Tek tada je izdanje provjereno.
 
 ## Izdanje bez kupovine

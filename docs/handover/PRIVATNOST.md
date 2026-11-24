@@ -20,15 +20,21 @@ Stanje: 23. 11. 2026, grana `claude/play-internal-test`. Stranice `/privatnost` 
 | Push pretplata | Opcionalno | `push_device`, `push_delivery` | Push servis preglednika (Android: obično FCM) | Do odjave/isključenja |
 | Email | Obavezno za nalog | SMTP konfiguracija | Pružalac email usluge | Kod pružaoca |
 
-## Odluke koje Ajdin mora potvrditi
+## Odluke Ajdina (24. 11. 2026) — ugrađene
 
-1. **Upravljač podataka**: puno ime pravnog lica ili osobe, adresa i kontakt koji se smiju objaviti na `/privatnost`. Do tada stranica navodi samo email podrške.
-2. **Pružaoci**: tačno ime hostinga/baze (npr. da li je to OctaDeploy i gdje su serveri) i SMTP pružaoca. Da li su ugovori obrađivača potpisani. Stranica ih sada navodi samo opisno.
-3. **Pravni okvir**: na koji zakon se pozivamo (BiH ZZLP, GDPR za korisnike iz EU) i kome se podnosi prigovor (nadzorni organ).
-4. **Rokovi**: koliko dugo se čuva evidencija uplata (zakonski rok), serverski/hosting logovi i rezervne kopije (OctaDeploy panel prikazuje „Čuva se 30 dana“ za backup aplikacije; potvrditi da li to važi i za druge kopije). Rok odgovora na zahtjev za brisanje (npr. 30 dana).
-5. **Prenos djelatnosti pri brisanju naloga**: ko odobrava prenos vlasništva i šta treba od nove osobe.
-6. **Najmanja dob korisnika** i da li se nalog smije otvoriti maloljetnicima.
-7. **Pregled teksta**: pravnik ili Ajdin čita `/privatnost` i `/brisanje-naloga` prije unosa URL-ova u Play Console.
+- **Upravljač podataka**: Ajdin Tabaković, Tuzla, Bosna i Hercegovina (fizičko lice), kontakt email podrške. Navedeno na `/privatnost`.
+- **Najmanja dob**: 18 godina. Navedeno na `/privatnost`; registracija traži potvrdu „Imam najmanje 18 godina“ uz pravila i privatnost. Play Target audience: 18+.
+- **Rok za zahtjeve i brisanje**: najkasnije 30 dana. Navedeno na `/privatnost` i `/brisanje-naloga`.
+- **Hosting**: OctaDeploy (aplikacija i baza). Javni DNS ahibizz.com vodi Octagon Solution.
+- **Play host**: `app.ahibizz.com` (vidi `GOOGLE-PLAY.md`).
+
+## Još otvoreno
+
+1. **SMTP pružalac**: javni SPF za ahibizz.com dozvoljava samo vlastiti server `mail.ahibizz.com` (65.21.171.158). Potvrditi naziv `SMTP_HOST` u OctaDeployu (bez lozinke) i ko vodi taj mail server; zatim ga navesti na `/privatnost` umjesto „pružalac email usluge“.
+2. **Pravni okvir**: na koji zakon se pozivamo (BiH ZZLP, GDPR za korisnike iz EU) i kome se podnosi prigovor (nadzorni organ).
+3. **Rokovi**: evidencija uplata (zakonski rok), serverski/hosting logovi i rezervne kopije (OctaDeploy panel prikazuje „Čuva se 30 dana“ za backup aplikacije).
+4. **Prenos djelatnosti pri brisanju naloga**: ko odobrava prenos vlasništva i šta treba od nove osobe.
+5. **Pregled teksta**: Ajdin ili pravnik čita `/privatnost` i `/brisanje-naloga` prije unosa URL-ova u Play Console.
 
 ## Data safety radni popis (prema kodu)
 
