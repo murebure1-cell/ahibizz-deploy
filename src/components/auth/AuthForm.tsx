@@ -42,7 +42,7 @@ const endpoints = {
 
 function errorText(code: unknown) {
   if (code === "ACCOUNT_PENDING_APPROVAL" || code === "ACCOUNT_NOT_APPROVED")
-    return msg("Tvoj nalog čeka odobrenje.");
+    return msg("Tvoj nalog čeka odobrenje. Javit ćemo ti emailom čim bude odobren.");
   if (code === "ACCOUNT_SUSPENDED") return msg("Nalog trenutno nije aktivan. Obrati se podršci.");
   if (code === "EMAIL_NOT_VERIFIED")
     return msg("Prvo potvrdi email putem linka koji smo ti poslali.");
@@ -199,7 +199,6 @@ export function AuthForm({
           <Icon name="chevron" />
           {t("Početna")}
         </Link>
-        <span className={styles.eyebrow}>AHIBIZZ</span>
         <h1 id="auth-heading">{t(copy.title)}</h1>
         <p className={styles.intro}>{t(copy.intro)}</p>
         {!available && <p className={styles.notice}>{t("Prijave još nisu otvorene.")}</p>}
@@ -229,7 +228,9 @@ export function AuthForm({
             </h2>
             <p>
               {mode === "sign-up"
-                ? t("Potvrdi email. Nakon odobrenja možeš se prijaviti.")
+                ? t(
+                    "Otvori link koji smo ti poslali na email. Zatim nalog pregleda administrator, a kad bude odobren, javimo ti emailom.",
+                  )
                 : mode === "reset-request"
                   ? t("Ako nalog postoji, stići će ti link za novu lozinku.")
                   : t("Sada se možeš prijaviti.")}
@@ -247,6 +248,7 @@ export function AuthForm({
                 <input
                   name="name"
                   autoComplete="name"
+                  enterKeyHint="next"
                   required
                   minLength={2}
                   maxLength={80}
@@ -262,6 +264,7 @@ export function AuthForm({
                   type="email"
                   inputMode="email"
                   autoComplete="username"
+                  enterKeyHint={mode === "reset-request" ? "send" : "next"}
                   required
                   maxLength={254}
                   disabled={!available || busy}
@@ -277,6 +280,7 @@ export function AuthForm({
                     ref={passwordField}
                     type={visible ? "text" : "password"}
                     autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+                    enterKeyHint={mode === "sign-up" ? "next" : "go"}
                     required
                     minLength={mode === "sign-in" ? 1 : 12}
                     maxLength={128}
@@ -294,7 +298,7 @@ export function AuthForm({
                 {mode !== "sign-in" && <small>{t("Najmanje 12 znakova.")}</small>}
               </label>
             )}
-            {mode === "reset-password" && token && (
+            {(mode === "sign-up" || (mode === "reset-password" && token)) && (
               <button
                 type="button"
                 className={styles.suggestion}
