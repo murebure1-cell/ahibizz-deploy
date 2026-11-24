@@ -76,9 +76,8 @@ test("Play API, writes and React navigation errors remain non-cacheable JSON", a
   }
 });
 
-test("a Play viewer receives support guidance for an old Reel requiring resubmission", () => {
-  assert.match(reelResubmissionNotice(false, true), /obrati se podršci/);
-  assert.doesNotMatch(reelResubmissionNotice(false, true), /pošalji|cijene/);
-  assert.match(reelResubmissionNotice(false, false), /pošalji ga ponovo/);
-  assert.match(reelResubmissionNotice(true, true), /Vlasnik treba ponovo/);
+test("Reels can be resubmitted from the web and the Play edition alike", () => {
+  assert.match(reelResubmissionNotice(false), /pošalji ga ponovo/);
+  assert.doesNotMatch(reelResubmissionNotice(false), /cijene|kupi|plati/);
+  assert.match(reelResubmissionNotice(true), /Vlasnik treba ponovo/);
 });

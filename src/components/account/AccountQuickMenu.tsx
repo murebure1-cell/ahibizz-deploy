@@ -155,7 +155,7 @@ export function AccountQuickMenu({
         {link({ href: path.newBusiness, label: "Dodaj djelatnost", icon: "shop" })}
         {link({
           href: path.manageReels,
-          label: IS_PLAY_EDITION ? "Moji reels" : "Objavi Reel",
+          label: "Objavi Reel",
           icon: "play",
         })}
       </div>

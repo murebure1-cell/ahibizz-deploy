@@ -42,13 +42,52 @@ export async function RequestScreen({ target }: { target: SupportTarget }) {
       {deletion ? (
         <>
           <p>
-            Zahtjev obuhvata tvoj nalog, profil, slike i povezane lične podatke. Podrška provjerava
-            vlasništvo i obrađuje zahtjev.
+            Zahtjev obuhvata cijeli nalog. Podrška provjerava da zahtjev šalje vlasnik naloga i
+            obrađuje ga najkasnije u roku od 30 dana.
           </p>
-          <p>
-            Ako vodiš djelatnost, dogovori njen prenos ili uklanjanje s podrškom. Podaci o izvršenim
-            uplatama mogu se zadržati radi zakonskih obaveza.
-          </p>
+          <section className={styles.section}>
+            <h2>Želiš obrisati samo dio?</h2>
+            <p>Za ovo ne treba brisati nalog:</p>
+            <ul>
+              <li>
+                <Link href="/nalog?odjeljak=djelatnosti">Moje djelatnosti</Link>: izbriši pojedinu
+                djelatnost s njenim fotografijama, opisom, kontaktom, lokacijom i Reelsima.
+              </li>
+              <li>
+                <Link href="/nalog/reels">Moji reels</Link>: obriši Reel prije isteka. Svaki Reel se
+                ionako sam briše 24 sata nakon objave.
+              </li>
+              <li>Recenziju koju si napisao možeš povući na profilu djelatnosti.</li>
+            </ul>
+          </section>
+          <section className={styles.section}>
+            <h2>Prije zahtjeva</h2>
+            <ul>
+              <li>
+                <strong>Otvoreni termini i rezervacije</strong> (kao gost ili kao djelatnost):
+                otkaži ih ili ih završi u kalendaru. Dok postoje, brisanje se ne može dovršiti.
+              </li>
+              <li>
+                <strong>Djelatnosti na tvom nalogu</strong>: izbriši ih u Mojim djelatnostima. Ako
+                djelatnost treba voditi druga osoba, u zahtjevu navedi njen AhiBizz email za prenos
+                vlasništva. Podrška provjerava prenos prije nego što ga izvrši.
+              </li>
+            </ul>
+          </section>
+          <section className={styles.section}>
+            <h2>Šta se briše, a šta ostaje</h2>
+            <p>
+              Brišu se prijava i sesije, profil i njegove fotografije, uređaji za obavijesti,
+              sačuvane pretrage i favoriti, veze i blokade, tvoje recenzije, tvoji Reels i tvoje
+              prijave podršci. Tekst tvojih poruka zamjenjuje se oznakom „[Poruka obrisana]“, a
+              tvoje ime i kontakt uklanjaju se iz rezervacija.
+            </p>
+            <p>
+              Ostaju anonimizirani identifikator naloga, zapisi o prošlim terminima kod djelatnosti
+              bez tvog imena i kontakta, poruke koje su drugi korisnici poslali tebi te evidencija
+              uplata i isticanja koju moramo čuvati zbog zakonskih obaveza.
+            </p>
+          </section>
         </>
       ) : !reel ? (
         <p>

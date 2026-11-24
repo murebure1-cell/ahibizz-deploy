@@ -12,6 +12,7 @@ import {
   reelMaxDuration,
   reelMedia,
   reelPartBytes,
+  reelTimeLeft,
 } from "../../lib/reels";
 import { ConfirmButton } from "../ConfirmButton";
 import { previewFrame } from "./poster";
@@ -33,6 +34,8 @@ const statuses: Record<ReelStatus, string> = {
   published: "Objavljeno",
   rejected: "Vraćeno",
   withdrawn: "Povučeno",
+  expired: "Isteklo (24 h)",
+  removed: "Uklonio moderator",
 };
 
 const problems: Record<string, string> = {
@@ -61,12 +64,15 @@ export function ReelManager({
   businesses,
   businessId,
   admin,
+  live = [],
 }: {
   accountId: string;
   reels: ManagedReel[];
   businesses: { id: string; title: string }[];
   businessId?: string;
   admin: boolean;
+  /** Moderators only: Reels that are public right now and can be taken down one by one. */
+  live?: ManagedReel[];
 }) {
   const router = useRouter();
   const active = useRef(false);
@@ -192,7 +198,7 @@ export function ReelManager({
   }
   async function decide(
     reel: ManagedReel,
-    action: "approve" | "reject" | "withdraw",
+    action: "approve" | "reject" | "withdraw" | "remove",
     reason?: string,
   ) {
     if (!start()) return;
@@ -200,7 +206,7 @@ export function ReelManager({
       const data: Record<string, string | number | boolean> =
         action === "withdraw"
           ? { action, expected: reel.status }
-          : action === "reject"
+          : action === "reject" || action === "remove"
             ? { action, reason: reason?.trim() ?? "" }
             : { action };
       await command(admin ? "moderation" : "mine", reel.id, data);
@@ -211,7 +217,9 @@ export function ReelManager({
           ? "Reel je objavljen."
           : action === "reject"
             ? "Reel je vraćen."
-            : "Reel je povučen.",
+            : action === "remove"
+              ? "Reel je uklonjen, a snimak i naslovnica obrisani."
+              : "Reel je povučen.",
       );
       router.refresh();
     } catch (error) {
@@ -310,7 +318,13 @@ export function ReelManager({
             </div>
             {reel.caption && <p className={styles.caption}>{reel.caption}</p>}
             {reel.reviewReason && (
-              <p className={styles.caption}>Razlog vraćanja · {reel.reviewReason}</p>
+              <p className={styles.caption}>
+                {reel.status === "removed" ? "Razlog uklanjanja" : "Razlog vraćanja"} ·{" "}
+                {reel.reviewReason}
+              </p>
+            )}
+            {reel.status === "published" && reel.expiresAt && (
+              <p className={styles.caption}>Vidljivo {reelTimeLeft(reel.expiresAt)}</p>
             )}
             {(reel.status === "pending" || reel.status === "published") && reel.id !== preview && (
               <button
@@ -372,21 +386,70 @@ export function ReelManager({
                 {reel.status === "published" && (
                   <Link href={`/reels/${reel.id}`}>Javna objava</Link>
                 )}
-                <ConfirmButton
-                  disabled={busy}
-                  className={styles.secondary}
-                  title="Povući reel?"
-                  description="Snimak i naslovnica će se ukloniti."
-                  confirmLabel="Povuci reel"
-                  onConfirm={() => void decide(reel, "withdraw")}
-                >
-                  Povuci reel
-                </ConfirmButton>
+                {reel.status !== "removed" && (
+                  <ConfirmButton
+                    disabled={busy}
+                    className={styles.secondary}
+                    title={reel.status === "expired" ? "Skloniti s liste?" : "Obrisati reel?"}
+                    description={
+                      reel.status === "expired"
+                        ? "Snimak je već obrisan nakon 24 sata."
+                        : "Reel se odmah skida s prikaza, a snimak i naslovnica se brišu."
+                    }
+                    confirmLabel={reel.status === "expired" ? "Skloni" : "Obriši reel"}
+                    onConfirm={() => void decide(reel, "withdraw")}
+                  >
+                    {reel.status === "expired" ? "Skloni s liste" : "Obriši reel"}
+                  </ConfirmButton>
+                )}
               </div>
             )}
           </article>
         ))}
       </section>
+      {admin && (
+        <section className={styles.manageList} aria-label="Objavljeni reels">
+          <h2>Objavljeno sada</h2>
+          {!live.filter((reel) => !removed.includes(reel.id)).length && (
+            <p className={styles.empty}>Trenutno nema objavljenih reelova.</p>
+          )}
+          {live
+            .filter((reel) => !removed.includes(reel.id))
+            .map((reel) => (
+              <article key={reel.id} id={`uzivo-${reel.id}`} className={styles.managed}>
+                <div className={styles.entry}>
+                  <div>
+                    <h3>{reel.title}</h3>
+                    <p>
+                      {reel.businessTitle}
+                      {reel.expiresAt ? ` · ${reelTimeLeft(reel.expiresAt)}` : ""}
+                    </p>
+                  </div>
+                  <Link href={`/reels/${reel.id}`}>Otvori</Link>
+                </div>
+                <form
+                  className={styles.reject}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void decide(
+                      reel,
+                      "remove",
+                      String(new FormData(event.currentTarget).get("reason") ?? ""),
+                    );
+                  }}
+                >
+                  <label>
+                    Razlog uklanjanja
+                    <input name="reason" maxLength={600} required disabled={busy} />
+                  </label>
+                  <button type="submit" className={styles.secondary} disabled={busy}>
+                    Ukloni reel
+                  </button>
+                </form>
+              </article>
+            ))}
+        </section>
+      )}
     </>
   );
 }

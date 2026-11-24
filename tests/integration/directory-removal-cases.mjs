@@ -110,6 +110,86 @@ export async function testDirectoryRemoval(
   );
 
   await t.test(
+    "deleting one business erases its own photos and Reels but keeps the account and other people's records",
+    async () => {
+      const id = await fixture();
+      await pool.query(
+        `UPDATE directory_business SET description='Opis QA',contact_phone='+38761000000',
+          address_line='Ulica QA 1',city='Tuzla',country_code='BA',latitude=44.5,longitude=18.6 WHERE id=$1`,
+        [id],
+      );
+      await pool.query(
+        `INSERT INTO directory_business_image(business_id,kind,slot,bytes,mime,width,height,version)
+         VALUES($1,'logo',0,'\\x01'::bytea,'image/webp',512,512,1)`,
+        [id],
+      );
+      const reel = randomUUID();
+      await pool.query(
+        `INSERT INTO business_reel(id,business_id,submitted_by,title,status,source_size,duration_ms,
+          has_poster,reviewed_at,published_at) VALUES($1,$2,$3,'QA','published',32,3000,true,now(),now())`,
+        [reel, id, member.user.id],
+      );
+      await pool.query(
+        "INSERT INTO business_reel_part(reel_id,part_index,bytes) VALUES($1,-1,'\\x01'::bytea),($1,0,'\\x02'::bytea)",
+        [reel],
+      );
+      const review = randomUUID();
+      await pool.query(
+        "INSERT INTO business_review(id,business_id,author_user_id,rating,body,version) VALUES($1,$2,$3,5,'Dobro QA',1)",
+        [review, id, other.user.id],
+      );
+      assert.equal((await remove(id)).status, 200);
+      const count = async (sql) => (await pool.query(sql, [id])).rows[0].n;
+      assert.equal(
+        await count("SELECT count(*)::int AS n FROM directory_business_image WHERE business_id=$1"),
+        0,
+      );
+      assert.equal(
+        await count(
+          "SELECT count(*)::int AS n FROM business_reel_part p JOIN business_reel r ON r.id=p.reel_id WHERE r.business_id=$1",
+        ),
+        0,
+      );
+      assert.deepEqual(
+        (await pool.query("SELECT status,has_poster FROM business_reel WHERE id=$1", [reel]))
+          .rows[0],
+        { status: "withdrawn", has_poster: false },
+      );
+      const row = (
+        await pool.query(
+          "SELECT title,description,contact_phone,address_line,city,latitude,longitude FROM directory_business WHERE id=$1",
+          [id],
+        )
+      ).rows[0];
+      assert.deepEqual(row, {
+        title: "Uklonjena djelatnost",
+        description: null,
+        contact_phone: null,
+        address_line: null,
+        city: null,
+        latitude: null,
+        longitude: null,
+      });
+      // Someone else's review stays with its author; the owner's account is untouched.
+      assert.equal(
+        (await pool.query("SELECT count(*)::int AS n FROM business_review WHERE id=$1", [review]))
+          .rows[0].n,
+        1,
+      );
+      assert.equal(
+        (await pool.query("SELECT erased_at FROM auth_user WHERE id=$1", [member.user.id])).rows[0]
+          .erased_at,
+        null,
+      );
+      // The erasure helper refuses a business that has not been deleted.
+      const live = await fixture();
+      await assert.rejects(pool.query("SELECT erase_business_content($1)", [live]), {
+        code: "23514",
+      });
+    },
+  );
+
+  await t.test(
     "open service, vehicle and accommodation bookings prevent removal, resolved entries keep their history",
     async () => {
       const id = await fixture();

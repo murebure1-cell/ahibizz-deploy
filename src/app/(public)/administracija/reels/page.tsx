@@ -38,6 +38,7 @@ export default async function ReelModerationPage({
           accountId={list.accountId}
           businesses={[]}
           reels={list.reels}
+          live={list.live}
           admin
         />
       ) : (

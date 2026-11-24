@@ -55,7 +55,7 @@ export const helpTopics = {
     question: "Kako da objavim kratki video za svoju djelatnost?",
     keywords: ["reels", "reel", "video", "story", "snim", "klip"],
     answer:
-      "Otvori Moji reels, odaberi djelatnost i dodaj snimak s naslovom koji objašnjava šta je na videu. Prikaži vlastiti rad ili uslugu koja je dostupna na profilu. Reel se prikazuje nakon odobrenja.",
+      "Otvori Moji reels, odaberi djelatnost i dodaj snimak s naslovom koji objašnjava šta je na videu. Prikaži vlastiti rad ili uslugu koja je dostupna na profilu. Reel se prikazuje nakon odobrenja, najviše 24 sata; nakon toga se snimak i naslovnica brišu. Možeš ga povući i ranije.",
     links: [
       { label: "Moji reels", href: "/nalog/reels" },
       { label: "Pogledaj Reels", href: "/reels" },
