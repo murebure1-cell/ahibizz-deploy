@@ -17,7 +17,6 @@ export type SupportBankAccount = {
 
 export type SupportConfig = {
   recipient: string;
-  paypalUrl: string | null;
   bankAccounts: SupportBankAccount[];
   purpose: string;
 };
@@ -30,36 +29,6 @@ function plainText(value: unknown, maximum: number): string | null {
   if (typeof value !== "string" || /[\p{Cc}\p{Cf}]/u.test(value)) return null;
   const text = value.trim();
   return text && text.length <= maximum ? text : null;
-}
-
-/** Validate the configured recipient link before displaying it or adding a PayPal.Me amount. */
-export function supportPayPalUrl(value: unknown): string | null {
-  const text = plainText(value, 1000);
-  if (!text) return null;
-  try {
-    const url = new URL(text);
-    if (url.protocol !== "https:" || url.username || url.password || url.port || url.hash)
-      return null;
-    const host = url.hostname.toLowerCase();
-    if (host === "paypal.me" || host === "www.paypal.me") {
-      if (!/^\/[a-z0-9._-]+\/?$/i.test(url.pathname)) return null;
-    } else if (host === "paypal.com" || host === "www.paypal.com") {
-      const donate = /^\/donate\/?$/i.test(url.pathname);
-      const receivingPath = /^\/(?:paypalme\/[a-z0-9._-]+|ncp\/payment\/[a-z0-9_-]+)\/?$/i.test(
-        url.pathname,
-      );
-      if (!donate && !receivingPath) return null;
-      if (
-        donate &&
-        !plainText(url.searchParams.get("hosted_button_id"), 150) &&
-        !plainText(url.searchParams.get("business"), 254)
-      )
-        return null;
-    } else return null;
-    return url.href;
-  } catch {
-    return null;
-  }
 }
 
 export function donationAmountMinor(value: string): number | null {
@@ -77,22 +46,6 @@ function decimalDonationAmount(amountMinor: number): string {
 
 export function donationAmountText(amountMinor: number, currency: SupportCurrency): string {
   return `${decimalDonationAmount(amountMinor).replace(".", ",")} ${currency === "BAM" ? "KM" : "EUR"}`;
-}
-
-export function donationPayPalLink(value: unknown, amountMinor: number) {
-  const href = supportPayPalUrl(value);
-  if (!href || !Number.isSafeInteger(amountMinor) || amountMinor < 1) return null;
-  const url = new URL(href);
-  // The amount/currency suffix is documented for PayPal.Me. Other receiving links
-  // keep their original amount handling and their exact configured destination.
-  if (
-    !["paypal.me", "www.paypal.me"].includes(url.hostname) ||
-    !/^\/[a-z0-9]{1,20}\/?$/i.test(url.pathname) ||
-    url.search
-  )
-    return { href, amountPrefilled: false };
-  url.pathname = `${url.pathname.replace(/\/$/, "")}/${decimalDonationAmount(amountMinor)}EUR`;
-  return { href: url.href, amountPrefilled: true };
 }
 
 /** ISO 7064 MOD97 check digits, not a verification of account ownership or bank availability. */
@@ -146,7 +99,6 @@ export function readSupportConfig(value: unknown): SupportConfig | null {
   if (!record(value) || value.enabled !== true) return null;
   const recipient = plainText(value.recipient, 140);
   if (!recipient) return null;
-  const paypalUrl = supportPayPalUrl(value.paypalUrl);
   const candidates =
     Array.isArray(value.bankAccounts) && value.bankAccounts.length <= 6 ? value.bankAccounts : [];
   const ids = candidates.map((account) => (record(account) ? plainText(account.id, 40) : null));
@@ -155,8 +107,8 @@ export function readSupportConfig(value: unknown): SupportConfig | null {
     const bank = readBankAccount(account);
     return bank ? [bank] : [];
   });
-  if (!paypalUrl && !bankAccounts.length) return null;
-  return { recipient, paypalUrl, bankAccounts, purpose: "Podrška razvoju AhiBizza" };
+  if (!bankAccounts.length) return null;
+  return { recipient, bankAccounts, purpose: "Podrška razvoju AhiBizza" };
 }
 
 export function getSupportConfig(): SupportConfig | null {

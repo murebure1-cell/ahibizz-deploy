@@ -94,6 +94,29 @@ export async function readPublicReel(
   return (rows[0] as PublicReel | undefined) ?? null;
 }
 
+/**
+ * A Reel that was public and ran out its 24 hours, so a saved link or notification can say so
+ * instead of "not found". Withdrawn, rejected and removed Reels stay hidden.
+ */
+export async function readEndedReel(
+  id: string,
+  viewerId: string | null = null,
+  database: PublicReadDatabase | null = publicReadDatabase(),
+): Promise<{ businessId: string; businessTitle: string } | null> {
+  if (!businessUuid(id) || !database) return null;
+  const { rows } = await database.query(
+    `SELECT r.business_id AS "businessId", b.title AS "businessTitle" ${fromReels}
+       JOIN auth_user u ON u.id=b.owner_user_id
+     WHERE r.id=$1 AND r.published_at IS NOT NULL
+       AND (r.status='expired' OR (r.status='published' AND NOT (${live})))
+       AND b.deleted_at IS NULL AND b.status='published' AND b.owner_user_id=r.submitted_by
+       AND u.approval='approved' AND u."emailVerified" AND u.role IN ('member','owner')
+       AND ${visibleToViewer("$2")}`,
+    [id, viewerId],
+  );
+  return (rows[0] as { businessId: string; businessTitle: string } | undefined) ?? null;
+}
+
 /** View the selected clip first, then older clips, followed by remaining newer clips once. */
 export async function readReelFeed(
   cursor: string,

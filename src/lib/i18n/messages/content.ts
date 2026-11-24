@@ -1058,12 +1058,6 @@ export const content: Messages = {
     "أدخل مبلغًا أكبر من صفر مع رقمين عشريين كحد أقصى.",
     "Sıfırdan büyük, en fazla iki ondalıklı bir tutar gir.",
   ],
-  "Doniraj putem PayPala": [
-    "Donate with PayPal",
-    "Mit PayPal spenden",
-    "تبرّع عبر PayPal",
-    "PayPal ile bağış yap",
-  ],
   "Uplata iz BiH": [
     "Payment from Bosnia and Herzegovina",
     "Zahlung aus Bosnien und Herzegowina",

@@ -143,20 +143,15 @@
   background: var(--ui-surface);
   font-size: 16px;
 }
-.customAmount span[role="status"],
-.paymentNote {
+.customAmount span[role="status"] {
   color: var(--muted);
   font-size: 14px;
   font-weight: 500;
   line-height: 1.5;
 }
-.paymentNote {
-  margin: 0;
-}
 .bankDetails {
   min-width: 0;
 }
-.paypalButton,
 .copyButton {
   display: inline-flex;
   align-items: center;
@@ -176,21 +171,6 @@
     border-color 0.16s ease,
     transform 0.16s ease;
 }
-.paypalButton {
-  color: var(--ui-on-accent);
-  border-color: var(--ui-accent-border);
-  background: var(--ui-accent);
-  box-shadow: 0 8px 20px #ac83331a;
-}
-.paypalButton:hover:not(:disabled) {
-  background: var(--ui-accent);
-  transform: translateY(-1px);
-}
-.paypalButton:disabled {
-  cursor: default;
-  opacity: 0.62;
-}
-.paypalButton svg,
 .copyButton svg {
   width: 18px;
   height: 18px;
@@ -320,11 +300,9 @@
   .card {
     animation: none;
   }
-  .paypalButton,
   .copyButton {
     transition: none;
   }
-  .paypalButton:hover:not(:disabled),
   .copyButton:hover:not(:disabled) {
     transform: none;
   }
