@@ -138,7 +138,9 @@ test("archive identity extraction preserves and hashes the original config bytes
     mkdirSync(path.dirname(path.join(input, member)), { recursive: true });
     writeFileSync(path.join(input, member), JSON.stringify(configuration));
     writeFileSync(path.join(input, "manifest.json"), JSON.stringify(manifest()));
-    const pack = spawnSync("tar", ["-cf", archive, "-C", input, "manifest.json", member], {
+    // A relative archive name: GNU tar reads "C:\..." as a remote host on Windows.
+    const pack = spawnSync("tar", ["-cf", "image.tar", "-C", input, "manifest.json", member], {
+      cwd: directory,
       encoding: "utf8",
     });
     assert.equal(pack.status, 0, pack.stderr);

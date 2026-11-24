@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
 import { type AccountOverviewFacts, readOverview } from "../../lib/account-overview";
 import type { AccountSection } from "../../lib/account-return";

@@ -31,7 +31,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const locale = await getLocale();
   const t = await getTranslator();
   return (
-    // biome-ignore lint/a11y/useValidLang: The Bosnian code bs is valid BCP 47 but missing from this rule's registry.
     <html lang={locale} dir={isRtl(locale) ? "rtl" : "ltr"} suppressHydrationWarning>
       <head>
         <script

@@ -50,6 +50,9 @@ export function createNextConfig(distribution: string): NextConfig {
             { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
             { key: "X-Frame-Options", value: "DENY" },
             { key: "Permissions-Policy", value: "camera=(), microphone=()" },
+            // Browsers ignore this header over plain HTTP, so local development is unaffected.
+            // No includeSubDomains or preload: other services may share the final domain.
+            { key: "Strict-Transport-Security", value: "max-age=31536000" },
           ],
         },
         {
