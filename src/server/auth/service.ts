@@ -43,11 +43,18 @@ export function createAuthService(options: {
   sendEmail: AuthEmailSender;
   production?: boolean;
   ingress?: AuthIngressConfiguration | null;
+  /**
+   * Raise the per-path limits when no client IP is trusted. Without one, Better Auth keeps a
+   * single bucket per path for everybody, so ten sign-ins a minute would lock out the whole
+   * platform. Only for callers that also enforce per-address limits (handleAuthRequest).
+   */
+  sharedBucketCeilings?: boolean;
 }) {
   const production = options.production ?? process.env.NODE_ENV === "production";
   const baseURL = authOrigin(options.baseURL, production);
   const secret = authSecret(options.secret);
   const ipAddressHeaders = authIpAddressHeaders(options.ingress);
+  const shared = Boolean(options.sharedBucketCeilings) && ipAddressHeaders.length === 0;
   const sendEmail = guardedAuthEmailSender(baseURL, options.sendEmail);
   return betterAuth({
     appName: "AhiBizz",
@@ -104,12 +111,14 @@ export function createAuthService(options: {
       storage: "database",
       modelName: "auth_rate_limit",
       window: 60,
-      max: 100,
+      max: shared ? 600 : 100,
+      // With a trusted client IP these are per-visitor limits. Without one they are platform-wide
+      // flood ceilings, and createEmailRateLimiter limits each address instead.
       customRules: {
-        "/sign-in/email": { window: 60, max: 10 },
-        "/sign-up/email": { window: 60, max: 5 },
-        "/request-password-reset": { window: 60, max: 5 },
-        "/send-verification-email": { window: 60, max: 5 },
+        "/sign-in/email": { window: 60, max: shared ? 120 : 10 },
+        "/sign-up/email": { window: 60, max: shared ? 30 : 5 },
+        "/request-password-reset": { window: 60, max: shared ? 30 : 5 },
+        "/send-verification-email": { window: 60, max: shared ? 30 : 5 },
       },
     },
     advanced: {
@@ -188,6 +197,8 @@ export function getAuthService(): AuthService | null {
     pool,
     ...configuration,
     sendEmail: createSmtpSender(configuration.smtp),
+    // handleAuthRequest adds per-address limits on every sign-in, sign-up and email request.
+    sharedBucketCeilings: true,
   });
   servicePool = pool;
   return service;

@@ -1959,6 +1959,38 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           assert.equal((await session(otherDevice)).user.id, userId);
         },
       );
+      await t.test(
+        "per-address limits count atomically in auth_rate_limit and restart after the window",
+        async () => {
+          const { createEmailRateLimiter } = await import(
+            "../../src/server/auth/email-rate-limit.ts"
+          );
+          let now = Date.now();
+          const limit = createEmailRateLimiter(pool, "ci-email-limit-secret", () => now);
+          const decisions = await Promise.all(
+            Array.from({ length: 10 }, () => limit("/sign-in/email", "Race@Fixture.invalid")),
+          );
+          assert.equal(decisions.filter((decision) => decision.allowed).length, 8);
+          assert.ok(
+            decisions
+              .filter((decision) => !decision.allowed)
+              .every((decision) => decision.retryAfter > 0 && decision.retryAfter <= 900),
+          );
+          const counters = (
+            await pool.query(
+              "SELECT key,count FROM auth_rate_limit WHERE key LIKE 'ahibizz-email:%'",
+            )
+          ).rows;
+          assert.equal(counters.length, 1);
+          assert.equal(counters[0].count, 10);
+          assert.equal(counters[0].key.toLowerCase().includes("race"), false);
+          now += 15 * 60_000;
+          assert.deepEqual(await limit("/sign-in/email", "race@fixture.invalid"), {
+            allowed: true,
+          });
+          await pool.query("DELETE FROM auth_rate_limit WHERE key LIKE 'ahibizz-email:%'");
+        },
+      );
       assert.ok(
         (await pool.query("SELECT count(*)::integer AS n FROM auth_rate_limit")).rows[0].n > 0,
       );
