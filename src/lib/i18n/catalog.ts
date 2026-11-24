@@ -33,6 +33,12 @@ const shell: Record<string, CatalogEntry> = {
     "انتقل إلى المحتوى",
     "İçeriğe geç",
   ),
+  "Učitavanje stranice": e(
+    "Loading the page",
+    "Seite wird geladen",
+    "جارٍ تحميل الصفحة",
+    "Sayfa yükleniyor",
+  ),
   "AhiBizz — početna": e(
     "AhiBizz — home",
     "AhiBizz — Startseite",

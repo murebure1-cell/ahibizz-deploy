@@ -31,6 +31,9 @@ export function createNextConfig(distribution: string): NextConfig {
       };
     },
     output: "standalone",
+    // Reuse a page visited in the last 30 seconds on Back or a repeat tap instead of waiting for
+    // the server again. Sign-in and sign-out reload the whole page, which clears this cache.
+    experimental: { staleTimes: { dynamic: 30, static: 180 } },
     serverExternalPackages: ["nodemailer"],
     poweredByHeader: false,
     async headers() {

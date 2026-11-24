@@ -6,6 +6,7 @@ import { AppAppearance } from "../appearance/AppAppearance";
 import { FavoritesProvider } from "../favorites/FavoritesProvider";
 import { DeviceLocationProvider } from "../location/DeviceLocation";
 import { MobileDock } from "../MobileDock";
+import { NavigationProgress } from "../NavigationProgress";
 import { AppPwaProvider } from "../pwa/AppPwa";
 import { ImageArrival } from "./ImageArrival";
 
@@ -15,6 +16,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
   if (usePathname() === designerFramePath) return <>{children}</>;
   return (
     <AppAppearance>
+      <Suspense>
+        <NavigationProgress />
+      </Suspense>
       <ImageArrival />
       <DeviceLocationProvider>
         <AppPwaProvider>{children}</AppPwaProvider>
