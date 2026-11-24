@@ -38,7 +38,7 @@
 }
 .label {
   margin: 0 0 7px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-muted);
 }
@@ -46,7 +46,7 @@
   margin: 7px 0 0;
   color: var(--ui-text-secondary);
   overflow-wrap: anywhere;
-  font-size: 14px;
+  font-size: 15px;
 }
 .panel form {
   display: grid;
@@ -58,7 +58,7 @@
 .panel label {
   display: grid;
   gap: 9px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
   color: var(--ui-text-secondary);
 }

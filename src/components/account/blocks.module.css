@@ -47,7 +47,7 @@
   display: block;
   margin-top: 5px;
   color: var(--ui-text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
 }
 .list {
   list-style: none;

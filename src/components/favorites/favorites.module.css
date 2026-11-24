@@ -17,7 +17,7 @@
   background: var(--ui-surface);
   color: var(--ui-text);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
   cursor: pointer;
   text-decoration: none;
@@ -60,7 +60,7 @@
   max-width: 220px;
   color: var(--ui-danger);
   background: var(--ui-surface);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.45;
   padding: 8px;
   border-radius: 8px;

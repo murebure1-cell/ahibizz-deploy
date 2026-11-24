@@ -17,7 +17,7 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  font-size: 14px;
+  font-size: 15px;
 }
 .save {
   display: inline-flex;
@@ -47,7 +47,7 @@
   flex: 0 0 18px;
 }
 .save [role="status"] {
-  font-size: 13px;
+  font-size: 14px;
 }
 .list ul {
   margin: 0;

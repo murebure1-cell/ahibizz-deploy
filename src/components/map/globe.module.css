@@ -44,7 +44,7 @@
 }
 .top span {
   color: #e9ca8a;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -106,7 +106,7 @@
   border-radius: 999px;
   background: #e9ca8a;
   color: #102337;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 750;
   text-align: center;
 }
@@ -121,7 +121,7 @@
   background: transparent;
   color: #fff;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -148,7 +148,7 @@
   background: #ffffff12;
   color: #fff;
   font: inherit;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -156,7 +156,7 @@
 .notice {
   margin: 0;
   color: #c9d6e2;
-  font-size: 13px;
+  font-size: 14px;
 }
 .card {
   position: absolute;
@@ -184,7 +184,7 @@
 }
 .card span {
   color: #c9d6e2;
-  font-size: 13px;
+  font-size: 14px;
 }
 .card a {
   padding: 10px 14px;

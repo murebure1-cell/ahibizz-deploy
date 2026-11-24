@@ -36,7 +36,7 @@
 }
 .kicker {
   color: #e9ca8a;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -52,7 +52,7 @@
   gap: 4px;
   margin-top: 4px;
   color: #c9d6e2;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
 }
 .cta svg {

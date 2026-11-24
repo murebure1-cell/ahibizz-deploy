@@ -14,7 +14,7 @@
   padding: 10px 16px;
   border-radius: 9px;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   width: 100%;
 }
@@ -26,7 +26,7 @@
   margin: 18px 0 13px;
 }
 .search > label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ui-text-secondary);
 }
@@ -72,7 +72,7 @@
   border: 0;
   background: var(--ui-surface);
   color: var(--ui-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
 }
 .results button:hover {
@@ -106,7 +106,7 @@
     contrast(0.95);
 }
 .map :global(.leaflet-control-attribution) {
-  font-size: 9px;
+  font-size: 12px;
   background: #ffffffed;
   max-width: 100%;
   line-height: 1.6;
@@ -218,13 +218,13 @@
   padding: 9px;
   background: var(--ui-surface-soft);
   border-radius: 8px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ui-accent-text);
   pointer-events: none;
 }
 .notice,
 .error {
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
   margin: 10px 0;
 }
@@ -243,7 +243,7 @@
   background: var(--ui-accent);
   color: var(--ui-on-accent);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
   margin-top: 12px;
 }
@@ -253,7 +253,7 @@
   align-items: center;
   gap: 12px;
   margin: 9px 0 4px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ui-muted);
 }
 .footer button {
@@ -262,12 +262,12 @@
   text-decoration: underline;
   min-height: 35px;
   color: var(--ui-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .credit {
   display: block;
   color: var(--ui-muted);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.7;
 }
 .credit a {

@@ -65,7 +65,7 @@
 }
 .author a,
 .author strong {
-  font-size: 14px;
+  font-size: 15px;
   color: inherit;
   font-weight: 700;
   text-decoration: none;
@@ -73,7 +73,7 @@
 .author time {
   display: block;
   color: var(--ui-text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   margin-top: 3px;
 }
 .stars {
@@ -121,7 +121,7 @@ span.stars span {
 }
 .form legend,
 .text {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
 }
 .rating {
@@ -181,7 +181,7 @@ span.stars span {
   min-height: 44px;
   border-radius: 12px;
   font: inherit;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 650;
   cursor: pointer;
   text-decoration: none;
@@ -204,11 +204,11 @@ span.stars span {
 }
 .error {
   color: var(--ui-danger);
-  font-size: 14px;
+  font-size: 15px;
 }
 .notice {
   color: var(--ui-success);
-  font-size: 14px;
+  font-size: 15px;
 }
 .sr {
   position: absolute;

@@ -63,7 +63,7 @@
   align-items: center;
   gap: 6px;
   font-weight: 650;
-  font-size: 0.88rem;
+  font-size: 0.9375rem;
   min-height: 38px;
   color: var(--ui-accent-text);
   text-decoration: none;
@@ -87,7 +87,7 @@
   margin-inline-start: auto;
 }
 .empty {
-  font-size: 0.88rem;
+  font-size: 0.9375rem;
   margin-bottom: 3px;
 }
 @media (max-width: 540px) {

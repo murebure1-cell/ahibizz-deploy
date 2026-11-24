@@ -8,7 +8,7 @@
   color: var(--ui-danger);
   border-radius: 13px;
   margin-bottom: 20px;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
 }
 .error button {
@@ -27,10 +27,10 @@
   background: var(--ui-success-soft);
   color: var(--ui-success);
   border-radius: 10px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .loading {
-  font-size: 13px;
+  font-size: 14px;
   padding: 20px;
   color: var(--ui-muted);
 }
@@ -59,7 +59,7 @@
 .visibility p {
   margin: 0;
   color: var(--ui-text-secondary);
-  font-size: 14px;
+  font-size: 15px;
 }
 .visibility button {
   display: inline-flex;
@@ -72,7 +72,7 @@
   background: var(--ui-surface);
   color: var(--ui-text);
   font: inherit;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 650;
   cursor: pointer;
 }
@@ -82,7 +82,7 @@
 }
 .visibility button small {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
 }
 .visibilitySwitch {
@@ -114,7 +114,7 @@
 }
 .visibility a {
   color: var(--ui-text);
-  font-size: 14px;
+  font-size: 15px;
   text-underline-offset: 4px;
 }
 .visibility button:disabled {
