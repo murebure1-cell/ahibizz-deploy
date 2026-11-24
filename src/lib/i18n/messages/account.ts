@@ -37,6 +37,12 @@ export const account: Messages = {
   Pregled: ["Overview", "Übersicht", "نظرة عامة", "Genel bakış"],
   "Moj profil": ["My profile", "Mein Profil", "ملفي", "Profilim"],
   "Lični nalog": ["Personal account", "Persönliches Konto", "الحساب الشخصي", "Kişisel hesap"],
+  "Upravljanje platformom": [
+    "Manage the platform",
+    "Plattform verwalten",
+    "إدارة المنصة",
+    "Platformu yönet",
+  ],
   Administrator: ["Administrator", "Administrator", "المسؤول", "Yönetici"],
   "Više odjeljaka naloga, odabrano: {section}": [
     "More account sections, selected: {section}",

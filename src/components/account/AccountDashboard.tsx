@@ -247,19 +247,27 @@ function AccountWorkspace({
                   className={styles.otherSections}
                   data-expanded={moreMenu}
                 >
-                  {([msg("Lični nalog"), msg("Poslovanje")] as const).map((group) => (
-                    <section className={styles.menuGroup} aria-label={t(group)} key={group}>
-                      <span className={styles.groupLabel} aria-hidden="true">
-                        {t(group)}
-                      </span>
-                      {menu.filter((item) => item.group === group).map(tab)}
-                    </section>
-                  ))}
+                  {([msg("Lični nalog"), msg("Poslovanje")] as const)
+                    // A group without items would show a bare heading above whatever follows it.
+                    .filter((group) => menu.some((item) => item.group === group))
+                    .map((group) => (
+                      <section className={styles.menuGroup} aria-label={t(group)} key={group}>
+                        <span className={styles.groupLabel} aria-hidden="true">
+                          {t(group)}
+                        </span>
+                        {menu.filter((item) => item.group === group).map(tab)}
+                      </section>
+                    ))}
                   {profile.role === "owner" && (
-                    <Link href="/administracija" className={styles.adminLink}>
-                      <Icon name="shield" />
-                      {t("Administracija")}
-                    </Link>
+                    <section className={styles.menuGroup} aria-label={t("Administracija")}>
+                      <span className={styles.groupLabel} aria-hidden="true">
+                        {t("Administracija")}
+                      </span>
+                      <Link href="/administracija" className={styles.adminLink}>
+                        <Icon name="shield" />
+                        {t("Upravljanje platformom")}
+                      </Link>
+                    </section>
                   )}
                 </div>
               </nav>
