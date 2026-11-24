@@ -71,7 +71,9 @@ export function StayEntry({
       {owner ? (
         <span>{entry.unitName}</span>
       ) : (
-        <Link href={`/djelatnosti/${entry.businessId}`}>{entry.businessTitle}</Link>
+        <Link href={`/djelatnosti/${entry.businessId}`} dir="auto">
+          {entry.businessTitle}
+        </Link>
       )}
       <p>
         {starts} — {ends}

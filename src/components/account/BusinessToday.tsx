@@ -178,7 +178,7 @@ export function BusinessToday({ accountId, active }: { accountId: string; active
                   <ul>
                     {group.entries.map((entry) => (
                       <li key={entry.id}>
-                        <span>{entry.name}</span>
+                        <span dir="auto">{entry.name}</span>
                         <small>
                           {entry.time} · {t(status[entry.status] ?? "")}
                         </small>

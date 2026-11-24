@@ -106,7 +106,7 @@ export function SavedSearchList({
             <li key={item.filters}>
               <Link href={`/pretraga${item.filters}`}>
                 <Icon name="search" />
-                <span>{item.label}</span>
+                <span dir="auto">{item.label}</span>
                 <Icon name="chevron" />
               </Link>
               <button

@@ -272,7 +272,9 @@ function ReelSlide({
             <BusinessLogo src={logo} alt="" sizes="44px" />
           </span>
           <span className={styles.identityCopy}>
-            <strong className={styles.author}>{reel.businessTitle}</strong>
+            <strong className={styles.author} dir="auto">
+              {reel.businessTitle}
+            </strong>
             {reel.publishedAt && (
               <time className={styles.meta} dateTime={reel.publishedAt} suppressHydrationWarning>
                 {ageLabel(reel.publishedAt, t)}
@@ -366,11 +368,19 @@ function ReelSlide({
           </span>
           <div className={styles.teaserText}>
             {active ? (
-              <h1 className={styles.teaserTitle}>{reel.title}</h1>
+              <h1 className={styles.teaserTitle} dir="auto">
+                {reel.title}
+              </h1>
             ) : (
-              <strong className={styles.teaserTitle}>{reel.title}</strong>
+              <strong className={styles.teaserTitle} dir="auto">
+                {reel.title}
+              </strong>
             )}
-            {reel.city && <span className={styles.teaserMeta}>{reel.city}</span>}
+            {reel.city && (
+              <span className={styles.teaserMeta} dir="auto">
+                {reel.city}
+              </span>
+            )}
           </div>
           <Link href={businessPath} prefetch={false} className={styles.profileButton}>
             {t("Pogledaj djelatnost")}

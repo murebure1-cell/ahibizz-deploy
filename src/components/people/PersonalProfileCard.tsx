@@ -132,18 +132,22 @@ export function PersonalProfileCard({
         </div>
         <div className={styles.heading}>
           <h2 data-design="personal-name">
-            {profile.name}
+            <bdi>{profile.name}</bdi>
             {profile.verified && <VerificationBadge kind="person" />}
           </h2>
           <PlatformBadges
             platformFounder={profile.platformFounder}
             platformAdministrator={profile.platformAdministrator}
           />
-          {profile.bio && <p className={styles.intro}>{profile.bio}</p>}
+          {profile.bio && (
+            <p className={styles.intro} dir="auto">
+              {profile.bio}
+            </p>
+          )}
           {location && (
             <p className={styles.location}>
               <Icon name="pin" />
-              {location}
+              <bdi>{location}</bdi>
             </p>
           )}
           {profile.workStatus !== "not_specified" && (
@@ -212,7 +216,7 @@ export function PersonalProfileCard({
               {profile.city && (
                 <div>
                   <dt>{t("Grad")}</dt>
-                  <dd>{profile.city}</dd>
+                  <dd dir="auto">{profile.city}</dd>
                 </div>
               )}
               {country && (

@@ -708,6 +708,10 @@ a {
 [dir="rtl"] :is(svg[data-icon="arrow"], svg[data-icon="chevron"]) {
   scale: -1 1;
 }
+/* Typed text follows its own direction: Latin names stay left to right in the Arabic interface. */
+:is(input:not([type="checkbox"], [type="radio"], [type="range"]), textarea) {
+  unicode-bidi: plaintext;
+}
 .language-picker {
   display: inline-flex;
   align-items: center;

@@ -427,10 +427,10 @@ export function BusinessReviews({
               <div>
                 {review.author.id ? (
                   <Link href={`/ljudi/${encodeURIComponent(review.author.id)}`}>
-                    {review.author.name}
+                    <bdi>{review.author.name}</bdi>
                   </Link>
                 ) : (
-                  <strong>{review.author.name}</strong>
+                  <strong dir="auto">{review.author.name}</strong>
                 )}
                 <time dateTime={review.createdAt}>{localDate(review.createdAt, locale)}</time>
               </div>
@@ -443,7 +443,7 @@ export function BusinessReviews({
                 <span aria-hidden="true">{"☆".repeat(5 - review.rating)}</span>
               </span>
             </header>
-            <p>{review.text}</p>
+            <p dir="auto">{review.text}</p>
             <Link href={reportUrl("review", review.id)}>{t("Prijavi recenziju")}</Link>
           </article>
         ))}
