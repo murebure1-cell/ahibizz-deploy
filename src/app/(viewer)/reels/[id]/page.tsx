@@ -1,8 +1,11 @@
+import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import styles from "../../../../components/directory/public-search.module.css";
 import { ReelViewer } from "../../../../components/reels/ReelViewer";
 import { reelClosePath } from "../../../../lib/reel-navigation";
-import { titled } from "../../../../server/i18n";
-import { readPublicReel, readReelFeed } from "../../../../server/reels/service";
+import { getTranslator, titled } from "../../../../server/i18n";
+import { readEndedReel, readPublicReel, readReelFeed } from "../../../../server/reels/service";
 import { currentReelViewer } from "../../../../server/reels/viewer";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +25,46 @@ export default async function ReelPage({
 }) {
   const [{ id }, filter, viewer] = await Promise.all([params, searchParams, currentReelViewer()]);
   const reel = await readPublicReel(id.toLowerCase(), viewer);
-  if (!reel) notFound();
+  if (!reel) {
+    // Notifications and shared links outlive a Reel's 24 hours; explain that instead of a 404.
+    const ended = await readEndedReel(id.toLowerCase(), viewer).catch(() => null);
+    if (!ended) notFound();
+    const t = await getTranslator();
+    return (
+      <main id="glavni-sadrzaj" className={styles.page}>
+        <Link
+          href="/"
+          className="brand"
+          aria-label={t("AhiBizz — početna")}
+          style={{ display: "inline-block", marginBottom: 24 }}
+        >
+          <Image
+            src="/brand/ahi-logo-color.svg"
+            alt="AhiBizz"
+            width={148}
+            height={40}
+            unoptimized
+          />
+        </Link>
+        <section className={styles.unavailable}>
+          <h1>{t("Ovaj Reel je istekao.")}</h1>
+          <p>
+            {t("Reel je vidljiv 24 sata od objave. Djelatnost {name} i dalje možeš pogledati.", {
+              name: ended.businessTitle,
+            })}
+          </p>
+          <p style={{ display: "flex", flexWrap: "wrap", gap: 18, marginTop: 14 }}>
+            <Link className="text-link" href={`/djelatnosti/${ended.businessId}`}>
+              {t("Pogledaj djelatnost")}
+            </Link>
+            <Link className="text-link" href="/reels">
+              {t("Ostali Reelsi")}
+            </Link>
+          </p>
+        </section>
+      </main>
+    );
+  }
   const businessId = filter.djelatnost === reel.businessId ? reel.businessId : null;
   const feed = await readReelFeed(reel.id, businessId, viewer).catch(() => ({
     items: [],

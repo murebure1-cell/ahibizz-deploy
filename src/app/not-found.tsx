@@ -13,6 +13,8 @@ export default async function NotFound() {
     <main id="glavni-sadrzaj" className={styles.page}>
       <Link
         href="/"
+        // "brand" lets the dark theme switch the navy wordmark to white, as in the site header.
+        className="brand"
         aria-label={t("AhiBizz — početna")}
         style={{ display: "inline-block", marginBottom: 24 }}
       >

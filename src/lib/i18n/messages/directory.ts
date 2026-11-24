@@ -69,6 +69,19 @@ export const directory: Messages = {
     "ربما يكون الرابط خاطئًا أو تمت إزالة الصفحة.",
     "Bağlantı yanlış olabilir ya da sayfa kaldırılmış olabilir.",
   ],
+  "Ovaj Reel je istekao.": [
+    "This Reel has ended.",
+    "Dieses Reel ist abgelaufen.",
+    "انتهت مدة هذا الريل.",
+    "Bu Reel'in süresi doldu.",
+  ],
+  "Reel je vidljiv 24 sata od objave. Djelatnost {name} i dalje možeš pogledati.": [
+    "A Reel is shown for 24 hours after it is published. You can still visit {name}.",
+    "Ein Reel ist 24 Stunden nach der Veröffentlichung sichtbar. {name} kannst du weiterhin ansehen.",
+    "يظهر الريل لمدة 24 ساعة بعد نشره. لا يزال بإمكانك زيارة {name}.",
+    "Bir Reel yayınlandıktan sonra 24 saat görünür. {name} sayfasını yine de ziyaret edebilirsin.",
+  ],
+  "Ostali Reelsi": ["Other Reels", "Weitere Reels", "ريلز أخرى", "Diğer Reels"],
   "Otvori fotografiju {number} od {total}": [
     "Open photo {number} of {total}",
     "Foto {number} von {total} öffnen",
