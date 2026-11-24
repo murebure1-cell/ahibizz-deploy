@@ -56,7 +56,8 @@
   --ui-surface-soft: #20374a;
   --ui-surface-hover: #294359;
   --ui-input: #112436;
-  --ui-border: #3b5367;
+  /* Hairlines sit just above the surface: at #3b5367 every chip and card drew its own box. */
+  --ui-border: #243749;
   --ui-border-strong: #6e879b;
   --ui-primary: #ecd28f;
   --ui-primary-hover: #f4dda5;
@@ -240,10 +241,10 @@ a {
   margin-left: auto;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: 13px;
+  background: var(--ui-surface);
   color: var(--ui-text);
-  background: transparent;
 }
 .header-menu[hidden] {
   display: none;

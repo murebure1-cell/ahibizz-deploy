@@ -317,15 +317,7 @@ export function HomeSurface({
           </Form>
         </div>
       </section>
-      {slots?.categories ?? (
-        <HomeCategories
-          t={t}
-          categories={categories}
-          searchAction={
-            place ? `${searchAction}?${new URLSearchParams({ [placeField]: place })}` : searchAction
-          }
-        />
-      )}
+      {slots?.categories ?? <HomeCategories t={t} categories={categories} />}
       {hasAd && slots?.floatingAd}
       {design.homeOrder.map((id) => (
         <Fragment key={id}>

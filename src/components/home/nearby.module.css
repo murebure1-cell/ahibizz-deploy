@@ -75,17 +75,17 @@
   cursor: pointer;
   list-style: none;
   padding: 8px 14px;
-  border: 1px solid var(--ui-accent-border);
+  border: 1px solid transparent;
   border-radius: 999px;
   color: var(--ui-accent-text);
-  background: transparent;
+  background: var(--ui-accent-soft);
   font-weight: 600;
 }
 .city summary::-webkit-details-marker {
   display: none;
 }
 .city[open] summary {
-  background: var(--ui-accent-soft);
+  border-color: var(--ui-accent-border);
 }
 .form {
   display: flex;

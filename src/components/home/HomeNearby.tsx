@@ -12,7 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { fetchNearbyPages, nearbyDirectoryPath, nearbyRadiusKm } from "../../lib/home-nearby";
+import { fetchNearbyPages, nearbyDirectoryPath } from "../../lib/home-nearby";
 import type { PublicBusinessView } from "../../lib/public-business";
 import { DirectoryResultCard } from "../directory/DirectoryResultCard";
 import { Icon } from "../Icon";
@@ -185,20 +185,21 @@ function useNearby() {
 export function HomeNearbyControl() {
   const t = useT();
   const { location, chooseGps, chooseCity, place, useGps, refresh } = useNearby();
-  return (
-    <div className={styles.controls}>
-      {useGps && location.point ? (
+  // With a working device location the list speaks for itself; only a refresh needs a status line.
+  if (useGps && location.point)
+    return refresh ? (
+      <div className={styles.controls}>
         <span className={styles.current} role="status">
           <Icon name="pin" />
           {refresh === "pending"
             ? t("Osvježavamo rezultate…")
-            : refresh === "failed"
-              ? t("Rezultati za prethodnu lokaciju")
-              : t("Moja lokacija · {km} km", { km: nearbyRadiusKm })}
+            : t("Rezultati za prethodnu lokaciju")}
         </span>
-      ) : location.permission === "denied" ? (
-        <span className={styles.current}>{t("Lokacija je isključena")}</span>
-      ) : (
+      </div>
+    ) : null;
+  return (
+    <div className={styles.controls}>
+      {location.permission === "denied" ? null : (
         <button
           type="button"
           className={styles.locate}
