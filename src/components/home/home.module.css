@@ -333,14 +333,31 @@
   }
 }
 .subtleLink {
+  /* A bordered pill, so the link reads as something to tap and not as plain text. */
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 13px;
+  gap: 6px;
+  font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
-  min-height: 44px;
-  padding-block: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .subtleLink:hover {
+    border-color: var(--ui-accent-border);
+    background: var(--ui-surface-hover);
+  }
+}
+.subtleLink:active {
+  background: var(--ui-surface-hover);
 }
 .subtleLink svg {
   width: 15px;

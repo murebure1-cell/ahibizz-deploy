@@ -90,7 +90,32 @@
 html {
   scroll-padding-top: 100px;
 }
+/* Bricolage Grotesque (SIL Open Font License), self-hosted: no request leaves the site.
+   One variable file per subset serves every weight; latin-ext carries č, ć, đ, š, ž, ğ and ş. */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/bricolage-grotesque-latin-ext.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/bricolage-grotesque-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 body {
+  --font-display:
+    "Bricolage Grotesque", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   margin: 0;
   background: var(--paper);
   color: var(--ink);
@@ -130,7 +155,21 @@ h2,
 h3 {
   font-weight: 650;
   line-height: 1.12;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.025em;
+  /* Even line lengths instead of one orphaned word. */
+  text-wrap: balance;
+}
+/* Page and section titles carry the brand voice; dense UI text stays on the system face. */
+h1,
+h2 {
+  font-family: var(--font-display);
+}
+p {
+  text-wrap: pretty;
+}
+input,
+textarea {
+  caret-color: var(--ui-accent);
 }
 button,
 input,
@@ -423,15 +462,6 @@ a {
   border-radius: 50%;
   background: radial-gradient(circle, #d8ae6140, transparent 68%);
   content: "";
-}
-.art-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(#ffffff06 1px, transparent 1px),
-    linear-gradient(90deg, #ffffff06 1px, transparent 1px);
-  background-size: 47px 47px;
-  mask-image: linear-gradient(transparent, #000 40%, transparent);
 }
 .orbit {
   position: absolute;
