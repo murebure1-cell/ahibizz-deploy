@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { Pool } from "pg";
-import { authOrigin, authSecret, readAuthConfiguration } from "./config";
+import { authOrigin, authSecret, type GoogleConfiguration, readAuthConfiguration } from "./config";
 import { type AuthIngressConfiguration, authIpAddressHeaders } from "./ingress";
 import { type AuthEmailSender, createSmtpSender, guardedAuthEmailSender } from "./mail";
 
@@ -36,6 +36,16 @@ export async function readCurrentAuthUser(pool: Pool, id: string): Promise<Curre
   return user;
 }
 
+/** The provider of an OAuth callback; Better Auth reports the path as a pattern or as sent. */
+export function oauthCallbackProvider(
+  context: { path?: string; params?: Record<string, unknown> } | null | undefined,
+): string | null {
+  const path = context?.path;
+  if (!path?.startsWith("/callback/")) return null;
+  const id = context?.params?.id ?? path.slice("/callback/".length);
+  return typeof id === "string" && id !== ":id" ? id : null;
+}
+
 export function createAuthService(options: {
   pool: Pool;
   baseURL: string;
@@ -49,6 +59,8 @@ export function createAuthService(options: {
    * platform. Only for callers that also enforce per-address limits (handleAuthRequest).
    */
   sharedBucketCeilings?: boolean;
+  /** Google sign-in; accounts it creates still wait for administrator approval. */
+  google?: GoogleConfiguration | null;
 }) {
   const production = options.production ?? process.env.NODE_ENV === "production";
   const baseURL = authOrigin(options.baseURL, production);
@@ -56,11 +68,23 @@ export function createAuthService(options: {
   const ipAddressHeaders = authIpAddressHeaders(options.ingress);
   const shared = Boolean(options.sharedBucketCeilings) && ipAddressHeaders.length === 0;
   const sendEmail = guardedAuthEmailSender(baseURL, options.sendEmail);
+  const google = options.google ?? null;
   return betterAuth({
     appName: "AhiBizz",
     baseURL,
     basePath: "/api/auth",
     secret,
+    ...(google
+      ? {
+          socialProviders: {
+            google: {
+              clientId: google.clientId,
+              clientSecret: google.clientSecret,
+              prompt: "select_account" as const,
+            },
+          },
+        }
+      : {}),
     database: options.pool,
     trustedOrigins: [baseURL],
     logger: { disabled: true },
@@ -104,7 +128,14 @@ export function createAuthService(options: {
       expiresIn: 30 * 86400,
       updateAge: 86400,
     },
-    account: { modelName: "auth_account", accountLinking: { enabled: false } },
+    account: {
+      modelName: "auth_account",
+      // Only Google may join an existing account, and only when that account's own email was
+      // confirmed here first (requireLocalEmailVerified) and Google confirmed the same address.
+      accountLinking: google
+        ? { enabled: true, trustedProviders: ["google"], requireLocalEmailVerified: true }
+        : { enabled: false },
+    },
     verification: { modelName: "auth_verification" },
     rateLimit: {
       enabled: true,
@@ -119,6 +150,8 @@ export function createAuthService(options: {
         "/sign-up/email": { window: 60, max: shared ? 30 : 5 },
         "/request-password-reset": { window: 60, max: shared ? 30 : 5 },
         "/send-verification-email": { window: 60, max: shared ? 30 : 5 },
+        // Starting Google sign-in sends no password; the provider limits its own attempts.
+        "/sign-in/social": { window: 60, max: shared ? 120 : 10 },
       },
     },
     advanced: {
@@ -144,8 +177,17 @@ export function createAuthService(options: {
     databaseHooks: {
       user: {
         create: {
-          before: async () => ({
-            data: { role: "member", approval: "pending", emailVerified: false },
+          // Every new account waits for approval. Only an account created in the Google callback
+          // keeps the address Google itself confirmed; email sign-ups confirm by link.
+          before: async (user, context) => ({
+            data: {
+              role: "member",
+              approval: "pending",
+              emailVerified:
+                Boolean(google) &&
+                oauthCallbackProvider(context) === "google" &&
+                user.emailVerified === true,
+            },
           }),
         },
         update: {
