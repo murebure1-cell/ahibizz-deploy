@@ -2,11 +2,13 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./support.module.css";
 
 type CopyStatus = "idle" | "copying" | "copied" | "manual";
 
 export function CopyPaymentDetails({ text }: { text: string }) {
+  const t = useT();
   const [status, setStatus] = useState<CopyStatus>("idle");
   const fallback = useRef<HTMLTextAreaElement>(null);
   const currentText = useRef(text);
@@ -40,19 +42,23 @@ export function CopyPaymentDetails({ text }: { text: string }) {
         disabled={status === "copying"}
         onClick={() => void copy()}
       >
-        {status === "copying" ? "Kopiram…" : status === "copied" ? "Kopirano" : "Kopiraj podatke"}
+        {status === "copying"
+          ? t("Kopiram…")
+          : status === "copied"
+            ? t("Kopirano")
+            : t("Kopiraj podatke")}
         {status === "copied" && <Icon name="check" />}
       </button>
       <p className={styles.copyStatus} role="status">
         {status === "copied"
-          ? "Podaci za uplatu su kopirani."
+          ? t("Podaci za uplatu su kopirani.")
           : status === "manual"
-            ? "Možeš ručno kopirati podatke ispod."
+            ? t("Možeš ručno kopirati podatke ispod.")
             : ""}
       </p>
       {status === "manual" && (
         <div className={styles.manualCopy}>
-          <label htmlFor={fallbackId}>Podaci za uplatu</label>
+          <label htmlFor={fallbackId}>{t("Podaci za uplatu")}</label>
           <textarea
             ref={fallback}
             id={fallbackId}

@@ -1,3 +1,4 @@
+import { msg } from "./i18n/translate";
 export const blockedPeoplePath = "/blokirani-korisnici";
 export type BlockState = { blockedByMe: boolean; canContact: boolean; version: number };
 export type BlockedPerson = { id: string; name: string; version: number };
@@ -41,10 +42,10 @@ export async function blocksRequest<T>(
 export function blockRequestMessage(error: unknown) {
   if (error instanceof BlockRequestError) {
     if (error.status === 401 || error.status === 403)
-      return "Prijavi se ponovo za pristup blokiranim korisnicima.";
-    if (error.status === 404) return "Ovaj korisnik trenutno nije dostupan.";
+      return msg("Prijavi se ponovo za pristup blokiranim korisnicima.");
+    if (error.status === 404) return msg("Ovaj korisnik trenutno nije dostupan.");
     if (error.code === "BLOCK_VERSION_CONFLICT")
-      return "Postavka se promijenila. Učitaj trenutno stanje.";
+      return msg("Postavka se promijenila. Učitaj trenutno stanje.");
   }
-  return "Postavku trenutno nije moguće potvrditi.";
+  return msg("Postavku trenutno nije moguće potvrditi.");
 }

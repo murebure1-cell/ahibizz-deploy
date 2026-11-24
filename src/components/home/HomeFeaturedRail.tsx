@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { readHomeCardPage } from "../../lib/home-nearby";
 import type { PublicBusinessView } from "../../lib/public-business";
 import { DirectoryResultCard } from "../directory/DirectoryResultCard";
+import { useT } from "../i18n/LocaleProvider";
 import { HomeBusinessRail } from "./HomeSurface";
 import styles from "./nearby.module.css";
 
@@ -22,6 +23,7 @@ export function HomeFeaturedRail({
   pageSize: number;
   example: PublicBusinessView | null;
 }) {
+  const t = useT();
   const [businesses, setBusinesses] = useState(initial);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initiallyMore);
@@ -78,10 +80,10 @@ export function HomeFeaturedRail({
           onClick={append}
         >
           {state === "pending"
-            ? "Učitavanje…"
+            ? t("Učitavanje…")
             : state === "failed"
-              ? "Pokušaj ponovo"
-              : "Prikaži još"}
+              ? t("Pokušaj ponovo")
+              : t("Prikaži još")}
         </button>
       )}
     </>

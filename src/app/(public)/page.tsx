@@ -16,12 +16,14 @@ import {
 import { HomeMapBanner } from "../../components/map/HomeMapBanner";
 import { RecentReels } from "../../components/reels/ReelShelf";
 import { homeCategories, homePlace } from "../../lib/home";
+import { msg, type Translate } from "../../lib/i18n/translate";
 import {
   type DirectoryCategory,
   getPublicDirectoryService,
   type PublicDirectoryBusiness,
 } from "../../server/directory";
 import { publicBusinessView } from "../../server/directory/public-view";
+import { getTranslator } from "../../server/i18n";
 import { getActiveBanner } from "../../server/promotions/read";
 import { readPublishedDesign } from "../../server/visual-design-store";
 
@@ -33,14 +35,17 @@ async function HomeDirectoryCategories({
   place,
   href,
   sponsor,
+  t,
 }: {
   data: Categories;
   place: string;
   href: string;
   sponsor: ReactNode;
+  t: Translate;
 }) {
   return (
     <HomeCategories
+      t={t}
       categories={homeCategories((await data) ?? [], place)}
       searchAction={href}
       sponsor={sponsor}
@@ -53,11 +58,13 @@ async function HomeNewestListings({
   example,
   classification,
   title,
+  t,
 }: {
   data: Listings;
   example: Promise<PublicDirectoryBusiness | null>;
   classification: Categories;
   title: string;
+  t: Translate;
 }) {
   const [businesses, categories, sample] = await Promise.all([data, classification, example]);
   const cards = (businesses ?? []).map((business) => (
@@ -78,7 +85,7 @@ async function HomeNewestListings({
     );
   if (!cards.length) return null;
   return (
-    <HomeListingsSection kind="newest" title={title}>
+    <HomeListingsSection kind="newest" title={title} t={t}>
       <HomeBusinessRail label={title} cards={cards} />
     </HomeListingsSection>
   );
@@ -88,10 +95,12 @@ async function HomePromotedListings({
   data,
   classification,
   title,
+  t,
 }: {
   data: Promise<{ items: PublicDirectoryBusiness[]; pageSize: number; hasMore: boolean } | null>;
   classification: Categories;
   title: string;
+  t: Translate;
 }) {
   const [businesses, categories] = await Promise.all([data, classification]);
   if (!businesses?.items.length) return null;
@@ -99,6 +108,7 @@ async function HomePromotedListings({
     <HomeListingsSection
       kind="featured"
       title={title}
+      t={t}
       href={businesses?.items.length ? "/pretraga?istaknute=sve" : undefined}
     >
       <HomeFeaturedRail
@@ -154,10 +164,11 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ mjesto?: string | string[] }>;
 }) {
-  const [params, design, banner] = await Promise.all([
+  const [params, design, banner, t] = await Promise.all([
     searchParams,
     readPublishedDesign(),
     getActiveBanner().catch(() => null),
+    getTranslator(),
   ]);
   const place = homePlace(params.mjesto);
   const service = getPublicDirectoryService();
@@ -178,9 +189,10 @@ export default async function HomePage({
   const example = service?.readPublic(homeExampleId).catch(() => null) ?? Promise.resolve(null);
   const href = place ? `/pretraga?${new URLSearchParams({ mjesto: place })}` : "/pretraga";
   const titles = design.sectionTitles ?? {};
-  const nearbyTitle = titles.nearby || "Djelatnosti u blizini";
+  const nearbyTitle = t(titles.nearby || msg("Djelatnosti u blizini"));
   return (
     <HomeSurface
+      t={t}
       design={design}
       searchAction="/pretraga"
       placeField="mjesto"
@@ -194,12 +206,13 @@ export default async function HomePage({
       banner={banner ? { ...banner, id: banner.businessId, city: banner.city ?? "" } : null}
       slots={{
         categories: (
-          <Suspense fallback={<HomeCategories categories={[]} searchAction={href} />}>
+          <Suspense fallback={<HomeCategories t={t} categories={[]} searchAction={href} />}>
             <HomeDirectoryCategories
               data={classification}
               place={place}
               href={href}
               sponsor={null}
+              t={t}
             />
           </Suspense>
         ),
@@ -208,7 +221,8 @@ export default async function HomePage({
             <HomePromotedListings
               data={featured}
               classification={classification}
-              title={titles.featured || "Istaknute djelatnosti"}
+              title={t(titles.featured || msg("Istaknute djelatnosti"))}
+              t={t}
             />
           </Suspense>
         ),
@@ -218,7 +232,8 @@ export default async function HomePage({
               data={newest}
               example={example}
               classification={classification}
-              title={titles.newest || "Novi na AhiBizzu"}
+              title={t(titles.newest || msg("Novi na AhiBizzu"))}
+              t={t}
             />
           </Suspense>
         ),

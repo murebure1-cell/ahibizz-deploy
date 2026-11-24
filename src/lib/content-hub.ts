@@ -1,10 +1,11 @@
 import { accountDate } from "./display-date";
+import { msg } from "./i18n/translate";
 
 export const articleCategories = {
-  vodici: "Vodiči",
-  poslovanje: "Poslovanje",
-  sigurnost: "Sigurnost",
-  novosti: "Novosti",
+  vodici: msg("Vodiči"),
+  poslovanje: msg("Poslovanje"),
+  sigurnost: msg("Sigurnost"),
+  novosti: msg("Novosti"),
 } as const;
 
 export type ArticleCategory = keyof typeof articleCategories;

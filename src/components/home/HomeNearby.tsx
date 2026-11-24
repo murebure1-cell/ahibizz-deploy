@@ -16,6 +16,7 @@ import { fetchNearbyPages, nearbyDirectoryPath, nearbyRadiusKm } from "../../lib
 import type { PublicBusinessView } from "../../lib/public-business";
 import { DirectoryResultCard } from "../directory/DirectoryResultCard";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import { useDeviceLocation } from "../location/DeviceLocation";
 import { HomeBusinessRail, HomeEmptyState } from "./HomeSurface";
 import homeStyles from "./home.module.css";
@@ -182,6 +183,7 @@ function useNearby() {
 }
 
 export function HomeNearbyControl() {
+  const t = useT();
   const { location, chooseGps, chooseCity, place, useGps, refresh } = useNearby();
   return (
     <div className={styles.controls}>
@@ -189,13 +191,13 @@ export function HomeNearbyControl() {
         <span className={styles.current} role="status">
           <Icon name="pin" />
           {refresh === "pending"
-            ? "Osvježavamo rezultate…"
+            ? t("Osvježavamo rezultate…")
             : refresh === "failed"
-              ? "Rezultati za prethodnu lokaciju"
-              : `Moja lokacija · ${nearbyRadiusKm} km`}
+              ? t("Rezultati za prethodnu lokaciju")
+              : t("Moja lokacija · {km} km", { km: nearbyRadiusKm })}
         </span>
       ) : location.permission === "denied" ? (
-        <span className={styles.current}>Lokacija je isključena</span>
+        <span className={styles.current}>{t("Lokacija je isključena")}</span>
       ) : (
         <button
           type="button"
@@ -204,11 +206,11 @@ export function HomeNearbyControl() {
           onClick={chooseGps}
         >
           <Icon name="pin" />
-          {location.status === "locating" ? "Pronalazimo lokaciju…" : "Koristi moju lokaciju"}
+          {location.status === "locating" ? t("Pronalazimo lokaciju…") : t("Koristi moju lokaciju")}
         </button>
       )}
       <details className={styles.city}>
-        <summary>{!useGps && place ? place : "Odaberi grad"}</summary>
+        <summary>{!useGps && place ? place : t("Odaberi grad")}</summary>
         <Form
           action="/"
           className={styles.form}
@@ -222,17 +224,17 @@ export function HomeNearbyControl() {
           }}
         >
           <label htmlFor="home-place" className={styles.srOnly}>
-            Grad ili mjesto
+            {t("Grad ili mjesto")}
           </label>
           <input
             id="home-place"
             name="mjesto"
-            placeholder="Grad ili mjesto"
+            placeholder={t("Grad ili mjesto")}
             defaultValue={place}
             maxLength={100}
             required
           />
-          <button type="submit" aria-label="Prikaži djelatnosti u ovom mjestu">
+          <button type="submit" aria-label={t("Prikaži djelatnosti u ovom mjestu")}>
             <Icon name="search" />
           </button>
         </Form>
@@ -242,14 +244,15 @@ export function HomeNearbyControl() {
 }
 
 export function HomeNearbyResults({ exampleId }: { exampleId?: string }) {
+  const t = useT();
   const { businesses, state, place, useGps, location, refresh, retryRefresh } = useNearby();
   if (state === "unavailable")
     return (
       <>
-        <HomeEmptyState>Imenik trenutno nije dostupan.</HomeEmptyState>
+        <HomeEmptyState>{t("Imenik trenutno nije dostupan.")}</HomeEmptyState>
         {useGps && (
           <button onClick={retryRefresh} type="button" className={styles.more}>
-            Pokušaj ponovo
+            {t("Pokušaj ponovo")}
           </button>
         )}
       </>
@@ -257,7 +260,7 @@ export function HomeNearbyResults({ exampleId }: { exampleId?: string }) {
   if (state === "loading")
     return (
       <HomeEmptyState icon="pin">
-        <span role="status">Tražimo djelatnosti u blizini…</span>
+        <span role="status">{t("Tražimo djelatnosti u blizini…")}</span>
       </HomeEmptyState>
     );
   if (state === "waiting")
@@ -269,17 +272,17 @@ export function HomeNearbyResults({ exampleId }: { exampleId?: string }) {
       <div className={styles.group}>
         <p className={homeStyles.availability}>
           {refresh
-            ? "Nema rezultata za prethodnu lokaciju."
+            ? t("Nema rezultata za prethodnu lokaciju.")
             : useGps
-              ? "U tvojoj blizini još nema objavljenih djelatnosti."
-              : `Još nema objavljenih djelatnosti za ${place}.`}
+              ? t("U tvojoj blizini još nema objavljenih djelatnosti.")
+              : t("Još nema objavljenih djelatnosti za {place}.", { place })}
         </p>
         <Link className={homeStyles.subtleLink} href="/pretraga">
-          Pretraži djelatnosti
+          {t("Pretraži djelatnosti")}
         </Link>
         {refresh === "failed" && (
           <button onClick={retryRefresh} type="button" className={styles.more}>
-            Pokušaj ponovo
+            {t("Pokušaj ponovo")}
           </button>
         )}
       </div>
@@ -291,14 +294,15 @@ const quickCities = ["Sarajevo", "Tuzla", "Zenica", "Mostar", "Banja Luka", "Bih
 
 /** Without a location the section still offers a one-tap way to see businesses. */
 function NearbyWithoutLocation({ denied }: { denied: boolean }) {
+  const t = useT();
   return (
     <div className={styles.group}>
       <p className={homeStyles.availability}>
         {denied
-          ? "Lokacija je isključena. Odaberi grad ili je uključi u postavkama preglednika."
-          : "Lokacija nije dostupna. Odaberi grad."}
+          ? t("Lokacija je isključena. Odaberi grad ili je uključi u postavkama preglednika.")
+          : t("Lokacija nije dostupna. Odaberi grad.")}
       </p>
-      <nav className={styles.cities} aria-label="Brzi izbor grada">
+      <nav className={styles.cities} aria-label={t("Brzi izbor grada")}>
         {quickCities.map((city) => (
           <Link key={city} href={`/?${new URLSearchParams({ mjesto: city })}`} scroll={false}>
             {city}
@@ -306,7 +310,7 @@ function NearbyWithoutLocation({ denied }: { denied: boolean }) {
         ))}
       </nav>
       <Link className={homeStyles.subtleLink} href="/pretraga">
-        Sve djelatnosti
+        {t("Sve djelatnosti")}
       </Link>
     </div>
   );
@@ -315,6 +319,7 @@ function NearbyWithoutLocation({ denied }: { denied: boolean }) {
 function NearbyCards({ exampleId }: { exampleId?: string }) {
   const { businesses, hasMore, useGps, place, refresh, pagination, loadMore, retryRefresh } =
     useNearby();
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const moreAvailable = businesses.length > 6 || hasMore;
   const featured = businesses.filter((business) => business.localFeatured);
@@ -327,7 +332,7 @@ function NearbyCards({ exampleId }: { exampleId?: string }) {
   return (
     <>
       <HomeBusinessRail
-        label="Djelatnosti u blizini"
+        label={t("Djelatnosti u blizini")}
         cards={selected.map((business) => (
           <DirectoryResultCard
             key={business.id}
@@ -340,12 +345,12 @@ function NearbyCards({ exampleId }: { exampleId?: string }) {
       />
       {!useGps && moreAvailable && (
         <Link className={styles.more} href={`/pretraga?mjesto=${encodeURIComponent(place)}`}>
-          Sve djelatnosti u ovom mjestu
+          {t("Sve djelatnosti u ovom mjestu")}
         </Link>
       )}
       {useGps && !expanded && moreAvailable && (
         <button className={styles.more} onClick={() => setExpanded(true)} type="button">
-          Sve u blizini
+          {t("Sve u blizini")}
         </button>
       )}
       {useGps && expanded && hasMore && refresh !== "failed" && (
@@ -356,15 +361,15 @@ function NearbyCards({ exampleId }: { exampleId?: string }) {
           onClick={loadMore}
         >
           {pagination === "failed"
-            ? "Pokušaj ponovo"
+            ? t("Pokušaj ponovo")
             : pagination === "pending"
-              ? "Učitavanje…"
-              : "Prikaži još"}
+              ? t("Učitavanje…")
+              : t("Prikaži još")}
         </button>
       )}
       {refresh === "failed" && (
         <button className={styles.more} type="button" onClick={retryRefresh}>
-          Pokušaj ponovo
+          {t("Pokušaj ponovo")}
         </button>
       )}
     </>

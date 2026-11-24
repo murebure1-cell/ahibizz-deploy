@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type BlockState, blockRequestMessage, blocksRequest } from "../../lib/account-blocks";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./connections.module.css";
 
 export function ProfileBlockAction({
@@ -15,6 +16,7 @@ export function ProfileBlockAction({
   disabled?: boolean;
   onContact(value: BlockState): void;
 }) {
+  const t = useT();
   const [state, setState] = useState<BlockState | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState("");
@@ -32,9 +34,9 @@ export function ProfileBlockAction({
       setState(value);
       onContact(value);
     } catch (failure) {
-      if (!controller.signal.aborted) setError(blockRequestMessage(failure));
+      if (!controller.signal.aborted) setError(t(blockRequestMessage(failure)));
     }
-  }, [accountId, path, onContact]);
+  }, [accountId, path, onContact, t]);
   useEffect(() => {
     void read();
     return () => running.current?.abort();
@@ -58,10 +60,10 @@ export function ProfileBlockAction({
       if (controller.signal.aborted) return;
       setState(next);
       onContact(next);
-      setNotice(blocked ? "Korisnik je blokiran." : "Korisnik je odblokiran.");
+      setNotice(blocked ? t("Korisnik je blokiran.") : t("Korisnik je odblokiran."));
     } catch (failure) {
       if (!controller.signal.aborted) {
-        setError(blockRequestMessage(failure));
+        setError(t(blockRequestMessage(failure)));
         void read();
       }
     } finally {
@@ -81,14 +83,14 @@ export function ProfileBlockAction({
             disabled={disabled || busy}
             onClick={() => setConfirm(true)}
           >
-            {state.blockedByMe ? "Odblokiraj korisnika" : "Blokiraj korisnika"}
+            {state.blockedByMe ? t("Odblokiraj korisnika") : t("Blokiraj korisnika")}
           </button>
         ) : (
           <>
             <span>
               {state.blockedByMe
-                ? "Želiš li ukloniti svoju blokadu?"
-                : "Nove poruke i zahtjevi za prijateljstvo bit će zaustavljeni."}
+                ? t("Želiš li ukloniti svoju blokadu?")
+                : t("Nove poruke i zahtjevi za prijateljstvo bit će zaustavljeni.")}
             </span>
             <button
               type="button"
@@ -96,7 +98,7 @@ export function ProfileBlockAction({
               disabled={disabled || busy}
               onClick={() => void change()}
             >
-              {state.blockedByMe ? "Potvrdi odblokiranje" : "Potvrdi blokiranje"}
+              {state.blockedByMe ? t("Potvrdi odblokiranje") : t("Potvrdi blokiranje")}
             </button>
             <button
               type="button"
@@ -104,7 +106,7 @@ export function ProfileBlockAction({
               disabled={busy}
               onClick={() => setConfirm(false)}
             >
-              Odustani
+              {t("Odustani")}
             </button>
           </>
         ))}
@@ -120,7 +122,7 @@ export function ProfileBlockAction({
               void read();
             }}
           >
-            Osvježi
+            {t("Osvježi")}
           </button>
         </p>
       )}

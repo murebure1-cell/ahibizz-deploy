@@ -7,6 +7,7 @@ import { isCurrentBusinessLogoImage, readBusinessLogoSurface } from "../../lib/b
 import { safeBusinessImage } from "../../lib/public-business";
 import "leaflet/dist/leaflet.css";
 import { pageGoogleMapsKey } from "../../lib/google-maps-loader";
+import { useT } from "../i18n/LocaleProvider";
 import { GoogleLocationMap } from "./GoogleLocationMap";
 import styles from "./location.module.css";
 import { ProfileMap3D } from "./ProfileMap3D";
@@ -24,6 +25,7 @@ type MapProps = {
  * or whenever Google refuses the key or cannot load.
  */
 export function LocationMap(props: MapProps) {
+  const t = useT();
   const [googleKey, setGoogleKey] = useState<string | null | undefined>(undefined);
   useEffect(() => {
     setGoogleKey(pageGoogleMapsKey());
@@ -31,7 +33,7 @@ export function LocationMap(props: MapProps) {
   if (googleKey === undefined)
     return (
       <div className={styles.mapWrap}>
-        <section className={styles.map} aria-label="Karta lokacije djelatnosti" />
+        <section className={styles.map} aria-label={t("Karta lokacije djelatnosti")} />
       </div>
     );
   // Public profiles use the tilted 3D map; the editor keeps the flat map with a draggable pin.
@@ -60,6 +62,7 @@ export function LocationMap(props: MapProps) {
 }
 
 function LeafletLocationMap({ point, disabled, readOnly = false, logoUrl, onPoint }: MapProps) {
+  const t = useT();
   const element = useRef<HTMLElement>(null);
   const map = useRef<Leaflet.Map | null>(null);
   const marker = useRef<Leaflet.Marker | null>(null);
@@ -192,9 +195,11 @@ function LeafletLocationMap({ point, disabled, readOnly = false, logoUrl, onPoin
   }, [point, ready, disabled, readOnly, logoUrl]);
   return (
     <div className={styles.mapWrap}>
-      <section ref={element} className={styles.map} aria-label="Karta lokacije djelatnosti" />
+      <section ref={element} className={styles.map} aria-label={t("Karta lokacije djelatnosti")} />
       {failed && (
-        <p className={styles.mapError}>Karta trenutno nije dostupna. Pokušaj ponovo kasnije.</p>
+        <p className={styles.mapError}>
+          {t("Karta trenutno nije dostupna. Pokušaj ponovo kasnije.")}
+        </p>
       )}
     </div>
   );

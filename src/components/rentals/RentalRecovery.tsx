@@ -10,6 +10,7 @@ import {
   RentalRecoveryRequired,
   rentalSubmissions,
 } from "../../lib/rental-submission";
+import { useI18n } from "../i18n/LocaleProvider";
 import { rentalError, writeRental } from "./rental-client";
 import styles from "./rentals.module.css";
 
@@ -24,6 +25,7 @@ export function RentalRecovery({
   onResolved?: () => void;
   children?: (onUncertain: (intent: RentalIntent) => void) => ReactNode;
 }) {
+  const { t, locale } = useI18n();
   const [pending, setPending] = useState<RentalIntent | null>(null);
   const [message, setMessage] = useState("");
   const writing = useRef(false);
@@ -55,11 +57,11 @@ export function RentalRecovery({
       const receipt = await rentalSubmissions.retry(pending, writeRental);
       setPending(null);
       const statuses = {
-        requested: "Zahtjev je zaprimljen i čeka potvrdu vlasnika.",
+        requested: t("Zahtjev je zaprimljen i čeka potvrdu vlasnika."),
         confirmed:
-          receipt.kind === "block" ? "Period je označen kao zauzet." : "Najam je potvrđen.",
-        declined: "Vlasnik je odbio zahtjev za najam.",
-        cancelled: receipt.kind === "block" ? "Blokada je uklonjena." : "Najam je otkazan.",
+          receipt.kind === "block" ? t("Period je označen kao zauzet.") : t("Najam je potvrđen."),
+        declined: t("Vlasnik je odbio zahtjev za najam."),
+        cancelled: receipt.kind === "block" ? t("Blokada je uklonjena.") : t("Najam je otkazan."),
       };
       setMessage(statuses[receipt.status]);
       onResolved?.();
@@ -67,8 +69,8 @@ export function RentalRecovery({
       if (!rentalSubmissions.pending(pending.account)) setPending(null);
       setError(
         failure instanceof RentalRecoveryRequired
-          ? "Ishod još nije potvrđen. Možeš ponovo provjeriti isti zahtjev."
-          : rentalError(failure),
+          ? t("Ishod još nije potvrđen. Možeš ponovo provjeriti isti zahtjev.")
+          : t(rentalError(failure)),
       );
     } finally {
       writing.current = false;
@@ -77,12 +79,12 @@ export function RentalRecovery({
   }
   if (pending && (!actor || pending.account === actor))
     return (
-      <section className={styles.panel} aria-label="Provjera prethodnog zahtjeva">
-        <h3>Ishod zahtjeva još nije potvrđen.</h3>
+      <section className={styles.panel} aria-label={t("Provjera prethodnog zahtjeva")}>
+        <h3>{t("Ishod zahtjeva još nije potvrđen.")}</h3>
         <strong>{pending.vehicleName}</strong>
         <p>
-          {bookingDate(pending.body.startsAt, pending.timezone, { time: true })} —{" "}
-          {bookingDate(pending.body.endsAt, pending.timezone, { time: true })}
+          {bookingDate(pending.body.startsAt, pending.timezone, { time: true, locale })} —{" "}
+          {bookingDate(pending.body.endsAt, pending.timezone, { time: true, locale })}
         </p>
         <div className={styles.actions}>
           <button
@@ -91,11 +93,11 @@ export function RentalRecovery({
             disabled={busy}
             onClick={() => void recover()}
           >
-            {busy ? "Provjera…" : "Provjeri isti zahtjev"}
+            {busy ? t("Provjera…") : t("Provjeri isti zahtjev")}
           </button>
           {businessId && (
             <Link className={styles.secondary} href={accountSectionPath("appointments")}>
-              Moji termini
+              {t("Moji termini")}
             </Link>
           )}
         </div>

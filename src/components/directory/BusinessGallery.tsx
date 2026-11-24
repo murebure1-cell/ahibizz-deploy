@@ -2,6 +2,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import type { PublicBusinessView } from "../../lib/public-business";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./public-profile.module.css";
 
 const thumbnailLimit = 4;
@@ -13,6 +14,7 @@ export function BusinessGallery({
   businessId: string;
   photos: NonNullable<PublicBusinessView["gallery"]>;
 }) {
+  const t = useT();
   const dialog = useRef<HTMLDialogElement>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const [index, setIndex] = useState<number | null>(null);
@@ -74,7 +76,10 @@ export function BusinessGallery({
             key={item.src}
             href={item.src}
             aria-haspopup="dialog"
-            aria-label={`Otvori fotografiju ${position + 1} od ${photos.length}`}
+            aria-label={t("Otvori fotografiju {number} od {total}", {
+              number: position + 1,
+              total: photos.length,
+            })}
             onClick={(event) => {
               if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
               event.preventDefault();
@@ -99,7 +104,7 @@ export function BusinessGallery({
       <dialog
         ref={dialog}
         className={styles.viewer}
-        aria-label="Galerija fotografija"
+        aria-label={t("Galerija fotografija")}
         onCancel={(event) => {
           event.preventDefault();
           close();
@@ -113,9 +118,10 @@ export function BusinessGallery({
       >
         <header className={styles.viewerBar}>
           <span aria-live="polite">
-            {index !== null && `Fotografija ${index + 1} od ${photos.length}`}
+            {index !== null &&
+              t("Fotografija {number} od {total}", { number: index + 1, total: photos.length })}
           </span>
-          <button type="button" onClick={close} aria-label="Zatvori galeriju">
+          <button type="button" onClick={close} aria-label={t("Zatvori galeriju")}>
             <Icon name="close" />
           </button>
         </header>
@@ -153,10 +159,10 @@ export function BusinessGallery({
         )}
         {photos.length > 1 && (
           <div className={styles.viewerControls}>
-            <button type="button" aria-label="Prethodna fotografija" onClick={() => step(-1)}>
+            <button type="button" aria-label={t("Prethodna fotografija")} onClick={() => step(-1)}>
               <Icon name="chevron" />
             </button>
-            <button type="button" aria-label="Sljedeća fotografija" onClick={() => step(1)}>
+            <button type="button" aria-label={t("Sljedeća fotografija")} onClick={() => step(1)}>
               <Icon name="chevron" />
             </button>
           </div>

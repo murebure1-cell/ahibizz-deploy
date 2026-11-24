@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BookingRequestError, bookingError, bookingWrite } from "../../lib/booking-client";
+import { msg } from "../../lib/i18n/translate";
 
 async function stayRequest<T>(path: string, actor?: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
@@ -26,30 +27,30 @@ export function writeStay<T>(path: string, actor: string, body: unknown) {
 export function stayError(error: unknown) {
   if (error instanceof BookingRequestError) {
     if (error.code === "INVALID_STAY_PHOTO")
-      return "Fotografija više nije dostupna. Provjeri odabir u galeriji.";
+      return msg("Fotografija više nije dostupna. Provjeri odabir u galeriji.");
     if (error.code === "STAY_INVALID_TRANSITION")
-      return "Status ovog boravka se promijenio. Provjeri kalendar.";
+      return msg("Status ovog boravka se promijenio. Provjeri kalendar.");
     if (error.code === "STAY_HAS_BOOKINGS")
-      return "Jedinica ima predstojeći boravak ili blokadu. Provjeri kalendar.";
-    if (error.code.includes("LIMIT")) return "Možeš dodati najviše dvije smještajne jedinice.";
+      return msg("Jedinica ima predstojeći boravak ili blokadu. Provjeri kalendar.");
+    if (error.code.includes("LIMIT")) return msg("Možeš dodati najviše dvije smještajne jedinice.");
     if (
       error.code.includes("OVERLAP") ||
       error.code === "STAY_CONFLICT" ||
       error.code === "SLOT_UNAVAILABLE"
     )
-      return "Smještaj je zauzet u tom periodu. Odaberi drugi datum.";
+      return msg("Smještaj je zauzet u tom periodu. Odaberi drugi datum.");
     if (error.code.includes("DISABLED") || error.code.includes("INELIGIBLE"))
-      return "Ova smještajna jedinica trenutno ne prima nove zahtjeve.";
+      return msg("Ova smještajna jedinica trenutno ne prima nove zahtjeve.");
     if (error.code.includes("VERSION") || error.code.includes("STALE"))
-      return "Ponuda je izmijenjena. Provjeri cijenu i datume.";
+      return msg("Ponuda je izmijenjena. Provjeri cijenu i datume.");
     if (error.code.includes("INVALID") || error.code.includes("INPUT"))
-      return "Provjeri unesene podatke.";
+      return msg("Provjeri unesene podatke.");
     if (error.code.includes("SELF"))
-      return "Za vlastitu jedinicu označi zauzeti period u vlasničkom kalendaru.";
+      return msg("Za vlastitu jedinicu označi zauzeti period u vlasničkom kalendaru.");
     if (error.code.includes("ACTIVE") || error.code.includes("COMMITMENT"))
-      return "Jedinica ima predstojeće termine.";
-    if (error.status === 403) return "Nemaš pristup ovoj radnji.";
-    if (error.status === 404) return "Jedinica ili boravak više nisu dostupni.";
+      return msg("Jedinica ima predstojeće termine.");
+    if (error.status === 403) return msg("Nemaš pristup ovoj radnji.");
+    if (error.status === 404) return msg("Jedinica ili boravak više nisu dostupni.");
   }
   return bookingError(error);
 }

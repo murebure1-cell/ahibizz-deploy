@@ -9,6 +9,7 @@ import {
   businessWeekdays,
 } from "../../lib/business-details";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./business-details.module.css";
 
 export function BusinessOpenStatus({
@@ -18,6 +19,7 @@ export function BusinessOpenStatus({
   details?: BusinessDetails | null;
   checkedAt?: string;
 }) {
+  const t = useT();
   const [now, setNow] = useState<Date | null>(() => (checkedAt ? new Date(checkedAt) : null));
   useEffect(() => {
     if (!details?.hours) return;
@@ -39,7 +41,7 @@ export function BusinessOpenStatus({
       title={details?.timezone ?? undefined}
     >
       <Icon name="clock" />
-      {state === "open" ? "Otvoreno" : "Zatvoreno"}
+      {state === "open" ? t("Otvoreno") : t("Zatvoreno")}
     </span>
   );
 }
@@ -110,24 +112,26 @@ export function BusinessAmenities({
   details?: BusinessDetails | null;
   compact?: boolean;
 }) {
+  const t = useT();
   const amenities = businessAmenities.filter((entry) => details?.amenities.includes(entry.id));
   if (!amenities.length) return null;
   return (
     <ul
       className={styles.amenities}
       data-compact={compact || undefined}
-      aria-label="Sadržaji i pogodnosti"
+      aria-label={t("Sadržaji i pogodnosti")}
     >
       {amenities.map((entry) => (
-        <li key={entry.id} title={entry.label}>
+        <li key={entry.id} title={t(entry.label)}>
           <AmenityIcon id={entry.id} />
-          <span>{entry.label}</span>
+          <span>{t(entry.label)}</span>
         </li>
       ))}
     </ul>
   );
 }
 export function BusinessHours({ details }: { details?: BusinessDetails | null }) {
+  const t = useT();
   if (!details?.hours || !details.timezone) return null;
   return (
     <div className={styles.hours}>
@@ -138,7 +142,7 @@ export function BusinessHours({ details }: { details?: BusinessDetails | null })
       <dl>
         {details.hours.map((day) => (
           <div key={day.weekday}>
-            <dt>{businessWeekdays[day.weekday - 1]}</dt>
+            <dt>{t(businessWeekdays[day.weekday - 1] ?? "")}</dt>
             <dd>
               {day.windows.length
                 ? day.windows
@@ -147,7 +151,7 @@ export function BusinessHours({ details }: { details?: BusinessDetails | null })
                         `${businessTimeLabel(window.startMinute)}–${businessTimeLabel(window.endMinute)}`,
                     )
                     .join(" · ")
-                : "Zatvoreno"}
+                : t("Zatvoreno")}
             </dd>
           </div>
         ))}

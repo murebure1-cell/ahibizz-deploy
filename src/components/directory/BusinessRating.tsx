@@ -1,9 +1,14 @@
-import { bosnianNumber } from "../../lib/number-format";
+"use client";
+
+import { bosnianForm, msg } from "../../lib/i18n/translate";
+import { localNumber } from "../../lib/number-format";
 import type { ReviewSummary } from "../../lib/reviews";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import styles from "./business-rating.module.css";
 
 export function BusinessRating({ summary }: { summary?: ReviewSummary | null }) {
+  const { t, locale } = useI18n();
   if (
     !summary ||
     !Number.isInteger(summary.count) ||
@@ -14,15 +19,21 @@ export function BusinessRating({ summary }: { summary?: ReviewSummary | null }) 
   )
     return null;
   const value = summary.sum / summary.count;
-  const label = bosnianNumber(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  const last = summary.count % 10;
-  const teen = summary.count % 100;
-  const noun = last >= 2 && last <= 4 && (teen < 12 || teen > 14) ? "recenzije" : "recenzija";
+  const label = localNumber(locale, value, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const count = t(
+    bosnianForm(
+      summary.count,
+      msg("{count} recenzija"),
+      msg("{count} recenzije"),
+      msg("{count} recenzija"),
+    ),
+    { count: summary.count },
+  );
   return (
     <span
       role="img"
       className={styles.rating}
-      aria-label={`${label} od 5 · ${summary.count} ${noun}`}
+      aria-label={`${t("{value} od 5", { value: label })} · ${count}`}
     >
       <strong aria-hidden="true">{label}</strong>
       <span aria-hidden="true">
@@ -40,9 +51,7 @@ export function BusinessRating({ summary }: { summary?: ReviewSummary | null }) 
             </span>
           ))}
         </span>
-        <small>
-          {summary.count} {noun}
-        </small>
+        <small>{count}</small>
       </span>
     </span>
   );

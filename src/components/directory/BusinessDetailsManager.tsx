@@ -17,6 +17,7 @@ import { directoryAccessDenied } from "../../lib/directory-client";
 import { DirectoryRequestError } from "../../lib/directory-create-submission";
 import type { DirectoryBusiness } from "../../server/directory/types";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./business-details.module.css";
 import shared from "./directory.module.css";
 
@@ -85,6 +86,7 @@ export function BusinessDetailsManager({
   onAccessDenied: (error: unknown) => boolean;
   onBack: () => void;
 }) {
+  const t = useT();
   const [business, setBusiness] = useState<DirectoryBusiness | null>(null);
   const [value, setValue] = useState(() => draft(null));
   const [error, setError] = useState("");
@@ -129,7 +131,7 @@ export function BusinessDetailsManager({
           denied.current(failure);
           return;
         }
-        setError("Podaci nisu dostupni. Pokušaj ponovo.");
+        setError(t("Podaci nisu dostupni. Pokušaj ponovo."));
       })
       .finally(() => {
         if (epoch.current === generation && !controller.signal.aborted) {
@@ -158,7 +160,7 @@ export function BusinessDetailsManager({
     try {
       details = detailsFromDraft(value);
     } catch {
-      setError("Provjeri vremensku zonu i satnice. Intervali se ne smiju preklapati.");
+      setError(t("Provjeri vremensku zonu i satnice. Intervali se ne smiju preklapati."));
       return;
     }
     const controller = new AbortController(),
@@ -180,8 +182,8 @@ export function BusinessDetailsManager({
       changed.current(after);
       setNotice(
         after.status === "pending" || after.editorialRevision?.details
-          ? "Sačuvano i poslano na pregled."
-          : "Promjene su sačuvane.",
+          ? t("Sačuvano i poslano na pregled.")
+          : t("Promjene su sačuvane."),
       );
     } catch (failure) {
       if (controller.signal.aborted || epoch.current !== generation) return;
@@ -190,15 +192,15 @@ export function BusinessDetailsManager({
         return;
       }
       if (failure instanceof DirectoryRequestError && failure.code === "REVIEW_REQUIRED") {
-        setError("Prvo odobri ili odbij predložene izmjene u spisku djelatnosti.");
+        setError(t("Prvo odobri ili odbij predložene izmjene u spisku djelatnosti."));
       } else if (failure instanceof DirectoryRequestError && failure.status === 400) {
-        setError("Provjeri unesene podatke.");
+        setError(t("Provjeri unesene podatke."));
       } else {
         setUncertain(true);
         setError(
           failure instanceof DirectoryRequestError && failure.code === "VERSION_CONFLICT"
-            ? "Djelatnost je izmijenjena. Učitaj sačuvane podatke prije nastavka."
-            : "Odgovor nije potvrđen. Učitaj sačuvane podatke prije nastavka.",
+            ? t("Djelatnost je izmijenjena. Učitaj sačuvane podatke prije nastavka.")
+            : t("Odgovor nije potvrđen. Učitaj sačuvane podatke prije nastavka."),
         );
       }
     } finally {
@@ -218,7 +220,7 @@ export function BusinessDetailsManager({
   return (
     <form
       className={styles.editor}
-      aria-label="Radno vrijeme i sadržaji"
+      aria-label={t("Radno vrijeme i sadržaji")}
       aria-busy={loading || busy}
       onSubmit={(event) => {
         event.preventDefault();
@@ -227,11 +229,11 @@ export function BusinessDetailsManager({
     >
       <div className={styles.editorHeader}>
         <div>
-          <h2>Radno vrijeme i sadržaji</h2>
+          <h2>{t("Radno vrijeme i sadržaji")}</h2>
           <p>{businessTitle}</p>
         </div>
         <button type="button" className={shared.secondary} onClick={onBack} disabled={busy}>
-          Nazad
+          {t("Nazad")}
         </button>
       </div>
       {error && (
@@ -250,23 +252,23 @@ export function BusinessDetailsManager({
           className={shared.secondary}
           onClick={() => setRefresh((current) => current + 1)}
         >
-          Učitaj sačuvane podatke
+          {t("Učitaj sačuvane podatke")}
         </button>
       )}
       <fieldset className={styles.panel} disabled={disabled}>
-        <legend>Radno vrijeme</legend>
+        <legend>{t("Radno vrijeme")}</legend>
         <label className={styles.switch}>
           <input
             type="checkbox"
             checked={value.enabled}
             onChange={(event) => setValue({ ...value, enabled: event.target.checked })}
           />
-          Prikaži radno vrijeme
+          {t("Prikaži radno vrijeme")}
         </label>
         {value.enabled ? (
           <>
             <label className={styles.timezone} htmlFor={`${id}-zone`}>
-              Vremenska zona
+              {t("Vremenska zona")}
               <input
                 id={`${id}-zone`}
                 value={value.timezone}
@@ -285,14 +287,14 @@ export function BusinessDetailsManager({
               </datalist>
             </label>
             <p className={styles.hint}>
-              Za rad preko ponoći dodaj vrijeme u oba dana, npr. do 24:00 i od 00:00.
+              {t("Za rad preko ponoći dodaj vrijeme u oba dana, npr. do 24:00 i od 00:00.")}
             </p>
             <div className={styles.week}>
               {value.days.map((windows, day) => (
                 <div className={styles.day} key={businessWeekdays[day]}>
                   <strong>{businessWeekdays[day]}</strong>
                   <div className={styles.dayBody}>
-                    {!windows.length && <small>Zatvoreno</small>}
+                    {!windows.length && <small>{t("Zatvoreno")}</small>}
                     {windows.map((window, index) => (
                       <div className={styles.window} key={window.id}>
                         <input
@@ -360,11 +362,11 @@ export function BusinessDetailsManager({
             </div>
           </>
         ) : (
-          <p className={styles.hint}>Radno vrijeme se neće prikazivati.</p>
+          <p className={styles.hint}>{t("Radno vrijeme se neće prikazivati.")}</p>
         )}
       </fieldset>
       <fieldset className={styles.panel} disabled={disabled}>
-        <legend>Sadržaji i pogodnosti</legend>
+        <legend>{t("Sadržaji i pogodnosti")}</legend>
         <div className={styles.choices}>
           {businessAmenities.map((entry) => (
             <label key={entry.id} className={styles.amenityChoice}>
@@ -387,7 +389,7 @@ export function BusinessDetailsManager({
       </fieldset>
       <div className={styles.actions}>
         <button type="submit" className={shared.primary} disabled={disabled}>
-          Sačuvaj promjene
+          {t("Sačuvaj promjene")}
         </button>
       </div>
     </form>

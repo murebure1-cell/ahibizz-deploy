@@ -1,6 +1,7 @@
 import type { IconName } from "../components/Icon";
 import { accountSectionPath } from "./account-return";
 import type { HeaderAccess } from "./header-access";
+import { msg } from "./i18n/translate";
 
 export type NavigationDestination = { href: string; label: string; icon: IconName };
 
@@ -9,30 +10,30 @@ export function headerDestinations(
   options: { installed: boolean; playEdition: boolean; supportAvailable: boolean },
 ) {
   const primary: NavigationDestination[] = [
-    { href: "/", label: "Početna", icon: "home" },
-    { href: "/pretraga", label: "Pretraga", icon: "search" },
-    { href: "/ljudi", label: "Ljudi", icon: "people" },
+    { href: "/", label: msg("Početna"), icon: "home" },
+    { href: "/pretraga", label: msg("Pretraga"), icon: "search" },
+    { href: "/ljudi", label: msg("Ljudi"), icon: "people" },
   ];
-  if (access !== "guest") primary.push({ href: "/nalog", label: "Moj nalog", icon: "user" });
+  if (access !== "guest") primary.push({ href: "/nalog", label: msg("Moj nalog"), icon: "user" });
   if (access === "member" || access === "owner")
-    primary.push({ href: accountSectionPath("messages"), label: "Poruke", icon: "message" });
+    primary.push({ href: accountSectionPath("messages"), label: msg("Poruke"), icon: "message" });
 
   const business: NavigationDestination[] = [];
   const more: NavigationDestination[] = [
-    { href: "/o-nama", label: "O AhiBizzu", icon: "info" },
-    { href: "/reels", label: "Reels", icon: "play" },
+    { href: "/o-nama", label: msg("O AhiBizzu"), icon: "info" },
+    { href: "/reels", label: msg("Reels"), icon: "play" },
     ...(access === "member" || access === "owner"
       ? []
       : ([
-          { href: "/blog", label: "AhiBizz blog", icon: "info" },
-          { href: "/pomoc", label: "Centar za pomoć", icon: "message" },
+          { href: "/blog", label: msg("AhiBizz blog"), icon: "info" },
+          { href: "/pomoc", label: msg("Centar za pomoć"), icon: "message" },
         ] as const)),
   ];
   if (!options.playEdition && options.supportAvailable)
-    more.push({ href: "/podrzi", label: "Doniraj", icon: "heart" });
+    more.push({ href: "/podrzi", label: msg("Doniraj"), icon: "heart" });
   if (!options.installed && !options.playEdition)
-    more.push({ href: "/instaliraj", label: "Instaliraj aplikaciju", icon: "download" });
-  more.push({ href: "/privatnost", label: "Privatnost", icon: "shield" });
+    more.push({ href: "/instaliraj", label: msg("Instaliraj aplikaciju"), icon: "download" });
+  more.push({ href: "/privatnost", label: msg("Privatnost"), icon: "shield" });
   return { primary, business, more };
 }
 

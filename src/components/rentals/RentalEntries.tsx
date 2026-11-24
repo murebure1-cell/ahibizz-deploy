@@ -2,15 +2,17 @@
 import Link from "next/link";
 import { useState } from "react";
 import { bookingDate, bookingMoney } from "../../lib/booking";
+import { msg } from "../../lib/i18n/translate";
 import type { RentalBooking } from "../../lib/rentals";
+import { useI18n } from "../i18n/LocaleProvider";
 import { rentalError, writeRental } from "./rental-client";
 import styles from "./rentals.module.css";
 
 const statuses = {
-  requested: "Čeka potvrdu",
-  confirmed: "Potvrđeno",
-  declined: "Odbijeno",
-  cancelled: "Otkazano",
+  requested: msg("Čeka potvrdu"),
+  confirmed: msg("Potvrđeno"),
+  declined: msg("Odbijeno"),
+  cancelled: msg("Otkazano"),
 };
 
 export function RentalEntry({
@@ -24,10 +26,11 @@ export function RentalEntry({
   owner?: boolean;
   changed: () => void;
 }) {
+  const { t, locale } = useI18n();
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
-  const starts = bookingDate(entry.startsAt, entry.timezone, { time: true });
-  const ends = bookingDate(entry.endsAt, entry.timezone, { time: true });
+  const starts = bookingDate(entry.startsAt, entry.timezone, { time: true, locale });
+  const ends = bookingDate(entry.endsAt, entry.timezone, { time: true, locale });
   const isBlock = entry.kind === "block";
   const beforePickup = Date.parse(entry.startsAt) > Date.now();
   const canDecline = owner && entry.status === "requested";
@@ -44,7 +47,7 @@ export function RentalEntry({
       });
       changed();
     } catch (failure) {
-      setError(rentalError(failure));
+      setError(t(rentalError(failure)));
     } finally {
       setWorking(false);
     }
@@ -55,12 +58,12 @@ export function RentalEntry({
         <strong>
           {owner
             ? isBlock
-              ? "Ručna blokada"
-              : entry.customerName || "Zahtjev za najam"
+              ? t("Ručna blokada")
+              : entry.customerName || t("Zahtjev za najam")
             : entry.vehicleName}
         </strong>
         <span className={styles.badge} data-state={entry.status}>
-          {isBlock && entry.status === "confirmed" ? "Zauzeto" : statuses[entry.status]}
+          {isBlock && entry.status === "confirmed" ? t("Zauzeto") : t(statuses[entry.status])}
         </span>
       </div>
       {owner ? (
@@ -83,7 +86,7 @@ export function RentalEntry({
                   className={styles.primary}
                   onClick={() => void decide("approve")}
                 >
-                  Odobri
+                  {t("Odobri")}
                 </button>
               )}
               <button
@@ -92,7 +95,7 @@ export function RentalEntry({
                 className={styles.secondary}
                 onClick={() => void decide("decline")}
               >
-                Odbij
+                {t("Odbij")}
               </button>
             </>
           )}
@@ -103,7 +106,7 @@ export function RentalEntry({
               className={styles.secondary}
               onClick={() => void decide("cancel")}
             >
-              {isBlock ? "Ukloni blokadu" : "Otkaži najam"}
+              {isBlock ? t("Ukloni blokadu") : t("Otkaži najam")}
             </button>
           )}
         </div>

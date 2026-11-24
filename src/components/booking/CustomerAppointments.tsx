@@ -22,6 +22,7 @@ import {
   readCustomerCancellation,
   reconcileCustomerCancellations,
 } from "../../lib/customer-appointments-state";
+import { useI18n } from "../i18n/LocaleProvider";
 import { listenForBookingResume } from "./booking-resume";
 import { InventoryAppointments } from "./InventoryAppointments";
 import styles from "./public-booking.module.css";
@@ -45,6 +46,7 @@ function AppointmentsWorkspace({
   expectedAccountId,
   initialView = "upcoming",
 }: Props) {
+  const { t, locale } = useI18n();
   const [readState, setReadState] = useState<CustomerAppointmentsState>({
       result: null,
       requiresLogin: false,
@@ -70,19 +72,22 @@ function AppointmentsWorkspace({
       () => bookingActorRequest(expectedAccountId, request),
       [expectedAccountId, request],
     );
-  const clearPrivate = useCallback((failure: unknown) => {
-    authority.current++;
-    revision.current++;
-    for (const controller of controllers.current) controller.abort();
-    controllers.current.clear();
-    writing.current = false;
-    cancellations.current.clear();
-    setReadState({ result: null, requiresLogin: true });
-    setNotice("");
-    setError(bookingError(failure));
-    setBusy(false);
-    setLoading(false);
-  }, []);
+  const clearPrivate = useCallback(
+    (failure: unknown) => {
+      authority.current++;
+      revision.current++;
+      for (const controller of controllers.current) controller.abort();
+      controllers.current.clear();
+      writing.current = false;
+      cancellations.current.clear();
+      setReadState({ result: null, requiresLogin: true });
+      setNotice("");
+      setError(t(bookingError(failure)));
+      setBusy(false);
+      setLoading(false);
+    },
+    [t],
+  );
   const previousApi = useRef(api);
   useEffect(() => {
     live.current = true;
@@ -172,7 +177,7 @@ function AppointmentsWorkspace({
         }
         if (!controller.signal.aborted && current === revision.current) {
           setReadState((previous) => customerAppointmentsFailed(previous, failure));
-          setError(bookingError(failure));
+          setError(t(bookingError(failure)));
         }
       })
       .finally(() => {
@@ -207,7 +212,7 @@ function AppointmentsWorkspace({
       setLoading(false);
       cancellations.current.set(cancelled.id, cancelled);
       setReadState((previous) => customerAppointmentCancelled(previous, cancelled));
-      setNotice("Termin je otkazan.");
+      setNotice(t("Termin je otkazan."));
     } catch (failure) {
       if (!live.current || generation !== authority.current) return;
       if (bookingAccessDenied(failure)) {
@@ -215,7 +220,7 @@ function AppointmentsWorkspace({
         return;
       }
       setReadState((previous) => customerAppointmentsFailed(previous, failure));
-      setError(bookingError(failure));
+      setError(t(bookingError(failure)));
     } finally {
       controllers.current.delete(controller);
       if (live.current && generation === authority.current) {
@@ -228,20 +233,20 @@ function AppointmentsWorkspace({
   return (
     <section className={styles.appointments} aria-label="Moji termini" data-design="booking-panel">
       <div className={styles.listHeading}>
-        {heading && <h2>Moji termini</h2>}
+        {heading && <h2>{t("Moji termini")}</h2>}
         <button
           type="button"
           disabled={busy || loading}
           onClick={() => setRefresh((value) => value + 1)}
         >
-          Osvježi
+          {t("Osvježi")}
         </button>
       </div>
-      <fieldset className={styles.viewSwitch} aria-label="Prikaz termina">
+      <fieldset className={styles.viewSwitch} aria-label={t("Prikaz termina")}>
         {(
           [
-            ["upcoming", "Aktuelni"],
-            ["history", "Historija"],
+            ["upcoming", t("Aktuelni")],
+            ["history", t("Historija")],
           ] as const
         ).map(([value, label]) => (
           <button
@@ -269,7 +274,7 @@ function AppointmentsWorkspace({
                 className={styles.secondary}
                 href="/prijava?nastavi=%2Fnalog%3Fodjeljak%3Dtermini"
               >
-                Prijavi se
+                {t("Prijavi se")}
               </Link>
             </div>
           )}
@@ -282,20 +287,20 @@ function AppointmentsWorkspace({
       )}
       {!ready && !error && (
         <p role="status" className={styles.note}>
-          Provjeravam tvoje termine…
+          {t("Provjeravam tvoje termine…")}
         </p>
       )}
-      {entries.length > 0 && <h3>Usluge</h3>}
+      {entries.length > 0 && <h3>{t("Usluge")}</h3>}
       <div className={styles.entryList} aria-busy={loading}>
         {entries.map((entry) => (
           <article key={entry.id} className={styles.entry}>
             <div>
               <span className={styles.status} data-status={entry.status}>
-                {bookingStatusLabels[entry.status]}
+                {t(bookingStatusLabels[entry.status])}
               </span>
               <h3>{entry.serviceName}</h3>
               <Link href={`/djelatnosti/${entry.businessId}`}>{entry.businessTitle}</Link>
-              <p>{bookingDate(entry.startsAt, entry.timezone, { time: true })}</p>
+              <p>{bookingDate(entry.startsAt, entry.timezone, { time: true, locale })}</p>
               <span className={styles.note}>
                 {entry.durationMinutes} min · {bookingMoney(entry.priceMinor)}
               </span>
@@ -308,20 +313,20 @@ function AppointmentsWorkspace({
                   disabled={busy || loading}
                   onClick={() => void cancel(entry)}
                 >
-                  Otkaži termin
+                  {t("Otkaži termin")}
                 </button>
               )}
           </article>
         ))}
       </div>
       {ready && (page > 1 || more) && (
-        <nav className={styles.pagination} aria-label="Stranice termina">
+        <nav className={styles.pagination} aria-label={t("Stranice termina")}>
           <button type="button" disabled={busy || page === 1} onClick={() => setPage(page - 1)}>
-            Prethodna
+            {t("Prethodna")}
           </button>
           <span aria-current="page">{page}</span>
           <button type="button" disabled={busy || !more} onClick={() => setPage(page + 1)}>
-            Sljedeća
+            {t("Sljedeća")}
           </button>
         </nav>
       )}

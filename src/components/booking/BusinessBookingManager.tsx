@@ -12,6 +12,7 @@ import {
   bookingMoney,
   bookingMonth,
   bookingStatusLabels,
+  bookingWeekdays,
 } from "../../lib/booking";
 import {
   BookingRequestError,
@@ -22,7 +23,9 @@ import {
   bookingWrite,
 } from "../../lib/booking-client";
 import { addDays, dateKey, isTimeZone, localInstant } from "../../lib/booking-time";
+import { msg } from "../../lib/i18n/translate";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import styles from "./booking.module.css";
 import { listenForBookingResume } from "./booking-resume";
 
@@ -61,7 +64,15 @@ type CreateBody = {
   clientPhone?: string;
 };
 type Intent = { id: string; body: CreateBody; uncertain: boolean };
-const weekdays = ["Ponedjeljak", "Utorak", "Srijeda", "Četvrtak", "Petak", "Subota", "Nedjelja"];
+const weekdays = [
+  msg("Ponedjeljak"),
+  msg("Utorak"),
+  msg("Srijeda"),
+  msg("Četvrtak"),
+  msg("Petak"),
+  msg("Subota"),
+  msg("Nedjelja"),
+];
 const zones = [
   "Europe/Sarajevo",
   "Europe/Zagreb",
@@ -187,7 +198,7 @@ function toDraft(settings: BookingSettings): Draft {
 }
 function settingsBody(draft: Draft, version: number): BookingSettingsInput {
   if (!isTimeZone(draft.timezone) || draft.services.length > 20 || draft.windows.length > 28)
-    throw new Error("Provjeri postavke.");
+    throw new Error(msg("Provjeri postavke."));
   const windows = draft.windows
     .map((window) => {
       const startMinute = minuteValue(window.start),
@@ -198,7 +209,7 @@ function settingsBody(draft: Draft, version: number): BookingSettingsInput {
         startMinute >= endMinute ||
         startMinute >= 1440
       )
-        throw new Error("Unesi ispravno vrijeme otvaranja i zatvaranja.");
+        throw new Error(msg("Unesi ispravno vrijeme otvaranja i zatvaranja."));
       return { weekday: window.weekday, startMinute, endMinute };
     })
     .sort((a, b) => a.weekday - b.weekday || a.startMinute - b.startMinute);
@@ -211,7 +222,7 @@ function settingsBody(draft: Draft, version: number): BookingSettingsInput {
       previous.weekday === next.weekday &&
       next.startMinute < previous.endMinute
     )
-      throw new Error("Intervali istog dana se ne smiju preklapati.");
+      throw new Error(msg("Intervali istog dana se ne smiju preklapati."));
   }
   const services: BookingServiceInput[] = draft.services.map((service) => {
     const durationMinutes = /^\d+$/.test(service.duration) ? Number(service.duration) : NaN;
@@ -222,7 +233,7 @@ function settingsBody(draft: Draft, version: number): BookingSettingsInput {
       durationMinutes % 5 !== 0 ||
       priceMinor === null
     )
-      throw new Error("Provjeri naziv, trajanje i cijenu usluge.");
+      throw new Error(msg("Provjeri naziv, trajanje i cijenu usluge."));
     return {
       ...(service.id ? { id: service.id } : {}),
       name: service.name.trim(),
@@ -308,6 +319,7 @@ function BookingWorkspace({
   active = true,
   onAccessDenied,
 }: Props) {
+  const { t, locale } = useI18n();
   const api = useMemo(
     () => bookingActorRequest(expectedAccountId, request ?? bookingRequest),
     [expectedAccountId, request],
@@ -581,7 +593,7 @@ function BookingWorkspace({
     try {
       body = settingsBody(draft, settings.version);
     } catch (failure) {
-      setSettingsError(failure instanceof Error ? failure.message : "Provjeri postavke.");
+      setSettingsError(failure instanceof Error ? failure.message : t("Provjeri postavke."));
       return;
     }
     const controller = beginWrite("settings");
@@ -598,7 +610,7 @@ function BookingWorkspace({
         throw new Error("invalid_settings_ack");
       setSettings(value);
       setDraft(toDraft(value));
-      setNotice("Postavke termina su sačuvane.");
+      setNotice(t("Postavke termina su sačuvane."));
     } catch (failure) {
       if (!live.current || writeEpoch.current.get(controller) !== authority.current) return;
       if (bookingAccessDenied(failure)) {
@@ -644,12 +656,12 @@ function BookingWorkspace({
         throw new Error("invalid_entry_ack");
       setNotice(
         action === "complete"
-          ? "Termin je označen kao održan."
+          ? t("Termin je označen kao održan.")
           : action === "approve"
-            ? "Termin je potvrđen."
+            ? t("Termin je potvrđen.")
             : action === "decline"
-              ? "Zahtjev je odbijen."
-              : "Termin je otkazan.",
+              ? t("Zahtjev je odbijen.")
+              : t("Termin je otkazan."),
       );
     } catch (failure) {
       if (!live.current || writeEpoch.current.get(controller) !== authority.current) return;
@@ -689,8 +701,8 @@ function BookingWorkspace({
       setNotice(
         entry.status === "confirmed"
           ? entry.kind === "block"
-            ? "Vrijeme je označeno kao zauzeto."
-            : "Ručni termin je sačuvan."
+            ? t("Vrijeme je označeno kao zauzeto.")
+            : t("Ručni termin je sačuvan.")
           : `Unos je evidentiran. Aktuelni status: ${bookingStatusLabels[entry.status].toLocaleLowerCase("bs-BA")}.`,
       );
       const selected = dateKey(new Date(entry.startsAt), timezone),
@@ -733,7 +745,9 @@ function BookingWorkspace({
           value.uncertain = true;
           setUncertain(true);
           setCreateError(
-            "Odgovor nije stigao. Unos može biti sačuvan. Ponovi isti unos da provjeriš rezultat.",
+            t(
+              "Odgovor nije stigao. Unos može biti sačuvan. Ponovi isti unos da provjeriš rezultat.",
+            ),
           );
         }
       }
@@ -750,20 +764,20 @@ function BookingWorkspace({
       startsAt =
         minute !== null && minute < 1440 ? localInstant(createDate, minute, timezone) : null;
     if (!startsAt) {
-      setCreateError("Izabrano lokalno vrijeme nije dostupno. Odaberi drugo vrijeme.");
+      setCreateError(t("Izabrano lokalno vrijeme nije dostupno. Odaberi drugo vrijeme."));
       return;
     }
     if (
       Date.parse(startsAt) <= Date.now() ||
       createDate > addDays(dateKey(new Date(), timezone), 90)
     ) {
-      setCreateError("Odaberi budući termin unutar narednih 90 dana.");
+      setCreateError(t("Odaberi budući termin unutar narednih 90 dana."));
       return;
     }
     const body: CreateBody = { kind, startsAt, configurationVersion: settings.version };
     if (kind === "manual") {
       if (!settings.services.some((service) => service.id === serviceId && service.active)) {
-        setCreateError("Izaberi dostupnu uslugu.");
+        setCreateError(t("Izaberi dostupnu uslugu."));
         return;
       }
       body.serviceId = serviceId;
@@ -789,7 +803,7 @@ function BookingWorkspace({
         Date.parse(endsAt) <= Date.parse(startsAt) ||
         Date.parse(endsAt) - Date.parse(startsAt) > 31 * 86400000
       ) {
-        setCreateError("Provjeri kraj zauzeća. Interval može trajati najviše 31 dan.");
+        setCreateError(t("Provjeri kraj zauzeća. Interval može trajati najviše 31 dan."));
         return;
       }
       body.endsAt = endsAt;
@@ -825,11 +839,11 @@ function BookingWorkspace({
               onClick={onBack}
             >
               <Icon name="arrow" />
-              Djelatnosti
+              {t("Djelatnosti")}
             </button>
           )}
           {!requiresLogin && <p className={styles.eyebrow}>{businessTitle}</p>}
-          <h1 id="business-booking-title">Termini</h1>
+          <h1 id="business-booking-title">{t("Termini")}</h1>
         </div>
         <button
           className={styles.secondary}
@@ -838,7 +852,7 @@ function BookingWorkspace({
           onClick={() => setSettingsOpen(!settingsOpen)}
         >
           <Icon name="sliders" />
-          {settingsOpen ? "Zatvori postavke" : "Usluge i raspored"}
+          {settingsOpen ? t("Zatvori postavke") : t("Usluge i raspored")}
         </button>
       </header>
       {notice && (
@@ -858,17 +872,17 @@ function BookingWorkspace({
           target={uncertain ? "_blank" : undefined}
           rel={uncertain ? "noopener" : undefined}
         >
-          Prijavi se
+          {t("Prijavi se")}
         </Link>
       )}
       {settingsLoading && (
         <p className={styles.loading} role="status">
-          Dohvaćanje postavki…
+          {t("Dohvaćanje postavki…")}
         </p>
       )}
       {!settings && !settingsLoading && (
         <button type="button" className={styles.secondary} onClick={() => void loadSettings(true)}>
-          Pokušaj ponovo
+          {t("Pokušaj ponovo")}
         </button>
       )}
       {settings && (
@@ -876,10 +890,10 @@ function BookingWorkspace({
           <span className={styles.onlineState} data-enabled={Boolean(ready)}>
             <span />
             {ready
-              ? "Online booking je uključen"
+              ? t("Online booking je uključen")
               : settings.enabled
-                ? "Booking čeka uslugu i raspored"
-                : "Online booking je isključen"}
+                ? t("Booking čeka uslugu i raspored")
+                : t("Online booking je isključen")}
           </span>
           <span>{timezone}</span>
         </div>
@@ -889,8 +903,8 @@ function BookingWorkspace({
         <form className={styles.settings} onSubmit={saveSettings}>
           <div className={styles.cardHeading}>
             <div>
-              <h2>Usluge i radno vrijeme</h2>
-              <p>Booking postane dostupan nakon usluge i rasporeda.</p>
+              <h2>{t("Usluge i radno vrijeme")}</h2>
+              <p>{t("Booking postane dostupan nakon usluge i rasporeda.")}</p>
             </div>
             <label className={styles.switch}>
               <input
@@ -900,12 +914,12 @@ function BookingWorkspace({
                 onChange={(event) => setDraft({ ...draft, enabled: event.target.checked })}
               />
               <span />
-              Online booking
+              {t("Online booking")}
             </label>
           </div>
           <fieldset disabled={busy !== null || settingsBlocked}>
             <label className={styles.field}>
-              Vremenska zona
+              {t("Vremenska zona")}
               <select
                 value={draft.timezone}
                 onChange={(event) => setDraft({ ...draft, timezone: event.target.value })}
@@ -918,7 +932,7 @@ function BookingWorkspace({
               </select>
             </label>
             <div className={styles.subheading}>
-              <h3>Usluge</h3>
+              <h3>{t("Usluge")}</h3>
               <button
                 className={styles.textButton}
                 type="button"
@@ -942,12 +956,12 @@ function BookingWorkspace({
                 + Dodaj uslugu
               </button>
             </div>
-            {draft.services.length === 0 && <p className={styles.help}>Još nema usluga.</p>}
+            {draft.services.length === 0 && <p className={styles.help}>{t("Još nema usluga.")}</p>}
             <div className={styles.services}>
               {draft.services.map((service) => (
                 <div className={styles.service} key={service.key}>
                   <label className={styles.field}>
-                    Naziv
+                    {t("Naziv")}
                     <input
                       required
                       maxLength={120}
@@ -963,7 +977,7 @@ function BookingWorkspace({
                     />
                   </label>
                   <label className={styles.field}>
-                    Trajanje · min
+                    {t("Trajanje · min")}
                     <input
                       type="number"
                       min={15}
@@ -1017,7 +1031,7 @@ function BookingWorkspace({
                           })
                         }
                       />
-                      Dostupna
+                      {t("Dostupna")}
                     </label>
                     {!service.id && (
                       <button
@@ -1030,7 +1044,7 @@ function BookingWorkspace({
                           })
                         }
                       >
-                        Ukloni
+                        {t("Ukloni")}
                       </button>
                     )}
                   </div>
@@ -1038,7 +1052,7 @@ function BookingWorkspace({
               ))}
             </div>
             <div className={styles.subheading}>
-              <h3>Sedmični raspored</h3>
+              <h3>{t("Sedmični raspored")}</h3>
             </div>
             <div className={styles.week}>
               {weekdays.map((label, index) => {
@@ -1066,14 +1080,14 @@ function BookingWorkspace({
                           })
                         }
                       />
-                      {label}
+                      {t(label)}
                     </label>
                     {rows.length ? (
                       <div className={styles.windows}>
                         {rows.map((window) => (
                           <div key={window.key}>
                             <input
-                              aria-label={`${label} od`}
+                              aria-label={t("{day} od", { day: t(label) })}
                               type="time"
                               step={60}
                               required
@@ -1091,7 +1105,7 @@ function BookingWorkspace({
                             />
                             <span>–</span>
                             <input
-                              aria-label={`${label} do`}
+                              aria-label={t("{day} do", { day: t(label) })}
                               type="text"
                               inputMode="numeric"
                               placeholder="HH:MM"
@@ -1114,7 +1128,7 @@ function BookingWorkspace({
                         ))}
                       </div>
                     ) : (
-                      <span className={styles.closed}>Zatvoreno</span>
+                      <span className={styles.closed}>{t("Zatvoreno")}</span>
                     )}
                   </div>
                 );
@@ -1122,7 +1136,7 @@ function BookingWorkspace({
             </div>
             <div className={styles.formActions}>
               <button className={styles.primary} type="submit" disabled={uncertain}>
-                {busy === "settings" ? "Spremanje…" : "Sačuvaj postavke"}
+                {busy === "settings" ? t("Spremanje…") : t("Sačuvaj postavke")}
                 <Icon name="check" />
               </button>
               <button
@@ -1130,14 +1144,16 @@ function BookingWorkspace({
                 className={styles.textButton}
                 onClick={() => settings && setDraft(toDraft(settings))}
               >
-                Vrati sačuvano
+                {t("Vrati sačuvano")}
               </button>
             </div>
           </fieldset>
           {settingsBlocked && (
             <div className={styles.conflict}>
               <p>
-                Učitaj aktuelne postavke prije novog spremanja. Tvoj unos je i dalje prikazan iznad.
+                {t(
+                  "Učitaj aktuelne postavke prije novog spremanja. Tvoj unos je i dalje prikazan iznad.",
+                )}
               </p>
               <button
                 type="button"
@@ -1145,7 +1161,7 @@ function BookingWorkspace({
                 disabled={settingsLoading || busy !== null}
                 onClick={() => void loadSettings(true)}
               >
-                Učitaj sačuvane postavke
+                {t("Učitaj sačuvane postavke")}
               </button>
             </div>
           )}
@@ -1154,11 +1170,11 @@ function BookingWorkspace({
 
       {settings && month && (
         <div className={styles.calendarLayout}>
-          <section className={styles.calendar} aria-label="Mjesečni kalendar">
+          <section className={styles.calendar} aria-label={t("Mjesečni kalendar")}>
             <div className={styles.monthHeading}>
               <button
                 type="button"
-                aria-label="Prethodni mjesec"
+                aria-label={t("Prethodni mjesec")}
                 disabled={busy !== null}
                 onClick={() => {
                   const next = nextMonth(month, -1);
@@ -1168,10 +1184,10 @@ function BookingWorkspace({
               >
                 <Icon name="chevron" />
               </button>
-              <h2>{bookingMonth(month.slice(0, 7))}</h2>
+              <h2>{bookingMonth(month.slice(0, 7), locale)}</h2>
               <button
                 type="button"
-                aria-label="Sljedeći mjesec"
+                aria-label={t("Sljedeći mjesec")}
                 disabled={busy !== null}
                 onClick={() => {
                   const next = nextMonth(month, 1);
@@ -1183,7 +1199,7 @@ function BookingWorkspace({
               </button>
             </div>
             <div className={styles.dayNames} aria-hidden="true">
-              {["P", "U", "S", "Č", "P", "S", "N"].map((label, index) => (
+              {bookingWeekdays(locale).map((label, index) => (
                 <span key={weekdays[index]}>{label}</span>
               ))}
             </div>
@@ -1193,7 +1209,7 @@ function BookingWorkspace({
                   key={date}
                   type="button"
                   disabled={busy !== null}
-                  aria-label={bookingDate(`${date}T12:00:00Z`, "UTC")}
+                  aria-label={bookingDate(`${date}T12:00:00Z`, "UTC", { locale })}
                   aria-pressed={day === date}
                   data-outside={date.slice(0, 7) !== month.slice(0, 7)}
                   data-today={date === today}
@@ -1220,19 +1236,21 @@ function BookingWorkspace({
                 setDay(today);
               }}
             >
-              Danas
+              {t("Danas")}
             </button>
             <p className={styles.calendarLegend}>
               <span />
-              Dan s unesenim terminom
+              {t("Dan s unesenim terminom")}
             </p>
           </section>
 
           <section className={styles.dayPanel} aria-labelledby="booking-day-heading">
             <div className={styles.cardHeading}>
               <div>
-                <span className={styles.eyebrow}>ODABRANI DAN</span>
-                <h2 id="booking-day-heading">{bookingDate(`${day}T12:00:00Z`, "UTC")}</h2>
+                <span className={styles.eyebrow}>{t("ODABRANI DAN")}</span>
+                <h2 id="booking-day-heading">
+                  {bookingDate(`${day}T12:00:00Z`, "UTC", { locale })}
+                </h2>
               </div>
               <div className={styles.actions}>
                 <button
@@ -1241,7 +1259,7 @@ function BookingWorkspace({
                   disabled={busy !== null || calendarLoading}
                   onClick={() => void loadCalendar()}
                 >
-                  Osvježi
+                  {t("Osvježi")}
                 </button>
                 <button
                   className={styles.primary}
@@ -1267,7 +1285,7 @@ function BookingWorkspace({
             {creating && (
               <form className={styles.createForm} onSubmit={submitCreate}>
                 <div className={styles.cardHeading}>
-                  <h3>Novi unos</h3>
+                  <h3>{t("Novi unos")}</h3>
                   {!uncertain && (
                     <button
                       type="button"
@@ -1275,7 +1293,7 @@ function BookingWorkspace({
                       disabled={busy !== null}
                       onClick={() => setCreating(false)}
                     >
-                      Zatvori
+                      {t("Zatvori")}
                     </button>
                   )}
                 </div>
@@ -1283,20 +1301,20 @@ function BookingWorkspace({
                   disabled={busy !== null || uncertain || settingsLoading || createSettingsBlocked}
                 >
                   <label className={styles.field}>
-                    Vrsta
+                    {t("Vrsta")}
                     <select
                       value={kind}
                       onChange={(event) =>
                         setKind(event.target.value === "block" ? "block" : "manual")
                       }
                     >
-                      <option value="manual">Termin telefonom / ručni unos</option>
-                      <option value="block">Zauzeto vrijeme</option>
+                      <option value="manual">{t("Termin telefonom / ručni unos")}</option>
+                      <option value="block">{t("Zauzeto vrijeme")}</option>
                     </select>
                   </label>
                   <div className={styles.twoColumns}>
                     <label className={styles.field}>
-                      Datum
+                      {t("Datum")}
                       <input
                         type="date"
                         required
@@ -1307,7 +1325,7 @@ function BookingWorkspace({
                       />
                     </label>
                     <label className={styles.field}>
-                      Početak
+                      {t("Početak")}
                       <input
                         type="time"
                         step={60}
@@ -1320,13 +1338,13 @@ function BookingWorkspace({
                   {kind === "manual" ? (
                     <>
                       <label className={styles.field}>
-                        Usluga
+                        {t("Usluga")}
                         <select
                           required
                           value={serviceId}
                           onChange={(event) => setServiceId(event.target.value)}
                         >
-                          <option value="">Izaberi uslugu</option>
+                          <option value="">{t("Izaberi uslugu")}</option>
                           {activeServices.map((service) => (
                             <option key={service.id} value={service.id}>
                               {service.name} · {service.durationMinutes} min ·{" "}
@@ -1336,11 +1354,13 @@ function BookingWorkspace({
                         </select>
                       </label>
                       {activeServices.length === 0 && (
-                        <p className={styles.help}>Prvo dodaj dostupnu uslugu u postavkama.</p>
+                        <p className={styles.help}>
+                          {t("Prvo dodaj dostupnu uslugu u postavkama.")}
+                        </p>
                       )}
                       <div className={styles.twoColumns}>
                         <label className={styles.field}>
-                          Ime klijenta · opcionalno
+                          {t("Ime klijenta · opcionalno")}
                           <input
                             maxLength={120}
                             value={clientName}
@@ -1348,7 +1368,7 @@ function BookingWorkspace({
                           />
                         </label>
                         <label className={styles.field}>
-                          Telefon · opcionalno
+                          {t("Telefon · opcionalno")}
                           <input
                             type="tel"
                             maxLength={40}
@@ -1361,7 +1381,7 @@ function BookingWorkspace({
                   ) : (
                     <div className={styles.twoColumns}>
                       <label className={styles.field}>
-                        Datum završetka
+                        {t("Datum završetka")}
                         <input
                           type="date"
                           required
@@ -1372,7 +1392,7 @@ function BookingWorkspace({
                         />
                       </label>
                       <label className={styles.field}>
-                        Kraj
+                        {t("Kraj")}
                         <input
                           type="time"
                           step={60}
@@ -1389,10 +1409,10 @@ function BookingWorkspace({
                     disabled={kind === "manual" && activeServices.length === 0}
                   >
                     {busy === "create"
-                      ? "Spremanje…"
+                      ? t("Spremanje…")
                       : kind === "block"
-                        ? "Označi kao zauzeto"
-                        : "Sačuvaj ručni termin"}
+                        ? t("Označi kao zauzeto")
+                        : t("Sačuvaj ručni termin")}
                   </button>
                 </fieldset>
                 {createError && (
@@ -1407,7 +1427,7 @@ function BookingWorkspace({
                     disabled={busy !== null}
                     onClick={() => void loadSettings(false)}
                   >
-                    Osvježi usluge
+                    {t("Osvježi usluge")}
                   </button>
                 )}
                 {uncertain && (
@@ -1417,7 +1437,7 @@ function BookingWorkspace({
                     disabled={busy !== null}
                     onClick={() => intent.current && void sendCreate(intent.current)}
                   >
-                    Ponovi isti unos
+                    {t("Ponovi isti unos")}
                   </button>
                 )}
                 <p className={styles.help}>Vrijeme: {timezone}.</p>
@@ -1426,14 +1446,14 @@ function BookingWorkspace({
 
             {calendarLoading && (
               <p className={styles.loading} role="status">
-                Dohvaćanje termina…
+                {t("Dohvaćanje termina…")}
               </p>
             )}
             {!calendarLoading && entries && selectedEntries.length === 0 && (
               <div className={styles.empty}>
                 <Icon name="calendar" />
-                <h3>Nema unesenih termina.</h3>
-                <p>Ručni termin ili zauzeće možeš dodati iznad.</p>
+                <h3>{t("Nema unesenih termina.")}</h3>
+                <p>{t("Ručni termin ili zauzeće možeš dodati iznad.")}</p>
               </div>
             )}
             <div className={styles.entries}>
@@ -1451,17 +1471,17 @@ function BookingWorkspace({
                     <div className={styles.entryTitle}>
                       <h3>
                         {entry.kind === "block"
-                          ? "Zauzeto vrijeme"
-                          : (entry.serviceName ?? "Termin")}
+                          ? t("Zauzeto vrijeme")
+                          : (entry.serviceName ?? t("Termin"))}
                       </h3>
                       <span data-status={entry.status}>{bookingStatusLabels[entry.status]}</span>
                     </div>
                     <p>
                       {entry.kind === "customer"
-                        ? "Online zahtjev"
+                        ? t("Online zahtjev")
                         : entry.kind === "manual"
-                          ? "Ručni termin"
-                          : "Blokada kalendara"}
+                          ? t("Ručni termin")
+                          : t("Blokada kalendara")}
                       {entry.durationMinutes !== null && ` · ${entry.durationMinutes} min`}
                       {entry.kind !== "block" && ` · ${bookingMoney(entry.priceMinor)}`}
                     </p>
@@ -1482,7 +1502,7 @@ function BookingWorkspace({
                               disabled={busy !== null || uncertain}
                               onClick={() => void changeEntry(entry, "approve")}
                             >
-                              Odobri
+                              {t("Odobri")}
                             </button>
                           )}
                           <button
@@ -1491,7 +1511,7 @@ function BookingWorkspace({
                             disabled={busy !== null || uncertain}
                             onClick={() => void changeEntry(entry, "decline")}
                           >
-                            Odbij
+                            {t("Odbij")}
                           </button>
                         </>
                       )}
@@ -1503,7 +1523,7 @@ function BookingWorkspace({
                             disabled={busy !== null || uncertain}
                             onClick={() => void changeEntry(entry, "cancel")}
                           >
-                            {entry.kind === "block" ? "Ukloni blokadu" : "Otkaži"}
+                            {entry.kind === "block" ? t("Ukloni blokadu") : t("Otkaži")}
                           </button>
                           {entry.kind !== "block" && Date.parse(entry.endsAt) <= now && (
                             <button
@@ -1512,7 +1532,7 @@ function BookingWorkspace({
                               disabled={busy !== null || uncertain}
                               onClick={() => void changeEntry(entry, "complete")}
                             >
-                              Označi održan
+                              {t("Označi održan")}
                               <Icon name="check" />
                             </button>
                           )}

@@ -1,11 +1,18 @@
 import Image from "next/image";
+import { type Translate, translator } from "../../lib/i18n/translate";
 import styles from "./home.module.css";
 
-export function HomeLogoMarquee({ title }: { title?: string }) {
+export function HomeLogoMarquee({
+  title,
+  t = translator("bs"),
+}: {
+  title?: string;
+  t?: Translate;
+}) {
   return (
     <section
       className={styles.partners}
-      aria-label={title || "Poslovna mreža"}
+      aria-label={title || t("Poslovna mreža")}
       data-design="home-logos"
     >
       {title && <h2 className={`${styles.container} ${styles.partnerTitle}`}>{title}</h2>}

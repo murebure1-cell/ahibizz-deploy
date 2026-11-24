@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { msg } from "../../lib/i18n/translate";
 import {
   type ManagedReel,
   type ReelStatus,
@@ -15,6 +16,7 @@ import {
   reelTimeLeft,
 } from "../../lib/reels";
 import { ConfirmButton } from "../ConfirmButton";
+import { useT } from "../i18n/LocaleProvider";
 import { previewFrame } from "./poster";
 import styles from "./reels.module.css";
 
@@ -29,33 +31,33 @@ type Upload = {
 };
 
 const statuses: Record<ReelStatus, string> = {
-  uploading: "Prijenos nije završen",
-  pending: "Na pregledu",
-  published: "Objavljeno",
-  rejected: "Vraćeno",
-  withdrawn: "Povučeno",
-  expired: "Isteklo (24 h)",
-  removed: "Uklonio moderator",
+  uploading: msg("Prijenos nije završen"),
+  pending: msg("Na pregledu"),
+  published: msg("Objavljeno"),
+  rejected: msg("Vraćeno"),
+  withdrawn: msg("Povučeno"),
+  expired: msg("Isteklo (24 h)"),
+  removed: msg("Uklonio moderator"),
 };
 
 const problems: Record<string, string> = {
-  REEL_INPUT: "Provjeri naziv, opis i odabrane datoteke.",
-  REEL_CHANGED: "Stanje reela se promijenilo. Osvježi stranicu.",
+  REEL_INPUT: msg("Provjeri naziv, opis i odabrane datoteke."),
+  REEL_CHANGED: msg("Stanje reela se promijenilo. Osvježi stranicu."),
   REEL_LIMIT: `Jedna djelatnost može imati najviše ${reelBusinessLimit} aktivna reela ili reela na pregledu.`,
-  REEL_DAILY_LIMIT: "Dostignut je dnevni limit objava. Pokušaj ponovo sutra.",
-  REEL_POSTER_INVALID: "Odaberi statičnu JPG, PNG ili WebP naslovnicu do 768 KB.",
+  REEL_DAILY_LIMIT: msg("Dostignut je dnevni limit objava. Pokušaj ponovo sutra."),
+  REEL_POSTER_INVALID: msg("Odaberi statičnu JPG, PNG ili WebP naslovnicu do 768 KB."),
   REEL_VIDEO_INVALID: `Odaberi MP4 (H.264) snimak od 1 do ${reelMaxDuration} sekundi, do 1920 piksela po stranici.`,
-  REEL_INCOMPLETE: "Nedostaje dio snimka. Pokušaj poslati ponovo.",
-  REEL_NOT_FOUND: "Reel ili djelatnost više nije dostupna.",
-  REEL_PART_SIZE: "Veličina datoteke premašuje dozvoljenu granicu.",
-  REEL_BUSINESS_HIDDEN: "Djelatnost mora biti javno objavljena prije odobravanja reela.",
-  REEL_BUSY: "Pregled snimka je trenutno zauzet. Pokušaj ponovo.",
-  AUTHENTICATION_REQUIRED: "Prijavi se ponovo i pošalji reel.",
-  COMMUNITY_RULES_REQUIRED: "Prihvati pravila zajednice za objavu reela.",
-  ACCOUNT_IDENTITY_CHANGED: "Nalog je promijenjen. Osvježi stranicu.",
+  REEL_INCOMPLETE: msg("Nedostaje dio snimka. Pokušaj poslati ponovo."),
+  REEL_NOT_FOUND: msg("Reel ili djelatnost više nije dostupna."),
+  REEL_PART_SIZE: msg("Veličina datoteke premašuje dozvoljenu granicu."),
+  REEL_BUSINESS_HIDDEN: msg("Djelatnost mora biti javno objavljena prije odobravanja reela."),
+  REEL_BUSY: msg("Pregled snimka je trenutno zauzet. Pokušaj ponovo."),
+  AUTHENTICATION_REQUIRED: msg("Prijavi se ponovo i pošalji reel."),
+  COMMUNITY_RULES_REQUIRED: msg("Prihvati pravila zajednice za objavu reela."),
+  ACCOUNT_IDENTITY_CHANGED: msg("Nalog je promijenjen. Osvježi stranicu."),
 };
 function describe(code: string) {
-  return problems[code] ?? "Prijenos nije završen. Pokušaj ponovo.";
+  return problems[code] ?? msg("Prijenos nije završen. Pokušaj ponovo.");
 }
 
 export function ReelManager({
@@ -74,6 +76,7 @@ export function ReelManager({
   /** Moderators only: Reels that are public right now and can be taken down one by one. */
   live?: ManagedReel[];
 }) {
+  const t = useT();
   const router = useRouter();
   const active = useRef(false);
   const attempt = useRef<Upload | null>(null);
@@ -187,10 +190,10 @@ export function ReelManager({
       }
       form.reset();
       attempt.current = null;
-      setFeedback("Reel je poslan na pregled.");
+      setFeedback(t("Reel je poslan na pregled."));
       router.refresh();
     } catch (error) {
-      setFeedback(describe(error instanceof Error ? error.message : ""));
+      setFeedback(t(describe(error instanceof Error ? error.message : "")));
       router.refresh();
     } finally {
       end();
@@ -214,16 +217,16 @@ export function ReelManager({
       if (preview === reel.id) setPreview("");
       setFeedback(
         action === "approve"
-          ? "Reel je objavljen."
+          ? t("Reel je objavljen.")
           : action === "reject"
-            ? "Reel je vraćen."
+            ? t("Reel je vraćen.")
             : action === "remove"
-              ? "Reel je uklonjen, a snimak i naslovnica obrisani."
-              : "Reel je povučen.",
+              ? t("Reel je uklonjen, a snimak i naslovnica obrisani.")
+              : t("Reel je povučen."),
       );
       router.refresh();
     } catch (error) {
-      setFeedback(describe(error instanceof Error ? error.message : ""));
+      setFeedback(t(describe(error instanceof Error ? error.message : "")));
       router.refresh();
     } finally {
       end();
@@ -245,9 +248,9 @@ export function ReelManager({
             }}
           >
             <fieldset disabled={busy}>
-              <legend>Novi reel</legend>
+              <legend>{t("Novi reel")}</legend>
               <label>
-                Djelatnost
+                {t("Djelatnost")}
                 <select name="business" defaultValue={selected} required>
                   {businesses.map((business) => (
                     <option value={business.id} key={business.id}>
@@ -257,36 +260,38 @@ export function ReelManager({
                 </select>
               </label>
               <label>
-                Naziv snimka
+                {t("Naziv snimka")}
                 <input name="title" maxLength={100} required />
               </label>
               <label>
-                Opis <span>(opcionalno)</span>
+                {t("Opis")} <span>(opcionalno)</span>
                 <textarea name="caption" maxLength={600} rows={3} />
               </label>
               <label>
-                Video
+                {t("Video")}
                 <input name="video" type="file" accept="video/mp4,.mp4" required />
-                <small>MP4 (H.264), 1–90 sekundi, do 24 MB.</small>
+                <small>{t("MP4 (H.264), 1–90 sekundi, do 24 MB.")}</small>
               </label>
               <label>
-                Naslovnica <span>(opcionalno)</span>
+                {t("Naslovnica")} <span>(opcionalno)</span>
                 <input name="poster" type="file" accept="image/png,image/jpeg,image/webp" />
-                <small>JPG, PNG ili WebP do 768 KB. Može se izdvojiti i kadar iz snimka.</small>
+                <small>
+                  {t("JPG, PNG ili WebP do 768 KB. Može se izdvojiti i kadar iz snimka.")}
+                </small>
               </label>
               <button type="submit" className={styles.primary}>
-                {busy ? "Obrađuje se…" : "Pošalji na pregled"}
+                {busy ? t("Obrađuje se…") : t("Pošalji na pregled")}
               </button>
             </fieldset>
           </form>
         ) : (
           <p className={styles.empty}>
-            Objavi djelatnost prije dodavanja reela.{" "}
-            <Link href="/nalog?odjeljak=djelatnosti">Moje djelatnosti</Link>
+            {t("Objavi djelatnost prije dodavanja reela.")}{" "}
+            <Link href="/nalog?odjeljak=djelatnosti">{t("Moje djelatnosti")}</Link>
           </p>
         ))}
       {progress !== null && (
-        <progress value={progress} max={100} aria-label="Napredak prijenosa">
+        <progress value={progress} max={100} aria-label={t("Napredak prijenosa")}>
           {progress}%
         </progress>
       )}
@@ -295,11 +300,14 @@ export function ReelManager({
           {feedback}
         </p>
       )}
-      <section className={styles.manageList} aria-label={admin ? "Reels za pregled" : "Moji reels"}>
-        <h2>{admin ? "Čekaju pregled" : "Moje objave"}</h2>
+      <section
+        className={styles.manageList}
+        aria-label={admin ? t("Reels za pregled") : t("Moji reels")}
+      >
+        <h2>{admin ? t("Čekaju pregled") : t("Moje objave")}</h2>
         {!visible.length && (
           <p className={styles.empty}>
-            {admin ? "Trenutno nema novih zahtjeva." : "Još nema reelova."}
+            {admin ? t("Trenutno nema novih zahtjeva.") : t("Još nema reelova.")}
           </p>
         )}
         {visible.map((reel) => (
@@ -313,13 +321,13 @@ export function ReelManager({
                 </p>
               </div>
               <span className={styles.status} data-status={reel.status}>
-                {statuses[reel.status]}
+                {t(statuses[reel.status])}
               </span>
             </div>
             {reel.caption && <p className={styles.caption}>{reel.caption}</p>}
             {reel.reviewReason && (
               <p className={styles.caption}>
-                {reel.status === "removed" ? "Razlog uklanjanja" : "Razlog vraćanja"} ·{" "}
+                {reel.status === "removed" ? t("Razlog uklanjanja") : t("Razlog vraćanja")} ·{" "}
                 {reel.reviewReason}
               </p>
             )}
@@ -332,7 +340,7 @@ export function ReelManager({
                 className={styles.secondary}
                 onClick={() => setPreview(reel.id)}
               >
-                Pregledaj snimak
+                {t("Pregledaj snimak")}
               </button>
             )}
             {preview === reel.id && (
@@ -347,7 +355,7 @@ export function ReelManager({
                   aria-label={reel.title}
                 />
                 <button type="button" className={styles.secondary} onClick={() => setPreview("")}>
-                  Zatvori pregled
+                  {t("Zatvori pregled")}
                 </button>
               </div>
             )}
@@ -359,7 +367,7 @@ export function ReelManager({
                   disabled={busy || preview !== reel.id}
                   onClick={() => void decide(reel, "approve")}
                 >
-                  Odobri i objavi
+                  {t("Odobri i objavi")}
                 </button>
                 <form
                   className={styles.reject}
@@ -373,33 +381,33 @@ export function ReelManager({
                   }}
                 >
                   <label>
-                    Razlog vraćanja
+                    {t("Razlog vraćanja")}
                     <input name="reason" maxLength={600} required disabled={busy} />
                   </label>
                   <button type="submit" className={styles.secondary} disabled={busy}>
-                    Vrati vlasniku
+                    {t("Vrati vlasniku")}
                   </button>
                 </form>
               </div>
             ) : (
               <div className={styles.actions}>
                 {reel.status === "published" && (
-                  <Link href={`/reels/${reel.id}`}>Javna objava</Link>
+                  <Link href={`/reels/${reel.id}`}>{t("Javna objava")}</Link>
                 )}
                 {reel.status !== "removed" && (
                   <ConfirmButton
                     disabled={busy}
                     className={styles.secondary}
-                    title={reel.status === "expired" ? "Skloniti s liste?" : "Obrisati reel?"}
+                    title={reel.status === "expired" ? t("Skloniti s liste?") : t("Obrisati reel?")}
                     description={
                       reel.status === "expired"
-                        ? "Snimak je već obrisan nakon 24 sata."
-                        : "Reel se odmah skida s prikaza, a snimak i naslovnica se brišu."
+                        ? t("Snimak je već obrisan nakon 24 sata.")
+                        : t("Reel se odmah skida s prikaza, a snimak i naslovnica se brišu.")
                     }
-                    confirmLabel={reel.status === "expired" ? "Skloni" : "Obriši reel"}
+                    confirmLabel={reel.status === "expired" ? t("Skloni") : t("Obriši reel")}
                     onConfirm={() => void decide(reel, "withdraw")}
                   >
-                    {reel.status === "expired" ? "Skloni s liste" : "Obriši reel"}
+                    {reel.status === "expired" ? t("Skloni s liste") : t("Obriši reel")}
                   </ConfirmButton>
                 )}
               </div>
@@ -408,10 +416,10 @@ export function ReelManager({
         ))}
       </section>
       {admin && (
-        <section className={styles.manageList} aria-label="Objavljeni reels">
-          <h2>Objavljeno sada</h2>
+        <section className={styles.manageList} aria-label={t("Objavljeni reels")}>
+          <h2>{t("Objavljeno sada")}</h2>
           {!live.filter((reel) => !removed.includes(reel.id)).length && (
-            <p className={styles.empty}>Trenutno nema objavljenih reelova.</p>
+            <p className={styles.empty}>{t("Trenutno nema objavljenih reelova.")}</p>
           )}
           {live
             .filter((reel) => !removed.includes(reel.id))
@@ -425,7 +433,7 @@ export function ReelManager({
                       {reel.expiresAt ? ` · ${reelTimeLeft(reel.expiresAt)}` : ""}
                     </p>
                   </div>
-                  <Link href={`/reels/${reel.id}`}>Otvori</Link>
+                  <Link href={`/reels/${reel.id}`}>{t("Otvori")}</Link>
                 </div>
                 <form
                   className={styles.reject}
@@ -439,11 +447,11 @@ export function ReelManager({
                   }}
                 >
                   <label>
-                    Razlog uklanjanja
+                    {t("Razlog uklanjanja")}
                     <input name="reason" maxLength={600} required disabled={busy} />
                   </label>
                   <button type="submit" className={styles.secondary} disabled={busy}>
-                    Ukloni reel
+                    {t("Ukloni reel")}
                   </button>
                 </form>
               </article>

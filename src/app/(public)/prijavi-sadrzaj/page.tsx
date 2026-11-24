@@ -2,7 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { RequestScreen } from "../../../components/support/RequestScreen";
 import { reportHelpPath } from "../../../lib/help-center";
 import { supportTarget } from "../../../lib/support-requests";
-export const metadata = { title: "Prijavi sadržaj" };
+import { titled } from "../../../server/i18n";
+export const generateMetadata = titled("Prijavi sadržaj");
 export default async function ReportPage({
   searchParams,
 }: {

@@ -16,6 +16,7 @@ import {
 import { getBookingService } from "../../../../server/booking";
 import { DirectoryAccessError, getPublicDirectoryService } from "../../../../server/directory";
 import { publicBusinessView } from "../../../../server/directory/public-view";
+import { getTranslator } from "../../../../server/i18n";
 import { getRentalService } from "../../../../server/rentals/service";
 import { getStayService } from "../../../../server/stays/service";
 
@@ -35,7 +36,8 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const fallback: Metadata = { title: "Poslovni profil" };
+  const t = await getTranslator();
+  const fallback: Metadata = { title: t("Poslovni profil") };
   if (!businessIdPattern.test(id)) return fallback;
   const business = await readPublicBusiness(id).catch(() => null);
   if (!business?.title?.trim()) return fallback;
@@ -85,7 +87,7 @@ export default async function PublicBusinessPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<DirectorySearchParams>;
 }) {
-  const [{ id }, search] = await Promise.all([params, searchParams]);
+  const [{ id }, search, t] = await Promise.all([params, searchParams, getTranslator()]);
   if (!businessIdPattern.test(id)) notFound();
   try {
     const service = getPublicDirectoryService();
@@ -117,7 +119,7 @@ export default async function PublicBusinessPage({
       const offers: Offer[] = [
         {
           id: "business-stays",
-          label: "Smještaj",
+          label: t("Smještaj"),
           content: stays.then((catalog) =>
             hostsGuests && (!catalog || catalog.units.length > 0) ? (
               <StayUnits
@@ -131,7 +133,7 @@ export default async function PublicBusinessPage({
         },
         {
           id: "business-rentals",
-          label: "Automobili",
+          label: t("Automobili"),
           content: rentals.then((catalog) =>
             rentsCars && (!catalog || catalog.vehicles.length > 0) ? (
               <RentalFleet
@@ -144,7 +146,7 @@ export default async function PublicBusinessPage({
         },
         {
           id: "business-appointments",
-          label: "Termini",
+          label: t("Termini"),
           content: booking.then((configuration) =>
             !hostsGuests || (configuration?.enabled && configuration.services.length > 0) ? (
               <PublicBooking businessId={id} configuration={configuration ?? null} />
@@ -184,10 +186,10 @@ export default async function PublicBusinessPage({
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <section className={styles.unavailable}>
-        <h1>Profil trenutno nije dostupan.</h1>
-        <p>Pokušaj ponovo kasnije.</p>
+        <h1>{t("Profil trenutno nije dostupan.")}</h1>
+        <p>{t("Pokušaj ponovo kasnije.")}</p>
         <Link className="text-link" href="/pretraga">
-          Nazad na pretragu
+          {t("Nazad na pretragu")}
         </Link>
       </section>
     </main>

@@ -1,3 +1,4 @@
+import { msg } from "./i18n/translate";
 import { normalizeMessageSearch } from "./messaging";
 
 export class MessagingRequestError extends Error {
@@ -108,15 +109,15 @@ export function messagingWrite(body: unknown, key?: string): RequestInit {
 }
 export function messagingError(error: unknown): string {
   const code = error instanceof MessagingRequestError ? error.code : "";
-  if (code === "AUTHENTICATION_REQUIRED") return "Prijavi se ponovo.";
-  if (code === "ACCOUNT_IDENTITY_CHANGED") return "Prijavi se ponovo svojim nalogom.";
-  if (code === "THREAD_NOT_FOUND") return "Razgovor nije dostupan.";
+  if (code === "AUTHENTICATION_REQUIRED") return msg("Prijavi se ponovo.");
+  if (code === "ACCOUNT_IDENTITY_CHANGED") return msg("Prijavi se ponovo svojim nalogom.");
+  if (code === "THREAD_NOT_FOUND") return msg("Razgovor nije dostupan.");
   if (["PERSON_NOT_FOUND", "BUSINESS_NOT_FOUND"].includes(code))
-    return "Profil trenutno nije dostupan.";
-  if (code === "SELF_MESSAGE_NOT_ALLOWED") return "Izaberi drugi profil za razgovor.";
-  if (code === "MESSAGING_BLOCKED") return "Poruke su blokirane u ovom razgovoru.";
-  if (code === "CONVERSATION_UNAVAILABLE") return "Nove poruke trenutno nisu dostupne.";
-  if (code === "MESSAGING_RATE_LIMIT") return "Previše zahtjeva. Pokušaj uskoro.";
+    return msg("Profil trenutno nije dostupan.");
+  if (code === "SELF_MESSAGE_NOT_ALLOWED") return msg("Izaberi drugi profil za razgovor.");
+  if (code === "MESSAGING_BLOCKED") return msg("Poruke su blokirane u ovom razgovoru.");
+  if (code === "CONVERSATION_UNAVAILABLE") return msg("Nove poruke trenutno nisu dostupne.");
+  if (code === "MESSAGING_RATE_LIMIT") return msg("Previše zahtjeva. Pokušaj uskoro.");
   if (
     [
       "ACCOUNT_SUSPENDED",
@@ -125,9 +126,9 @@ export function messagingError(error: unknown): string {
       "ACCOUNT_ACCESS_DENIED",
     ].includes(code)
   )
-    return "Poruke nisu dostupne ovom nalogu.";
+    return msg("Poruke nisu dostupne ovom nalogu.");
   if (["INVALID_MESSAGING_INPUT", "INVALID_MESSAGE_BODY", "REQUEST_TOO_LARGE"].includes(code))
-    return "Provjeri unesenu poruku.";
-  if (code === "IDEMPOTENCY_CONFLICT") return "Zahtjev je izmijenjen. Provjeri razgovor.";
-  return "Zahtjev nije potvrđen. Pokušaj ponovo.";
+    return msg("Provjeri unesenu poruku.");
+  if (code === "IDEMPOTENCY_CONFLICT") return msg("Zahtjev je izmijenjen. Provjeri razgovor.");
+  return msg("Zahtjev nije potvrđen. Pokušaj ponovo.");
 }

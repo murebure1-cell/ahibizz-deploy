@@ -16,7 +16,9 @@ import {
   connectionError,
   connectionRequest,
 } from "../../lib/connections-client";
+import { msg } from "../../lib/i18n/translate";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import { VerificationBadge } from "../VerificationBadge";
 import styles from "./connections.module.css";
 import { PersonAvatar, type PersonMediaUrl, personLocation } from "./PeopleSearch";
@@ -29,14 +31,14 @@ type PendingWrite = {
   expectedVersion: number;
 };
 const views = [
-  ["contacts", "Prijatelji"],
-  ["incoming", "Primljeni zahtjevi"],
-  ["outgoing", "Poslani zahtjevi"],
+  ["contacts", msg("Prijatelji")],
+  ["incoming", msg("Primljeni zahtjevi")],
+  ["outgoing", msg("Poslani zahtjevi")],
 ] as const;
 const emptyMessages: Record<ConnectionView, string> = {
-  contacts: "Još nemaš prijatelja na AhiBizzu.",
-  incoming: "Nema novih zahtjeva.",
-  outgoing: "Nema poslanih zahtjeva.",
+  contacts: msg("Još nemaš prijatelja na AhiBizzu."),
+  incoming: msg("Nema novih zahtjeva."),
+  outgoing: msg("Nema poslanih zahtjeva."),
 };
 
 export function ConnectionsPanel({
@@ -56,6 +58,7 @@ export function ConnectionsPanel({
   imageUrl?: PersonMediaUrl;
   expectedAccountId?: string;
 }) {
+  const { t, locale } = useI18n();
   const [view, setView] = useState<ConnectionView>("contacts"),
     [page, setPage] = useState(1),
     [items, setItems] = useState<ConnectionItem[]>([]),
@@ -93,23 +96,26 @@ export function ConnectionsPanel({
     };
   }, []);
 
-  const clearDeniedAccess = useCallback((failure: ConnectionRequestError) => {
-    // Every in-flight read/write from before this denial loses permission to refill private state.
-    accessEpoch.current++;
-    revision.current++;
-    controller.current?.abort();
-    cache.current.clear();
-    writing.current = false;
-    setItems([]);
-    setHasMore(false);
-    setReady(false);
-    setLoading(false);
-    setBusy(false);
-    setPending(null);
-    setConfirmRemove(null);
-    setNotice("");
-    setError(connectionError(failure));
-  }, []);
+  const clearDeniedAccess = useCallback(
+    (failure: ConnectionRequestError) => {
+      // Every in-flight read/write from before this denial loses permission to refill private state.
+      accessEpoch.current++;
+      revision.current++;
+      controller.current?.abort();
+      cache.current.clear();
+      writing.current = false;
+      setItems([]);
+      setHasMore(false);
+      setReady(false);
+      setLoading(false);
+      setBusy(false);
+      setPending(null);
+      setConfirmRemove(null);
+      setNotice("");
+      setError(t(connectionError(failure)));
+    },
+    [t],
+  );
 
   useEffect(() => {
     if (previousActor.current !== expectedAccountId) {
@@ -175,7 +181,7 @@ export function ConnectionsPanel({
         return;
       }
       if (!nextController.signal.aborted && current === revision.current)
-        setError(connectionError(failure));
+        setError(t(connectionError(failure)));
     } finally {
       if (
         live.current &&
@@ -185,7 +191,7 @@ export function ConnectionsPanel({
       )
         setLoading(false);
     }
-  }, [page, view, clearDeniedAccess, scopedRequest, expectedAccountId]);
+  }, [page, view, clearDeniedAccess, scopedRequest, expectedAccountId, t]);
 
   useEffect(() => {
     if (active) void load();
@@ -223,7 +229,7 @@ export function ConnectionsPanel({
       if (live.current && actor.current === expectedActor && access === accessEpoch.current) {
         setPending(null);
         cache.current.clear();
-        setNotice("Prijateljstva su ažurirana.");
+        setNotice(t("Prijateljstva su ažurirana."));
         await load();
       }
     } catch (failure) {
@@ -235,7 +241,7 @@ export function ConnectionsPanel({
           clearDeniedAccess(failure);
           return;
         }
-        setError(connectionError(failure));
+        setError(t(connectionError(failure)));
         if (
           failure instanceof ConnectionRequestError &&
           failure.status >= 400 &&
@@ -246,7 +252,7 @@ export function ConnectionsPanel({
             cache.current.clear();
             await load();
             if (live.current && actor.current === expectedActor && access === accessEpoch.current)
-              setNotice("Zahtjev je izmijenjen. Prikaz je osvježen.");
+              setNotice(t("Zahtjev je izmijenjen. Prikaz je osvježen."));
           }
         }
       }
@@ -299,15 +305,15 @@ export function ConnectionsPanel({
 
   const disabled = busy || loading || pending !== null;
   return (
-    <section className={styles.workspace} aria-label="Prijatelji">
+    <section className={styles.workspace} aria-label={t("Prijatelji")}>
       <div className={styles.heading}>
-        {heading && <h2>Prijatelji</h2>}
+        {heading && <h2>{t("Prijatelji")}</h2>}
         <Link className={styles.secondary} href={peopleHref}>
           <Icon name="search" /> Pronađi ljude
         </Link>
       </div>
       <fieldset className={styles.tabs}>
-        <legend className={styles.visuallyHidden}>Pregled prijateljstava</legend>
+        <legend className={styles.visuallyHidden}>{t("Pregled prijateljstava")}</legend>
         {views.map(([key, label]) => (
           <button
             key={key}
@@ -316,7 +322,7 @@ export function ConnectionsPanel({
             disabled={busy || pending !== null}
             onClick={() => switchView(key)}
           >
-            {label}
+            {t(label)}
           </button>
         ))}
       </fieldset>
@@ -329,7 +335,7 @@ export function ConnectionsPanel({
             disabled={busy || loading}
             onClick={() => (pending ? void send(pending) : void load())}
           >
-            Pokušaj ponovo
+            {t("Pokušaj ponovo")}
           </button>
         </div>
       )}
@@ -339,7 +345,7 @@ export function ConnectionsPanel({
         </p>
       )}
       {!ready && !error && (
-        <section className={styles.skeleton} aria-busy="true" aria-label="Prijateljstva">
+        <section className={styles.skeleton} aria-busy="true" aria-label={t("Prijateljstva")}>
           <span />
           <span />
           <span />
@@ -348,10 +354,10 @@ export function ConnectionsPanel({
       {ready && items.length === 0 && !loading && (
         <div className={styles.empty}>
           <Icon name="user" />
-          <h3>{emptyMessages[view]}</h3>
+          <h3>{t(emptyMessages[view])}</h3>
           {view === "contacts" && (
             <Link className={styles.secondary} href={peopleHref}>
-              Pronađi ljude
+              {t("Pronađi ljude")}
             </Link>
           )}
         </div>
@@ -376,11 +382,11 @@ export function ConnectionsPanel({
                         {item.person.verified && <VerificationBadge kind="person" />}
                       </Link>
                     ) : (
-                      "Profil nije javno dostupan"
+                      t("Profil nije javno dostupan")
                     )}
                   </h3>
-                  {item.person && personLocation(item.person) && (
-                    <p className={styles.location}>{personLocation(item.person)}</p>
+                  {item.person && personLocation(item.person, locale) && (
+                    <p className={styles.location}>{personLocation(item.person, locale)}</p>
                   )}
                 </div>
               </div>
@@ -403,7 +409,7 @@ export function ConnectionsPanel({
                       disabled={disabled}
                       onClick={() => act(item, "decline")}
                     >
-                      Odbij
+                      {t("Odbij")}
                     </button>
                   </>
                 ) : view === "outgoing" ? (
@@ -413,7 +419,7 @@ export function ConnectionsPanel({
                     disabled={disabled}
                     onClick={() => act(item, "cancel")}
                   >
-                    Povuci zahtjev
+                    {t("Povuci zahtjev")}
                   </button>
                 ) : (
                   <>
@@ -425,7 +431,7 @@ export function ConnectionsPanel({
                       disabled={disabled}
                       onClick={() => act(item, "remove")}
                     >
-                      {confirmRemove === item.id ? "Potvrdi uklanjanje" : "Ukloni"}
+                      {confirmRemove === item.id ? t("Potvrdi uklanjanje") : t("Ukloni")}
                     </button>
                     {confirmRemove === item.id && (
                       <button
@@ -434,7 +440,7 @@ export function ConnectionsPanel({
                         disabled={disabled}
                         onClick={() => setConfirmRemove(null)}
                       >
-                        Odustani
+                        {t("Odustani")}
                       </button>
                     )}
                   </>
@@ -445,14 +451,14 @@ export function ConnectionsPanel({
         </ul>
       )}
       {ready && (page > 1 || hasMore) && (
-        <nav className={styles.pagination} aria-label="Stranice prijateljstava">
+        <nav className={styles.pagination} aria-label={t("Stranice prijateljstava")}>
           <button
             type="button"
             className={styles.secondary}
             disabled={disabled || page === 1}
             onClick={() => switchPage(page - 1)}
           >
-            Prethodna
+            {t("Prethodna")}
           </button>
           <span>{page}</span>
           <button
@@ -461,7 +467,7 @@ export function ConnectionsPanel({
             disabled={disabled || !hasMore}
             onClick={() => switchPage(page + 1)}
           >
-            Sljedeća
+            {t("Sljedeća")}
           </button>
         </nav>
       )}

@@ -1,3 +1,5 @@
+import { intlLocale, type Locale } from "./i18n/locales";
+
 const defaultTimeZone = "Europe/Sarajevo";
 
 /** Stable Bosnian presentation, independent of the browser locale and timezone. */
@@ -27,4 +29,32 @@ export function bosnianDateTime(value: string | Date, timeZone = defaultTimeZone
     timeZone,
   }).format(date);
   return `${accountDate(date, timeZone)} ${time}`;
+}
+
+/** Date in the reader's interface language; Bosnian keeps the stable form above. */
+export function localDate(value: string | Date, locale: Locale, timeZone = defaultTimeZone) {
+  if (locale === "bs") return accountDate(value, timeZone);
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "—";
+  return new Intl.DateTimeFormat(`${intlLocale[locale]}-u-nu-latn`, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone,
+  }).format(date);
+}
+
+export function localDateTime(value: string | Date, locale: Locale, timeZone = defaultTimeZone) {
+  if (locale === "bs") return bosnianDateTime(value, timeZone);
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "—";
+  return new Intl.DateTimeFormat(`${intlLocale[locale]}-u-nu-latn`, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: locale === "en" ? "h12" : "h23",
+    timeZone,
+  }).format(date);
 }

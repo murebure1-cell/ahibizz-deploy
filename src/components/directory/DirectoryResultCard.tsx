@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { messageLink } from "../../lib/messaging";
@@ -10,6 +12,7 @@ import {
 import { AhiMark } from "../AhiMark";
 import { FavoriteButton } from "../favorites/FavoriteButton";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import { VerificationBadge } from "../VerificationBadge";
 import { BusinessAmenities, BusinessOpenStatus } from "./BusinessDetails";
 import { BusinessLogo } from "./BusinessLogo";
@@ -31,6 +34,7 @@ export function DirectoryResultCard({
   compact?: boolean;
   example?: boolean;
 }) {
+  const { t, locale } = useI18n();
   const logo = safeBusinessImage(business.logo, preview);
   const cover = safeBusinessImage(business.image, preview);
   const image = cover && cover.src !== logo?.src ? cover : undefined;
@@ -54,7 +58,7 @@ export function DirectoryResultCard({
           href={profile}
           className={styles.cover}
           data-photo={Boolean(image)}
-          aria-label={`Otvori ${business.title}`}
+          aria-label={t("Otvori {title}", { title: business.title })}
         >
           {image ? (
             <Image
@@ -84,8 +88,8 @@ export function DirectoryResultCard({
           <BusinessLogo src={logo?.src} alt="" sizes="72px" />
         </div>
         <header className={styles.identity}>
-          {business.featured && <span className={styles.example}>Istaknuto</span>}
-          {example && <span className={styles.example}>Primjer</span>}
+          {business.featured && <span className={styles.example}>{t("Istaknuto")}</span>}
+          {example && <span className={styles.example}>{t("Primjer")}</span>}
           <h2 data-design="directory-title">
             <Link href={profile} title={business.title}>
               {business.title}
@@ -95,7 +99,9 @@ export function DirectoryResultCard({
           {hasLocation && (
             <p className={styles.location}>
               <Icon name="pin" />
-              <span>{(compact && business.city?.trim()) || businessLocationLabel(business)}</span>
+              <span>
+                {(compact && business.city?.trim()) || businessLocationLabel(business, locale)}
+              </span>
             </p>
           )}
         </header>
@@ -109,35 +115,38 @@ export function DirectoryResultCard({
         {category && (
           <span
             className={styles.category}
-            title={[business.categoryName, business.subcategoryName].filter(Boolean).join(" · ")}
+            title={[business.categoryName, business.subcategoryName]
+              .filter((name): name is string => Boolean(name))
+              .map((name) => t(name))
+              .join(" · ")}
           >
             <span className={styles.categoryIcon}>
               <Icon name="shop" />
             </span>
-            <span>{category}</span>
+            <span>{t(category)}</span>
           </span>
         )}
         <div className={styles.actions} data-design="directory-actions">
           <Link
             href={messageLink({ kind: "business", targetId: business.id })}
-            aria-label={`Pošalji poruku — ${business.title}`}
-            title="Pošalji poruku"
+            aria-label={`${t("Pošalji poruku")} — ${business.title}`}
+            title={t("Pošalji poruku")}
           >
             <Icon name="message" />
           </Link>
           {hasMap && (
             <Link
               href={`${profile}#business-location`}
-              aria-label={`Prikaži lokaciju — ${business.title}`}
-              title="Prikaži lokaciju"
+              aria-label={`${t("Prikaži lokaciju")} — ${business.title}`}
+              title={t("Prikaži lokaciju")}
             >
               <Icon name="pin" />
             </Link>
           )}
           <Link
             href={profile}
-            aria-label={`Pogledaj profil — ${business.title}`}
-            title="Pogledaj profil"
+            aria-label={`${t("Pogledaj profil")} — ${business.title}`}
+            title={t("Pogledaj profil")}
           >
             <Icon name="arrow" />
           </Link>

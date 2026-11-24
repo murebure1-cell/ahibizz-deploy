@@ -1,3 +1,4 @@
+import { msg } from "./i18n/translate";
 import { bosnianMoney } from "./number-format";
 
 export const promotionKinds = ["home", "nearby", "category", "banner"] as const;
@@ -5,10 +6,10 @@ export const promotionDurations = [7, 14, 30] as const;
 export type PromotionKind = (typeof promotionKinds)[number];
 export type PromotionDuration = (typeof promotionDurations)[number];
 export const promotionLabels: Record<PromotionKind, string> = {
-  home: "Istaknuto na početnoj",
-  nearby: "Istaknuto u blizini",
-  category: "Istaknuto u kategoriji",
-  banner: "Baner na početnoj",
+  home: msg("Istaknuto na početnoj"),
+  nearby: msg("Istaknuto u blizini"),
+  category: msg("Istaknuto u kategoriji"),
+  banner: msg("Baner na početnoj"),
 };
 export const promotionCapacity: Record<PromotionKind, number> = {
   home: 6,
@@ -84,10 +85,10 @@ export function promotionStatusLabel(
   order: Pick<PromotionOrder, "status" | "startsAt" | "endsAt">,
   now = Date.now(),
 ) {
-  if (order.status === "cancelled") return "Otkazano";
-  if (order.status === "pending") return "Na čekanju";
-  if (order.status === "completed" || Date.parse(order.endsAt) <= now) return "Završeno";
-  return Date.parse(order.startsAt) > now ? "Zakazano" : "Aktivno";
+  if (order.status === "cancelled") return msg("Otkazano");
+  if (order.status === "pending") return msg("Na čekanju");
+  if (order.status === "completed" || Date.parse(order.endsAt) <= now) return msg("Završeno");
+  return Date.parse(order.startsAt) > now ? msg("Zakazano") : msg("Aktivno");
 }
 export type PromotionReservation = { startsAt: string; endsAt: string };
 /** Half-open periods allow a new promotion at the exact previous end. */

@@ -3,9 +3,10 @@ import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { authReturnLinks } from "../../lib/auth-return";
-import { accountDate } from "../../lib/display-date";
+import { localDate } from "../../lib/display-date";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
-import { bosnianNumber } from "../../lib/number-format";
+import { bosnianForm, msg, type Translate } from "../../lib/i18n/translate";
+import { localNumber } from "../../lib/number-format";
 import {
   createReviewsApi,
   type OwnReviewState,
@@ -16,6 +17,7 @@ import {
   type ReviewVersionInput,
 } from "../../lib/reviews";
 import { reportUrl } from "../../lib/support-requests";
+import { useI18n } from "../i18n/LocaleProvider";
 import { CommunityRulesPrompt } from "../support/CommunityRulesPrompt";
 import styles from "./business-reviews.module.css";
 
@@ -30,16 +32,19 @@ type PrivateDraft = {
   rating: number;
 };
 const empty: ReviewPage = { items: [], page: 1, hasMore: false, summary: { count: 0, sum: 0 } };
-function message(error: unknown) {
+function reason(error: unknown) {
   if (error instanceof ReviewsClientError) {
-    if (error.code === "VERSION_CONFLICT") return "Recenzija je izmijenjena. Osvježi prikaz.";
-    if (error.code === "ACCOUNT_IDENTITY_CHANGED") return "Nalog je promijenjen. Osvježi prikaz.";
-    if (error.code === "REVIEW_HIDDEN") return "Recenziju provjerava administracija.";
-    if (error.status === 401) return "Prijavi se ponovo.";
-    if (error.status === 403) return "Ova radnja nije dostupna tvom nalogu.";
+    if (error.code === "VERSION_CONFLICT") return msg("Recenzija je izmijenjena. Osvježi prikaz.");
+    if (error.code === "ACCOUNT_IDENTITY_CHANGED")
+      return msg("Nalog je promijenjen. Osvježi prikaz.");
+    if (error.code === "REVIEW_HIDDEN") return msg("Recenziju provjerava administracija.");
+    if (error.status === 401) return msg("Prijavi se ponovo.");
+    if (error.status === 403) return msg("Ova radnja nije dostupna tvom nalogu.");
   }
-  return "Recenzije trenutno nisu dostupne. Pokušaj ponovo.";
+  return msg("Recenzije trenutno nisu dostupne. Pokušaj ponovo.");
 }
+let translateError: Translate = (text) => text;
+const message = (error: unknown) => translateError(reason(error));
 export function BusinessReviews({
   businessId,
   api: provided,
@@ -47,6 +52,8 @@ export function BusinessReviews({
   businessId: string;
   api?: ReviewsApi;
 }) {
+  const { t, locale } = useI18n();
+  translateError = t;
   const api = useMemo(() => provided ?? createReviewsApi(), [provided]),
     [page, setPage] = useState<ReviewPage>(empty),
     [own, setOwn] = useState<OwnReviewState | null>(null),
@@ -300,7 +307,9 @@ export function BusinessReviews({
       setText(state.review?.text ?? "");
       setRating(state.review?.rating ?? 5);
       setPending(null);
-      setNotice(command.action === "save" ? "Recenzija je sačuvana." : "Recenzija je povučena.");
+      setNotice(
+        command.action === "save" ? t("Recenzija je sačuvana.") : t("Recenzija je povučena."),
+      );
     } catch (error) {
       if (current.current === businessId && generation.current === run) {
         setError(message(error));
@@ -350,23 +359,27 @@ export function BusinessReviews({
     <section className={styles.section} aria-labelledby={labelId} id="recenzije">
       <header className={styles.heading}>
         <div>
-          <h2 id={labelId}>Recenzije</h2>
+          <h2 id={labelId}>{t("Recenzije")}</h2>
           {page.summary.count > 0 && (
             <p>
               <strong>
-                {bosnianNumber(page.summary.sum / page.summary.count, {
+                {localNumber(locale, page.summary.sum / page.summary.count, {
                   minimumFractionDigits: 1,
                   maximumFractionDigits: 1,
                 })}
               </strong>{" "}
               / 5{" "}
               <span>
-                · {page.summary.count}{" "}
-                {page.summary.count % 10 >= 2 &&
-                page.summary.count % 10 <= 4 &&
-                (page.summary.count % 100 < 12 || page.summary.count % 100 > 14)
-                  ? "recenzije"
-                  : "recenzija"}
+                ·{" "}
+                {t(
+                  bosnianForm(
+                    page.summary.count,
+                    msg("{count} recenzija"),
+                    msg("{count} recenzije"),
+                    msg("{count} recenzija"),
+                  ),
+                  { count: page.summary.count },
+                )}
               </span>
             </p>
           )}
@@ -376,7 +389,7 @@ export function BusinessReviews({
           onClick={() => void refresh()}
           disabled={busy}
           className={styles.refresh}
-          aria-label="Osvježi recenzije"
+          aria-label={t("Osvježi recenzije")}
         >
           ↻
         </button>
@@ -391,7 +404,9 @@ export function BusinessReviews({
           {notice}
         </p>
       )}
-      {ready && page.items.length === 0 && <p className={styles.empty}>Još nema recenzija.</p>}
+      {ready && page.items.length === 0 && (
+        <p className={styles.empty}>{t("Još nema recenzija.")}</p>
+      )}
       <div className={styles.list}>
         {page.items.map((review) => (
           <article key={review.id} className={styles.review}>
@@ -417,15 +432,19 @@ export function BusinessReviews({
                 ) : (
                   <strong>{review.author.name}</strong>
                 )}
-                <time dateTime={review.createdAt}>{accountDate(review.createdAt)}</time>
+                <time dateTime={review.createdAt}>{localDate(review.createdAt, locale)}</time>
               </div>
-              <span className={styles.stars} role="img" aria-label={`${review.rating} od 5`}>
+              <span
+                className={styles.stars}
+                role="img"
+                aria-label={t("{value} od 5", { value: review.rating })}
+              >
                 {"★".repeat(review.rating)}
                 <span aria-hidden="true">{"☆".repeat(5 - review.rating)}</span>
               </span>
             </header>
             <p>{review.text}</p>
-            <Link href={reportUrl("review", review.id)}>Prijavi recenziju</Link>
+            <Link href={reportUrl("review", review.id)}>{t("Prijavi recenziju")}</Link>
           </article>
         ))}
       </div>
@@ -436,7 +455,7 @@ export function BusinessReviews({
           onClick={() => void more()}
           className={styles.secondary}
         >
-          Prikaži još
+          {t("Prikaži još")}
         </button>
       )}
       {ready && !checkingOwn && !own && (
@@ -444,7 +463,7 @@ export function BusinessReviews({
           href={authReturnLinks(`/djelatnosti/${businessId}#recenzije`).login}
           className={styles.signin}
         >
-          Prijavi se za recenziju
+          {t("Prijavi se za recenziju")}
         </Link>
       )}
       {own && (own.canReview || (own.review && !own.review.withdrawn)) && (
@@ -459,13 +478,15 @@ export function BusinessReviews({
               void submit(pending?.action ?? "save");
             }}
           >
-            <h3>{own.review && !own.review.withdrawn ? "Tvoja recenzija" : "Napiši recenziju"}</h3>
+            <h3>
+              {own.review && !own.review.withdrawn ? t("Tvoja recenzija") : t("Napiši recenziju")}
+            </h3>
             {own.review?.hidden ? (
-              <p>Recenziju provjerava administracija.</p>
+              <p>{t("Recenziju provjerava administracija.")}</p>
             ) : own.canReview ? (
               <>
                 <fieldset disabled={busy || pending !== null}>
-                  <legend>Ocjena</legend>
+                  <legend>{t("Ocjena")}</legend>
                   <div className={styles.rating}>
                     {[1, 2, 3, 4, 5].map((value) => (
                       <label key={value} data-selected={value <= rating}>
@@ -477,13 +498,13 @@ export function BusinessReviews({
                           onChange={() => setRating(value)}
                         />
                         <span aria-hidden="true">★</span>
-                        <span className={styles.sr}>{value} od 5</span>
+                        <span className={styles.sr}>{t("{value} od 5", { value })}</span>
                       </label>
                     ))}
                   </div>
                 </fieldset>
                 <label className={styles.text}>
-                  Tvoje iskustvo
+                  {t("Tvoje iskustvo")}
                   <textarea
                     value={text}
                     onChange={(event) => setText(event.target.value)}
@@ -495,10 +516,10 @@ export function BusinessReviews({
                 </label>
                 <button type="submit" disabled={busy || !text.trim()} className={styles.primary}>
                   {pending
-                    ? "Pokušaj ponovo"
+                    ? t("Pokušaj ponovo")
                     : own.review && !own.review.withdrawn
-                      ? "Sačuvaj izmjene"
-                      : "Objavi recenziju"}
+                      ? t("Sačuvaj izmjene")
+                      : t("Objavi recenziju")}
                 </button>
               </>
             ) : null}
@@ -509,7 +530,7 @@ export function BusinessReviews({
                 onClick={() => void submit("withdraw")}
                 className={styles.secondary}
               >
-                Povuci recenziju
+                {t("Povuci recenziju")}
               </button>
             )}
           </form>

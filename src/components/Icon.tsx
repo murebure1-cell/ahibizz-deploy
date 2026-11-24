@@ -216,6 +216,7 @@ export function Icon({ name, ...props }: SVGProps<SVGSVGElement> & { name: IconN
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
+      data-icon={name}
       {...props}
     >
       {paths[name]}

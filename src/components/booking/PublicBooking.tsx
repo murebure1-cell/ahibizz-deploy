@@ -20,6 +20,7 @@ import { type BookingQuote, createBookingSubmission } from "../../lib/booking-su
 import { addDays, dateKey } from "../../lib/booking-time";
 import { createPublicBookingOffer } from "../../lib/public-booking-offer";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import { CalendarDays } from "./CalendarDays";
 import styles from "./public-booking.module.css";
 
@@ -47,6 +48,7 @@ function BookingWorkspace({
   request = bookingRequest,
   expectedAccountId,
 }: Props) {
+  const { t, locale } = useI18n();
   const [offers] = useState(() => createPublicBookingOffer(initialConfiguration));
   const [offer, setOffer] = useState(offers.applied),
     [changeNotice, setChangeNotice] = useState("");
@@ -110,8 +112,8 @@ function BookingWorkspace({
     );
     if (next.configuration && previous?.timezone !== next.configuration.timezone)
       setDate(dateKey(new Date(), next.configuration.timezone));
-    if (previous) setChangeNotice("Usluga ili raspored su izmijenjeni. Provjeri novi odabir.");
-  }, [offers]);
+    if (previous) setChangeNotice(t("Usluga ili raspored su izmijenjeni. Provjeri novi odabir."));
+  }, [offers, t]);
   const receiveProps = useCallback(() => {
     if (!offers.receive(initialConfiguration)) return;
     revision.current++;
@@ -142,9 +144,9 @@ function BookingWorkspace({
         throw new Error("invalid_booking_configuration");
       needsConfiguration.current = false;
       if (offers.receiveRead(next, offerRevision)) applyLatest();
-      setChangeNotice("Usluga ili raspored su izmijenjeni. Provjeri novi odabir.");
+      setChangeNotice(t("Usluga ili raspored su izmijenjeni. Provjeri novi odabir."));
     },
-    [businessId, request, offers, applyLatest],
+    [businessId, request, offers, applyLatest, t],
   );
   // biome-ignore lint/correctness/useExhaustiveDependencies: The refresh counter deliberately repeats the same read after a user action.
   useEffect(() => {
@@ -198,10 +200,10 @@ function BookingWorkspace({
             await refreshConfiguration(current, offerRevision, controller.signal);
           } catch (refreshFailure) {
             if (live.current && !controller.signal.aborted && current === revision.current)
-              setError(bookingError(refreshFailure));
+              setError(t(bookingError(refreshFailure)));
           }
         } else {
-          setError(bookingError(failure));
+          setError(t(bookingError(failure)));
         }
       } finally {
         if (live.current && current === revision.current) setLoading(false);
@@ -269,7 +271,7 @@ function BookingWorkspace({
         ) {
           setSelection("");
           setSlots([]);
-          setChangeNotice("Usluga ili raspored su izmijenjeni. Provjeri novi odabir.");
+          setChangeNotice(t("Usluga ili raspored su izmijenjeni. Provjeri novi odabir."));
           return;
         }
         submissionRequest.current = submissionActor.current
@@ -297,10 +299,10 @@ function BookingWorkspace({
         failure instanceof BookingRequestError &&
           ["AUTHENTICATION_REQUIRED", "ACCOUNT_IDENTITY_CHANGED"].includes(failure.code),
       );
-      setError(bookingError(failure));
+      setError(t(bookingError(failure)));
       if (operation.current.uncertain) {
         setUncertain(true);
-        setError("Slanje nije potvrđeno. Provjeri isti zahtjev ili otvori Moje termine.");
+        setError(t("Slanje nije potvrđeno. Provjeri isti zahtjev ili otvori Moje termine."));
         return;
       }
       setUncertain(false);
@@ -326,11 +328,11 @@ function BookingWorkspace({
   }
   if (!done && !busy && !uncertain && !canBook) return null;
   const moment = (value: string, timezone = configuration?.timezone ?? "UTC") =>
-    bookingDate(value, timezone, { time: true });
+    bookingDate(value, timezone, { time: true, locale });
   return (
     <section
       className={styles.booking}
-      aria-label="Zakazivanje termina"
+      aria-label={t("Zakazivanje termina")}
       data-design="booking-panel"
     >
       <header className={styles.heading}>
@@ -338,24 +340,24 @@ function BookingWorkspace({
           <Icon name="calendar" />
         </span>
         <div>
-          <p>{preview ? "Proba bez stvarnog zakazivanja" : "Booking"}</p>
-          <h2>Zakaži termin</h2>
+          <p>{preview ? t("Proba bez stvarnog zakazivanja") : "Booking"}</p>
+          <h2>{t("Zakaži termin")}</h2>
         </div>
       </header>
       {done ? (
         <div role="status" className={styles.success}>
           <Icon name="check" />
-          <h3>{preview ? "Zahtjev je sačuvan u pregledu." : "Zahtjev je poslan."}</h3>
+          <h3>{preview ? t("Zahtjev je sačuvan u pregledu.") : t("Zahtjev je poslan.")}</h3>
           <strong>{done.serviceName}</strong>
           <p>{moment(done.startsAt, done.timezone)}</p>
           <p>
             {done.durationMinutes} min · {bookingMoney(done.priceMinor)}
           </p>
-          <p>{bookingStatusLabels[done.status]}</p>
+          <p>{t(bookingStatusLabels[done.status])}</p>
           <Link
             href={preview ? "/pregled/prostor/nalog?odjeljak=termini" : "/nalog?odjeljak=termini"}
           >
-            Moji termini
+            {t("Moji termini")}
           </Link>
           <button
             type="button"
@@ -366,7 +368,7 @@ function BookingWorkspace({
               setRefresh((value) => value + 1);
             }}
           >
-            Izaberi drugi termin
+            {t("Izaberi drugi termin")}
           </button>
         </div>
       ) : configuration && service ? (
@@ -377,7 +379,7 @@ function BookingWorkspace({
             </p>
           )}
           <label className={styles.label} htmlFor={`${prefix}-service`}>
-            Usluga
+            {t("Usluga")}
             <select
               id={`${prefix}-service`}
               value={serviceId}
@@ -406,17 +408,17 @@ function BookingWorkspace({
             disabled={busy || uncertain}
           />
           <div className={styles.timeHeading}>
-            <h3>Slobodni termini</h3>
+            <h3>{t("Slobodni termini")}</h3>
             <span>{configuration.timezone}</span>
           </div>
           {loading ? (
             <p role="status" className={styles.note}>
-              Provjeravam termine…
+              {t("Provjeravam termine…")}
             </p>
           ) : !error && slots.length === 0 ? (
-            <p className={styles.note}>Za ovaj dan nema slobodnih termina.</p>
+            <p className={styles.note}>{t("Za ovaj dan nema slobodnih termina.")}</p>
           ) : (
-            <fieldset className={styles.times} aria-label="Odaberi slobodan termin">
+            <fieldset className={styles.times} aria-label={t("Odaberi slobodan termin")}>
               {slots.map((slot) => (
                 <button
                   key={slot.startsAt}
@@ -450,7 +452,7 @@ function BookingWorkspace({
                     disabled={busy}
                     onClick={() => void submit(true)}
                   >
-                    {busy ? "Provjera…" : "Provjeri isti zahtjev"}
+                    {busy ? t("Provjera…") : t("Provjeri isti zahtjev")}
                   </button>
                 )}
                 {login ? (
@@ -460,7 +462,7 @@ function BookingWorkspace({
                     target={uncertain ? "_blank" : undefined}
                     rel={uncertain ? "noopener" : undefined}
                   >
-                    Prijavi se
+                    {t("Prijavi se")}
                   </Link>
                 ) : (
                   <button
@@ -469,7 +471,7 @@ function BookingWorkspace({
                     disabled={busy || uncertain}
                     onClick={() => setRefresh((value) => value + 1)}
                   >
-                    Osvježi termine
+                    {t("Osvježi termine")}
                   </button>
                 )}
                 <Link
@@ -480,7 +482,7 @@ function BookingWorkspace({
                     preview ? "/pregled/prostor/nalog?odjeljak=termini" : "/nalog?odjeljak=termini"
                   }
                 >
-                  Moji termini
+                  {t("Moji termini")}
                 </Link>
               </div>
             </div>
@@ -492,8 +494,8 @@ function BookingWorkspace({
           {selected && <p className={styles.summary}>{moment(selected.startsAt)}</p>}
           <p className={styles.note}>
             {preview
-              ? "Sve ostaje u ovom probnom pregledu."
-              : "Tvoje ime i email dijele se s vlasnikom radi dogovora."}
+              ? t("Sve ostaje u ovom probnom pregledu.")
+              : t("Tvoje ime i email dijele se s vlasnikom radi dogovora.")}
           </p>
           <button
             type="button"
@@ -503,11 +505,11 @@ function BookingWorkspace({
           >
             {busy
               ? uncertain
-                ? "Provjera…"
-                : "Slanje…"
+                ? t("Provjera…")
+                : t("Slanje…")
               : preview
-                ? "Pošalji zahtjev u pregledu"
-                : "Pošalji zahtjev za termin"}
+                ? t("Pošalji zahtjev u pregledu")
+                : t("Pošalji zahtjev za termin")}
           </button>
         </>
       ) : null}

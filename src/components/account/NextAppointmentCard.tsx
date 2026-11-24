@@ -6,9 +6,11 @@ import {
   type NextAppointment,
 } from "../../lib/next-appointment";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./overview.module.css";
 
 export function NextAppointmentCard({ row, open }: { row: NextAppointment; open: () => void }) {
+  const t = useT();
   const stay = row.kind === "stay";
 
   function download() {
@@ -24,9 +26,9 @@ export function NextAppointmentCard({ row, open }: { row: NextAppointment; open:
     window.setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
   return (
-    <section className={styles.contracts} aria-label="Sljedeći termin">
+    <section className={styles.contracts} aria-label={t("Sljedeći termin")}>
       <header>
-        <h2>Sljedeći termin</h2>
+        <h2>{t("Sljedeći termin")}</h2>
       </header>
       <article className={styles.contract}>
         <div className={styles.contractName}>
@@ -42,21 +44,21 @@ export function NextAppointmentCard({ row, open }: { row: NextAppointment; open:
           <div>
             <dt>
               {stay
-                ? "Dolazak i odlazak"
+                ? t("Dolazak i odlazak")
                 : row.kind === "rental"
-                  ? "Preuzimanje i vraćanje"
-                  : "Vrijeme termina"}
+                  ? t("Preuzimanje i vraćanje")
+                  : t("Vrijeme termina")}
             </dt>
             <dd>{appointmentWhen(row)}</dd>
           </div>
           <div>
-            <dt>Status</dt>
-            <dd>{row.status === "confirmed" ? "Potvrđen" : "Čeka potvrdu"}</dd>
+            <dt>{t("Status")}</dt>
+            <dd>{row.status === "confirmed" ? t("Potvrđen") : t("Čeka potvrdu")}</dd>
           </div>
         </dl>
         <div className={styles.appointmentActions}>
           <button type="button" className={styles.manage} onClick={open}>
-            Moji termini <Icon name="chevron" />
+            {t("Moji termini")} <Icon name="chevron" />
           </button>
           {row.status === "confirmed" && (
             <button type="button" className={styles.manage} onClick={download}>

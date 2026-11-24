@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import { useDeviceLocation } from "../location/DeviceLocation";
 import { useAppPwa } from "./AppPwa";
 import { DevicePush } from "./DevicePush";
@@ -18,6 +19,7 @@ function dismissSetup() {
 }
 
 export function AppPermissionPrompt() {
+  const t = useT();
   const { installed } = useAppPwa();
   const pathname = usePathname();
   const attempted = useRef(false);
@@ -35,7 +37,7 @@ export function AppPermissionPrompt() {
 
   if (!installed || excluded || !open) return null;
   return (
-    <aside className={styles.prompt} aria-label="Dozvole uređaja">
+    <aside className={styles.prompt} aria-label={t("Dozvole uređaja")}>
       <DevicePermissions
         onConfigured={dismissSetup}
         onDismiss={() => {
@@ -54,6 +56,7 @@ export function DevicePermissions({
   onDismiss?: () => void;
   onConfigured?: () => void;
 }) {
+  const t = useT();
   const location = useDeviceLocation();
   const heading = useId();
   const [availableLocation, setAvailableLocation] = useState<boolean | null>(null);
@@ -81,21 +84,21 @@ export function DevicePermissions({
   }, [locationGranted, pushEnabled, onConfigured]);
   return (
     <section className={styles.permissions} aria-labelledby={heading}>
-      <h2 id={heading}>Dozvole uređaja</h2>
+      <h2 id={heading}>{t("Dozvole uređaja")}</h2>
       <div className={styles.row}>
         <span className={styles.icon} aria-hidden="true">
           <Icon name="pin" />
         </span>
         <div className={styles.description}>
-          <h3>Lokacija</h3>
+          <h3>{t("Lokacija")}</h3>
           <p>
             {availableLocation === false
-              ? "Nije dostupna na ovom uređaju."
+              ? t("Nije dostupna na ovom uređaju.")
               : location.permission === "denied"
-                ? "Uključi je u postavkama uređaja."
+                ? t("Uključi je u postavkama uređaja.")
                 : locationGranted
-                  ? "Dozvoljena"
-                  : "Djelatnosti u tvojoj blizini."}
+                  ? t("Dozvoljena")
+                  : t("Djelatnosti u tvojoj blizini.")}
           </p>
         </div>
         {availableLocation && location.permission !== "denied" && !locationGranted && (
@@ -104,7 +107,7 @@ export function DevicePermissions({
             disabled={location.status === "locating"}
             onClick={location.requestLocation}
           >
-            {location.status === "locating" ? "Tražim…" : "Dozvoli lokaciju"}
+            {location.status === "locating" ? t("Tražim…") : t("Dozvoli lokaciju")}
           </button>
         )}
         {locationGranted && <Icon name="check" />}
@@ -112,7 +115,7 @@ export function DevicePermissions({
       <DevicePush onEnabled={setPushEnabled} />
       {onDismiss && (
         <button className={styles.dismiss} type="button" onClick={onDismiss}>
-          {locationGranted && pushEnabled ? "Gotovo" : "Kasnije"}
+          {locationGranted && pushEnabled ? t("Gotovo") : t("Kasnije")}
         </button>
       )}
     </section>

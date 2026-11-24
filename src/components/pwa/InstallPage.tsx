@@ -3,11 +3,14 @@
 import Image from "next/image";
 import { useState } from "react";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
+import { rich } from "../i18n/Rich";
 import { DevicePermissions } from "./AppPermissions";
 import { useAppPwa } from "./AppPwa";
 import styles from "./pwa.module.css";
 
 export function InstallPage() {
+  const t = useT();
   const pwa = useAppPwa();
   const [copied, setCopied] = useState(false);
   const [manualLink, setManualLink] = useState("");
@@ -35,8 +38,8 @@ export function InstallPage() {
           alt=""
           unoptimized
         />
-        <h1 id="install-title">AhiBizz na telefonu.</h1>
-        <p className={styles.intro}>Direktno s tvog početnog ekrana.</p>
+        <h1 id="install-title">{t("AhiBizz na telefonu.")}</h1>
+        <p className={styles.intro}>{t("Direktno s tvog početnog ekrana.")}</p>
         {pwa.installed ? (
           <>
             <p className={styles.installed}>
@@ -47,7 +50,9 @@ export function InstallPage() {
         ) : (
           <>
             {pwa.embedded && (
-              <p className={styles.hint}>Za instalaciju otvori ovaj link u Chromeu ili Safariju.</p>
+              <p className={styles.hint}>
+                {t("Za instalaciju otvori ovaj link u Chromeu ili Safariju.")}
+              </p>
             )}
             <button
               className={styles.install}
@@ -57,10 +62,10 @@ export function InstallPage() {
             >
               <Icon name="download" />
               {pwa.prompting
-                ? "Potvrdi u pregledniku"
+                ? t("Potvrdi u pregledniku")
                 : pwa.accepted
-                  ? "Instalacija je pokrenuta"
-                  : "Instaliraj AhiBizz"}
+                  ? t("Instalacija je pokrenuta")
+                  : t("Instaliraj AhiBizz")}
             </button>
             <p className={styles.status} role="status">
               {pwa.note}
@@ -69,35 +74,42 @@ export function InstallPage() {
               <details open={pwa.platform === "android"}>
                 <summary>Android</summary>
                 <ol>
-                  <li>Otvori ovu stranicu u Chromeu.</li>
+                  <li>{t("Otvori ovu stranicu u Chromeu.")}</li>
                   <li>
-                    U meniju <strong>⋮</strong> odaberi <strong>Dodaj na početni ekran</strong> ili{" "}
-                    <strong>Instaliraj aplikaciju</strong>.
+                    {rich(t("U meniju {menu} odaberi {add} ili {install}."), {
+                      menu: <strong>⋮</strong>,
+                      add: <strong>{t("Dodaj na početni ekran")}</strong>,
+                      install: <strong>{t("Instaliraj aplikaciju")}</strong>,
+                    })}
                   </li>
-                  <li>Potvrdi instalaciju i otvori ikonu AhiBizz.</li>
+                  <li>{t("Potvrdi instalaciju i otvori ikonu AhiBizz.")}</li>
                 </ol>
               </details>
               <details open={pwa.platform === "ios"}>
-                <summary>iPhone i iPad</summary>
+                <summary>{t("iPhone i iPad")}</summary>
                 <ol>
-                  <li>Otvori ovu stranicu u Safariju.</li>
+                  <li>{t("Otvori ovu stranicu u Safariju.")}</li>
                   <li>
-                    Odaberi <strong>Dijeli → Dodaj na početni ekran</strong>.
+                    {rich(t("Odaberi {action}."), {
+                      action: <strong>{t("Dijeli → Dodaj na početni ekran")}</strong>,
+                    })}
                   </li>
                   <li>
-                    Ako se nudi, uključi <strong>Otvori kao web aplikaciju</strong>, pa odaberi{" "}
-                    <strong>Dodaj</strong>.
+                    {rich(t("Ako se nudi, uključi {option}, pa odaberi {add}."), {
+                      option: <strong>{t("Otvori kao web aplikaciju")}</strong>,
+                      add: <strong>{t("Dodaj")}</strong>,
+                    })}
                   </li>
                 </ol>
               </details>
             </div>
             <button className={styles.copy} type="button" onClick={() => void copyLink()}>
-              {copied ? "Link je kopiran" : "Kopiraj link za instalaciju"}
+              {copied ? t("Link je kopiran") : t("Kopiraj link za instalaciju")}
             </button>
             {manualLink && (
               <input
                 className={styles.link}
-                aria-label="Link za instalaciju"
+                aria-label={t("Link za instalaciju")}
                 value={manualLink}
                 readOnly
                 onFocus={(event) => event.currentTarget.select()}

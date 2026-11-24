@@ -1,3 +1,4 @@
+import { msg } from "./i18n/translate";
 export class BusinessMediaRequestError extends Error {
   constructor(
     readonly status: number,
@@ -58,15 +59,15 @@ export async function businessMediaRequest(
 }
 export function businessMediaError(error: unknown): string {
   const code = error instanceof BusinessMediaRequestError ? error.code : "";
-  if (code === "AUTHENTICATION_REQUIRED") return "Prijavi se ponovo.";
-  if (code === "ACCOUNT_IDENTITY_CHANGED") return "Prijavi se ponovo svojim nalogom.";
+  if (code === "AUTHENTICATION_REQUIRED") return msg("Prijavi se ponovo.");
+  if (code === "ACCOUNT_IDENTITY_CHANGED") return msg("Prijavi se ponovo svojim nalogom.");
   if (["BUSINESS_NOT_FOUND", "BUSINESS_ACCESS_DENIED"].includes(code))
-    return "Djelatnost nije dostupna.";
-  if (code === "VERSION_CONFLICT") return "Djelatnost je izmijenjena. Učitaj trenutno stanje.";
+    return msg("Djelatnost nije dostupna.");
+  if (code === "VERSION_CONFLICT") return msg("Djelatnost je izmijenjena. Učitaj trenutno stanje.");
   if (["MEDIA_TOO_LARGE", "REQUEST_TOO_LARGE"].includes(code))
-    return "Izaberi fotografiju do 4 MB.";
+    return msg("Izaberi fotografiju do 4 MB.");
   if (["MEDIA_INVALID", "INVALID_CONTENT_TYPE"].includes(code))
-    return "Izaberi ispravnu JPG, PNG ili WebP fotografiju.";
-  if (code === "BUSINESS_ARCHIVED") return "Prvo vrati djelatnost iz arhive.";
-  return "Promjena nije potvrđena. Provjeri trenutno stanje ili ponovi zahtjev.";
+    return msg("Izaberi ispravnu JPG, PNG ili WebP fotografiju.");
+  if (code === "BUSINESS_ARCHIVED") return msg("Prvo vrati djelatnost iz arhive.");
+  return msg("Promjena nije potvrđena. Provjeri trenutno stanje ili ponovi zahtjev.");
 }

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { CalendarTarget } from "../../lib/business-today";
 import { directoryActorRequest } from "../../lib/directory-client";
 import type { DirectoryBusiness } from "../../server/directory/types";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./overview.module.css";
 
 const BusinessBookingManager = dynamic(() =>
@@ -22,6 +23,7 @@ export function OwnerCalendarPanel({
   accountId: string;
   onBack: () => void;
 }) {
+  const t = useT();
   const [business, setBusiness] = useState<DirectoryBusiness | null>(null);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -53,18 +55,22 @@ export function OwnerCalendarPanel({
   return (
     <section className={styles.workspace}>
       <button type="button" className={styles.manage} onClick={onBack}>
-        Nazad na djelatnosti
+        {t("Nazad na djelatnosti")}
       </button>
       {!business &&
         (failed ? (
           <p role="status">
-            Kalendar nije dostupan.{" "}
+            {t("Kalendar nije dostupan.")}{" "}
             <button type="button" onClick={() => setRetry(retry + 1)}>
-              Pokušaj ponovo
+              {t("Pokušaj ponovo")}
             </button>
           </p>
         ) : (
-          <span role="status" aria-label="Učitavanje kalendara" className={styles.placeholder} />
+          <span
+            role="status"
+            aria-label={t("Učitavanje kalendara")}
+            className={styles.placeholder}
+          />
         ))}
       {business && (
         <>

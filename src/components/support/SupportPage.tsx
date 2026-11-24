@@ -9,12 +9,14 @@ import {
   type SupportConfig,
 } from "../../lib/support";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import { CopyPaymentDetails } from "./CopyPaymentDetails";
 import styles from "./support.module.css";
 
 const amounts = ["5", "10", "20", "50"];
 
 export function SupportPage({ config }: { config: SupportConfig }) {
+  const t = useT();
   const methods = [
     ...(config.paypalUrl ? [{ id: "paypal", label: "PayPal" }] : []),
     ...config.bankAccounts.map((bank) => ({ id: `bank:${bank.id}`, label: bank.label })),
@@ -33,13 +35,13 @@ export function SupportPage({ config }: { config: SupportConfig }) {
   const amountText = currency && amountMinor ? donationAmountText(amountMinor, currency) : null;
   const details = bank
     ? [
-        ["Banka", bank.name],
+        [t("Banka"), bank.name],
         ...(bank.iban ? [["IBAN", bank.iban]] : []),
-        ...(bank.accountNumber ? [["Broj računa", bank.accountNumber]] : []),
+        ...(bank.accountNumber ? [[t("Broj računa"), bank.accountNumber]] : []),
         ...(bank.bic ? [["SWIFT/BIC", bank.bic]] : []),
-        ...(bank.address ? [["Adresa banke", bank.address]] : []),
-        ...(amountText ? [["Iznos", amountText]] : []),
-        ["Svrha uplate", config.purpose],
+        ...(bank.address ? [[t("Adresa banke"), bank.address]] : []),
+        ...(amountText ? [[t("Iznos"), amountText]] : []),
+        [t("Svrha uplate"), config.purpose],
       ]
     : [];
 
@@ -49,22 +51,22 @@ export function SupportPage({ config }: { config: SupportConfig }) {
         <span className={styles.mark} aria-hidden="true">
           <Icon name="heart" />
         </span>
-        <h1>Doniraj za razvoj AhiBizza</h1>
-        <p>Dobrovoljna uplata za razvoj platforme.</p>
+        <h1>{t("Doniraj za razvoj AhiBizza")}</h1>
+        <p>{t("Dobrovoljna uplata za razvoj platforme.")}</p>
       </header>
 
       <div className={styles.recipient}>
         <div>
-          <span>Primalac</span>
+          <span>{t("Primalac")}</span>
           <strong>{config.recipient}</strong>
         </div>
-        <span className={styles.recipientType}>Fizičko lice</span>
+        <span className={styles.recipientType}>{t("Fizičko lice")}</span>
       </div>
 
-      <section className={styles.card} aria-label="Donacija">
+      <section className={styles.card} aria-label={t("Donacija")}>
         {methods.length > 1 && (
           <fieldset className={styles.choices}>
-            <legend>Način uplate</legend>
+            <legend>{t("Način uplate")}</legend>
             <div className={styles.methodOptions}>
               {methods.map((option) => (
                 <label
@@ -83,7 +85,7 @@ export function SupportPage({ config }: { config: SupportConfig }) {
                       setCustomAmount("");
                     }}
                   />
-                  {option.label}
+                  {t(option.label)}
                 </label>
               ))}
             </div>
@@ -91,7 +93,7 @@ export function SupportPage({ config }: { config: SupportConfig }) {
         )}
         {currency && (
           <fieldset className={styles.choices}>
-            <legend>Iznos donacije</legend>
+            <legend>{t("Iznos donacije")}</legend>
             <div className={styles.amountOptions}>
               {[...amounts, "custom"].map((option) => (
                 <label key={option} className={styles.option} data-selected={choice === option}>
@@ -103,7 +105,7 @@ export function SupportPage({ config }: { config: SupportConfig }) {
                     onChange={() => setChoice(option)}
                   />
                   {option === "custom"
-                    ? "Drugi iznos"
+                    ? t("Drugi iznos")
                     : `${option} ${currency === "BAM" ? "KM" : "EUR"}`}
                 </label>
               ))}
@@ -121,7 +123,9 @@ export function SupportPage({ config }: { config: SupportConfig }) {
                   onChange={(event) => setCustomAmount(event.target.value)}
                 />
                 {customAmount && !amountMinor && (
-                  <span role="status">Unesi iznos veći od nule, s najviše dvije decimale.</span>
+                  <span role="status">
+                    {t("Unesi iznos veći od nule, s najviše dvije decimale.")}
+                  </span>
                 )}
               </label>
             )}
@@ -148,19 +152,19 @@ export function SupportPage({ config }: { config: SupportConfig }) {
             </>
           ) : (
             <button type="button" disabled className={styles.paypalButton}>
-              Doniraj putem PayPala
+              {t("Doniraj putem PayPala")}
             </button>
           ))}
         {bank && (
-          <section className={styles.bankDetails} aria-label={bank.label}>
-            <h2>Podaci za uplatu</h2>
+          <section className={styles.bankDetails} aria-label={t(bank.label)}>
+            <h2>{t("Podaci za uplatu")}</h2>
             <dl className={styles.details}>
               {details.map(([label, value]) => (
                 <div key={label}>
                   <dt>{label}</dt>
                   <dd
                     className={
-                      label === "IBAN" || label === "Broj računa" ? styles.account : undefined
+                      label === "IBAN" || label === t("Broj računa") ? styles.account : undefined
                     }
                   >
                     {value}
@@ -168,7 +172,7 @@ export function SupportPage({ config }: { config: SupportConfig }) {
                 </div>
               ))}
             </dl>
-            {bank.note && <p className={styles.bankNote}>{bank.note}</p>}
+            {bank.note && <p className={styles.bankNote}>{t(bank.note)}</p>}
             <CopyPaymentDetails
               key={`${bank.id}:${amountMinor ?? 0}`}
               text={bankTransferText(config, bank.id, amountMinor ?? undefined)}

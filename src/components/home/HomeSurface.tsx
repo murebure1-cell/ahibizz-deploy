@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { HomeCategory } from "../../lib/home";
+import { msg, type Translate, translator } from "../../lib/i18n/translate";
 import {
   defaultVisualDesign,
   homeCoverId,
@@ -56,7 +57,9 @@ export function HomeListingsSection({
   href,
   kind,
   children,
+  t = translator("bs"),
 }: {
+  t?: Translate;
   title: string;
   href?: string;
   kind: "featured" | "newest";
@@ -78,7 +81,7 @@ export function HomeListingsSection({
         </h2>
         {href && (
           <Link href={href} className={styles.subtleLink}>
-            Sve djelatnosti
+            {t("Sve djelatnosti")}
           </Link>
         )}
       </div>
@@ -147,7 +150,9 @@ export function HomeSurface({
   banner,
   slots,
   after,
+  t = translator("bs"),
 }: {
+  t?: Translate;
   design?: VisualDesign;
   searchAction: "/pretraga" | "/pregled/pretraga";
   placeField: "mjesto" | "place";
@@ -173,20 +178,21 @@ export function HomeSurface({
   after?: ReactNode;
 }) {
   const titles = design.sectionTitles ?? {};
-  const featuredTitle = titles.featured || "Istaknute djelatnosti";
-  const newestTitle = titles.newest || "Novi na AhiBizzu";
+  const featuredTitle = t(titles.featured || msg("Istaknute djelatnosti"));
+  const newestTitle = t(titles.newest || msg("Novi na AhiBizzu"));
+  const heroTitle = t(design.heroTitle);
   const sections: Record<string, ReactNode> = {
     featured:
       slots?.featured ??
       (featured?.length ? (
-        <HomeListingsSection kind="featured" title={featuredTitle} href={featuredHref}>
+        <HomeListingsSection kind="featured" title={featuredTitle} href={featuredHref} t={t}>
           <HomeBusinessRail label={featuredTitle} cards={featured} />
         </HomeListingsSection>
       ) : null),
     newest:
       slots?.newest ??
       (newest.length ? (
-        <HomeListingsSection kind="newest" title={newestTitle}>
+        <HomeListingsSection kind="newest" title={newestTitle} t={t}>
           <HomeBusinessRail label={newestTitle} cards={newest} />
         </HomeListingsSection>
       ) : null),
@@ -198,7 +204,7 @@ export function HomeSurface({
     ad: (Boolean(banner) || !IS_PLAY_EDITION) && (
       <section
         className={`${styles.container} ${styles.ad}`}
-        aria-label="Oglasni prostor"
+        aria-label={t("Oglasni prostor")}
         data-design="home-ad"
       >
         {banner?.image && (
@@ -213,15 +219,15 @@ export function HomeSurface({
           </div>
         )}
         <div className={banner?.image ? styles.adOnPhoto : undefined}>
-          <span className={styles.kicker}>{banner ? "SPONZORIRANO" : "OGLASNI PROSTOR"}</span>
-          <h2>{banner?.title || titles.ad || "Tvoj posao.\nNa pravom mjestu."}</h2>
+          <span className={styles.kicker}>{banner ? t("SPONZORIRANO") : t("OGLASNI PROSTOR")}</span>
+          <h2>{banner?.title || t(titles.ad || msg("Tvoj posao.\nNa pravom mjestu."))}</h2>
           {banner?.city && <small>{banner.city}</small>}
         </div>
         <Link
           href={banner ? `/djelatnosti/${banner.id}` : advertisingHref}
           className={`${styles.button} ${styles.buttonDark}`}
         >
-          {banner ? "Pogledaj djelatnost" : "Oglasi se"} <Icon name="chevron" />
+          {banner ? t("Pogledaj djelatnost") : t("Oglasi se")} <Icon name="chevron" />
         </Link>
         {!banner && (
           <span className={styles.adMark} aria-hidden="true">
@@ -232,14 +238,14 @@ export function HomeSurface({
     ),
     nearby: slots?.nearby ?? (
       <HomeNearbySection
-        title={titles.nearby || "Djelatnosti u blizini"}
+        title={t(titles.nearby || msg("Djelatnosti u blizini"))}
         control={nearbyControl}
         before={nearbyBefore}
       >
         {nearby}
       </HomeNearbySection>
     ),
-    logos: <HomeLogoMarquee title={titles.logos} />,
+    logos: <HomeLogoMarquee title={titles.logos ? t(titles.logos) : undefined} t={t} />,
     promotion: !IS_PLAY_EDITION && (
       <section
         className={`${styles.container} ${styles.callout}`}
@@ -251,7 +257,7 @@ export function HomeSurface({
           <span aria-hidden="true" className={styles.calloutIcon}>
             <Icon name="star" />
           </span>
-          <h2 id="promotion-heading">{titles.promotion || "Istakni svoju djelatnost"}</h2>
+          <h2 id="promotion-heading">{t(titles.promotion || msg("Istakni svoju djelatnost"))}</h2>
           <Icon name="chevron" className={styles.calloutArrow} />
         </Link>
       </section>
@@ -273,28 +279,28 @@ export function HomeSurface({
         />
         <div className={`${styles.container} ${styles.heroContent}`}>
           <h1 id="home-title" data-design="home-title">
-            {design.heroTitle.endsWith(".") ? (
+            {heroTitle.endsWith(".") ? (
               <>
-                {design.heroTitle.slice(0, -1)}
+                {heroTitle.slice(0, -1)}
                 <span>.</span>
               </>
             ) : (
-              design.heroTitle
+              heroTitle
             )}
           </h1>
-          {design.heroSubtitle && <p className={styles.heroSubtitle}>{design.heroSubtitle}</p>}
+          {design.heroSubtitle && <p className={styles.heroSubtitle}>{t(design.heroSubtitle)}</p>}
           <Form action={searchAction} className={styles.search} data-design="home-search">
             <label>
               <Icon name="search" />
-              <span className={styles.srOnly}>Naziv ili usluga</span>
-              <input type="search" name="q" placeholder="Šta tražiš?" maxLength={120} />
+              <span className={styles.srOnly}>{t("Naziv ili usluga")}</span>
+              <input type="search" name="q" placeholder={t("Šta tražiš?")} maxLength={120} />
             </label>
             <label className={styles.searchPlace}>
               <Icon name="pin" />
-              <span className={styles.srOnly}>Grad ili mjesto</span>
+              <span className={styles.srOnly}>{t("Grad ili mjesto")}</span>
               <input
                 name={placeField}
-                placeholder="Grad ili mjesto"
+                placeholder={t("Grad ili mjesto")}
                 defaultValue={place}
                 maxLength={100}
               />
@@ -302,17 +308,18 @@ export function HomeSurface({
             <button
               type="submit"
               className={styles.searchSubmit}
-              aria-label="Pretraži djelatnosti"
+              aria-label={t("Pretraži djelatnosti")}
               data-design="home-search-submit"
             >
               <Icon name="search" />
-              <span>Pretraži</span>
+              <span>{t("Pretraži")}</span>
             </button>
           </Form>
         </div>
       </section>
       {slots?.categories ?? (
         <HomeCategories
+          t={t}
           categories={categories}
           searchAction={
             place ? `${searchAction}?${new URLSearchParams({ [placeField]: place })}` : searchAction

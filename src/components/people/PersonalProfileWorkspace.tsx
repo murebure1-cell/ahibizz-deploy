@@ -17,6 +17,7 @@ import {
   profileError,
   readPersonalProfile,
 } from "../../lib/people-client";
+import { useT } from "../i18n/LocaleProvider";
 import { PersonalProfileCard } from "./PersonalProfileCard";
 import { PersonalProfileEditor } from "./PersonalProfileEditor";
 import styles from "./workspace.module.css";
@@ -68,6 +69,7 @@ function ProfileWorkspace({
   onAccessDenied,
   onBusinesses,
 }: WorkspaceProps) {
+  const t = useT();
   const [profile, setProfile] = useState<PersonalProfile | null>(null),
     [editing, setEditing] = useState(false),
     [loading, setLoading] = useState(false),
@@ -165,16 +167,16 @@ function ProfileWorkspace({
         // A same-account denial remains authoritative after a newer read/write aborts this read.
         if (accessDenied(failure)) {
           clearPrivate();
-          setError(profileError(failure));
+          setError(t(profileError(failure)));
         } else if (!controller.signal.aborted && current === revision.current) {
-          setError(profileError(failure));
+          setError(t(profileError(failure)));
         }
       } finally {
         if (live.current && authority === authorityRevision.current && current === revision.current)
           setLoading(false);
       }
     },
-    [expectedAccountId, readProfile, readSocial, clearPrivate],
+    [expectedAccountId, readProfile, readSocial, clearPrivate, t],
   );
   useEffect(() => {
     if (active && !profile && !requiresLogin) void load();
@@ -222,13 +224,13 @@ function ProfileWorkspace({
         changed.current?.(next);
         if (intent?.fields) {
           setEditing(false);
-          setNotice("Profil je sačuvan.");
+          setNotice(t("Profil je sačuvan."));
         }
       }
     } catch (failure) {
       if (live.current && authority === authorityRevision.current) {
         if (accessDenied(failure)) clearPrivate();
-        setError(profileError(failure));
+        setError(t(profileError(failure)));
         if (
           !(failure instanceof ProfileRequestError) ||
           failure.status === 408 ||
@@ -311,7 +313,9 @@ function ProfileWorkspace({
         setProfile(updated);
         changed.current?.(updated);
         setBlocked(false);
-        setNotice(current.isPublic ? "Profil je sada javno dostupan." : "Profil je sada privatan.");
+        setNotice(
+          current.isPublic ? t("Profil je sada javno dostupan.") : t("Profil je sada privatan."),
+        );
       }
       pendingVisibility.current = null;
     } catch (failure) {
@@ -324,7 +328,7 @@ function ProfileWorkspace({
         pendingVisibility.current = null;
       if (live.current) {
         if (accessDenied(failure)) clearPrivate();
-        setError(connectionError(failure));
+        setError(t(connectionError(failure)));
         setBlocked(true);
       }
     } finally {
@@ -333,12 +337,12 @@ function ProfileWorkspace({
     }
   }
   return (
-    <section className={styles.workspace} aria-label="Moj profil">
+    <section className={styles.workspace} aria-label={t("Moj profil")}>
       {error && (
         <div role="alert" className={styles.error}>
           <p>{error}</p>
           <button type="button" disabled={busy || loading} onClick={() => void load(true)}>
-            Učitaj sačuvani profil
+            {t("Učitaj sačuvani profil")}
           </button>
         </div>
       )}
@@ -349,7 +353,7 @@ function ProfileWorkspace({
       )}
       {loading && !profile && (
         <p role="status" className={styles.loading}>
-          Otvaram profil…
+          {t("Otvaram profil…")}
         </p>
       )}
       {profile &&
@@ -385,31 +389,34 @@ function ProfileWorkspace({
       {profile && visibility && !editing && (
         <div className={styles.visibility}>
           <div>
-            <h2>Vidljivost profila</h2>
+            <h2>{t("Vidljivost profila")}</h2>
             <p>
               {visibility.isPublic
-                ? "Tvoj profil se može pronaći među ljudima."
-                : "Profil vidiš samo ti."}
+                ? t("Tvoj profil se može pronaći među ljudima.")
+                : t("Profil vidiš samo ti.")}
             </p>
           </div>
           <button
             type="button"
-            aria-label="Javni profil"
+            aria-label={t("Javni profil")}
             aria-pressed={visibility.isPublic}
             aria-description={
-              pendingVisibility.current && !busy ? "Ponovi potvrdu prethodne promjene." : undefined
+              pendingVisibility.current && !busy
+                ? t("Ponovi potvrdu prethodne promjene.")
+                : undefined
             }
             disabled={busy || (blocked && !pendingVisibility.current)}
             onClick={() => void changeVisibility()}
           >
             <span className={styles.visibilitySwitch} aria-hidden="true" />
             <span>
-              Javni profil{pendingVisibility.current && !busy && <small>Ponovi potvrdu</small>}
+              Javni profil
+              {pendingVisibility.current && !busy && <small>{t("Ponovi potvrdu")}</small>}
             </span>
           </button>
           {visibility.isPublic && (
             <Link href={publicHref?.(profile.id) ?? `/ljudi/${encodeURIComponent(profile.id)}`}>
-              Pogledaj javni profil
+              {t("Pogledaj javni profil")}
             </Link>
           )}
         </div>

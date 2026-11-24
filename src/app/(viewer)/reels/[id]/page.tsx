@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import { ReelViewer } from "../../../../components/reels/ReelViewer";
 import { reelClosePath } from "../../../../lib/reel-navigation";
+import { titled } from "../../../../server/i18n";
 import { readPublicReel, readReelFeed } from "../../../../server/reels/service";
 import { currentReelViewer } from "../../../../server/reels/viewer";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Reel djelatnosti" };
+export const generateMetadata = titled("Reel djelatnosti");
 export const viewport = { themeColor: "#0b1725", viewportFit: "cover" as const };
 
 export default async function ReelPage({

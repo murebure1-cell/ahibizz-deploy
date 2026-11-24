@@ -4,30 +4,33 @@ import Link from "next/link";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { accountReturnPath } from "../../lib/account-return";
 import { authReturnLinks } from "../../lib/auth-return";
+import { msg } from "../../lib/i18n/translate";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
+import { rich } from "../i18n/Rich";
 import styles from "./auth.module.css";
 
 export type AuthMode = "sign-in" | "sign-up" | "reset-request" | "reset-password";
 const text = {
   "sign-in": {
-    title: "Lijepo te je opet vidjeti.",
-    intro: "Prijavi se u svoj AhiBizz.",
-    action: "Prijavi se",
+    title: msg("Lijepo te je opet vidjeti."),
+    intro: msg("Prijavi se u svoj AhiBizz."),
+    action: msg("Prijavi se"),
   },
   "sign-up": {
-    title: "Tvoj prostor za dobar posao.",
-    intro: "Napravi svoj AhiBizz nalog.",
-    action: "Napravi nalog",
+    title: msg("Tvoj prostor za dobar posao."),
+    intro: msg("Napravi svoj AhiBizz nalog."),
+    action: msg("Napravi nalog"),
   },
   "reset-request": {
-    title: "Zaboravljena lozinka?",
-    intro: "Poslat ćemo ti link za novu lozinku.",
-    action: "Pošalji link",
+    title: msg("Zaboravljena lozinka?"),
+    intro: msg("Poslat ćemo ti link za novu lozinku."),
+    action: msg("Pošalji link"),
   },
   "reset-password": {
-    title: "Postavi novu lozinku.",
-    intro: "Izaberi lozinku koju koristiš samo ovdje.",
-    action: "Sačuvaj lozinku",
+    title: msg("Postavi novu lozinku."),
+    intro: msg("Izaberi lozinku koju koristiš samo ovdje."),
+    action: msg("Sačuvaj lozinku"),
   },
 };
 const endpoints = {
@@ -39,14 +42,15 @@ const endpoints = {
 
 function errorText(code: unknown) {
   if (code === "ACCOUNT_PENDING_APPROVAL" || code === "ACCOUNT_NOT_APPROVED")
-    return "Tvoj nalog čeka odobrenje.";
-  if (code === "ACCOUNT_SUSPENDED") return "Nalog trenutno nije aktivan. Obrati se podršci.";
-  if (code === "EMAIL_NOT_VERIFIED") return "Prvo potvrdi email putem linka koji smo ti poslali.";
-  if (code === "INVALID_EMAIL_OR_PASSWORD") return "Email ili lozinka nisu ispravni.";
+    return msg("Tvoj nalog čeka odobrenje.");
+  if (code === "ACCOUNT_SUSPENDED") return msg("Nalog trenutno nije aktivan. Obrati se podršci.");
+  if (code === "EMAIL_NOT_VERIFIED")
+    return msg("Prvo potvrdi email putem linka koji smo ti poslali.");
+  if (code === "INVALID_EMAIL_OR_PASSWORD") return msg("Email ili lozinka nisu ispravni.");
   if (code === "INVALID_TOKEN" || code === "TOKEN_EXPIRED")
-    return "Link više nije važeći. Zatraži novi.";
-  if (code === "RATE_LIMITED") return "Pokušaj ponovo za nekoliko minuta.";
-  return "Zahtjev nije uspio. Pokušaj ponovo.";
+    return msg("Link više nije važeći. Zatraži novi.");
+  if (code === "RATE_LIMITED") return msg("Pokušaj ponovo za nekoliko minuta.");
+  return msg("Zahtjev nije uspio. Pokušaj ponovo.");
 }
 
 export function AuthForm({
@@ -64,6 +68,7 @@ export function AuthForm({
   verificationError?: boolean;
   returnTo?: string;
 }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
@@ -123,8 +128,8 @@ export function AuthForm({
         if (mode === "sign-in" && result.code === "EMAIL_NOT_VERIFIED") setVerificationEmail(email);
         setError(
           response.status === 503
-            ? "Prijave trenutno nisu dostupne. Pokušaj kasnije."
-            : errorText(response.status === 429 ? "RATE_LIMITED" : result.code),
+            ? t("Prijave trenutno nisu dostupne. Pokušaj kasnije.")
+            : t(errorText(response.status === 429 ? "RATE_LIMITED" : result.code)),
         );
         return;
       }
@@ -135,7 +140,7 @@ export function AuthForm({
       if (mode === "sign-up") setVerificationEmail(email);
       setComplete(true);
     } catch {
-      setError("Veza je prekinuta. Provjeri internet i pokušaj ponovo.");
+      setError(t("Veza je prekinuta. Provjeri internet i pokušaj ponovo."));
     } finally {
       setBusy(false);
     }
@@ -152,13 +157,13 @@ export function AuthForm({
       });
       const result = await response.json();
       if (!response.ok || result.ok !== true) {
-        setError(errorText(response.status === 429 ? "RATE_LIMITED" : result.code));
+        setError(t(errorText(response.status === 429 ? "RATE_LIMITED" : result.code)));
         return;
       }
       setVerificationSent(true);
       setVerificationEmail("");
     } catch {
-      setError("Poruka nije poslana. Pokušaj ponovo.");
+      setError(t("Poruka nije poslana. Pokušaj ponovo."));
     } finally {
       setBusy(false);
     }
@@ -167,7 +172,7 @@ export function AuthForm({
     <>
       {verificationSent && (
         <p role="status" className={styles.notice}>
-          Provjeri email za novi link potvrde.
+          {t("Provjeri email za novi link potvrde.")}
         </p>
       )}
       {verificationEmail && (
@@ -177,7 +182,7 @@ export function AuthForm({
           disabled={busy}
           onClick={resendVerification}
         >
-          Pošalji novu potvrdu emaila
+          {t("Pošalji novu potvrdu emaila")}
         </button>
       )}
       {error && (
@@ -192,48 +197,53 @@ export function AuthForm({
       <section className={styles.card} aria-labelledby="auth-heading" data-design="auth-form">
         <Link href="/" className={styles.back}>
           <Icon name="chevron" />
-          Početna
+          {t("Početna")}
         </Link>
         <span className={styles.eyebrow}>AHIBIZZ</span>
-        <h1 id="auth-heading">{copy.title}</h1>
-        <p className={styles.intro}>{copy.intro}</p>
-        {!available && <p className={styles.notice}>Prijave još nisu otvorene.</p>}
+        <h1 id="auth-heading">{t(copy.title)}</h1>
+        <p className={styles.intro}>{t(copy.intro)}</p>
+        {!available && <p className={styles.notice}>{t("Prijave još nisu otvorene.")}</p>}
         {verified && (
-          <p className={styles.notice}>Email je potvrđen. Nakon odobrenja možeš se prijaviti.</p>
+          <p className={styles.notice}>
+            {t("Email je potvrđen. Nakon odobrenja možeš se prijaviti.")}
+          </p>
         )}
         {verificationError && (
           <p className={styles.notice}>
-            Link za potvrdu nije važeći. Zatraži novu potvrdu pri prijavi.
+            {t("Link za potvrdu nije važeći. Zatraži novu potvrdu pri prijavi.")}
           </p>
         )}
         {mode === "reset-password" && !token && (
           <p className={styles.notice}>
-            Link nije važeći. <Link href="/zaboravljena-lozinka">Zatraži novi link.</Link>
+            {t("Link nije važeći.")}{" "}
+            <Link href="/zaboravljena-lozinka">{t("Zatraži novi link.")}</Link>
           </p>
         )}
         {complete ? (
           <div className={styles.done} role="status">
             <Icon name="check" />
             <h2>
-              {mode === "reset-password" ? "Lozinka je promijenjena." : "Provjeri svoj email."}
+              {mode === "reset-password"
+                ? t("Lozinka je promijenjena.")
+                : t("Provjeri svoj email.")}
             </h2>
             <p>
               {mode === "sign-up"
-                ? "Potvrdi email. Nakon odobrenja možeš se prijaviti."
+                ? t("Potvrdi email. Nakon odobrenja možeš se prijaviti.")
                 : mode === "reset-request"
-                  ? "Ako nalog postoji, stići će ti link za novu lozinku."
-                  : "Sada se možeš prijaviti."}
+                  ? t("Ako nalog postoji, stići će ti link za novu lozinku.")
+                  : t("Sada se možeš prijaviti.")}
             </p>
             {mode === "sign-up" && verificationFeedback}
             <Link href={links.login} className={styles.submit} data-design="auth-submit">
-              Na prijavu
+              {t("Na prijavu")}
             </Link>
           </div>
         ) : (
           <form method="post" action={endpoints[mode]} onSubmit={submit}>
             {mode === "sign-up" && (
               <label>
-                Ime i prezime
+                {t("Ime i prezime")}
                 <input
                   name="name"
                   autoComplete="name"
@@ -246,7 +256,7 @@ export function AuthForm({
             )}
             {mode !== "reset-password" && (
               <label>
-                Email
+                {t("Email")}
                 <input
                   name="email"
                   type="email"
@@ -260,7 +270,7 @@ export function AuthForm({
             )}
             {hasPassword && (
               <label>
-                Lozinka
+                {t("Lozinka")}
                 <span className={styles.password}>
                   <input
                     name="password"
@@ -278,10 +288,10 @@ export function AuthForm({
                     onClick={() => setVisible(!visible)}
                     disabled={!available || busy}
                   >
-                    {visible ? "Sakrij" : "Prikaži"}
+                    {visible ? t("Sakrij") : t("Prikaži")}
                   </button>
                 </span>
-                {mode !== "sign-in" && <small>Najmanje 12 znakova.</small>}
+                {mode !== "sign-in" && <small>{t("Najmanje 12 znakova.")}</small>}
               </label>
             )}
             {mode === "reset-password" && token && (
@@ -291,7 +301,7 @@ export function AuthForm({
                 onClick={suggestPassword}
                 disabled={!ready || !available || busy}
               >
-                Predloži jaku lozinku
+                {t("Predloži jaku lozinku")}
               </button>
             )}
             {mode === "sign-in" && (
@@ -303,9 +313,9 @@ export function AuthForm({
                     defaultChecked
                     disabled={!available || busy}
                   />
-                  Zapamti prijavu
+                  {t("Zapamti prijavu")}
                 </label>
-                <Link href="/zaboravljena-lozinka">Zaboravljena lozinka</Link>
+                <Link href="/zaboravljena-lozinka">{t("Zaboravljena lozinka")}</Link>
               </div>
             )}
             {verificationFeedback}
@@ -313,9 +323,10 @@ export function AuthForm({
               <label className={styles.remember}>
                 <input name="terms" type="checkbox" required disabled={!available || busy} />
                 <span>
-                  Imam najmanje 18 godina i prihvatam{" "}
-                  <Link href="/pravila-zajednice">pravila zajednice</Link> i{" "}
-                  <Link href="/privatnost">privatnost na AhiBizzu</Link>.
+                  {rich(t("Imam najmanje 18 godina i prihvatam {rules} i {privacy}."), {
+                    rules: <Link href="/pravila-zajednice">{t("pravila zajednice")}</Link>,
+                    privacy: <Link href="/privatnost">{t("privatnost na AhiBizzu")}</Link>,
+                  })}
                 </span>
               </label>
             )}
@@ -325,7 +336,7 @@ export function AuthForm({
               disabled={!ready || !available || busy || (mode === "reset-password" && !token)}
               type="submit"
             >
-              {busy ? "Trenutak…" : copy.action}
+              {busy ? t("Trenutak…") : t(copy.action)}
             </button>
           </form>
         )}
@@ -333,20 +344,16 @@ export function AuthForm({
           <p className={styles.switch}>
             {mode === "sign-in" ? (
               <>
-                Nemaš nalog? <Link href={links.registration}>Registruj se</Link>
+                {t("Nemaš nalog?")} <Link href={links.registration}>{t("Registruj se")}</Link>
               </>
             ) : (
-              <Link href={links.login}>Već imaš nalog? Prijavi se</Link>
+              <Link href={links.login}>{t("Već imaš nalog? Prijavi se")}</Link>
             )}
           </p>
         )}
       </section>
       <aside className={styles.story} aria-hidden="true">
-        <span>
-          Posao počinje
-          <br />
-          dobrim vezama.
-        </span>
+        <span>{rich(t("Posao počinje\ndobrim vezama."))}</span>
         <i>ahibizz.</i>
       </aside>
     </main>

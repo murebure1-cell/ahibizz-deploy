@@ -11,6 +11,7 @@ import {
 import { publicBusinessView } from "../../server/directory/public-view";
 import type { DirectoryCategory } from "../../server/directory/types";
 import { DirectoryResultCard } from "../directory/DirectoryResultCard";
+import { useT } from "../i18n/LocaleProvider";
 import { useFavorites } from "./FavoritesProvider";
 import styles from "./favorites.module.css";
 
@@ -25,6 +26,7 @@ export function SavedBusinesses({
   api?: FavoritesApi;
   categories?: DirectoryCategory[];
 }) {
+  const t = useT();
   const context = useFavorites(),
     api = useMemo(() => provided ?? context?.api ?? createFavoritesApi(), [provided, context?.api]),
     [data, setData] = useState<FavoritePage | null>(null),
@@ -80,8 +82,8 @@ export function SavedBusinesses({
           if (!mounted || request.signal.aborted || epoch.current !== run) return;
           setError(
             failure instanceof FavoritesClientError && [401, 403].includes(failure.status)
-              ? "Prijavi se ponovo za prikaz sačuvanih profila."
-              : "Sačuvani profili trenutno nisu dostupni.",
+              ? t("Prijavi se ponovo za prikaz sačuvanih profila.")
+              : t("Sačuvani profili trenutno nisu dostupni."),
           );
         })
         .finally(() => {
@@ -141,21 +143,21 @@ export function SavedBusinesses({
   return (
     <section className={styles.workspace} aria-busy={busy}>
       <header className={styles.heading}>
-        <h1>Sačuvani profili</h1>
+        <h1>{t("Sačuvani profili")}</h1>
         <button
           type="button"
           className={styles.button}
           disabled={busy}
           onClick={() => setRefresh((v) => v + 1)}
         >
-          Osvježi
+          {t("Osvježi")}
         </button>
       </header>
       {error && <p role="alert">{error}</p>}
       {data?.items.length === 0 && (
         <div className={styles.empty}>
-          <p>Još nema sačuvanih profila.</p>
-          <Link href="/pretraga">Istraži djelatnosti</Link>
+          <p>{t("Još nema sačuvanih profila.")}</p>
+          <Link href="/pretraga">{t("Istraži djelatnosti")}</Link>
         </div>
       )}
       <div className={styles.grid}>
@@ -167,14 +169,14 @@ export function SavedBusinesses({
         ))}
       </div>
       {(page > 1 || data?.hasMore) && (
-        <nav className={styles.pagination} aria-label="Stranice sačuvanih profila">
+        <nav className={styles.pagination} aria-label={t("Stranice sačuvanih profila")}>
           <button
             className={styles.button}
             type="button"
             disabled={busy || page === 1}
             onClick={() => setPage((v) => v - 1)}
           >
-            Prethodna
+            {t("Prethodna")}
           </button>
           <span>{page}</span>
           <button
@@ -183,7 +185,7 @@ export function SavedBusinesses({
             disabled={busy || !data?.hasMore || page >= 1000}
             onClick={() => setPage((v) => v + 1)}
           >
-            Sljedeća
+            {t("Sljedeća")}
           </button>
         </nav>
       )}

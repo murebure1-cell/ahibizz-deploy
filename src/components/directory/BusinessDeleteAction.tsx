@@ -3,23 +3,28 @@
 import { useId, useRef, useState } from "react";
 import { directoryActorRequest } from "../../lib/directory-client";
 import { DirectoryRequestError } from "../../lib/directory-create-submission";
+import { msg } from "../../lib/i18n/translate";
 import type { DirectoryBusiness } from "../../server/directory/types";
+import { useT } from "../i18n/LocaleProvider";
+import { rich } from "../i18n/Rich";
 import styles from "./business-delete.module.css";
 
 function deleteError(error: unknown) {
   const code = error instanceof DirectoryRequestError ? error.code : "";
   switch (code) {
     case "BUSINESS_HAS_BOOKINGS":
-      return "Djelatnost ima buduće termine ili rezervacije. U kalendaru djelatnosti otkaži ih ili ih završi (gosti dobiju obavijest), pa ponovo izbriši.";
+      return msg(
+        "Djelatnost ima buduće termine ili rezervacije. U kalendaru djelatnosti otkaži ih ili ih završi (gosti dobiju obavijest), pa ponovo izbriši.",
+      );
     case "BUSINESS_HAS_PAYMENTS":
-      return "Prvo provjeri aktivno isticanje i status uplata za ovu djelatnost.";
+      return msg("Prvo provjeri aktivno isticanje i status uplata za ovu djelatnost.");
     case "VERSION_CONFLICT":
-      return "Djelatnost je izmijenjena. Osvježi spisak prije brisanja.";
+      return msg("Djelatnost je izmijenjena. Osvježi spisak prije brisanja.");
     case "ACCOUNT_IDENTITY_CHANGED":
     case "AUTHENTICATION_REQUIRED":
-      return "Prijavi se ponovo svojim nalogom.";
+      return msg("Prijavi se ponovo svojim nalogom.");
     default:
-      return "Ne mogu potvrditi brisanje. Osvježi spisak i provjeri djelatnost.";
+      return msg("Ne mogu potvrditi brisanje. Osvježi spisak i provjeri djelatnost.");
   }
 }
 
@@ -34,6 +39,7 @@ export function BusinessDeleteAction({
   disabled: boolean;
   onDeleted: () => void;
 }) {
+  const t = useT();
   const dialog = useRef<HTMLDialogElement>(null);
   const cancel = useRef<HTMLButtonElement>(null);
   const pending = useRef(false);
@@ -69,7 +75,7 @@ export function BusinessDeleteAction({
       dialog.current?.close();
       onDeleted();
     } catch (cause) {
-      setError(deleteError(cause));
+      setError(t(deleteError(cause)));
     } finally {
       pending.current = false;
       setBusy(false);
@@ -79,7 +85,7 @@ export function BusinessDeleteAction({
   return (
     <>
       <button type="button" className={styles.trigger} onClick={open} disabled={disabled}>
-        Izbriši djelatnost
+        {t("Izbriši djelatnost")}
       </button>
       <dialog
         ref={dialog}
@@ -90,15 +96,19 @@ export function BusinessDeleteAction({
           if (pending.current) event.preventDefault();
         }}
       >
-        <h2 id={label}>Izbriši djelatnost?</h2>
+        <h2 id={label}>{t("Izbriši djelatnost?")}</h2>
         <p id={description}>
-          Djelatnost <strong>„{business.title}“</strong> će biti trajno uklonjena s profila i iz
-          imenika. Brišu se njene fotografije, opis, kontakt, adresa, lokacija i Reels. Tvoj nalog
-          ostaje.
+          {rich(
+            t(
+              "Djelatnost {title} će biti trajno uklonjena s profila i iz imenika. Brišu se njene fotografije, opis, kontakt, adresa, lokacija i Reels. Tvoj nalog ostaje.",
+            ),
+            { title: <strong>„{business.title}“</strong> },
+          )}
         </p>
         <p>
-          Ostaju zapisi koji pripadaju drugima ili se moraju čuvati: prošli termini gostiju,
-          recenzije i poruke drugih korisnika te evidencija uplata.
+          {t(
+            "Ostaju zapisi koji pripadaju drugima ili se moraju čuvati: prošli termini gostiju, recenzije i poruke drugih korisnika te evidencija uplata.",
+          )}
         </p>
         {error && (
           <p className={styles.error} role="alert">
@@ -112,10 +122,10 @@ export function BusinessDeleteAction({
             onClick={() => dialog.current?.close()}
             disabled={busy}
           >
-            Odustani
+            {t("Odustani")}
           </button>
           <button type="button" onClick={confirm} disabled={busy || disabled}>
-            {busy ? "Brišem…" : "Izbriši"}
+            {busy ? t("Brišem…") : t("Izbriši")}
           </button>
         </div>
       </dialog>
