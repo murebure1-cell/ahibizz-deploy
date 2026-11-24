@@ -1,4 +1,5 @@
 import { type AuthService, getAuthService, readAuthConfiguration } from "./auth";
+import { createEmailRateLimiter, type EmailRateLimiter } from "./auth/email-rate-limit";
 import { getDatabase } from "./db";
 
 type CurrentUser = {
@@ -65,6 +66,8 @@ export function createAuthHttpHandler(options: {
   auth: AuthService;
   baseURL: string;
   readUser: UserReader;
+  /** Per-address attempt limits; production always passes one (see handleAuthRequest). */
+  limitEmail?: EmailRateLimiter;
 }) {
   return async function authHttp(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -96,6 +99,22 @@ export function createAuthHttpHandler(options: {
               new URL(value, options.baseURL).origin !== new URL(options.baseURL).origin)
           )
             return reply({ code: "INVALID_REDIRECT" }, 400);
+        }
+        if (options.limitEmail) {
+          let decision: Awaited<ReturnType<EmailRateLimiter>> = { allowed: true };
+          try {
+            decision = await options.limitEmail(path, body.email);
+          } catch {
+            // Fail open: Better Auth's own limits still apply and the database error surfaces there.
+          }
+          if (!decision.allowed) {
+            const retry = String(decision.retryAfter);
+            return reply(
+              { code: "RATE_LIMITED" },
+              429,
+              new Headers({ "Retry-After": retry, "X-Retry-After": retry }),
+            );
+          }
         }
         const headers = new Headers(request.headers);
         headers.delete("content-length");
@@ -154,6 +173,7 @@ export async function handleAuthRequest(request: Request) {
     return createAuthHttpHandler({
       auth,
       baseURL: configuration.baseURL,
+      limitEmail: createEmailRateLimiter(getDatabase(), configuration.secret),
       readUser: async (id) => {
         const result = await getDatabase().query(
           'SELECT id, name, email, "emailVerified", role, approval FROM auth_user WHERE id = $1 LIMIT 1',

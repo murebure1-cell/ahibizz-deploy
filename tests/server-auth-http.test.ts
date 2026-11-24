@@ -109,3 +109,45 @@ test("registration and resend retain the safe booking callback without altering 
   assert.deepEqual(received, [signup, resend]);
   assert.equal(new URL(callbackURL, baseURL).searchParams.get("nastavi"), destination);
 });
+
+test("per-address limits answer 429 before the auth library and fail open on errors", async () => {
+  let called = 0;
+  const seen: [string, unknown][] = [];
+  const signIn = (limitEmail: Parameters<typeof createAuthHttpHandler>[0]["limitEmail"]) =>
+    createAuthHttpHandler({
+      baseURL,
+      auth: {
+        handler: async () => {
+          called++;
+          return Response.json({ error: "INVALID_EMAIL_OR_PASSWORD" }, { status: 401 });
+        },
+      } as unknown as AuthService,
+      readUser: async () => null,
+      limitEmail,
+    })(
+      new Request(`${baseURL}/api/auth/sign-in/email`, {
+        method: "POST",
+        headers: { Origin: baseURL, "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "Member@Fixture.invalid", password: "fixture-password" }),
+      }),
+    );
+  const limited = await signIn(async (path, email) => {
+    seen.push([path, email]);
+    return { allowed: false, retryAfter: 42 };
+  });
+  assert.equal(limited.status, 429);
+  assert.deepEqual(await limited.json(), { code: "RATE_LIMITED" });
+  assert.equal(limited.headers.get("retry-after"), "42");
+  assert.equal(limited.headers.get("x-retry-after"), "42");
+  assert.equal(limited.headers.get("cache-control"), "no-store");
+  assert.equal(called, 0);
+  assert.deepEqual(seen, [["/sign-in/email", "Member@Fixture.invalid"]]);
+  const allowed = await signIn(async () => ({ allowed: true }));
+  assert.equal(allowed.status, 401);
+  assert.equal(called, 1);
+  const broken = await signIn(async () => {
+    throw new Error("database unavailable");
+  });
+  assert.equal(broken.status, 401);
+  assert.equal(called, 2);
+});
