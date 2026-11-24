@@ -3,12 +3,13 @@
 import Image from "next/image";
 import { type KeyboardEvent, useId, useRef, useState } from "react";
 import {
+  countryLabel,
   type PersonalProfile,
-  profileCountries,
   profileImageUrl,
   workStatusLabels,
 } from "../../lib/people";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import { VerificationBadge } from "../VerificationBadge";
 import { PlatformBadges } from "./PlatformBadges";
 import styles from "./profile.module.css";
@@ -57,13 +58,14 @@ export function PersonalProfileCard({
   photoUrl?: string | null;
   coverUrl?: string | null;
 }) {
+  const { t, locale } = useI18n();
   const [tab, setTab] = useState("about");
   const tabId = useId(),
     tabButtons = useRef<(HTMLButtonElement | null)[]>([]);
   const tabs = [
-    ["about", "O meni"],
-    ["skills", "Vještine"],
-    ["photos", "Fotografije"],
+    ["about", t("O meni")],
+    ["skills", t("Vještine")],
+    ["photos", t("Fotografije")],
   ] as const;
   const photo = personalProfileImage(
     photoUrl === undefined ? profileImageUrl(profile, "photo") : photoUrl,
@@ -71,8 +73,7 @@ export function PersonalProfileCard({
   const cover = profile.canCustomizeCover
     ? personalProfileImage(coverUrl === undefined ? profileImageUrl(profile, "cover") : coverUrl)
     : null;
-  const country =
-    profileCountries.find(([code]) => code === profile.countryCode)?.[1] ?? profile.countryCode;
+  const country = countryLabel(profile.countryCode, locale);
   const location = [profile.city, country].filter(Boolean).join(", ");
   const hasDetails = Boolean(profile.city || country || profile.workStatus !== "not_specified");
 
@@ -96,7 +97,7 @@ export function PersonalProfileCard({
           <Image
             className={styles.coverImage}
             src={cover}
-            alt="Naslovna fotografija profila"
+            alt={t("Naslovna fotografija profila")}
             width={1600}
             height={600}
             unoptimized
@@ -148,7 +149,7 @@ export function PersonalProfileCard({
           {profile.workStatus !== "not_specified" && (
             <p className={styles.work}>
               <span aria-hidden="true" />
-              {workStatusLabels[profile.workStatus]}
+              {t(workStatusLabels[profile.workStatus])}
             </p>
           )}
         </div>
@@ -157,25 +158,25 @@ export function PersonalProfileCard({
             {onEdit && (
               <button className={styles.primary} type="button" onClick={onEdit}>
                 <Icon name="sliders" />
-                Uredi profil
+                {t("Uredi profil")}
               </button>
             )}
             {onBusinesses && (
               <button className={styles.secondary} type="button" onClick={onBusinesses}>
                 <Icon name="shop" />
-                Moje djelatnosti
+                {t("Moje djelatnosti")}
               </button>
             )}
             {onConnections && (
               <button className={styles.secondary} type="button" onClick={onConnections}>
                 <Icon name="user" />
-                Prijatelji
+                {t("Prijatelji")}
               </button>
             )}
           </div>
         )}
       </div>
-      <div className={styles.tabs} role="tablist" aria-label="Sadržaj profila">
+      <div className={styles.tabs} role="tablist" aria-label={t("Sadržaj profila")}>
         {tabs.map(([value, label], index) => (
           <button
             key={value}
@@ -205,30 +206,30 @@ export function PersonalProfileCard({
           // biome-ignore lint/a11y/noNoninteractiveTabindex: WAI-ARIA tabs use focusable static panels.
           tabIndex={0}
         >
-          <h3>Osnovni podaci</h3>
+          <h3>{t("Osnovni podaci")}</h3>
           {hasDetails ? (
             <dl className={styles.details}>
               {profile.city && (
                 <div>
-                  <dt>Grad</dt>
+                  <dt>{t("Grad")}</dt>
                   <dd>{profile.city}</dd>
                 </div>
               )}
               {country && (
                 <div>
-                  <dt>Država</dt>
+                  <dt>{t("Država")}</dt>
                   <dd>{country}</dd>
                 </div>
               )}
               {profile.workStatus !== "not_specified" && (
                 <div>
-                  <dt>Poslovni status</dt>
-                  <dd>{workStatusLabels[profile.workStatus]}</dd>
+                  <dt>{t("Poslovni status")}</dt>
+                  <dd>{t(workStatusLabels[profile.workStatus])}</dd>
                 </div>
               )}
             </dl>
           ) : (
-            <p className={styles.empty}>Još nema dodatnih podataka.</p>
+            <p className={styles.empty}>{t("Još nema dodatnih podataka.")}</p>
           )}
         </section>
         <section
@@ -240,7 +241,7 @@ export function PersonalProfileCard({
           // biome-ignore lint/a11y/noNoninteractiveTabindex: WAI-ARIA tabs use focusable static panels.
           tabIndex={0}
         >
-          <h3>Vještine</h3>
+          <h3>{t("Vještine")}</h3>
           {profile.skills.length > 0 ? (
             <ul className={styles.chips}>
               {profile.skills.map((skill) => (
@@ -250,7 +251,7 @@ export function PersonalProfileCard({
               ))}
             </ul>
           ) : (
-            <p className={styles.empty}>Još nema dodanih vještina.</p>
+            <p className={styles.empty}>{t("Još nema dodanih vještina.")}</p>
           )}
         </section>
         <section
@@ -262,7 +263,7 @@ export function PersonalProfileCard({
           // biome-ignore lint/a11y/noNoninteractiveTabindex: WAI-ARIA tabs use focusable static panels.
           tabIndex={0}
         >
-          <h3>Fotografije</h3>
+          <h3>{t("Fotografije")}</h3>
           {photo || cover ? (
             <div className={styles.photos}>
               {photo && (
@@ -274,24 +275,24 @@ export function PersonalProfileCard({
                     height={512}
                     unoptimized
                   />
-                  <figcaption>Profilna fotografija</figcaption>
+                  <figcaption>{t("Profilna fotografija")}</figcaption>
                 </figure>
               )}
               {cover && (
                 <figure className={styles.photoItem} data-kind="cover">
                   <Image
                     src={cover}
-                    alt="Naslovna fotografija profila"
+                    alt={t("Naslovna fotografija profila")}
                     width={1600}
                     height={600}
                     unoptimized
                   />
-                  <figcaption>Naslovna fotografija</figcaption>
+                  <figcaption>{t("Naslovna fotografija")}</figcaption>
                 </figure>
               )}
             </div>
           ) : (
-            <p className={styles.empty}>Još nema dodanih fotografija.</p>
+            <p className={styles.empty}>{t("Još nema dodanih fotografija.")}</p>
           )}
         </section>
       </div>

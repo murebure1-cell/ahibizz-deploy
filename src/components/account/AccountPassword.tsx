@@ -2,16 +2,19 @@
 
 import Link from "next/link";
 import { type FormEvent, useRef, useState } from "react";
+import { msg } from "../../lib/i18n/translate";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./account.module.css";
 
 const errors: Record<string, string> = {
-  INVALID_CURRENT_PASSWORD: "Trenutna lozinka nije tačna.",
-  INVALID_PASSWORD_LENGTH: "Nova lozinka treba imati od 12 do 128 znakova.",
-  PASSWORD_UNCHANGED: "Izaberi lozinku koja se razlikuje od trenutne.",
-  TOO_MANY_REQUESTS: "Previše pokušaja. Pokušaj ponovo za minutu.",
+  INVALID_CURRENT_PASSWORD: msg("Trenutna lozinka nije tačna."),
+  INVALID_PASSWORD_LENGTH: msg("Nova lozinka treba imati od 12 do 128 znakova."),
+  PASSWORD_UNCHANGED: msg("Izaberi lozinku koja se razlikuje od trenutne."),
+  TOO_MANY_REQUESTS: msg("Previše pokušaja. Pokušaj ponovo za minutu."),
 };
 
 export function AccountPassword({ accountId, email }: { accountId: string; email: string }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -27,7 +30,7 @@ export function AccountPassword({ accountId, email }: { accountId: string; email
     setNotice("");
     setError("");
     if (newPassword !== fields.get("confirmPassword")) {
-      setError("Unesene nove lozinke se razlikuju.");
+      setError(t("Unesene nove lozinke se razlikuju."));
       const confirm = form.elements.namedItem("confirmPassword");
       if (confirm instanceof HTMLInputElement) confirm.focus();
       return;
@@ -48,16 +51,16 @@ export function AccountPassword({ accountId, email }: { accountId: string; email
       if (!response.ok || result?.ok !== true) {
         setError(
           response.status === 401 || response.status === 403
-            ? "Za promjenu lozinke prijavi se ponovo."
-            : (errors[result?.code] ?? "Promjena nije potvrđena. Pokušaj kasnije."),
+            ? t("Za promjenu lozinke prijavi se ponovo.")
+            : t(errors[result?.code] ?? msg("Promjena nije potvrđena. Pokušaj kasnije.")),
         );
         return;
       }
       form.reset();
       if (details.current) details.current.open = false;
-      setNotice("Lozinka je promijenjena. Na drugim uređajima prijavi se novom lozinkom.");
+      setNotice(t("Lozinka je promijenjena. Na drugim uređajima prijavi se novom lozinkom."));
     } catch {
-      setError("Promjena nije potvrđena. Provjeri vezu ili zatraži link za novu lozinku.");
+      setError(t("Promjena nije potvrđena. Provjeri vezu ili zatraži link za novu lozinku."));
     } finally {
       submitting.current = false;
       setBusy(false);
@@ -65,13 +68,13 @@ export function AccountPassword({ accountId, email }: { accountId: string; email
   }
   return (
     <section className={styles.settingsCard} aria-labelledby="password-heading">
-      <h2 id="password-heading">Lozinka</h2>
+      <h2 id="password-heading">{t("Lozinka")}</h2>
       <details ref={details} className={styles.passwordChange}>
-        <summary>Promijeni lozinku</summary>
+        <summary>{t("Promijeni lozinku")}</summary>
         <form method="post" action="/api/account/password" onSubmit={submit} aria-busy={busy}>
           <input type="hidden" name="username" autoComplete="username" value={email} />
           <label>
-            Trenutna lozinka
+            {t("Trenutna lozinka")}
             <input
               type="password"
               name="currentPassword"
@@ -82,7 +85,7 @@ export function AccountPassword({ accountId, email }: { accountId: string; email
             />
           </label>
           <label>
-            Nova lozinka
+            {t("Nova lozinka")}
             <input
               type="password"
               name="newPassword"
@@ -95,10 +98,10 @@ export function AccountPassword({ accountId, email }: { accountId: string; email
             />
           </label>
           <small id="password-length" className={styles.passwordLength}>
-            Najmanje 12 znakova.
+            {t("Najmanje 12 znakova.")}
           </small>
           <label>
-            Potvrdi novu lozinku
+            {t("Potvrdi novu lozinku")}
             <input
               type="password"
               name="confirmPassword"
@@ -116,13 +119,13 @@ export function AccountPassword({ accountId, email }: { accountId: string; email
           )}
           <div className={styles.settingsActions}>
             <button type="submit" disabled={busy}>
-              {busy ? "Spremam…" : "Sačuvaj novu lozinku"}
+              {busy ? t("Spremam…") : t("Sačuvaj novu lozinku")}
             </button>
           </div>
         </form>
       </details>
       <Link href="/zaboravljena-lozinka" className={styles.settingsLogin}>
-        Zaboravljena lozinka
+        {t("Zaboravljena lozinka")}
       </Link>
       {notice && (
         <p role="status" className={styles.settingsNotice}>

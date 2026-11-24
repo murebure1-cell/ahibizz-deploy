@@ -5,18 +5,18 @@ import Link from "next/link";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { type PublicPerson, publicPersonImageUrl, readPublicPerson } from "../../lib/connections";
 import { connectionError, connectionRequest } from "../../lib/connections-client";
-import { profileCountries, workStatusLabels } from "../../lib/people";
+import type { Locale } from "../../lib/i18n/locales";
+import { countryLabel, workStatusLabels } from "../../lib/people";
 import { Icon } from "../Icon";
+import { useI18n } from "../i18n/LocaleProvider";
 import { personalProfileImage, profileInitials } from "../people/PersonalProfileCard";
 import { VerificationBadge } from "../VerificationBadge";
 import styles from "./connections.module.css";
 
 export type PersonMediaUrl = (person: PublicPerson, kind: "photo" | "cover") => string | null;
 
-export function personLocation(person: PublicPerson): string {
-  const country =
-    profileCountries.find(([code]) => code === person.countryCode)?.[1] ?? person.countryCode;
-  return [person.city, country].filter(Boolean).join(", ");
+export function personLocation(person: PublicPerson, locale: Locale = "bs"): string {
+  return [person.city, countryLabel(person.countryCode, locale)].filter(Boolean).join(", ");
 }
 
 export function PersonAvatar({
@@ -61,6 +61,7 @@ export function PeopleSearch({
   profileHref?: (id: string) => string;
   imageUrl?: PersonMediaUrl;
 }) {
+  const { t, locale } = useI18n();
   const [query, setQuery] = useState(""),
     [search, setSearch] = useState(""),
     [items, setItems] = useState<PublicPerson[]>([]),
@@ -81,7 +82,7 @@ export function PeopleSearch({
       nextController = new AbortController();
     controller.current = nextController;
     if (preview && api.current === connectionRequest) {
-      setError("Pregled ljudi trenutno nije dostupan.");
+      setError(t("Pregled ljudi trenutno nije dostupan."));
       return;
     }
     setLoading(true);
@@ -102,11 +103,11 @@ export function PeopleSearch({
       setReady(true);
     } catch (failure) {
       if (!nextController.signal.aborted && current === revision.current)
-        setError(connectionError(failure));
+        setError(t(connectionError(failure)));
     } finally {
       if (current === revision.current) setLoading(false);
     }
-  }, [page, preview, search]);
+  }, [page, preview, search, t]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Refresh repeats the same query after a failed read.
   useEffect(() => {
@@ -128,28 +129,28 @@ export function PeopleSearch({
   }
 
   return (
-    <section className={styles.workspace} aria-label="Ljudi na AhiBizzu">
+    <section className={styles.workspace} aria-label={t("Ljudi na AhiBizzu")}>
       {heading && (
         <div className={styles.heading}>
-          <h1>Ljudi</h1>
+          <h1>{t("Ljudi")}</h1>
         </div>
       )}
-      <form className={styles.search} onSubmit={submit} aria-label="Pretraga ljudi">
+      <form className={styles.search} onSubmit={submit} aria-label={t("Pretraga ljudi")}>
         <label className={styles.searchField}>
           <Icon name="search" />
-          <span className={styles.visuallyHidden}>Ime ili grad</span>
+          <span className={styles.visuallyHidden}>{t("Ime ili grad")}</span>
           <input
             type="search"
             name="people"
             value={query}
             maxLength={100}
-            placeholder="Ime ili grad"
+            placeholder={t("Ime ili grad")}
             autoComplete="off"
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
         <button type="submit" className={styles.primary} disabled={loading}>
-          Pronađi
+          {t("Pronađi")}
         </button>
       </form>
       {error && (
@@ -161,12 +162,12 @@ export function PeopleSearch({
             disabled={loading}
             onClick={() => setRefresh((value) => value + 1)}
           >
-            Pokušaj ponovo
+            {t("Pokušaj ponovo")}
           </button>
         </div>
       )}
       {!ready && !error && (
-        <section className={styles.grid} aria-busy="true" aria-label="Pretraga ljudi">
+        <section className={styles.grid} aria-busy="true" aria-label={t("Pretraga ljudi")}>
           {[0, 1].map((key) => (
             <div className={styles.skeleton} key={key} aria-hidden="true">
               <span />
@@ -179,8 +180,8 @@ export function PeopleSearch({
       {ready && items.length === 0 && !loading && (
         <div className={styles.empty}>
           <Icon name="user" />
-          <h3>{search ? "Nema rezultata za ovu pretragu." : "Još nema javnih profila."}</h3>
-          {search && <p>Pokušaj s drugim imenom ili gradom.</p>}
+          <h3>{search ? t("Nema rezultata za ovu pretragu.") : t("Još nema javnih profila.")}</h3>
+          {search && <p>{t("Pokušaj s drugim imenom ili gradom.")}</p>}
         </div>
       )}
       {ready && items.length > 0 && (
@@ -194,17 +195,17 @@ export function PeopleSearch({
                     {person.name}
                     {person.verified && <VerificationBadge kind="person" />}
                   </h3>
-                  {personLocation(person) && (
+                  {personLocation(person, locale) && (
                     <p className={styles.location}>
                       <Icon name="pin" />
-                      {personLocation(person)}
+                      {personLocation(person, locale)}
                     </p>
                   )}
                   {person.workStatus !== "not_specified" && (
-                    <p className={styles.personWork}>{workStatusLabels[person.workStatus]}</p>
+                    <p className={styles.personWork}>{t(workStatusLabels[person.workStatus])}</p>
                   )}
                   {person.skills.length > 0 && (
-                    <ul className={styles.skills} aria-label="Vještine">
+                    <ul className={styles.skills} aria-label={t("Vještine")}>
                       {person.skills.slice(0, 3).map((skill) => (
                         <li key={skill}>{skill}</li>
                       ))}
@@ -218,14 +219,14 @@ export function PeopleSearch({
         </ul>
       )}
       {ready && (page > 1 || hasMore) && (
-        <nav className={styles.pagination} aria-label="Stranice ljudi">
+        <nav className={styles.pagination} aria-label={t("Stranice ljudi")}>
           <button
             type="button"
             className={styles.secondary}
             disabled={loading || page === 1}
             onClick={() => setPage((value) => value - 1)}
           >
-            Prethodna
+            {t("Prethodna")}
           </button>
           <span>{page}</span>
           <button
@@ -234,7 +235,7 @@ export function PeopleSearch({
             disabled={loading || !hasMore}
             onClick={() => setPage((value) => value + 1)}
           >
-            Sljedeća
+            {t("Sljedeća")}
           </button>
         </nav>
       )}

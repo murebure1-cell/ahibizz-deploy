@@ -1,6 +1,7 @@
 import type { SafeAccountProfile } from "../server/auth/accounts";
 import { readSafeAccountProfile } from "./admin-accounts";
 import { type Appearance, isAppearance } from "./appearance";
+import { msg } from "./i18n/translate";
 
 export class AccountSettingsError extends Error {
   constructor(
@@ -88,10 +89,10 @@ export async function accountSettingsRequest(options: RequestInit = {}): Promise
 
 export function accountSettingsError(failure: unknown): string {
   if (failure instanceof AccountSettingsError) {
-    if (failure.status === 401) return "Prijavi se ponovo za pristup postavkama.";
-    if (failure.status === 403) return "Postavke trenutno nisu dostupne ovom nalogu.";
+    if (failure.status === 401) return msg("Prijavi se ponovo za pristup postavkama.");
+    if (failure.status === 403) return msg("Postavke trenutno nisu dostupne ovom nalogu.");
     if (failure.code === "APPEARANCE_CONFLICT")
-      return "Postavke su izmijenjene. Osvježi ih prije spremanja.";
+      return msg("Postavke su izmijenjene. Osvježi ih prije spremanja.");
   }
-  return "Postavke nisu potvrđene. Osvježi ih prije novog pokušaja.";
+  return msg("Postavke nisu potvrđene. Osvježi ih prije novog pokušaja.");
 }

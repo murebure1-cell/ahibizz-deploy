@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import type { SavedSearch } from "../../lib/saved-search";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./saved-searches.module.css";
 
 type Change =
@@ -22,6 +23,7 @@ async function changeSearch(accountId: string, change: Change) {
   return data.searches as SavedSearch[];
 }
 export function SaveSearchButton(props: SavedSearch) {
+  const t = useT();
   const [status, setStatus] = useState<"idle" | "busy" | "saved" | "guest" | "error" | "limit">(
     "idle",
   );
@@ -58,15 +60,17 @@ export function SaveSearchButton(props: SavedSearch) {
         disabled={status === "busy" || status === "saved"}
       >
         <Icon name={status === "saved" ? "check" : "heart"} />
-        {status === "saved" ? "Pretraga sačuvana" : "Sačuvaj pretragu"}
+        {status === "saved" ? t("Pretraga sačuvana") : t("Sačuvaj pretragu")}
       </button>
       {status === "guest" && (
         <Link href={`/prijava?nastavi=${encodeURIComponent("/pretraga" + props.filters)}`}>
-          Prijavi se za čuvanje
+          {t("Prijavi se za čuvanje")}
         </Link>
       )}
-      {status === "limit" && <span role="status">Dostignut je limit od 30 pretraga.</span>}
-      {status === "error" && <span role="status">Pretraga se trenutno ne može sačuvati.</span>}
+      {status === "limit" && <span role="status">{t("Dostignut je limit od 30 pretraga.")}</span>}
+      {status === "error" && (
+        <span role="status">{t("Pretraga se trenutno ne može sačuvati.")}</span>
+      )}
     </span>
   );
 }
@@ -77,6 +81,7 @@ export function SavedSearchList({
   accountId: string;
   initial: SavedSearch[];
 }) {
+  const t = useT();
   const [items, setItems] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -87,7 +92,7 @@ export function SavedSearchList({
     try {
       setItems(await changeSearch(accountId, { action: "remove", filters }));
     } catch {
-      setError("Uklanjanje nije uspjelo. Pokušaj ponovo.");
+      setError(t("Uklanjanje nije uspjelo. Pokušaj ponovo."));
     } finally {
       setBusy(false);
     }
@@ -110,13 +115,13 @@ export function SavedSearchList({
                 disabled={busy}
                 onClick={() => void remove(item.filters)}
               >
-                Ukloni
+                {t("Ukloni")}
               </button>
             </li>
           ))}
         </ul>
       )}
-      {!items.length && <p>Sačuvane pretrage će se pojaviti ovdje.</p>}
+      {!items.length && <p>{t("Sačuvane pretrage će se pojaviti ovdje.")}</p>}
     </div>
   );
 }

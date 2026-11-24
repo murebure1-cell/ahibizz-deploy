@@ -6,6 +6,8 @@ import {
   businessMediaUrl,
   readBusinessMediaSummary,
 } from "./business-media";
+import type { Locale } from "./i18n/locales";
+import { msg, translate } from "./i18n/translate";
 import type { ReviewSummary } from "./reviews";
 
 export type PublicBusinessView = {
@@ -43,8 +45,8 @@ export function publicBusinessImages(
       cover = media.cover ? imageUrl(businessId, media.cover) : null,
       logo = media.logo ? imageUrl(businessId, media.logo) : null;
     return {
-      ...(cover ? { image: { src: cover, alt: "Naslovna fotografija djelatnosti" } } : {}),
-      ...(logo ? { logo: { src: logo, alt: "Logo djelatnosti" } } : {}),
+      ...(cover ? { image: { src: cover, alt: msg("Naslovna fotografija djelatnosti") } } : {}),
+      ...(logo ? { logo: { src: logo, alt: msg("Logo djelatnosti") } } : {}),
       gallery: media.gallery.flatMap((asset, index) => {
         const src = imageUrl(businessId, asset);
         return src ? [{ src, alt: `Fotografija djelatnosti ${index + 1}` }] : [];
@@ -114,10 +116,10 @@ export function publicBusinessPoint(business: PublicBusinessView) {
   return initialLocationPoint(business.latitude, business.longitude);
 }
 
-export function businessLocationLabel(business: PublicBusinessView): string {
+export function businessLocationLabel(business: PublicBusinessView, locale: Locale = "bs"): string {
   let country = business.countryCode?.trim().toUpperCase() ?? "";
   if (/^[A-Z]{2}$/.test(country)) {
-    country = new Intl.DisplayNames(["bs"], { type: "region" }).of(country) ?? country;
+    country = new Intl.DisplayNames([locale], { type: "region" }).of(country) ?? country;
   } else country = "";
   const values = [business.addressLine?.trim(), business.city?.trim(), country].filter(
     (item): item is string => Boolean(item),
@@ -125,7 +127,7 @@ export function businessLocationLabel(business: PublicBusinessView): string {
   const unique = [
     ...new Map(values.map((value) => [value.toLocaleLowerCase("bs"), value])).values(),
   ];
-  return unique.join(", ") || "Lokacija nije unesena.";
+  return unique.join(", ") || translate(locale, msg("Lokacija nije unesena."));
 }
 
 export function businessDirections(business: PublicBusinessView, mode: "driving" | "walking") {

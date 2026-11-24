@@ -12,10 +12,11 @@ import { businessUuid } from "../../../../lib/business-today";
 import { bosnianDateTime } from "../../../../lib/display-date";
 import { markActivityRead, readActivity } from "../../../../server/account-activity";
 import { AccountAccessError } from "../../../../server/auth/accounts";
+import { getTranslator, titled } from "../../../../server/i18n";
 import styles from "./activity.module.css";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Obavijesti" };
+export const generateMetadata = titled("Obavijesti");
 const login = (returnPath: string) => `/prijava?nastavi=${encodeURIComponent(returnPath)}`;
 
 async function acknowledge(accountId: string, id?: string, version?: number) {
@@ -38,6 +39,7 @@ async function acknowledge(accountId: string, id?: string, version?: number) {
 
 type Query = { stranica?: string | string[]; stavka?: string | string[]; pokusaj?: string };
 export default async function ActivityPage({ searchParams }: { searchParams: Promise<Query> }) {
+  const t = await getTranslator();
   const params = await searchParams;
   const selected = businessUuid(params.stavka) ? params.stavka.toLowerCase() : undefined;
   const page =
@@ -54,9 +56,9 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
       <header className={styles.header}>
         <div>
           <Link href="/nalog" className="text-link">
-            Moj nalog
+            {t("Moj nalog")}
           </Link>
-          <h1>Obavijesti</h1>
+          <h1>{t("Obavijesti")}</h1>
           {result && result.unread > 0 && (
             <p>{result.unread === 100 ? "99+" : result.unread} nepročitanih</p>
           )}
@@ -65,17 +67,19 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
           <Icon name="sliders" /> Postavke
         </Link>
       </header>
-      {params.pokusaj === "1" && <p role="alert">Obavijest nije ažurirana. Pokušaj ponovo.</p>}
+      {params.pokusaj === "1" && (
+        <p role="alert">{t("Obavijest nije ažurirana. Pokušaj ponovo.")}</p>
+      )}
       {!result ? (
         <p role="status" className={styles.empty}>
-          Obavijesti trenutno nisu dostupne.
+          {t("Obavijesti trenutno nisu dostupne.")}
         </p>
       ) : (
         <>
           {result.unread > 0 && (
             <form action={acknowledge.bind(null, result.accountId, undefined, undefined)}>
               <button type="submit" className={styles.secondary}>
-                Označi sve pročitano
+                {t("Označi sve pročitano")}
               </button>
             </form>
           )}
@@ -97,8 +101,8 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
                         />
                       </span>
                       <span className={styles.content}>
-                        <strong>{activityLabel(item)}</strong>
-                        {item.unread && <span className={styles.unread}>Novo</span>}
+                        <strong>{t(activityLabel(item))}</strong>
+                        {item.unread && <span className={styles.unread}>{t("Novo")}</span>}
                         {(item.businessTitle || item.subjectName) && (
                           <span className={styles.context}>
                             {[item.businessTitle, item.subjectName].filter(Boolean).join(" · ")}
@@ -115,16 +119,16 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
               ))}
             </ul>
           ) : (
-            <p className={styles.empty}>Još nema obavijesti.</p>
+            <p className={styles.empty}>{t("Još nema obavijesti.")}</p>
           )}
           {(page > 1 || (page < 999 && result.hasMore)) && (
-            <nav className={styles.pages} aria-label="Stranice obavijesti">
+            <nav className={styles.pages} aria-label={t("Stranice obavijesti")}>
               {page > 1 && (
                 <Link
                   className={styles.secondary}
                   href={`${activityInboxPath}?stranica=${page - 1}`}
                 >
-                  Prethodna
+                  {t("Prethodna")}
                 </Link>
               )}
               {page < 999 && result.hasMore && (
@@ -132,7 +136,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
                   className={styles.secondary}
                   href={`${activityInboxPath}?stranica=${page + 1}`}
                 >
-                  Sljedeća
+                  {t("Sljedeća")}
                 </Link>
               )}
             </nav>

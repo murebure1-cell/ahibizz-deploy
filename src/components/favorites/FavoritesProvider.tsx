@@ -22,6 +22,8 @@ import {
   type FavoritesApi,
   FavoritesClientError,
 } from "../../lib/favorites";
+import { msg } from "../../lib/i18n/translate";
+import { useT } from "../i18n/LocaleProvider";
 
 type Context = {
   api: FavoritesApi;
@@ -40,7 +42,7 @@ export function useFavorites() {
   return useContext(FavoritesContext);
 }
 const intentKey = (actor: string, id: string) => `${actor}:${id}`;
-const uncertain = "Promjena nije potvrđena. Provjeri stanje ili ponovi isti pokušaj.";
+const uncertain = msg("Promjena nije potvrđena. Provjeri stanje ili ponovi isti pokušaj.");
 export function FavoritesProvider({
   children,
   api: provided,
@@ -48,6 +50,7 @@ export function FavoritesProvider({
   children: ReactNode;
   api?: FavoritesApi;
 }) {
+  const t = useT();
   const api = useMemo(() => provided ?? createFavoritesApi(), [provided]),
     [states, setStates] = useState<ReadonlyMap<string, FavoriteState>>(new Map()),
     [status, setStatus] = useState<Context["status"]>("checking"),
@@ -126,7 +129,7 @@ export function FavoritesProvider({
           try {
             intent = readFavoriteIntent(localStorage, accountId, id) ?? intent;
           } catch {
-            nextErrors.set(id, "Spremanje trenutno nije dostupno. Pokušaj ponovo.");
+            nextErrors.set(id, t("Spremanje trenutno nije dostupno. Pokušaj ponovo."));
             continue;
           }
           if (intent) {
@@ -173,7 +176,7 @@ export function FavoritesProvider({
         );
       });
     }, 0);
-  }, [api, visibleBusy]);
+  }, [api, visibleBusy, t]);
   const register = useCallback(
     (id: string) => {
       ids.current.set(id, (ids.current.get(id) ?? 0) + 1);
@@ -239,7 +242,7 @@ export function FavoritesProvider({
         pending.current.set(name, written);
       } catch {
         setErrors((previous) =>
-          new Map(previous).set(id, "Spremanje trenutno nije dostupno. Pokušaj ponovo."),
+          new Map(previous).set(id, t("Spremanje trenutno nije dostupno. Pokušaj ponovo.")),
         );
         return;
       }
@@ -291,7 +294,7 @@ export function FavoritesProvider({
           if (mounted.current && actor.current === accountId) visibleBusy(accountId);
         });
     },
-    [api, visibleBusy],
+    [api, visibleBusy, t],
   );
   const toggle = useCallback(
     (id: string) => {
@@ -304,7 +307,7 @@ export function FavoritesProvider({
         stored = readFavoriteIntent(localStorage, accountId, id);
       } catch {
         setErrors((previous) =>
-          new Map(previous).set(id, "Spremanje trenutno nije dostupno. Pokušaj ponovo."),
+          new Map(previous).set(id, t("Spremanje trenutno nije dostupno. Pokušaj ponovo.")),
         );
         return;
       }
@@ -323,7 +326,7 @@ export function FavoritesProvider({
         },
       });
     },
-    [dispatch],
+    [dispatch, t],
   );
   const retry = useCallback(
     (id: string) => {

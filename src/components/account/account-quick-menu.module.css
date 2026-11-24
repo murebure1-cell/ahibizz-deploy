@@ -195,6 +195,24 @@
   font-size: 13px;
   font-weight: 650;
 }
+.language {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ui-text-secondary);
+}
+.language select {
+  min-height: 37px;
+  padding-inline: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+}
 .themes button[aria-pressed="true"] {
   background: var(--gold-soft);
   color: var(--ui-accent-text);

@@ -5,27 +5,30 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { accountSectionPath } from "../lib/account-return";
 import { accountShortcuts } from "../lib/account-shortcuts";
 import { headerCurrentDestination, type NavigationDestination } from "../lib/header-navigation";
+import { msg } from "../lib/i18n/translate";
 import { Icon } from "./Icon";
+import { useT } from "./i18n/LocaleProvider";
 import styles from "./mobile-dock.module.css";
 
-const home = { href: "/", label: "Početna", icon: "home" } as const;
+const home = { href: "/", label: msg("Početna"), icon: "home" } as const;
 const messages = {
   href: accountSectionPath("messages"),
-  label: "Poruke",
+  label: msg("Poruke"),
   icon: "message",
 } as const;
-const publish = { href: accountShortcuts.newBusiness, label: "Objavi", icon: "plus" } as const;
+const publish = { href: accountShortcuts.newBusiness, label: msg("Objavi"), icon: "plus" } as const;
 const notifications = {
   href: accountShortcuts.notifications,
-  label: "Obavijesti",
+  label: msg("Obavijesti"),
   icon: "bell",
 } as const;
-const account = { href: "/nalog", label: "Moj nalog", icon: "user" } as const;
+const account = { href: "/nalog", label: msg("Moj nalog"), icon: "user" } as const;
 const destinations: NavigationDestination[] = [home, messages, publish, notifications, account];
 
 const sectionRoots = ["/pretraga", "/djelatnosti", "/ljudi", "/reels", "/blog", "/pomoc"];
 
 export function MobileDock() {
+  const t = useT();
   const pathname = usePathname();
   const search = useSearchParams();
   const query = new URLSearchParams(search?.toString());
@@ -54,7 +57,7 @@ export function MobileDock() {
           ? home.href
           : null;
   return (
-    <nav className={styles.dock} aria-label="Glavna mobilna navigacija" data-mobile-dock>
+    <nav className={styles.dock} aria-label={t("Glavna mobilna navigacija")} data-mobile-dock>
       {destinations.map(({ href, label, icon }) => (
         <Link
           href={href}
@@ -67,7 +70,7 @@ export function MobileDock() {
           <span className={styles.glyph}>
             <Icon name={icon} />
           </span>
-          <span>{label}</span>
+          <span>{t(label)}</span>
         </Link>
       ))}
     </nav>

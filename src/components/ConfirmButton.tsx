@@ -2,6 +2,7 @@
 
 import { type ReactNode, useId, useRef } from "react";
 import styles from "./confirm-button.module.css";
+import { useT } from "./i18n/LocaleProvider";
 
 /**
  * A button that asks for confirmation in the app's own dialog instead of `window.confirm`,
@@ -25,6 +26,7 @@ export function ConfirmButton({
   disabled?: boolean;
   className?: string;
 }) {
+  const t = useT();
   const dialog = useRef<HTMLDialogElement>(null);
   const cancel = useRef<HTMLButtonElement>(null);
   const label = useId();
@@ -52,7 +54,7 @@ export function ConfirmButton({
         {description && <p id={details}>{description}</p>}
         <div className={styles.actions}>
           <button ref={cancel} type="button" onClick={() => dialog.current?.close()}>
-            Odustani
+            {t("Odustani")}
           </button>
           <button
             type="button"

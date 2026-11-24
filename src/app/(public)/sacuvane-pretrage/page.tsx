@@ -4,10 +4,12 @@ import { redirect } from "next/navigation";
 import { SavedSearchList } from "../../../components/favorites/SavedSearches";
 import styles from "../../../components/favorites/saved-searches.module.css";
 import { AccountAccessError } from "../../../server/auth/accounts";
+import { getTranslator, titled } from "../../../server/i18n";
 import { readSavedSearches } from "../../../server/saved-search";
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Sačuvane pretrage" };
+export const generateMetadata = titled("Sačuvane pretrage");
 export default async function SavedSearchPage() {
+  const t = await getTranslator();
   let result: Awaited<ReturnType<typeof readSavedSearches>> | undefined;
   try {
     result = await readSavedSearches(await headers());
@@ -18,16 +20,16 @@ export default async function SavedSearchPage() {
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <header>
-        <h1>Sačuvane pretrage</h1>
-        <nav aria-label="Sačuvano">
+        <h1>{t("Sačuvane pretrage")}</h1>
+        <nav aria-label={t("Sačuvano")}>
           <Link className="text-link" href="/pretraga">
-            Nova pretraga
+            {t("Nova pretraga")}
           </Link>
           <Link className="text-link" href="/nalog?odjeljak=sacuvani">
-            Sačuvane djelatnosti
+            {t("Sačuvane djelatnosti")}
           </Link>
           <Link className="text-link" href="/blog?sacuvano=1">
-            Sačuvani članci
+            {t("Sačuvani članci")}
           </Link>
         </nav>
       </header>
@@ -38,7 +40,7 @@ export default async function SavedSearchPage() {
           initial={result.searches}
         />
       ) : (
-        <p role="status">Pretrage trenutno nisu dostupne.</p>
+        <p role="status">{t("Pretrage trenutno nisu dostupne.")}</p>
       )}
     </main>
   );

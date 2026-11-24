@@ -5,13 +5,15 @@ import { ReelManager } from "../../../../components/reels/ReelManager";
 import styles from "../../../../components/reels/reels.module.css";
 import { businessUuid } from "../../../../lib/business-today";
 import { AccountAccessError } from "../../../../server/auth/accounts";
+import { getTranslator, titled } from "../../../../server/i18n";
 import { manageReels } from "../../../../server/reels/service";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Moji reels" };
+export const generateMetadata = titled("Moji reels");
 type Query = { djelatnost?: string | string[]; stranica?: string | string[] };
 
 export default async function ManageReelsPage({ searchParams }: { searchParams: Promise<Query> }) {
+  const t = await getTranslator();
   const query = await searchParams;
   const selected = businessUuid(query.djelatnost) ? query.djelatnost.toLowerCase() : undefined;
   const page =
@@ -33,9 +35,9 @@ export default async function ManageReelsPage({ searchParams }: { searchParams: 
     <main id="glavni-sadrzaj" className={styles.page}>
       <header>
         <Link href="/nalog" className={styles.back}>
-          Moj nalog
+          {t("Moj nalog")}
         </Link>
-        <h1>Moji reels</h1>
+        <h1>{t("Moji reels")}</h1>
       </header>
       {list ? (
         <ReelManager
@@ -47,12 +49,12 @@ export default async function ManageReelsPage({ searchParams }: { searchParams: 
           admin={false}
         />
       ) : (
-        <p className={styles.empty}>Moji reels trenutno nisu dostupni.</p>
+        <p className={styles.empty}>{t("Moji reels trenutno nisu dostupni.")}</p>
       )}
       {(page > 1 || (list?.hasMore && page < 999)) && (
-        <nav className={styles.pagination} aria-label="Stranice mojih reelova">
-          {page > 1 && <Link href={href(page - 1)}>Prethodna</Link>}
-          {list?.hasMore && page < 999 && <Link href={href(page + 1)}>Sljedeća</Link>}
+        <nav className={styles.pagination} aria-label={t("Stranice mojih reelova")}>
+          {page > 1 && <Link href={href(page - 1)}>{t("Prethodna")}</Link>}
+          {list?.hasMore && page < 999 && <Link href={href(page + 1)}>{t("Sljedeća")}</Link>}
         </nav>
       )}
     </main>

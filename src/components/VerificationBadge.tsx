@@ -1,7 +1,11 @@
+"use client";
+
+import { useT } from "./i18n/LocaleProvider";
 import styles from "./verification-badge.module.css";
 
 export function VerificationBadge({ kind }: { kind: "person" | "business" }) {
-  const label = kind === "person" ? "Verifikovan lični profil" : "Verifikovana djelatnost";
+  const t = useT();
+  const label = kind === "person" ? t("Verifikovan lični profil") : t("Verifikovana djelatnost");
   return (
     <span className={styles.badge} role="img" aria-label={label} title={label}>
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">

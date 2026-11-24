@@ -16,13 +16,15 @@ import {
   headerDestinations,
   type NavigationDestination,
 } from "../lib/header-navigation";
+import { msg } from "../lib/i18n/translate";
 import { AccountQuickMenu } from "./account/AccountQuickMenu";
 import { Icon } from "./Icon";
+import { useT } from "./i18n/LocaleProvider";
 import { useOptionalAppPwa } from "./pwa/AppPwa";
 
 const accessLinks = [
-  { href: "/prijava", label: "Prijava" },
-  { href: "/registracija", label: "Napravi nalog" },
+  { href: "/prijava", label: msg("Prijava") },
+  { href: "/registracija", label: msg("Napravi nalog") },
 ];
 
 export function SiteHeader({
@@ -32,6 +34,7 @@ export function SiteHeader({
   supportAvailable?: boolean;
   request?: HeaderAccessRequest;
 }) {
+  const t = useT();
   const pathname = usePathname();
   const installed = useOptionalAppPwa()?.installed ?? true;
   const [open, setOpen] = useState(false);
@@ -152,7 +155,7 @@ export function SiteHeader({
         onClick={closeMenu}
       >
         <Icon name={link.icon} />
-        {link.label}
+        {t(link.label)}
       </Link>
     );
   }
@@ -160,7 +163,7 @@ export function SiteHeader({
   return (
     <header ref={header} className="site-header" data-design="app-header">
       <div className="container header-inner">
-        <Link className="brand" href="/" aria-label="AhiBizz — početna" onClick={closeMenu}>
+        <Link className="brand" href="/" aria-label={t("AhiBizz — početna")} onClick={closeMenu}>
           {/* The supplied SVG is a complete wordmark with its own aspect ratio. */}
           <Image
             src="/brand/ahi-logo-color.svg"
@@ -176,7 +179,7 @@ export function SiteHeader({
           className="menu-toggle"
           data-design="app-toggle"
           type="button"
-          aria-label={open ? "Zatvori meni" : "Otvori meni"}
+          aria-label={open ? t("Zatvori meni") : t("Otvori meni")}
           aria-expanded={open}
           aria-controls="site-navigation"
           onClick={() => {
@@ -198,12 +201,12 @@ export function SiteHeader({
           id="site-navigation"
           data-design="app-menu"
           className="header-menu"
-          aria-label="Glavna navigacija"
+          aria-label={t("Glavna navigacija")}
           hidden={!open}
         >
           {loading && !preview && (
             <p className="header-menu-status" role="status">
-              Učitavamo nalog…
+              {t("Učitavamo nalog…")}
             </p>
           )}
           {account && (
@@ -223,7 +226,7 @@ export function SiteHeader({
           {account ? (
             <details className="header-more" key={`explore-${open}`}>
               <summary>
-                Istraži AhiBizz <Icon name="chevron" />
+                {t("Istraži AhiBizz")} <Icon name="chevron" />
               </summary>
               {primary.filter((link) => !link.href.startsWith("/nalog")).map(destination)}
             </details>
@@ -231,7 +234,7 @@ export function SiteHeader({
             primary.map(destination)
           )}
           {access === "owner" &&
-            destination({ href: "/administracija", label: "Administracija", icon: "shield" })}
+            destination({ href: "/administracija", label: msg("Administracija"), icon: "shield" })}
           {business.length > 0 && (
             <details
               key={`business-${open}`}
@@ -239,7 +242,7 @@ export function SiteHeader({
               open={business.some((link) => link.href === currentHref)}
             >
               <summary>
-                Za djelatnosti
+                {t("Za djelatnosti")}
                 <Icon name="chevron" />
               </summary>
               {business.map(destination)}
@@ -251,7 +254,7 @@ export function SiteHeader({
             open={more.some((link) => link.href === currentHref)}
           >
             <summary>
-              O aplikaciji
+              {t("O aplikaciji")}
               <Icon name="chevron" />
             </summary>
             {more.map(destination)}
@@ -267,7 +270,7 @@ export function SiteHeader({
                   data-design="app-menu-item"
                   onClick={closeMenu}
                 >
-                  {link.label}
+                  {t(link.label)}
                 </Link>
               ))}
             </div>

@@ -5,6 +5,7 @@ import type { BookingListView } from "../../lib/booking";
 import type { RentalBooking } from "../../lib/rentals";
 import type { StayBooking } from "../../lib/stays";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import { RentalEntry } from "../rentals/RentalEntries";
 import { RentalRecovery } from "../rentals/RentalRecovery";
 import { useRentalRead } from "../rentals/rental-client";
@@ -16,11 +17,12 @@ type Page<T> = { entries: T[]; hasMore: boolean };
 type Read<T> = { data?: Page<T>; error?: string } | null;
 
 function AppointmentsEmpty({ view }: { view: BookingListView }) {
+  const t = useT();
   return (
     <div className={styles.empty}>
       <Icon name="calendar" />
-      <h3>{view === "history" ? "Još nema ranijih termina." : "Nema aktuelnih termina."}</h3>
-      {view === "upcoming" && <Link href="/pretraga">Pronađi djelatnost</Link>}
+      <h3>{view === "history" ? t("Još nema ranijih termina.") : t("Nema aktuelnih termina.")}</h3>
+      {view === "upcoming" && <Link href="/pretraga">{t("Pronađi djelatnost")}</Link>}
     </div>
   );
 }
@@ -40,6 +42,7 @@ function InventoryGroup<T>({
   retry: () => void;
   children: (entry: T) => ReactNode;
 }) {
+  const t = useT();
   const data = state?.data;
   useEffect(() => {
     if (data && !data.entries.length && page > 1) setPage(page - 1);
@@ -52,7 +55,7 @@ function InventoryGroup<T>({
         <p role="alert" className={styles.error}>
           {state.error}{" "}
           <button type="button" className={styles.secondary} onClick={retry}>
-            Pokušaj ponovo
+            {t("Pokušaj ponovo")}
           </button>
         </p>
       )}
@@ -60,11 +63,11 @@ function InventoryGroup<T>({
       {data && (data.hasMore || page > 1) && (
         <nav className={styles.pagination} aria-label={`Stranice: ${title}`}>
           <button type="button" disabled={page === 1} onClick={() => setPage(page - 1)}>
-            Prethodna
+            {t("Prethodna")}
           </button>
           <span aria-current="page">{page}</span>
           <button type="button" disabled={!data.hasMore} onClick={() => setPage(page + 1)}>
-            Sljedeća
+            {t("Sljedeća")}
           </button>
         </nav>
       )}
@@ -83,6 +86,7 @@ export function InventoryAppointments({
   refresh: number;
   servicesEmpty: boolean;
 }) {
+  const t = useT();
   const [rentalPage, setRentalPage] = useState(1);
   const [stayPage, setStayPage] = useState(1);
   const [rentalRevision, setRentalRevision] = useState(0);
@@ -109,11 +113,11 @@ export function InventoryAppointments({
         stays?.data?.entries.length === 0 && <AppointmentsEmpty view={view} />}
       {servicesEmpty && (!rentals || !stays) && (
         <p role="status" className={styles.note}>
-          Provjeravam najam i smještaj…
+          {t("Provjeravam najam i smještaj…")}
         </p>
       )}
       <InventoryGroup
-        title="Najam automobila"
+        title={t("Najam automobila")}
         state={rentals}
         page={rentalPage}
         setPage={setRentalPage}
@@ -124,7 +128,7 @@ export function InventoryAppointments({
         )}
       </InventoryGroup>
       <InventoryGroup
-        title="Smještaj"
+        title={t("Smještaj")}
         state={stays}
         page={stayPage}
         setPage={setStayPage}

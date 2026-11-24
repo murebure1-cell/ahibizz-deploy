@@ -1,4 +1,5 @@
 import { businessInquiryPath, businessUuid, ownerCalendarPath } from "./business-today";
+import { msg } from "./i18n/translate";
 import { messageLink } from "./messaging";
 
 export const activityInboxPath = "/nalog/obavijesti";
@@ -32,32 +33,33 @@ export type ActivityRow = {
 
 const labels = {
   service: {
-    request: "Novi zahtjev za termin",
-    approve: "Termin je potvrđen",
-    decline: "Termin je odbijen",
-    cancel: "Termin je otkazan",
-    complete: "Termin je završen",
+    request: msg("Novi zahtjev za termin"),
+    approve: msg("Termin je potvrđen"),
+    decline: msg("Termin je odbijen"),
+    cancel: msg("Termin je otkazan"),
+    complete: msg("Termin je završen"),
   },
   rental: {
-    request: "Novi zahtjev za najam",
-    approve: "Najam je potvrđen",
-    decline: "Zahtjev za najam je odbijen",
-    cancel: "Najam je otkazan",
-    complete: "Najam je završen",
+    request: msg("Novi zahtjev za najam"),
+    approve: msg("Najam je potvrđen"),
+    decline: msg("Zahtjev za najam je odbijen"),
+    cancel: msg("Najam je otkazan"),
+    complete: msg("Najam je završen"),
   },
   stay: {
-    request: "Novi zahtjev za smještaj",
-    approve: "Smještaj je potvrđen",
-    decline: "Zahtjev za smještaj je odbijen",
-    cancel: "Smještaj je otkazan",
-    complete: "Boravak je završen",
+    request: msg("Novi zahtjev za smještaj"),
+    approve: msg("Smještaj je potvrđen"),
+    decline: msg("Zahtjev za smještaj je odbijen"),
+    cancel: msg("Smještaj je otkazan"),
+    complete: msg("Boravak je završen"),
   },
 } as const;
 
 export function activityLabel({ kind, action }: Pick<ActivityRow, "kind" | "action">) {
-  if (kind === "message") return "Nova poruka";
-  if (kind === "reel") return action === "published" ? "Reel je objavljen" : "Reel je vraćen";
-  return labels[kind][action as keyof (typeof labels)[typeof kind]] ?? "Promjena termina";
+  if (kind === "message") return msg("Nova poruka");
+  if (kind === "reel")
+    return action === "published" ? msg("Reel je objavljen") : msg("Reel je vraćen");
+  return labels[kind][action as keyof (typeof labels)[typeof kind]] ?? msg("Promjena termina");
 }
 
 function calendarDay(startsAt: string | null, timezone: string | null) {

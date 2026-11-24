@@ -17,26 +17,28 @@ import {
 } from "../../lib/business-ownership-recovery";
 import { directoryAccessDenied } from "../../lib/directory-client";
 import { DirectoryRequestError } from "../../lib/directory-create-submission";
+import { msg } from "../../lib/i18n/translate";
 import type { DirectoryBusiness } from "../../server/directory/types";
 import { Icon } from "../Icon";
+import { useT } from "../i18n/LocaleProvider";
 import styles from "./business-ownership.module.css";
 import shared from "./directory.module.css";
 
 function message(error: unknown): string {
   const code = error instanceof DirectoryRequestError ? error.code : "";
   if (code === "TARGET_ACCOUNT_NOT_FOUND")
-    return "Nema potvrđenog i odobrenog naloga s tim emailom.";
+    return msg("Nema potvrđenog i odobrenog naloga s tim emailom.");
   if (code === "TARGET_ACCOUNT_NOT_ELIGIBLE")
-    return "Novi vlasnik prvo treba potvrditi email i dobiti odobren pristup.";
+    return msg("Novi vlasnik prvo treba potvrditi email i dobiti odobren pristup.");
   if (code === "TARGET_ACCOUNT_CHANGED")
-    return "Podaci naloga su promijenjeni. Ponovo pronađi vlasnika po emailu.";
-  if (code === "BUSINESS_OWNER_UNCHANGED") return "Ovaj nalog već vodi djelatnost.";
+    return msg("Podaci naloga su promijenjeni. Ponovo pronađi vlasnika po emailu.");
+  if (code === "BUSINESS_OWNER_UNCHANGED") return msg("Ovaj nalog već vodi djelatnost.");
   if (code === "BUSINESS_LIMIT_REACHED")
-    return "Ovaj nalog je dosegao dozvoljeni broj djelatnosti.";
+    return msg("Ovaj nalog je dosegao dozvoljeni broj djelatnosti.");
   if (code === "VERSION_CONFLICT" || code === "IDEMPOTENCY_CONFLICT")
-    return "Djelatnost je izmijenjena. Provjeri trenutnog vlasnika prije nove dodjele.";
-  if (code === "INVALID_OWNERSHIP_INPUT") return "Provjeri email i odabrani nalog.";
-  return "Zahtjev nije potvrđen. Provjeri trenutno stanje.";
+    return msg("Djelatnost je izmijenjena. Provjeri trenutnog vlasnika prije nove dodjele.");
+  if (code === "INVALID_OWNERSHIP_INPUT") return msg("Provjeri email i odabrani nalog.");
+  return msg("Zahtjev nije potvrđen. Provjeri trenutno stanje.");
 }
 export function BusinessOwnershipManager({
   businessId,
@@ -55,6 +57,7 @@ export function BusinessOwnershipManager({
   onAccessDenied: (error: unknown) => boolean;
   onBack: () => void;
 }) {
+  const t = useT();
   const [snapshot, setSnapshot] = useState<OwnershipSnapshot | null>(null);
   const [candidate, setCandidate] = useState<OwnershipLookup["candidate"] | null>(null);
   const [email, setEmail] = useState("");
@@ -115,14 +118,14 @@ export function BusinessOwnershipManager({
           setUncertain(false);
           setNotice(
             state === "superseded"
-              ? "Djelatnost je u međuvremenu izmijenjena. Prikazan je trenutni vlasnik."
+              ? t("Djelatnost je u međuvremenu izmijenjena. Prikazan je trenutni vlasnik.")
               : value.business.ownerId === intent.command.targetAccountId
-                ? "Djelatnost je dodijeljena novom vlasniku."
-                : "Dodjela je izvršena. Prikazan je trenutni vlasnik djelatnosti.",
+                ? t("Djelatnost je dodijeljena novom vlasniku.")
+                : t("Dodjela je izvršena. Prikazan je trenutni vlasnik djelatnosti."),
           );
         } else {
           setUncertain(true);
-          setError("Ishod prethodne dodjele još nije potvrđen.");
+          setError(t("Ishod prethodne dodjele još nije potvrđen."));
         }
       } else setUncertain(false);
       setSnapshot(value);
@@ -134,12 +137,12 @@ export function BusinessOwnershipManager({
         callbacks.current.onAccessDenied(failure);
         return;
       }
-      setError(message(failure));
+      setError(t(message(failure)));
     } finally {
       if (current(generation) && !controller.signal.aborted) setLoading(false);
       if (reads.current === controller) reads.current = null;
     }
-  }, [active, expectedAccountId, businessId, api, current]);
+  }, [active, expectedAccountId, businessId, api, current, t]);
   useLayoutEffect(() => {
     live.current = active;
     function conceal() {
@@ -206,7 +209,7 @@ export function BusinessOwnershipManager({
         callbacks.current.onAccessDenied(failure);
         return;
       }
-      setError(message(failure));
+      setError(t(message(failure)));
     } finally {
       if (current(generation) && !controller.signal.aborted) setLoading(false);
       if (reads.current === controller) reads.current = null;
@@ -235,7 +238,7 @@ export function BusinessOwnershipManager({
     try {
       retainOwnershipIntent(localStorage, expectedAccountId, businessId, intent);
     } catch {
-      setError("Evidencija dodjele nije dostupna. Osvježi stanje prije nastavka.");
+      setError(t("Evidencija dodjele nije dostupna. Osvježi stanje prije nastavka."));
       return;
     }
     pending.current = intent;
@@ -259,8 +262,8 @@ export function BusinessOwnershipManager({
       callbacks.current.onChanged(value.business);
       setNotice(
         value.business.ownerId === intent.command.targetAccountId
-          ? "Djelatnost je dodijeljena novom vlasniku."
-          : "Dodjela je izvršena. Prikazan je trenutni vlasnik djelatnosti.",
+          ? t("Djelatnost je dodijeljena novom vlasniku.")
+          : t("Dodjela je izvršena. Prikazan je trenutni vlasnik djelatnosti."),
       );
     } catch (failure) {
       if (!current(generation)) return;
@@ -282,7 +285,7 @@ export function BusinessOwnershipManager({
         callbacks.current.onAccessDenied(failure);
         return;
       }
-      setError(message(failure));
+      setError(t(message(failure)));
     } finally {
       writing.current = false;
       if (live.current) setBusy(false);
@@ -290,9 +293,9 @@ export function BusinessOwnershipManager({
   }
   if (!active) return null;
   return (
-    <section className={styles.workspace} aria-label="Dodjela vlasnika djelatnosti">
+    <section className={styles.workspace} aria-label={t("Dodjela vlasnika djelatnosti")}>
       <header className={styles.header}>
-        <h2>Dodijeli vlasnika</h2>
+        <h2>{t("Dodijeli vlasnika")}</h2>
         <button type="button" className={shared.secondary} onClick={onBack} disabled={busy}>
           <Icon name="arrow" style={{ transform: "rotate(180deg)" }} /> Nazad
         </button>
@@ -310,7 +313,7 @@ export function BusinessOwnershipManager({
       {snapshot && (
         <div className={styles.panel}>
           <h3>{snapshot.business.title}</h3>
-          <p className={styles.label}>Trenutni vlasnik</p>
+          <p className={styles.label}>{t("Trenutni vlasnik")}</p>
           <strong>{snapshot.currentOwner.name}</strong>
           <p className={styles.email}>{snapshot.currentOwner.email}</p>
           {!uncertain && (
@@ -321,7 +324,7 @@ export function BusinessOwnershipManager({
               }}
             >
               <label>
-                Email novog vlasnika
+                {t("Email novog vlasnika")}
                 <input
                   type="email"
                   value={email}
@@ -341,17 +344,17 @@ export function BusinessOwnershipManager({
                 className={shared.secondary}
                 disabled={busy || loading || !email.trim()}
               >
-                Pronađi nalog
+                {t("Pronađi nalog")}
               </button>
             </form>
           )}
           {candidate && (
             <div className={styles.candidate}>
-              <p className={styles.label}>Novi vlasnik</p>
+              <p className={styles.label}>{t("Novi vlasnik")}</p>
               <strong>{candidate.name}</strong>
               <p className={styles.email}>{candidate.email}</p>
               {candidate.id === snapshot.currentOwner.id ? (
-                <p>Ovaj nalog već vodi djelatnost.</p>
+                <p>{t("Ovaj nalog već vodi djelatnost.")}</p>
               ) : (
                 <button
                   type="button"
@@ -359,7 +362,7 @@ export function BusinessOwnershipManager({
                   onClick={() => void assign()}
                   disabled={busy || loading}
                 >
-                  {busy ? "Dodjela…" : "Dodijeli djelatnost"}
+                  {busy ? t("Dodjela…") : t("Dodijeli djelatnost")}
                 </button>
               )}
             </div>
@@ -372,7 +375,11 @@ export function BusinessOwnershipManager({
         onClick={() => void refresh()}
         disabled={busy || loading}
       >
-        {loading ? "Provjera…" : uncertain ? "Provjeri prethodnu dodjelu" : "Osvježi stanje"}
+        {loading
+          ? t("Provjera…")
+          : uncertain
+            ? t("Provjeri prethodnu dodjelu")
+            : t("Osvježi stanje")}
       </button>
       {uncertain &&
         snapshot &&
@@ -386,7 +393,7 @@ export function BusinessOwnershipManager({
               if (pending.current) void assign(pending.current);
             }}
           >
-            Ponovi istu dodjelu
+            {t("Ponovi istu dodjelu")}
           </button>
         )}
     </section>

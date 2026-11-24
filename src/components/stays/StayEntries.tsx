@@ -3,15 +3,17 @@ import Link from "next/link";
 import { useState } from "react";
 import { bookingDate, bookingMoney } from "../../lib/booking";
 import { dateKey } from "../../lib/booking-time";
+import { msg } from "../../lib/i18n/translate";
 import type { StayBooking } from "../../lib/stays";
+import { useI18n } from "../i18n/LocaleProvider";
 import styles from "../rentals/rentals.module.css";
 import { stayError, writeStay } from "./stay-client";
 
 const statuses = {
-  requested: "Čeka potvrdu",
-  confirmed: "Potvrđeno",
-  declined: "Odbijeno",
-  cancelled: "Otkazano",
+  requested: msg("Čeka potvrdu"),
+  confirmed: msg("Potvrđeno"),
+  declined: msg("Odbijeno"),
+  cancelled: msg("Otkazano"),
 };
 
 export function StayEntry({
@@ -25,10 +27,11 @@ export function StayEntry({
   owner?: boolean;
   changed: () => void;
 }) {
+  const { t, locale } = useI18n();
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
-  const starts = bookingDate(`${entry.checkIn}T12:00:00Z`, "UTC");
-  const ends = bookingDate(`${entry.checkOut}T12:00:00Z`, "UTC");
+  const starts = bookingDate(`${entry.checkIn}T12:00:00Z`, "UTC", { locale });
+  const ends = bookingDate(`${entry.checkOut}T12:00:00Z`, "UTC", { locale });
   const isBlock = entry.kind === "block";
   const canChangeArrival = entry.checkIn >= dateKey(new Date(), entry.timezone);
   const canApprove = owner && entry.status === "requested" && canChangeArrival;
@@ -46,7 +49,7 @@ export function StayEntry({
       });
       changed();
     } catch (failure) {
-      setError(stayError(failure));
+      setError(t(stayError(failure)));
     } finally {
       setWorking(false);
     }
@@ -57,12 +60,12 @@ export function StayEntry({
         <strong>
           {owner
             ? isBlock
-              ? "Ručna blokada"
-              : entry.customerName || "Zahtjev za smještaj"
+              ? t("Ručna blokada")
+              : entry.customerName || t("Zahtjev za smještaj")
             : entry.unitName}
         </strong>
         <span className={styles.badge} data-state={entry.status}>
-          {isBlock && entry.status === "confirmed" ? "Zauzeto" : statuses[entry.status]}
+          {isBlock && entry.status === "confirmed" ? t("Zauzeto") : t(statuses[entry.status])}
         </span>
       </div>
       {owner ? (
@@ -83,7 +86,7 @@ export function StayEntry({
               className={styles.primary}
               onClick={() => void decide("approve")}
             >
-              Odobri
+              {t("Odobri")}
             </button>
           )}
           {canDecline && (
@@ -93,7 +96,7 @@ export function StayEntry({
               className={styles.secondary}
               onClick={() => void decide("decline")}
             >
-              Odbij
+              {t("Odbij")}
             </button>
           )}
           {canCancel && (
@@ -103,7 +106,7 @@ export function StayEntry({
               className={styles.secondary}
               onClick={() => void decide("cancel")}
             >
-              {isBlock ? "Ukloni blokadu" : "Otkaži boravak"}
+              {isBlock ? t("Ukloni blokadu") : t("Otkaži boravak")}
             </button>
           )}
         </div>

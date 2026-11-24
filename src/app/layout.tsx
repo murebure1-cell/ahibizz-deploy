@@ -1,28 +1,38 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { AppProviders } from "../components/design/AppProviders";
+import { LocaleProvider } from "../components/i18n/LocaleProvider";
 import { appearanceBootstrap } from "../lib/appearance";
+import { isRtl } from "../lib/i18n/locales";
+import { getLocale, getTranslator } from "../server/i18n";
 import "./globals.css";
 import "./motion.css";
 
-export const metadata: Metadata = {
-  title: { default: "AhiBizz — lokalno počinje s ljudima", template: "%s | AhiBizz" },
-  description: "Pronađi djelatnosti u blizini, dogovori termin i poveži se s ljudima na AhiBizzu.",
-  robots: { index: false, follow: false },
-  manifest: "/app.webmanifest",
-  appleWebApp: { capable: true, title: "AhiBizz", statusBarStyle: "default" },
-  icons: {
-    icon: "/app-icons/icon-192.png",
-    apple: "/app-icons/apple-touch-icon.png",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslator();
+  return {
+    title: { default: t("AhiBizz — lokalno počinje s ljudima"), template: "%s | AhiBizz" },
+    description: t(
+      "Pronađi djelatnosti u blizini, dogovori termin i poveži se s ljudima na AhiBizzu.",
+    ),
+    robots: { index: false, follow: false },
+    manifest: "/app.webmanifest",
+    appleWebApp: { capable: true, title: "AhiBizz", statusBarStyle: "default" },
+    icons: {
+      icon: "/app-icons/icon-192.png",
+      apple: "/app-icons/apple-touch-icon.png",
+    },
+  };
+}
 
 export const viewport: Viewport = { themeColor: "#142c40", viewportFit: "cover" };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const locale = await getLocale();
+  const t = await getTranslator();
   return (
-    // biome-ignore lint/a11y/useValidLang: Bosnian content uses the valid BCP 47 language code bs, missing from this rule's registry.
-    <html lang="bs" suppressHydrationWarning>
+    // biome-ignore lint/a11y/useValidLang: The Bosnian code bs is valid BCP 47 but missing from this rule's registry.
+    <html lang={locale} dir={isRtl(locale) ? "rtl" : "ltr"} suppressHydrationWarning>
       <head>
         <script
           // biome-ignore lint/security/noDangerouslySetInnerHtml: Static first-party preference bootstrap contains no user content.
@@ -31,9 +41,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <a className="skip-link" href="#glavni-sadrzaj">
-          Preskoči na sadržaj
+          {t("Preskoči na sadržaj")}
         </a>
-        <AppProviders>{children}</AppProviders>
+        <LocaleProvider locale={locale}>
+          <AppProviders>{children}</AppProviders>
+        </LocaleProvider>
       </body>
     </html>
   );

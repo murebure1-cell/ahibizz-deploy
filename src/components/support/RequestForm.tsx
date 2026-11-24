@@ -1,10 +1,12 @@
 "use client";
 import { useActionState } from "react";
 import type { SupportTarget } from "../../lib/support-requests";
+import { useT } from "../i18n/LocaleProvider";
 import { submitSupportRequest } from "./request-actions";
 import styles from "./resources.module.css";
 
 export function RequestForm({ actor, target }: { actor: string; target: SupportTarget }) {
+  const t = useT();
   const [result, action, pending] = useActionState(submitSupportRequest, {
     sent: false,
     message: "",
@@ -13,7 +15,7 @@ export function RequestForm({ actor, target }: { actor: string; target: SupportT
   if (result.sent)
     return (
       <p className={styles.confirmed} role="status">
-        {result.message}
+        {t(result.message)}
       </p>
     );
   return (
@@ -24,17 +26,17 @@ export function RequestForm({ actor, target }: { actor: string; target: SupportT
       {deletion ? (
         <label className={styles.choice}>
           <input name="confirm" type="checkbox" value="yes" required />
-          Želim trajno obrisati svoj nalog i povezane podatke.
+          {t("Želim trajno obrisati svoj nalog i povezane podatke.")}
         </label>
       ) : (
         <label>
-          Razlog prijave
+          {t("Razlog prijave")}
           <textarea name="details" required rows={4} maxLength={800} />
         </label>
       )}
-      {result.message && <p role="alert">{result.message}</p>}
+      {result.message && <p role="alert">{t(result.message)}</p>}
       <button disabled={pending} className="button button-navy" type="submit">
-        {pending ? "Šaljem…" : deletion ? "Zatraži brisanje" : "Pošalji prijavu"}
+        {pending ? t("Šaljem…") : deletion ? t("Zatraži brisanje") : t("Pošalji prijavu")}
       </button>
     </form>
   );

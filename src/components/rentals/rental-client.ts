@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BookingRequestError, bookingError, bookingWrite } from "../../lib/booking-client";
+import { msg } from "../../lib/i18n/translate";
 
 async function rentalRequest<T>(
   path: string,
@@ -31,28 +32,30 @@ export function writeRental<T>(path: string, actor: string, body: unknown) {
 export function rentalError(error: unknown) {
   if (error instanceof BookingRequestError) {
     if (error.code === "RENTAL_HAS_BOOKINGS")
-      return "Automobil ima predstojeći najam ili blokadu. Provjeri njegov kalendar.";
-    if (error.code.includes("LIMIT")) return "Možeš dodati najviše dva automobila.";
+      return msg("Automobil ima predstojeći najam ili blokadu. Provjeri njegov kalendar.");
+    if (error.code.includes("LIMIT")) return msg("Možeš dodati najviše dva automobila.");
     if (
       error.code.includes("OVERLAP") ||
       error.code === "RENTAL_CONFLICT" ||
       error.code === "SLOT_UNAVAILABLE"
     )
-      return "Automobil je zauzet u tom periodu. Odaberi drugo vrijeme.";
-    if (error.code === "RENTAL_NOT_AVAILABLE") return "Automobil trenutno ne prima nove zahtjeve.";
+      return msg("Automobil je zauzet u tom periodu. Odaberi drugo vrijeme.");
+    if (error.code === "RENTAL_NOT_AVAILABLE")
+      return msg("Automobil trenutno ne prima nove zahtjeve.");
     if (error.code.includes("DISABLED") || error.code.includes("INELIGIBLE"))
-      return "Ovaj automobil trenutno ne prima nove zahtjeve.";
+      return msg("Ovaj automobil trenutno ne prima nove zahtjeve.");
     if (error.code.includes("VERSION") || error.code.includes("STALE"))
-      return "Ponuda je izmijenjena. Provjeri cijenu i vrijeme.";
-    if (error.code === "INVALID_RENTAL_INTERVAL") return "Provjeri vrijeme preuzimanja i vraćanja.";
+      return msg("Ponuda je izmijenjena. Provjeri cijenu i vrijeme.");
+    if (error.code === "INVALID_RENTAL_INTERVAL")
+      return msg("Provjeri vrijeme preuzimanja i vraćanja.");
     if (error.code.includes("INVALID") || error.code.includes("INPUT"))
-      return "Provjeri unesene podatke.";
+      return msg("Provjeri unesene podatke.");
     if (error.code.includes("SELF"))
-      return "Za vlastiti automobil označi zauzeti period u vlasničkom kalendaru.";
+      return msg("Za vlastiti automobil označi zauzeti period u vlasničkom kalendaru.");
     if (error.code.includes("ACTIVE") || error.code.includes("COMMITMENT"))
-      return "Automobil ima predstojeće termine.";
-    if (error.status === 403) return "Nemaš pristup ovoj radnji.";
-    if (error.status === 404) return "Automobil ili termin više nije dostupan.";
+      return msg("Automobil ima predstojeće termine.");
+    if (error.status === 403) return msg("Nemaš pristup ovoj radnji.");
+    if (error.status === 404) return msg("Automobil ili termin više nije dostupan.");
   }
   return bookingError(error);
 }

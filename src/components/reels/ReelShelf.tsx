@@ -2,6 +2,7 @@ import Link from "next/link";
 import { businessMediaUrl } from "../../lib/business-media";
 import { reelCardPath } from "../../lib/reel-navigation";
 import { type PublicReel, reelDuration, reelMedia } from "../../lib/reels";
+import { getTranslator } from "../../server/i18n";
 import { listPublicReels } from "../../server/reels/service";
 import { currentReelViewer } from "../../server/reels/viewer";
 import { BusinessLogo } from "../directory/BusinessLogo";
@@ -79,16 +80,17 @@ async function Shelf({ businessId }: { businessId: string | null }) {
     await currentReelViewer(),
   ).catch(() => []);
   if (!reels.length) return null;
+  const t = await getTranslator();
   const listUrl = businessId ? `/reels?djelatnost=${businessId}` : "/reels";
   return (
     <section
       className={styles.shelf}
-      aria-label={businessId ? "Reels ove djelatnosti" : "Reels djelatnosti"}
+      aria-label={businessId ? t("Reels ove djelatnosti") : t("Reels djelatnosti")}
     >
       <header className={styles.sectionHeading}>
-        <h2>{businessId ? "Reels" : "Reels djelatnosti"}</h2>
-        <Link href={listUrl} prefetch={false} aria-label="Sve Reels objave">
-          Sve objave
+        <h2>{businessId ? "Reels" : t("Reels djelatnosti")}</h2>
+        <Link href={listUrl} prefetch={false} aria-label={t("Sve Reels objave")}>
+          {t("Sve objave")}
         </Link>
       </header>
       <ReelCards reels={reels} shelf businessScope={businessId} />
