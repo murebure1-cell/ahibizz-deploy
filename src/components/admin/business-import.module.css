@@ -7,7 +7,7 @@
   margin-bottom: 24px;
 }
 .heading a {
-  font-size: 14px;
+  font-size: 15px;
 }
 .heading h1 {
   margin-top: 12px;
@@ -42,7 +42,7 @@
   cursor: pointer;
 }
 .hint {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ui-muted, #64748b);
   margin-top: 12px;
   overflow-wrap: anywhere;
@@ -68,7 +68,7 @@
   font-size: 28px;
 }
 .summary span {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ui-muted, #64748b);
 }
 .panel details {
@@ -81,7 +81,7 @@
 .panel ul {
   margin-top: 12px;
   padding-left: 24px;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.8;
 }
 .actions {
@@ -107,7 +107,7 @@
   cursor: default;
 }
 .actions span {
-  font-size: 14px;
+  font-size: 15px;
 }
 .tableWrap {
   overflow-x: auto;
@@ -115,7 +115,7 @@
 .tableWrap table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 14px;
+  font-size: 15px;
   text-align: left;
 }
 .tableWrap th,

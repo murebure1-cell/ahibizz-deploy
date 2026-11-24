@@ -96,7 +96,7 @@
 .smallAction {
   border: 0;
   background: transparent;
-  font-size: 0.88rem;
+  font-size: 0.9375rem;
   font-weight: 650;
   padding: 8px 3px;
   min-height: 40px;
@@ -134,7 +134,7 @@
 .range p,
 .fields small,
 .muted {
-  font-size: 0.88rem;
+  font-size: 0.9375rem;
 }
 .carPhoto,
 .carIcon {
@@ -155,7 +155,7 @@
 }
 .badge {
   border-radius: 18px;
-  font-size: 0.78rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   background: var(--ui-surface-soft);
   padding: 5px 10px;
@@ -170,7 +170,7 @@
 }
 .rate {
   color: var(--ui-muted);
-  font-size: 0.87rem;
+  font-size: 0.875rem;
 }
 .rate strong,
 .total strong {
@@ -203,7 +203,7 @@
 .range label {
   display: grid;
   gap: 5px;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   font-weight: 650;
   min-width: 0;
 }
@@ -253,7 +253,7 @@
 }
 .photoChoice legend {
   font-weight: 650;
-  font-size: 0.88rem;
+  font-size: 0.9375rem;
 }
 .photoChoice img {
   object-fit: cover;
@@ -296,7 +296,7 @@
 .days button {
   min-height: 38px;
   position: relative;
-  font-size: 0.87rem;
+  font-size: 0.875rem;
 }
 .days button[aria-pressed="true"] {
   background: var(--ui-primary);
@@ -318,7 +318,7 @@
   gap: 6px;
 }
 .dayAgenda p {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 .entry {
   background: var(--ui-surface-soft);

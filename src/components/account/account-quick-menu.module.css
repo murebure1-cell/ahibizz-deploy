@@ -32,7 +32,7 @@
 }
 .profileText > span {
   color: #c3d7d1;
-  font-size: 12px;
+  font-size: 13px;
 }
 .profileText > strong {
   overflow: hidden;
@@ -57,7 +57,7 @@
 }
 .balance > a:first-child > span {
   color: var(--ui-text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 650;
 }
 .balance strong {
@@ -73,7 +73,7 @@
   background: var(--ui-surface-raised);
   border: 1px solid var(--line);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
 }
 .tiles,
@@ -93,7 +93,7 @@
   min-height: 42px;
   border-radius: 9px;
   color: var(--ui-text);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 645;
   line-height: 1.2;
 }
@@ -175,7 +175,7 @@
 }
 .preferences legend {
   margin-bottom: 4px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--ui-text-secondary);
 }
@@ -192,13 +192,13 @@
   background: transparent;
   color: var(--ui-text);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
 }
 .language {
   display: grid;
   gap: 4px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--ui-text-secondary);
 }
@@ -210,7 +210,7 @@
   background: transparent;
   color: var(--ui-text);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
 }
 .themes button[aria-pressed="true"] {
@@ -227,5 +227,5 @@
 }
 .preferences p {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
 }

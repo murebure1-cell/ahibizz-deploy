@@ -181,7 +181,7 @@
   align-items: center;
   gap: 0.42rem;
   min-width: 0;
-  font-size: 0.77rem;
+  font-size: 0.8125rem;
   font-weight: 680;
 }
 
@@ -236,7 +236,7 @@
   border-radius: 99px;
   background: #fff2;
   color: #fff;
-  font-size: 0.78rem;
+  font-size: 0.8125rem;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
@@ -328,7 +328,7 @@
 
 .form input[type="file"] {
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
 }
 
 .form textarea {
@@ -375,7 +375,7 @@
   border-radius: 0.7rem;
   width: fit-content;
   font-weight: 660;
-  font-size: 0.93rem;
+  font-size: 0.9375rem;
   color: var(--ui-text);
   background: var(--ui-surface-soft);
 }
@@ -441,7 +441,7 @@
   background: var(--ui-surface-soft);
   padding: 0.2rem 0.65rem;
   font-weight: 650;
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
 }
 
 .status[data-status="pending"] {

@@ -115,7 +115,7 @@
   max-width: 580px;
   margin: 14px auto 0;
   color: var(--ui-text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
   line-height: 1.8;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -127,7 +127,7 @@
   justify-content: center;
   margin-top: 10px;
   color: var(--profile-muted);
-  font-size: 0.82rem;
+  font-size: 0.875rem;
   line-height: 1.6;
 }
 .location svg {
@@ -144,7 +144,7 @@
   border: 1px solid var(--ui-border);
   border-radius: 7px;
   padding: 5px 9px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.4;
 }
 .work > span {
@@ -171,7 +171,7 @@
   min-height: 44px;
   padding: 10px 14px;
   border-radius: 12px;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   font-weight: 650;
   line-height: 1.4;
   cursor: pointer;
@@ -214,7 +214,7 @@
   min-height: 180px;
 }
 .section h3 {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   font-weight: 650;
   letter-spacing: 0;
   line-height: 1.6;
@@ -237,7 +237,7 @@
   border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--ui-text-secondary);
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -263,13 +263,13 @@
 }
 .details dt {
   color: var(--ui-muted);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   line-height: 1.6;
   margin-bottom: 6px;
 }
 .details dd {
   color: var(--ui-text-secondary);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   line-height: 1.6;
   margin: 0;
   overflow-wrap: anywhere;
@@ -277,7 +277,7 @@
 .empty {
   color: var(--ui-muted);
   padding-top: 6px;
-  font-size: 0.84rem;
+  font-size: 0.875rem;
   line-height: 1.7;
 }
 .photos {
@@ -309,7 +309,7 @@
 .photoItem figcaption {
   padding-top: 9px;
   color: var(--ui-text-secondary);
-  font-size: 0.76rem;
+  font-size: 0.8125rem;
   line-height: 1.6;
 }
 .chips {
@@ -330,13 +330,13 @@
   border: 1px solid var(--ui-border);
   padding: 6px 11px;
   border-radius: 8px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1.5;
   overflow-wrap: anywhere;
   max-width: 100%;
 }
 .quiet {
-  font-size: 0.82rem;
+  font-size: 0.875rem;
   color: var(--ui-muted);
   line-height: 1.7;
 }
@@ -358,7 +358,7 @@
   line-height: 1.3;
 }
 .editorHeading p {
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
   line-height: 1.7;
   color: var(--profile-muted);
   margin-top: 5px;
@@ -385,7 +385,7 @@
   min-width: 0;
 }
 .mediaChoice h3 {
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
   line-height: 1.6;
   font-weight: 650;
   letter-spacing: 0;
@@ -434,7 +434,7 @@
   color: var(--ui-text-secondary);
   border: 1px solid var(--ui-border);
   padding-inline: 11px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   overflow: hidden;
 }
 .upload:focus-within {
@@ -461,7 +461,7 @@
   background: transparent;
   color: var(--ui-text-secondary);
   padding-inline: 7px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 .field {
   display: flex;
@@ -470,7 +470,7 @@
   min-width: 0;
   margin-bottom: 20px;
   color: var(--ui-text-secondary);
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   font-weight: 650;
   line-height: 1.5;
 }
@@ -508,7 +508,7 @@ textarea.input {
 }
 .fieldHint {
   color: var(--ui-muted);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.6;
   font-weight: 400;
 }
@@ -558,7 +558,7 @@ textarea.input {
 .status {
   padding: 11px 13px;
   border-radius: 9px;
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
   line-height: 1.6;
   margin-bottom: 16px;
   overflow-wrap: anywhere;
@@ -616,7 +616,7 @@ textarea.input {
   .actions .primary,
   .actions .secondary {
     padding: 9px 11px;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
   }
   .actions svg {
     width: 15px;
@@ -632,14 +632,14 @@ textarea.input {
   }
   .tabs button {
     padding-inline: 3px;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
   }
   .details,
   .photos {
     grid-template-columns: minmax(0, 1fr);
   }
   .intro {
-    font-size: 0.86rem;
+    font-size: 0.875rem;
   }
   .photoItem img {
     height: 260px;

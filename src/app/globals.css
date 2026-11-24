@@ -234,7 +234,7 @@ a {
   margin: 0;
   padding: 12px 14px;
   color: var(--ui-text-secondary);
-  font-size: 14px;
+  font-size: 15px;
 }
 .header-menu > a,
 .header-more a,
@@ -288,7 +288,7 @@ a {
   --menu-chevron-angle: -90deg;
 }
 .header-more a {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--ui-text-secondary);
 }
 .header-access {
@@ -307,7 +307,7 @@ a {
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 11px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
 }
 .header-access a:last-child {
@@ -332,7 +332,7 @@ a {
   align-items: center;
   gap: 12px;
   color: var(--ui-accent-text);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -368,7 +368,7 @@ a {
   padding: 12px 21px;
   border: 1px solid transparent;
   border-radius: 11px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
   line-height: 1.5;
   transition:
@@ -403,7 +403,7 @@ a {
   gap: 8px;
   margin-top: 16px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .hero-art {
   position: relative;
@@ -492,7 +492,7 @@ a {
   margin-top: 21px;
   padding-left: 5px;
   color: #c5cfce;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.7;
 }
 .art-caption {
@@ -504,7 +504,7 @@ a {
   left: 44px;
   right: 29px;
   color: #d7dfdb;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.04em;
 }
 .art-caption svg {
@@ -534,7 +534,7 @@ a {
   align-items: center;
   gap: 13px;
   min-height: 44px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
   line-height: 1.5;
 }
@@ -581,7 +581,7 @@ a {
   max-width: 370px;
   margin-top: 12px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 15px;
 }
 .empty-directory .text-link {
   margin-top: 12px;
@@ -634,7 +634,7 @@ a {
   max-width: 370px;
   margin-top: 18px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 15px;
 }
 .owner-copy .text-link {
   margin-top: 15px;
@@ -646,7 +646,7 @@ a {
   border: 1px solid var(--line);
   border-radius: 50px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .site-footer {
   padding-top: 40px;
@@ -685,7 +685,7 @@ a {
   align-items: flex-start;
   gap: 8px 24px;
   padding-top: 10px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .footer-main :where(nav) a {
   display: inline-flex;
@@ -702,7 +702,7 @@ a {
   padding-block: 20px 24px;
   border-top: 1px solid #ffffff16;
   color: #95a7af;
-  font-size: 10px;
+  font-size: 12px;
 }
 /* Right-to-left (Arabic): mirror direction icons. `scale` composes with existing rotations. */
 [dir="rtl"] :is(svg[data-icon="arrow"], svg[data-icon="chevron"]) {
@@ -724,7 +724,7 @@ a {
   color: #e3e9e6;
   background: transparent;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
 }
 .language-picker option {
   color: #142c40;
@@ -753,7 +753,7 @@ a {
   gap: 14px;
   margin-bottom: 23px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   overflow-wrap: anywhere;
 }
 .results-heading a {
@@ -805,7 +805,7 @@ a {
 }
 .about-principles p {
   margin-top: 14px;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--muted);
 }
 .about-status {
@@ -826,7 +826,7 @@ a {
   max-width: 500px;
   margin-top: 12px;
   color: var(--ui-muted);
-  font-size: 14px;
+  font-size: 15px;
 }
 .about-status .button {
   flex-shrink: 0;
@@ -922,7 +922,7 @@ a {
     font-size: 16px;
   }
   .hero-note {
-    font-size: 11px;
+    font-size: 12px;
   }
   .hero-art {
     aspect-ratio: 1.8;
@@ -986,7 +986,7 @@ a {
     max-width: 310px;
   }
   .empty-directory p {
-    font-size: 13px;
+    font-size: 14px;
   }
   .owner-section {
     grid-template-columns: 1fr;
@@ -1046,13 +1046,13 @@ a {
     font-size: 39px;
   }
   .search-intro p:not(.eyebrow) {
-    font-size: 14px;
+    font-size: 15px;
   }
   .results-section {
     padding-block: 25px 44px;
   }
   .results-heading {
-    font-size: 12px;
+    font-size: 13px;
   }
   .about-page {
     padding-block: 43px 45px;
@@ -1097,7 +1097,7 @@ a {
     font-size: 43px;
   }
   .eyebrow {
-    font-size: 10px;
+    font-size: 12px;
   }
   .art-wordmark {
     padding-left: 25px;
@@ -1108,7 +1108,7 @@ a {
   .art-wordmark > span {
     right: 18px;
     max-width: 102px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .art-caption {
     left: 28px;

@@ -35,7 +35,7 @@
   font-weight: 750;
 }
 .head a {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -63,7 +63,7 @@
 .editor button {
   padding: 8px 13px;
   font-weight: 650;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 .editor button:disabled {
@@ -83,7 +83,7 @@
 .editor textarea {
   padding: 9px 10px;
   min-width: 0;
-  font-size: 14px;
+  font-size: 15px;
 }
 .editor .primary {
   background: #e8bb5b;
@@ -98,7 +98,7 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
   margin: 11px 0 16px;
   min-height: 19px;
@@ -117,7 +117,7 @@
 }
 .confirm p {
   margin: 0 auto 0 0;
-  font-size: 14px;
+  font-size: 15px;
 }
 .toolbar {
   flex-wrap: wrap;
@@ -133,7 +133,7 @@
   display: grid;
   gap: 4px;
   min-width: 0;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 650;
   color: var(--muted);
 }
@@ -180,12 +180,12 @@
 .stageLabel {
   justify-content: space-between;
   margin: 1px 5px 10px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 650;
   color: var(--muted);
 }
 .stage p {
-  font-size: 13px;
+  font-size: 14px;
   margin: 8px;
 }
 .canvas {
@@ -244,7 +244,7 @@
   padding-block: 3px;
 }
 .group summary {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
   padding: 10px 0;
@@ -252,7 +252,7 @@
 }
 .group summary::marker {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .fieldList {
   display: grid;
@@ -261,7 +261,7 @@
 }
 .fieldList h3 {
   margin: 5px 0 0;
-  font-size: 13px;
+  font-size: 14px;
 }
 .field {
   display: grid;
@@ -269,7 +269,7 @@
   gap: 5px;
   align-items: center;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 .propertyValue {
   min-width: 0;
@@ -296,7 +296,7 @@
   gap: 6px;
   color: var(--muted);
   min-width: 0;
-  font-size: 11px;
+  font-size: 12px;
 }
 .alpha input {
   width: 40%;
@@ -320,7 +320,7 @@
   flex: 1;
   display: grid;
   gap: 3px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 .orderList input {
@@ -405,12 +405,12 @@
 }
 @media (max-width: 420px) {
   .editor .actions button {
-    font-size: 12px;
+    font-size: 13px;
   }
   .toolbar > label {
     flex: 1 0 30%;
   }
   .toolbar select {
-    font-size: 12px;
+    font-size: 13px;
   }
 }

@@ -34,7 +34,7 @@
   align-items: center;
   min-height: 44px;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.4;
 }
 .locate {
@@ -60,7 +60,7 @@
 .city {
   position: relative;
   color: var(--ui-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 .city summary {
   cursor: pointer;
@@ -112,7 +112,7 @@
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
   border-radius: 999px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
 }
 .cities a:hover {
