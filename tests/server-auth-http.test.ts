@@ -154,6 +154,7 @@ test("per-address limits answer 429 before the auth library and fail open on err
 
 test("Google routes open only when configured and only lead to Google or back to this site", async () => {
   const seen: string[] = [];
+  const forwarded: unknown[] = [];
   const google = (libraryUrl: string, providers: string[] = ["google"]) =>
     createAuthHttpHandler({
       baseURL,
@@ -165,7 +166,13 @@ test("Google routes open only when configured and only lead to Google or back to
             headers.append("Set-Cookie", "session=fixture; HttpOnly; Secure; SameSite=Lax");
             return new Response(null, { status: 302, headers });
           }
-          return Response.json({ url: libraryUrl, redirect: true });
+          const sent = (await request.json()) as Record<string, unknown>;
+          forwarded.push(sent.disableRedirect);
+          // Like the library: the URL in the body and, unless disabled, also a Location header.
+          return Response.json(
+            { url: libraryUrl, redirect: !sent.disableRedirect },
+            { headers: { Location: libraryUrl } },
+          );
         },
       } as unknown as AuthService,
       readUser: async () => null,
@@ -191,15 +198,18 @@ test("Google routes open only when configured and only lead to Google or back to
   });
   assert.equal(accepted.status, 200);
   assert.deepEqual(await accepted.json(), { url: authorize });
+  assert.equal(accepted.headers.get("location"), null);
+  assert.deepEqual(forwarded, [true]);
   assert.equal((await start(on, { provider: "github" })).status, 404);
   assert.equal(
     (await start(on, { provider: "google", errorCallbackURL: "https://evil.invalid/x" })).status,
     400,
   );
   assert.equal((await start(on, { provider: "google", idToken: "forged" })).status, 400);
+  // A foreign authorization address is refused, whether it arrives as Location or in the body.
   assert.equal(
     (await start(google("https://evil.invalid/o/oauth2/auth"), { provider: "google" })).status,
-    502,
+    400,
   );
   const back = await on(new Request(`${baseURL}/api/auth/callback/google?code=c&state=s`));
   assert.equal(back.status, 302);
