@@ -134,15 +134,14 @@
 .card form > label.remember input {
   margin-top: 2px;
 }
+.options > a,
+.switch a,
 .card form > label.remember a {
-  color: var(--ui-text);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.options > a,
-.switch a {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.card form > label.remember a {
+  color: var(--ui-text);
 }
 .submit {
   display: flex;
