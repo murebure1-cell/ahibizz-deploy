@@ -47,6 +47,7 @@ import {
   uncertainDirectoryMutation,
 } from "../../lib/directory-mutation-recovery";
 import { msg } from "../../lib/i18n/translate";
+import { packageFullText } from "../../lib/packages";
 import type { DirectoryBusiness } from "../../server/directory/types";
 import { ProfileVerification } from "../admin/ProfileVerification";
 import { BusinessBookingManager } from "../booking/BusinessBookingManager";
@@ -86,9 +87,6 @@ function ReturnedBusinessNote({ business }: { business?: DirectoryBusiness | nul
     </div>
   );
 }
-const packageLimitText = msg(
-  "Tvoj paket ne dozvoljava još jednu djelatnost. Basic dozvoljava jednu, Startup do 3, a Business do 10.",
-);
 /** True when the account's package has no room left. A failed read leaves the answer to the server. */
 async function packageFull(accountId: string | undefined): Promise<boolean> {
   if (!accountId) return false;
@@ -110,7 +108,7 @@ async function packageFull(accountId: string | undefined): Promise<boolean> {
 }
 function errorMessage(error: unknown) {
   const code = error instanceof RequestError ? error.code : "";
-  if (code === "BUSINESS_LIMIT_REACHED") return packageLimitText;
+  if (code === "BUSINESS_LIMIT_REACHED") return packageFullText;
   if (code === "PACKAGE_PAYMENT_REQUIRED")
     return msg("Nacrt je sačuvan. Za objavu je potreban aktivan paket.");
   if (code === "REVIEW_REQUIRED")
@@ -1182,7 +1180,7 @@ export function BusinessManager({
               void packageFull(expectedAccountId).then((full) => {
                 checkingRoom.current = false;
                 if (!current(access)) return;
-                if (full) setError(t(packageLimitText));
+                if (full) setError(t(packageFullText));
                 else setEditing(null);
               });
             }}

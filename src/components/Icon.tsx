@@ -38,7 +38,8 @@ export type IconName =
   | "mute"
   | "share"
   | "eye"
-  | "download";
+  | "download"
+  | "logout";
 
 const paths: Record<IconName, ReactNode> = {
   people: (
@@ -59,6 +60,7 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M3 9h18M6.5 15h3" />
     </>
   ),
+  logout: <path d="M10 4H5v16h5M9 12h12m-4-4 4 4-4 4" />,
   download: (
     <>
       <path d="M12 3v12m-5-5 5 5 5-5M5 15v6h14v-6" />

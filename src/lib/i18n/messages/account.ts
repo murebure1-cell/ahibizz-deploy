@@ -79,6 +79,73 @@ export const account: Messages = {
   ],
   "Pregled naloga": ["Account overview", "Kontoübersicht", "نظرة عامة على الحساب", "Hesap özeti"],
   Paket: ["Package", "Paket", "الباقة", "Paket"],
+  "Još nemaš djelatnost. Dodaj je da te ljudi pronađu u pretrazi.": [
+    "You have no business yet. Add one so people can find you in search.",
+    "Du hast noch keinen Betrieb. Füge einen hinzu, damit dich Leute in der Suche finden.",
+    "ليس لديك نشاط تجاري بعد. أضف واحدًا ليجدك الناس في البحث.",
+    "Henüz işletmen yok. İnsanların seni aramada bulması için bir tane ekle.",
+  ],
+  "Uredi lične podatke": [
+    "Edit personal details",
+    "Persönliche Daten bearbeiten",
+    "تعديل البيانات الشخصية",
+    "Kişisel bilgileri düzenle",
+  ],
+  "Pravila privatnosti": [
+    "Privacy policy",
+    "Datenschutzerklärung",
+    "سياسة الخصوصية",
+    "Gizlilik politikası",
+  ],
+  "Zatraži pristup podacima": [
+    "Request access to your data",
+    "Datenauskunft anfordern",
+    "اطلب الوصول إلى بياناتك",
+    "Verilerine erişim iste",
+  ],
+  "Zatraži brisanje naloga": [
+    "Request account deletion",
+    "Kontolöschung beantragen",
+    "اطلب حذف الحساب",
+    "Hesabın silinmesini iste",
+  ],
+  "Verifikacija profila": [
+    "Profile verification",
+    "Profilverifizierung",
+    "توثيق الملف الشخصي",
+    "Profil doğrulama",
+  ],
+  "Tvoj profil je verifikovan.": [
+    "Your profile is verified.",
+    "Dein Profil ist verifiziert.",
+    "ملفك الشخصي موثّق.",
+    "Profilin doğrulandı.",
+  ],
+  "Tvoj profil još nije verifikovan.": [
+    "Your profile is not verified yet.",
+    "Dein Profil ist noch nicht verifiziert.",
+    "ملفك الشخصي غير موثّق بعد.",
+    "Profilin henüz doğrulanmadı.",
+  ],
+  "Oznaka potvrđuje da je AhiBizz provjerio tvoj identitet. Dodjeljuje je administrator nakon ručne provjere; paket je ne donosi.":
+    [
+      "The badge confirms that AhiBizz has checked your identity. An administrator grants it after a manual check; a package does not include it.",
+      "Das Abzeichen bestätigt, dass AhiBizz deine Identität geprüft hat. Ein Administrator vergibt es nach manueller Prüfung; ein Paket enthält es nicht.",
+      "تؤكد الشارة أن AhiBizz تحقق من هويتك. يمنحها المسؤول بعد مراجعة يدوية، ولا تأتي مع أي باقة.",
+      "Rozet, AhiBizz'in kimliğini kontrol ettiğini gösterir. Bir yönetici elle kontrol ettikten sonra verir; paketle birlikte gelmez.",
+    ],
+  "Zatraži verifikaciju": [
+    "Request verification",
+    "Verifizierung anfragen",
+    "اطلب التوثيق",
+    "Doğrulama iste",
+  ],
+  "Izbor se pamti samo na ovom uređaju.": [
+    "The choice is remembered on this device only.",
+    "Die Auswahl wird nur auf diesem Gerät gespeichert.",
+    "يُحفظ الاختيار على هذا الجهاز فقط.",
+    "Seçim yalnızca bu cihazda hatırlanır.",
+  ],
   "{count} od {limit}": [
     "{count} of {limit}",
     "{count} von {limit}",
