@@ -1,66 +1,154 @@
+/*
+ * Signing in, registering and the two password screens. On a phone each is one plain column on
+ * the page colour: a photograph or a sign at the top and the form under it, with no card around
+ * it. On a wide screen the same column sits in a card beside the photograph.
+ */
 .page {
-  width: min(1040px, calc(100% - 48px));
-  margin: 55px auto 72px;
+  --hairline: color-mix(in srgb, var(--ui-text) 16%, transparent);
   display: grid;
   grid-template-columns: 1.15fr 1fr;
-  overflow: hidden;
+  width: min(1040px, calc(100% - 48px));
   min-height: 610px;
+  margin: 55px auto 72px;
+  overflow: hidden;
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-xl);
   background: var(--ui-surface);
-  box-shadow: 0 20px 65px #0e121806;
 }
 .card {
-  padding: 35px 48px 42px;
   min-width: 0;
+  padding: 36px 48px 42px;
 }
-.back {
+
+/* Top of the column: a photograph with the logo over it, or a bar with a way back. */
+.cover {
+  display: none;
+}
+.logo {
+  display: block;
+  color: var(--ui-text);
+}
+.logo svg {
+  display: block;
+  width: 104px;
+  height: auto;
+}
+.bar {
   display: flex;
-  gap: 5px;
   align-items: center;
-  color: var(--ui-muted);
-  font-size: 13px;
-  margin-bottom: 35px;
+  justify-content: space-between;
+  min-height: 44px;
 }
-.back svg {
-  width: 14px;
-  height: 14px;
-  transform: rotate(180deg);
+/* On a wide screen the site header already carries the logo. */
+.bar .logo {
+  display: none;
 }
-.card h1 {
-  font-size: 36px;
-  color: var(--ui-text);
-  margin-top: 20px;
-  line-height: 1.14;
-  letter-spacing: -0.04em;
-}
-.intro {
-  font-size: 15px;
-  color: var(--ui-muted);
-  margin: 14px 0 28px;
-}
-.card form > label {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 18px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-text);
-}
-.card input:not([type="checkbox"]) {
-  width: 100%;
+.round {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-sm);
+  border-radius: 50%;
   background: var(--ui-input);
   color: var(--ui-text);
-  min-height: 48px;
-  padding: 11px 13px;
+  transition: scale 160ms var(--ease-out);
+}
+.round:active {
+  scale: 0.94;
+}
+.round svg {
+  width: 20px;
+  height: 20px;
+  transform: rotate(180deg);
+}
+.barLink {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  margin-inline-start: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 20px;
+}
+.head h1 {
+  margin: 0;
+  color: var(--ui-text);
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.intro {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 15px;
+  line-height: 22px;
+}
+.sign {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 10px;
+  border-radius: 22px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+}
+.sign[data-kind="wait"] {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+.sign svg {
+  width: 28px;
+  height: 28px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+}
+.body form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 22px;
+}
+.body form > label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+}
+.body input:not([type="checkbox"]) {
+  width: 100%;
+  height: 54px;
+  padding: 0 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-input);
+  color: var(--ui-text);
   font: inherit;
   font-size: 16px;
   font-weight: 400;
 }
-.card input:disabled {
+.body input:disabled {
   background: var(--ui-surface-soft);
   cursor: not-allowed;
 }
@@ -68,38 +156,39 @@
   position: relative;
   display: flex;
 }
-.card .password input {
-  padding-right: 67px;
+.body .password input {
+  padding-inline-end: 88px;
 }
 .password button {
   position: absolute;
-  right: 9px;
-  top: 0;
-  bottom: 0;
+  inset-block: 5px;
+  inset-inline-end: 6px;
+  padding: 0 10px;
+  border: 0;
   background: none;
-  border: 0;
-  color: var(--ui-text-secondary);
-  font-size: 12px;
-  font-weight: 600;
-}
-.card small {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--ui-muted);
-}
-.suggestion {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  border: 0;
-  background: transparent;
-  padding: 0;
   color: var(--ui-accent-text);
   font: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.body small {
+  color: var(--ui-muted);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+}
+.suggestion,
+.resend {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
 }
 .options {
@@ -107,239 +196,373 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 20px;
-  font-size: 13px;
+  min-height: 44px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.options > a,
+.terms a {
+  color: var(--ui-accent-text);
+  font-weight: 700;
 }
 .remember {
   display: flex;
   align-items: center;
-  gap: 7px;
-  color: var(--ui-text-secondary);
+  gap: 10px;
+  color: var(--ui-text);
+  font-weight: 500;
 }
-/* The terms checkbox is a direct form label: keep it beside its text, aligned to the first line. */
-.card form > label.remember {
+/* The terms checkbox is a direct form label: beside its text, aligned to the first line. */
+.body form > label.remember {
   flex-direction: row;
   align-items: flex-start;
-  gap: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.5;
-}
-.card .remember input {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  accent-color: var(--ui-primary);
-}
-.card form > label.remember input {
-  margin-top: 2px;
-}
-.options > a,
-.switch a,
-.card form > label.remember a {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.card form > label.remember a {
   color: var(--ui-text);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+.body .remember input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--ui-accent);
 }
 .submit {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 47px;
+  height: 54px;
   border: 0;
-  border-radius: var(--ui-radius-sm);
+  border-radius: 18px;
   background: var(--ui-accent);
   color: var(--ui-on-accent);
   font: inherit;
-  font-size: 15px;
-  font-weight: 650;
-  padding: 12px;
-  margin-top: 25px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
 }
 .submit:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.switch {
-  margin-top: 25px;
+.hint {
+  margin: 0;
+  color: var(--ui-muted);
   font-size: 13px;
-  color: var(--ui-muted);
-  text-align: center;
+  line-height: 19px;
 }
-.notice {
-  padding: 13px 15px;
-  background: var(--ui-success-soft);
-  color: var(--ui-accent-text);
-  border: 1px solid var(--ui-accent-border);
-  border-radius: var(--ui-radius-sm);
-  font-size: 14px;
-  line-height: 1.6;
-}
-.error {
-  margin-top: 18px;
-  color: var(--ui-danger);
-  font-size: 14px;
-}
-.done {
-  padding: 22px 0;
-}
-.done > svg {
-  padding: 10px;
-  width: 44px;
-  height: 44px;
-  background: var(--ui-success-soft);
-  border-radius: 50%;
-  color: var(--ui-success);
-  margin-bottom: 20px;
-}
-.done h2 {
-  font-size: 23px;
-}
-.done > p {
-  font-size: 15px;
-  color: var(--ui-muted);
-  line-height: 1.6;
-  margin-top: 12px;
-}
-.story {
-  background: linear-gradient(155deg, var(--ui-ink-raised), var(--ui-ink));
-  position: relative;
-  padding: 70px 40px;
+.quiet,
+.outline {
   display: flex;
+  align-items: center;
   justify-content: center;
-  flex-direction: column;
-  color: var(--ui-on-ink);
-  overflow: hidden;
-}
-.story::after {
-  content: "";
-  position: absolute;
-  width: 310px;
-  height: 310px;
-  border: 1px solid var(--ui-ink-line);
-  transform: rotate(24deg);
-  border-radius: 55px;
-  right: -175px;
-  top: 130px;
-}
-.story > span {
-  font-size: 38px;
-  line-height: 1.16;
-  letter-spacing: -0.045em;
-  position: relative;
-  z-index: 1;
-}
-.story > i {
-  font-size: 24px;
-  position: absolute;
-  bottom: 39px;
-  left: 40px;
-  color: var(--ui-ink-accent);
-  font-weight: 700;
-  font-style: normal;
-}
-@media (max-width: 760px) {
-  .page {
-    max-width: 500px;
-    grid-template-columns: 1fr;
-    margin: 24px auto 40px;
-    width: calc(100% - 32px);
-    min-height: 0;
-    border-radius: var(--ui-radius-lg);
-  }
-  .card {
-    padding: 23px 24px 30px;
-  }
-  .card h1 {
-    font-size: 31px;
-  }
-  .story {
-    display: none;
-  }
-  .back {
-    margin-bottom: 30px;
-  }
-  .options {
-    align-items: start;
-    flex-wrap: wrap;
-  }
-  .intro {
-    margin-bottom: 22px;
-  }
-}
-
-.resend {
-  border: 0;
-  background: transparent;
-  color: var(--ui-text-secondary);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  padding: 12px 0;
-  min-height: 44px;
+  gap: 8px;
+  height: 48px;
+  border-radius: var(--ui-radius-md);
   font-size: 14px;
+  font-weight: 700;
+}
+.quiet {
+  color: var(--ui-accent-text);
+}
+.outline {
+  border: 1px solid var(--hairline);
+  color: var(--ui-text);
+}
+.outline svg {
+  width: 18px;
+  height: 18px;
 }
 
-/* Google sign-in: Google's neutral button (white, its own mark) so it reads as theirs. */
+/* Google sign-in keeps Google's own four-colour mark on a button in the colours of the theme. */
 .social {
-  margin-top: 22px;
+  margin-top: 18px;
 }
 .divider {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 0 0 16px;
-  font-size: 13px;
+  margin: 0 0 18px;
   color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
 }
 .divider::before,
 .divider::after {
   content: "";
   flex: 1;
   height: 1px;
-  background: var(--ui-border);
+  background: var(--hairline);
 }
 .google {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  min-height: 47px;
-  padding: 12px;
-  border: 1px solid #dadce0;
-  border-radius: var(--ui-radius-sm);
-  background: #ffffff;
-  color: #1f1f1f;
+  height: 54px;
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  background: var(--ui-input);
+  color: var(--ui-text);
   font: inherit;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: background-color 160ms ease;
-}
-.google:hover:not(:disabled) {
-  background: #f8f9fa;
 }
 .google:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 .google svg {
+  flex: none;
   width: 20px;
   height: 20px;
-  flex: none;
 }
 .socialNote {
   margin: 12px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
   color: var(--ui-muted);
+  font-size: 12px;
+  line-height: 17px;
   text-align: center;
 }
-.card .social .socialNote a {
+.socialNote a {
   color: var(--ui-text);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+.switch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  color: var(--ui-muted);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+}
+.switch p {
+  margin: 0;
+}
+.switch a {
+  color: var(--ui-accent-text);
+  font-weight: 700;
+}
+
+.notice {
+  margin: 16px 0 0;
+  padding: 13px 15px;
+  border: 1px solid var(--ui-accent-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-success-soft);
+  color: var(--ui-accent-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.notice a {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.error {
+  margin: 0;
+  color: var(--ui-danger);
+  font-size: 14px;
+  line-height: 20px;
+}
+.done {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 28px;
+}
+.done h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.done > p {
+  margin: 0 0 16px;
+  color: var(--ui-muted);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+/* An account that waits: what is done, what is under way and what comes next. */
+.steps {
+  display: flex;
+  flex-direction: column;
+  margin: 24px 0 0;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-input);
+  list-style: none;
+}
+.steps li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+  padding: 0 14px;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.steps li + li {
+  border-top: 1px solid var(--ui-border);
+}
+.stepDone {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+}
+.stepDone svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.6;
+}
+.pill {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pill[data-kind="wait"] {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+.pill[data-kind="off"] {
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--ui-muted);
+}
+.after {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* Wide screens: the photograph of the screen, darkened so the line over it stays readable. */
+.story {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 18px;
+  padding: 40px;
+  overflow: hidden;
+  background: linear-gradient(155deg, var(--ui-ink-raised), var(--ui-ink)) center / cover;
+  color: var(--ui-on-ink);
+}
+.story::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ui-ink) 25%, transparent) 0%,
+    color-mix(in srgb, var(--ui-ink) 88%, transparent) 100%
+  );
+}
+.story > span {
+  position: relative;
+  font-size: 38px;
+  line-height: 1.16;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+}
+.story > i {
+  position: relative;
+  color: var(--ui-ink-accent);
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .page {
+    display: block;
+    width: 100%;
+    max-width: 520px;
+    min-height: 0;
+    margin: 0 auto;
+    padding-bottom: max(32px, env(safe-area-inset-bottom, 0px));
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .card {
+    padding: 0;
+  }
+  .story {
+    display: none;
+  }
+  .cover {
+    position: relative;
+    display: block;
+    height: 150px;
+    background: center / cover;
+  }
+  .cover[data-tall] {
+    height: 236px;
+  }
+  /* The photograph fades into the page, so the heading can start on it. */
+  .cover::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--ui-page) 58%, transparent) 0%,
+      color-mix(in srgb, var(--ui-page) 18%, transparent) 40%,
+      var(--ui-page) 100%
+    );
+  }
+  .cover .logo {
+    position: absolute;
+    z-index: 1;
+    top: 20px;
+    left: 24px;
+  }
+  .bar {
+    padding: 18px 20px 0;
+  }
+  .bar .logo {
+    display: block;
+  }
+  .head {
+    margin-top: 0;
+    padding: 40px 24px 0;
+  }
+  .head[data-over] {
+    position: relative;
+    margin-top: -34px;
+    padding-top: 0;
+  }
+  .body {
+    padding: 0 24px;
+  }
+  .steps {
+    margin-inline: 20px;
+  }
+  .after {
+    padding: 0 20px;
+  }
 }
