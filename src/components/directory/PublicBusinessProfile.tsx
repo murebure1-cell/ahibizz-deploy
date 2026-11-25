@@ -323,7 +323,7 @@ export function PublicBusinessProfile({
               <p className={styles.address} dir="auto">
                 {location}
               </p>
-              {point && <PublicProfileMap point={point} logoUrl={logo?.src} />}
+              {point && <PublicProfileMap point={point} category={business.categoryName} />}
               {(driving || walking) && (
                 <div className={styles.directions}>
                   <p>

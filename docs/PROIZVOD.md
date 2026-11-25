@@ -217,6 +217,20 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   telefonu je tok ekran za sebe, s izlazom gore i radnjama uz donji rub. Postojeća djelatnost se i
   dalje uređuje u jednom obrascu. S crteža još nema: korak „Jelovnik i meso” i potvrda „PIN je na
   pravom mjestu”, jer podatak, odnosno pravilo, još ne postoji **[novo]**.
+- **Mapa svijeta [urađeno 25. 11. 2026.]:** po crtežima Globus, Država i Mapa. `/mapa` se otvara
+  globusom od tačaka koji se polako okreće (krug za 80 s) i ima svjetlo na svakom mjestu gdje
+  postoji djelatnost; prst ga okreće. Ispod su države s brojem djelatnosti. Dodir na državu (red
+  ili svjetlo) okrene globus prema njoj i otvori Google mapu te države: krug s brojem za svaki
+  grad, a ispod naziv države, gradovi i lista djelatnosti. Grad otvara ulice: pin s ikonom
+  kategorije za svaku djelatnost, grupa s brojem gdje su djelatnosti blizu jedna drugoj, pretraga
+  i kategorije, kartica odabrane djelatnosti („Uputstva”, „Otvori profil”) i „Moja lokacija”.
+  Gdje se čovjek nalazi stoji u adresi (`?drzava=BA&grad=Sarajevo`, `?djelatnost=…`), pa Nazad i
+  podijeljeni link rade očekivano. **Sve karte su Google mape** u bojama aplikacije, svijetle i
+  tamne (`src/lib/google-maps.ts`); OpenStreetMap se više ne koristi, a kad Google nije dostupan
+  piše „Mapa trenutno nije dostupna.”. Isti globus je na baneru Početne. S crteža još nema: dugme
+  Filteri na mapi, marker „Sponzorisano” i uputstva unutar aplikacije s animiranom putanjom, koja
+  čekaju da se za ključ mape uključi Googleov Routes API (do tada „Uputstva” otvaraju Google
+  Maps) **[novo]**.
 - **Zamućenje** samo na slojevima koji leže preko sadržaja: donja traka, meni, listovi koji
   izlaze odozdo, prelaz pri zamjeni slike. Ne na karticama.
 - **Pokret:** kratak (150–250 ms) i sa svrhom. Tačkice za „učitavam” i za „novo”.

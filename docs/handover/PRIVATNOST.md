@@ -16,7 +16,7 @@ Stanje: 23. 11. 2026, grana `claude/play-internal-test`. Stranice `/privatnost` 
 | Termini i podaci gostiju (ime, email, telefon) | Opcionalno | `booking_entry`, `rental_booking`, `stay_booking` | Gost i djelatnost | Prošli termini ostaju; kod brisanja naloga gosta ime/kontakt se uklanjaju |
 | Lokacija uređaja | Opcionalno (dozvola) | `device-location.ts`, `home-nearby.ts` | Server prima koordinate zaokružene na 0,001° (~100 m) u upitu; ne upisuju se u bazu | Uređaj: ~1 km područje, najviše 24 h; serverski/hosting logovi: rok nepoznat |
 | Adresa / tačka lokacije djelatnosti | Opcionalno | `geocoding.ts`, `LocationPicker.tsx` | Preglednik šalje direktno Photonu (photon.komoot.io); kod „moja lokacija“ i GPS koordinate | Kod pružaoca: nepoznato |
-| Karte | Opcionalno | Google Maps (ako je `GOOGLE_MAPS_API_KEY`), inače OpenStreetMap | Preglednik učitava pločice direktno (IP, područje) | Kod pružaoca |
+| Karte | Opcionalno | Google Maps (ako je `GOOGLE_MAPS_API_KEY`); bez ključa se karta ne prikazuje | Preglednik učitava pločice direktno (IP, područje) | Kod pružaoca |
 | Push pretplata | Opcionalno | `push_device`, `push_delivery` | Push servis preglednika (Android: obično FCM) | Do odjave/isključenja |
 | Email | Obavezno za nalog | SMTP konfiguracija | Pružalac email usluge | Kod pružaoca |
 

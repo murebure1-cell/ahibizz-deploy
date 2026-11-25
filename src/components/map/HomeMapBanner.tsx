@@ -1,45 +1,38 @@
 import Link from "next/link";
-import { mapPins } from "../../lib/business-map";
+import { mapPins, mapPlaces } from "../../lib/business-map";
 import { getPublicDirectoryService } from "../../server/directory/read-service";
 import { getTranslator } from "../../server/i18n";
 import { Icon } from "../Icon";
-import { GoldGlobe } from "./GoldGlobe";
+import { DotGlobe } from "./DotGlobe";
 import styles from "./home-map-banner.module.css";
 
-/** Approximate places (about 1 km) of every business on the map, without names, once per place. */
-async function bannerPlaces(): Promise<[number, number][]> {
+/** The places with a business, each about ten kilometres wide, with the number of businesses there. */
+async function bannerLights() {
   const rows =
     (await getPublicDirectoryService()
       ?.mapPins()
       .catch(() => null)) ?? [];
-  const places = new Map<string, [number, number]>();
-  for (const pin of mapPins(rows)) {
-    const place: [number, number] = [
-      Math.round(pin.latitude * 100) / 100,
-      Math.round(pin.longitude * 100) / 100,
-    ];
-    places.set(place.join(","), place);
-  }
-  return [...places.values()];
+  return mapPlaces(mapPins(rows)).map(({ latitude, longitude, count }) => ({
+    latitude: Math.round(latitude * 10) / 10,
+    longitude: Math.round(longitude * 10) / 10,
+    count,
+  }));
 }
 
-/** Home banner for the world map: title on the left, a turning blue-and-gold globe rising out of the card. */
+/** Home banner for the world map, as drawn: the card with its title and the globe rising out of it. */
 export async function HomeMapBanner() {
-  const [places, t] = await Promise.all([bannerPlaces(), getTranslator()]);
+  const [lights, t] = await Promise.all([bannerLights(), getTranslator()]);
   return (
     <section className={styles.banner} aria-labelledby="home-map-heading">
       <Link href="/mapa" className={styles.link} aria-labelledby="home-map-heading">
-        <span className={styles.text}>
-          <span className={styles.kicker}>{t("Naša mreža, naša snaga")}</span>
-          <h2 id="home-map-heading">{t("AhiBizz mapa svijeta")}</h2>
-          <span className={styles.cta}>
-            {t("Otvori mapu")} <Icon name="chevron" />
-          </span>
+        <span className={styles.kicker}>{t("Naša mreža, naša snaga")}</span>
+        <h2 id="home-map-heading">{t("AhiBizz mapa svijeta")}</h2>
+        <span className={styles.cta}>
+          {t("Otvori mapu")} <Icon name="chevron" />
         </span>
       </Link>
       <div className={styles.stage} aria-hidden="true">
-        <div className={styles.glow} />
-        <GoldGlobe places={places} className={styles.globe} />
+        <DotGlobe lights={lights} step={6} />
       </div>
     </section>
   );

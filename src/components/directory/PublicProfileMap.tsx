@@ -9,7 +9,14 @@ const LocationMap = dynamic(() => import("./LocationMap").then((module) => modul
   ssr: false,
 });
 
-export function PublicProfileMap({ point, logoUrl }: { point: LocationPoint; logoUrl?: string }) {
+/** The map on a public profile; it is made only when the page has been scrolled near it. */
+export function PublicProfileMap({
+  point,
+  category,
+}: {
+  point: LocationPoint;
+  category?: string | null;
+}) {
   const element = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -34,7 +41,7 @@ export function PublicProfileMap({ point, logoUrl }: { point: LocationPoint; log
   return (
     <div className={styles.map} ref={element}>
       {visible && (
-        <LocationMap point={point} disabled readOnly logoUrl={logoUrl} onPoint={() => {}} />
+        <LocationMap point={point} disabled readOnly category={category} onPoint={() => {}} />
       )}
     </div>
   );

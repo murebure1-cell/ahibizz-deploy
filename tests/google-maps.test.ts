@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  googleMapsDark,
-  googleMapsLight,
+  mapGround,
+  mapPalette,
+  mapStyleKind,
+  mapStyles,
   readGoogleMapId,
   readGoogleMapsKey,
+  streetsFromZoom,
 } from "../src/lib/google-maps";
 
 test("only a plain Google Map ID is published to the page", () => {
@@ -28,13 +31,47 @@ test("only a well-formed Google Maps browser key is published to the page", () =
     assert.equal(readGoogleMapsKey(value), null);
 });
 
-test("both map themes hide points of interest and use plain hex colours", () => {
-  for (const style of [googleMapsLight, googleMapsDark]) {
-    assert.ok(
-      style.some((rule) => rule.featureType === "poi" && rule.stylers[0]?.visibility === "off"),
-    );
-    for (const rule of style)
-      for (const styler of rule.stylers)
-        if (styler.color) assert.match(styler.color, /^#[0-9a-f]{6}$/);
-  }
+test("every map look hides other businesses' places and uses plain hex colours", () => {
+  for (const dark of [true, false])
+    for (const kind of ["streets", "country"] as const) {
+      const style = mapStyles(dark, kind);
+      assert.ok(
+        style.some((rule) => rule.featureType === "poi" && rule.stylers[0]?.visibility === "off"),
+      );
+      for (const rule of style)
+        for (const styler of rule.stylers)
+          if (typeof styler.color === "string") assert.match(styler.color, /^#[0-9a-f]{6}$/);
+    }
+});
+
+test("the streets keep their roads and parks, the country keeps only its outline and name", () => {
+  const streets = mapStyles(true, "streets");
+  assert.ok(
+    streets.some(
+      (rule) => rule.featureType === "road" && rule.stylers[0]?.color === mapPalette.dark.road,
+    ),
+  );
+  assert.ok(
+    streets.some((rule) => rule.featureType === "poi.park" && rule.stylers[0]?.visibility === "on"),
+  );
+  const country = mapStyles(false, "country");
+  assert.ok(
+    country.some((rule) => rule.featureType === "road" && rule.stylers[0]?.visibility === "off"),
+  );
+  assert.ok(
+    country.some(
+      (rule) =>
+        rule.featureType === "administrative.country" &&
+        rule.elementType === "geometry.stroke" &&
+        rule.stylers.some((styler) => styler.color === mapPalette.light.border),
+    ),
+  );
+});
+
+test("the look follows the zoom, and the ground shows the right colour before the tiles", () => {
+  assert.equal(mapStyleKind(undefined), "country");
+  assert.equal(mapStyleKind(streetsFromZoom - 1), "country");
+  assert.equal(mapStyleKind(streetsFromZoom), "streets");
+  assert.equal(mapGround(true, "country"), mapPalette.dark.sea);
+  assert.equal(mapGround(false, "streets"), mapPalette.light.land);
 });
