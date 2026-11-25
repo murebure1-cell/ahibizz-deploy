@@ -13,54 +13,115 @@ export function readGoogleMapId(value: string | undefined): string | null {
   return /^[A-Za-z0-9_-]{4,64}$/.test(id) ? id : null;
 }
 
-type Style = { featureType?: string; elementType?: string; stylers: Record<string, string>[] };
+export type MapStyle = {
+  featureType?: string;
+  elementType?: string;
+  stylers: Record<string, string | number>[];
+};
+/** "streets" is the city map with its roads; "country" is the quiet outline of countries. */
+export type MapStyleKind = "streets" | "country";
 
-/** Light silver map: neutral grey ground, white streets, grey labels, business clutter (POI) hidden. */
-export const googleMapsLight: Style[] = [
-  { elementType: "geometry", stylers: [{ color: "#f2f2f2" }] },
-  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#7a7a7a" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#f5f5f5" }] },
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#dadada" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#e4e4e4" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#d6d6d6" }] },
-  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#ececec" }] },
-  {
-    featureType: "administrative.neighborhood",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#5c5c5c" }],
+/**
+ * The map colours of the two themes, as drawn: graphite ground with darker water at night, a grey
+ * ground with white streets by day. Google's styling takes no transparency, so the hairlines of
+ * the drawings are given here as the solid colour they make on their ground.
+ */
+export const mapPalette = {
+  dark: {
+    land: "#11151a",
+    water: "#0c1a23",
+    road: "#1e252d",
+    mainRoad: "#2a323c",
+    park: "#11211a",
+    label: "#77828f",
+    sea: "#090e13",
+    country: "#1a2029",
+    border: "#3f454e",
   },
-  {
-    featureType: "administrative.locality",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#4a4a4a" }],
+  light: {
+    land: "#e7eaee",
+    water: "#c5dcea",
+    road: "#ffffff",
+    mainRoad: "#ffffff",
+    park: "#d3e6d8",
+    label: "#5c6672",
+    sea: "#cfdfea",
+    country: "#f7f8fa",
+    border: "#c9cdd3",
   },
-  {
-    featureType: "administrative",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#c9c9c9" }],
-  },
-];
+} as const;
 
-/** Graphite map for the dark theme. */
-export const googleMapsDark: Style[] = [
-  { elementType: "geometry", stylers: [{ color: "#14181d" }] },
-  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#98a1ad" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#0b0d10" }] },
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#252b33" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#323a45" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#1b2027" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0b0d10" }] },
-  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#171c22" }] },
-  {
-    featureType: "administrative",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#3a424c" }],
-  },
-];
+/** What the map shows before its first tiles arrive, so a slow load is not a flash of white. */
+export function mapGround(dark: boolean, kind: MapStyleKind): string {
+  const colours = dark ? mapPalette.dark : mapPalette.light;
+  return kind === "country" ? colours.sea : colours.land;
+}
+
+export function mapStyles(dark: boolean, kind: MapStyleKind): MapStyle[] {
+  const c = dark ? mapPalette.dark : mapPalette.light;
+  if (kind === "country")
+    return [
+      { elementType: "geometry", stylers: [{ color: c.country }] },
+      { elementType: "labels", stylers: [{ visibility: "off" }] },
+      { featureType: "water", elementType: "geometry", stylers: [{ color: c.sea }] },
+      { featureType: "road", stylers: [{ visibility: "off" }] },
+      { featureType: "poi", stylers: [{ visibility: "off" }] },
+      { featureType: "transit", stylers: [{ visibility: "off" }] },
+      { featureType: "administrative", elementType: "geometry", stylers: [{ visibility: "off" }] },
+      {
+        featureType: "administrative.country",
+        elementType: "geometry.stroke",
+        stylers: [{ visibility: "on" }, { color: c.border }, { weight: 1 }],
+      },
+      {
+        featureType: "administrative.country",
+        elementType: "labels.text",
+        stylers: [{ visibility: "on" }],
+      },
+      {
+        featureType: "administrative.country",
+        elementType: "labels.text.fill",
+        stylers: [{ color: c.label }],
+      },
+      {
+        featureType: "administrative.country",
+        elementType: "labels.text.stroke",
+        stylers: [{ color: c.country }],
+      },
+      { featureType: "water", elementType: "labels.text", stylers: [{ visibility: "on" }] },
+      { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: c.label }] },
+      { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: c.sea }] },
+    ];
+  return [
+    { elementType: "geometry", stylers: [{ color: c.land }] },
+    { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: c.label }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: c.land }] },
+    // Other businesses' places stay off the map; the parks stay as ground.
+    { featureType: "poi", stylers: [{ visibility: "off" }] },
+    {
+      featureType: "poi.park",
+      elementType: "geometry",
+      stylers: [{ visibility: "on" }, { color: c.park }],
+    },
+    { featureType: "transit", stylers: [{ visibility: "off" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: c.road }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ visibility: "off" }] },
+    { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: c.mainRoad }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: c.mainRoad }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: c.water }] },
+    { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: c.land }] },
+    {
+      featureType: "administrative",
+      elementType: "geometry.stroke",
+      stylers: [{ color: c.border }],
+    },
+    { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
+  ];
+}
+
+/** Below this zoom the map is a map of countries, from it on a map of streets. */
+export const streetsFromZoom = 10;
+export function mapStyleKind(zoom: number | undefined): MapStyleKind {
+  return (zoom ?? 0) >= streetsFromZoom ? "streets" : "country";
+}

@@ -51,7 +51,11 @@ export type IconName =
   | "block"
   | "trash"
   | "moon"
-  | "route";
+  | "route"
+  | "locate"
+  | "walk"
+  | "turn"
+  | "straight";
 
 const paths: Record<IconName, ReactNode> = {
   people: (
@@ -134,6 +138,21 @@ const paths: Record<IconName, ReactNode> = {
   trash: <path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" />,
   moon: <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />,
   route: <path d="M20.5 3.5 3.5 10.6l6.9 3 3 6.9Z" />,
+  locate: (
+    <>
+      <circle cx="12" cy="12" r="6" />
+      <path d="M12 2v4m0 12v4M2 12h4m12 0h4" />
+    </>
+  ),
+  walk: (
+    <>
+      <circle cx="13" cy="4.5" r="1.8" />
+      <path d="m9 21 2.5-7-2-2.5 1-4.5 3 1.5 2 2.5 2.5 1M11 14l3 2.5 1 4.5" />
+    </>
+  ),
+  // A turn to the left; mirrored in place for a turn to the right.
+  turn: <path d="M18 20v-8a3 3 0 0 0-3-3H6m4-4-4 4 4 4" />,
+  straight: <path d="M12 20V5m-5 5 5-5 5 5" />,
   phone: <path d="m7 3 3 5-2 2a15 15 0 0 0 6 6l2-2 5 3c0 3-2 4-4 4C9 20 4 15 3 7c0-2 1-4 4-4Z" />,
   chevron: <path d="m9 5 7 7-7 7" />,
   clock: (

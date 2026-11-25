@@ -20,7 +20,7 @@ Prvo pročitaj [AGENTS.md](AGENTS.md). Zajednička razvojna osnova je **`origin/
 
 ## Tehnologije i struktura
 
-Next.js 16 App Router, React 19, TypeScript 7, PostgreSQL (`pg`), Better Auth, Nodemailer, Web Push, Sharp i Leaflet. Tačne verzije su zaključane u `package.json` i `pnpm-lock.yaml`. Node mora zadovoljiti `>=24.0.0`; paket menadžer je **pnpm 12.18.0**. Dockerfile ima zasebno pinovanu Node sliku i digest.
+Next.js 16 App Router, React 19, TypeScript 7, PostgreSQL (`pg`), Better Auth, Nodemailer, Web Push i Sharp; karte prikazuje Google Maps JavaScript API. Tačne verzije su zaključane u `package.json` i `pnpm-lock.yaml`. Node mora zadovoljiti `>=24.0.0`; paket menadžer je **pnpm 12.18.0**. Dockerfile ima zasebno pinovanu Node sliku i digest.
 
 ```text
 src/app/           stranice, layouti, server actions i HTTP rute

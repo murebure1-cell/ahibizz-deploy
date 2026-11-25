@@ -1,0 +1,981 @@
+/*
+ * The map of the network, as drawn: a turning globe with the countries under it, then the Google
+ * map of a country with its cities, then the streets of a city with a pin for every business.
+ * It lies over the whole page; on the streets the app's own dock is lifted above it.
+ */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.screen {
+  --hairline: color-mix(in srgb, var(--ui-text) 14%, transparent);
+  /* The ground of the Google map in each theme, so a slow tile never shows another colour. */
+  --map-sea: #cfdfea;
+  --map-land: #e7eaee;
+  --pin: #ffffff;
+  --pin-ring: #ffffff;
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  overflow: hidden;
+  background: var(--ui-page);
+  color: var(--ui-text);
+  font-family: var(--font-sans);
+}
+:global(:root[data-theme="dark"]) .screen {
+  --map-sea: #090e13;
+  --map-land: #11151a;
+  --pin: #1b2027;
+  --pin-ring: #0b0d10;
+}
+
+/* The globe and what stands around it. Opening a country flies into the globe. */
+.world {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  transition:
+    opacity 260ms var(--ease-out),
+    scale 420ms var(--ease-in-out),
+    visibility 0s;
+}
+.screen:not([data-stage="globe"]) .world {
+  opacity: 0;
+  scale: 1.25;
+  visibility: hidden;
+  transition:
+    opacity 260ms var(--ease-out),
+    scale 420ms var(--ease-in-out),
+    visibility 0s 420ms;
+}
+.top {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 20px 0;
+}
+.top > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.top span {
+  color: var(--ui-accent-text);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+.logo {
+  display: block;
+  width: 104px;
+  height: 28px;
+}
+.round {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--ui-border);
+  border-radius: 50%;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  transition: scale 160ms var(--ease-out);
+}
+.round:active {
+  scale: 0.94;
+}
+.round svg {
+  width: 20px;
+  height: 20px;
+}
+.totals {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 20px 0;
+}
+.totals strong {
+  font-size: 44px;
+  line-height: 48px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+.totals span {
+  color: var(--ui-muted);
+  font-size: 15px;
+  line-height: 22px;
+}
+/* The globe takes what the bars above and the sheet below leave, never more than it was drawn. */
+.stage {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 20px 12px;
+  container-type: size;
+}
+.globe {
+  flex: none;
+  width: min(328px, 100cqw, calc(100cqh - 42px));
+}
+.here {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--ui-surface);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+.here span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+}
+
+/* The sheet at the bottom edge: countries under the globe, businesses under a country. */
+.sheet {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  padding: 10px 20px calc(14px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--ui-border);
+  border-radius: 28px 28px 0 0;
+  background: var(--ui-surface);
+}
+.world .sheet {
+  max-height: 62dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.handle {
+  align-self: center;
+  flex: none;
+  width: 40px;
+  height: 4px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  background: var(--hairline);
+}
+.sheetHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.sheetHead h1 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.sheetHead button {
+  margin-block: -12px;
+  padding: 12px 0 12px 12px;
+  border: 0;
+  background: none;
+  color: var(--ui-accent-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.countries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.countries button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 46px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--ui-border);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.countries li:last-child button {
+  border-bottom: 0;
+}
+.code {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 30px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.countryName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.countries strong {
+  flex: none;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 800;
+}
+.countries svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ui-muted);
+}
+.empty {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 6px;
+}
+.empty h1 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 700;
+}
+.empty p {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+.empty a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  margin-top: 6px;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* The Google map. Under a country it ends where the sheet begins, so Google's own marks at its
+   bottom edge stay in view; on the streets it fills the screen and the bars float over it. */
+.places {
+  --sheet-height: max(320px, 47dvh);
+  position: absolute;
+  inset: 0;
+  background: var(--map-sea);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 300ms var(--ease-out),
+    visibility 0s 300ms;
+}
+.screen:not([data-stage="globe"]) .places {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 300ms var(--ease-out) 140ms,
+    visibility 0s;
+}
+.places[data-stage="city"] {
+  background: var(--map-land);
+}
+.map {
+  position: absolute;
+  inset: 0 0 var(--sheet-height) 0;
+}
+.places[data-stage="city"] .map {
+  bottom: 0;
+}
+.mapCanvas {
+  width: 100%;
+  height: 100%;
+}
+.mapOff {
+  position: absolute;
+  inset: 38% 24px auto;
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+}
+
+/* Marks on the map. Each holder stands at its point; the mark decides which part of it sits there. */
+.bubble,
+.pin,
+.group,
+.me {
+  position: absolute;
+  font-family: var(--font-sans);
+}
+.bubble {
+  display: grid;
+  place-items: center;
+  translate: -50% -50%;
+  padding: 0;
+  border: 2px solid var(--pin-ring);
+  border-radius: 50%;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  animation: map-mark-in 260ms var(--ease-out) backwards;
+}
+.bubbleName {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  translate: -50% 0;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--ui-over);
+  color: var(--ui-text);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  translate: -50% calc(-100% + 2px);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-text);
+  cursor: pointer;
+  isolation: isolate;
+  animation: map-pin-in 300ms var(--ease-out) backwards;
+}
+.pinHead {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--ui-text) 18%, transparent);
+  border-radius: 50%;
+  background: var(--pin);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+.pinHead svg {
+  width: 18px;
+  height: 18px;
+}
+.pinTip {
+  position: relative;
+  z-index: -1;
+  width: 10px;
+  height: 10px;
+  margin-top: -6px;
+  border-radius: 2px;
+  background: var(--pin);
+  rotate: 45deg;
+  transition: background-color 150ms ease;
+}
+.pin[data-selected] .pinHead {
+  width: 50px;
+  height: 50px;
+  border: 3px solid var(--pin-ring);
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  animation: map-pin-pop 250ms var(--ease-out);
+}
+.pin[data-selected] .pinHead svg {
+  width: 22px;
+  height: 22px;
+}
+.pin[data-selected] .pinTip {
+  width: 12px;
+  height: 12px;
+  margin-top: -8px;
+  background: var(--ui-accent);
+}
+.pinCheck {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 2px solid var(--pin-ring);
+  border-radius: 50%;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+}
+.pinHead .pinCheck svg {
+  width: 8px;
+  height: 8px;
+  stroke-width: 4;
+}
+/* The chosen pin is already in the accent; its card carries the mark of verification. */
+.pin[data-selected] .pinCheck {
+  display: none;
+}
+.pinName {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  max-width: 200px;
+  translate: -50% 0;
+  overflow: hidden;
+  padding: 3px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--ui-glass);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: var(--ui-text);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.group {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  translate: -50% -50%;
+  padding: 0;
+  box-sizing: border-box;
+  border: 3px solid var(--pin-ring);
+  border-radius: 50%;
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  animation: map-mark-in 260ms var(--ease-out) backwards;
+}
+/* The person's own place: a dot in a still ring, without a glow. */
+.me {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ui-accent) 22%, transparent);
+  pointer-events: none;
+}
+.me span {
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 3px solid var(--pin-ring);
+  border-radius: 50%;
+  background: var(--ui-accent);
+}
+@keyframes map-mark-in {
+  from {
+    opacity: 0;
+    scale: 0.7;
+  }
+}
+@keyframes map-pin-in {
+  from {
+    opacity: 0;
+    translate: -50% calc(-100% - 8px);
+  }
+}
+@keyframes map-pin-pop {
+  from {
+    scale: 0.82;
+  }
+}
+
+/* The bars over the map. */
+.back,
+.search {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  right: 16px;
+  left: 16px;
+  z-index: 3;
+}
+.back {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.glassRound,
+.glassPill,
+.field,
+.filters button,
+.card {
+  border: 1px solid var(--hairline);
+  background: var(--ui-glass);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  color: var(--ui-text);
+}
+.glassRound {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: scale 160ms var(--ease-out);
+}
+.glassRound:active,
+.glassPill:active {
+  scale: 0.95;
+}
+.glassRound svg {
+  width: 20px;
+  height: 20px;
+}
+/* The chevron points onward; the way back is the same sign turned round. */
+.glassRound svg[data-back] {
+  rotate: 180deg;
+}
+:global([dir="rtl"]) .glassRound svg[data-back] {
+  rotate: none;
+}
+.glassRound[data-size="large"] {
+  width: 48px;
+  height: 48px;
+}
+.glassPill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: scale 160ms var(--ease-out);
+}
+.glassPill svg {
+  width: 16px;
+  height: 16px;
+}
+.search {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.searchRow .glassRound {
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+}
+.field {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 16px;
+  border-radius: 18px;
+}
+.field:focus-within {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+.field svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--ui-muted);
+}
+.field input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+}
+.field input::placeholder {
+  color: var(--ui-muted);
+  opacity: 1;
+}
+.filters,
+.cityChips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.filters {
+  margin-inline: -16px;
+  padding-inline: 16px;
+}
+.filters button,
+.cityChips button {
+  flex: none;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+.filters button[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font-weight: 800;
+}
+
+/* What floats at the foot of the streets: the way to the person's own place and the chosen
+   business. Raised a little from the edge, so Google's marks under it stay readable. */
+.foot {
+  position: absolute;
+  right: 16px;
+  bottom: calc(max(30px, env(safe-area-inset-bottom, 0px)) + var(--dock-room, 0px));
+  left: 16px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  pointer-events: none;
+}
+.foot > * {
+  pointer-events: auto;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--ui-radius-xl);
+  animation: map-card-in 400ms var(--ease-drawer) backwards;
+}
+@keyframes map-card-in {
+  from {
+    opacity: 0;
+    translate: 0 24px;
+  }
+}
+.cardTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cardPhoto,
+.listPhoto {
+  display: grid;
+  place-items: center;
+  flex: none;
+  overflow: hidden;
+  background: var(--ui-surface-soft);
+}
+.cardPhoto {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--ui-radius-md);
+}
+.listPhoto {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+:is(.cardPhoto, .listPhoto) img[src^="/api/"] {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cardTop > div {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.card h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 800;
+}
+.card h2 > span:first-child,
+.listText strong > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card p {
+  margin: 0;
+  color: var(--ui-muted);
+}
+.cardActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.cardActions a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 44px;
+  border: 1px solid color-mix(in srgb, var(--ui-text) 18%, transparent);
+  border-radius: 14px;
+  color: var(--ui-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+.cardActions a[data-kind="main"] {
+  border-color: transparent;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font-weight: 800;
+}
+.cardActions svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* A country: its name, its cities and its businesses. */
+.places .sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  height: var(--sheet-height);
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  animation: map-sheet-in 500ms var(--ease-drawer) backwards;
+}
+@keyframes map-sheet-in {
+  from {
+    translate: 0 100%;
+  }
+}
+.country {
+  margin: 0;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.countryFacts {
+  margin: 2px 0 0;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.cityChips {
+  flex: none;
+  margin: 12px -20px 0;
+  padding: 0 20px;
+}
+.cityChips button {
+  border: 1px solid color-mix(in srgb, var(--ui-text) 18%, transparent);
+  background: var(--ui-surface-soft);
+  color: var(--ui-text);
+}
+.cityChips button[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
+  font-weight: 800;
+}
+.list {
+  flex: 1;
+  min-height: 0;
+  margin: 6px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+.list a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 62px;
+  border-bottom: 1px solid var(--ui-border);
+  color: var(--ui-text);
+}
+.list li:last-child a {
+  border-bottom: 0;
+}
+.listText {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+.listText strong {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 700;
+}
+.listText > span {
+  overflow: hidden;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.list a > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ui-muted);
+}
+.openCity {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  margin-top: 8px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: scale 160ms var(--ease-out);
+}
+.openCity:active {
+  scale: 0.98;
+}
+.openCity svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 760px) {
+  /* On the streets the app's dock comes back over the map, as drawn, a little above the edge. */
+  .foot {
+    --dock-room: 76px;
+  }
+  :global(html):has(.screen[data-stage="city"]) :global([data-mobile-dock]) {
+    z-index: 2001;
+    inset-block-end: max(30px, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Wide screens were not drawn: the globe keeps its column, the sheets become panels on the left. */
+@media (min-width: 900px) {
+  .world {
+    align-items: center;
+  }
+  .world > * {
+    width: min(560px, 100%);
+  }
+  .world .sheet {
+    border: 1px solid var(--ui-border);
+    border-bottom: 0;
+  }
+  .places {
+    --sheet-height: 0px;
+  }
+  .places .sheet {
+    top: 84px;
+    right: auto;
+    bottom: 36px;
+    left: 24px;
+    width: 380px;
+    height: auto;
+    border: 1px solid var(--ui-border);
+    border-radius: 28px;
+  }
+  .places .sheet .handle {
+    display: none;
+  }
+  .back,
+  .search {
+    right: auto;
+    left: 24px;
+    width: 380px;
+  }
+  .back {
+    justify-content: flex-start;
+  }
+  .filters {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+  .foot {
+    right: auto;
+    left: 24px;
+    width: 380px;
+    align-items: flex-start;
+  }
+}

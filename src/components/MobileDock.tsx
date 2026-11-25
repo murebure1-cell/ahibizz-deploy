@@ -33,11 +33,14 @@ export function MobileDock() {
   const current = headerCurrentDestination(pathname, query);
   const accountPane = pathname === "/nalog";
   const notificationsOpen = pathname === accountShortcuts.notifications;
+  // The map covers the page; only its streets, the map side of search, keep the dock.
+  const streetMap = pathname === "/mapa" && (query.has("grad") || query.has("djelatnost"));
   if (
     current === publish.href ||
     (pathname !== "/" &&
       !accountPane &&
       !notificationsOpen &&
+      !streetMap &&
       pathname !== accountShortcuts.savedSearches &&
       pathname !== accountShortcuts.blocked &&
       !sectionRoots.some((root) => pathname === root || pathname.startsWith(`${root}/`)))
@@ -53,7 +56,7 @@ export function MobileDock() {
         ? account.href
         : pathname === "/"
           ? home.href
-          : current === directory.href
+          : current === directory.href || streetMap
             ? directory.href
             : null;
   const activeIndex = destinations.findIndex(({ href }) => href === active);

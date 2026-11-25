@@ -143,7 +143,11 @@ export default async function SearchPage({
             </h2>
             <nav className={styles.viewSwitch} aria-label={t("Prikaz rezultata")}>
               <span aria-current="page">{t("Lista")}</span>
-              <Link href="/mapa" prefetch={false}>
+              {/* The map opens on the streets of the searched place when that place is on it. */}
+              <Link
+                href={city ? `/mapa?${new URLSearchParams({ grad: city })}` : "/mapa"}
+                prefetch={false}
+              >
                 {t("Mapa")}
               </Link>
             </nav>

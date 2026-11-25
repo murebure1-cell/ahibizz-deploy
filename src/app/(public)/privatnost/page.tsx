@@ -104,7 +104,7 @@ export default async function PrivacyPage() {
         </p>
         <p>
           {t(
-            "Kad uređuješ lokaciju djelatnosti, tvoj preglednik šalje upisanu adresu ili odabranu tačku na karti direktno servisu Photon (komoot), koji pronalazi adresu. Ako tu odabereš „moja lokacija“, šalju se koordinate tvog uređaja. Karte učitava preglednik direktno od Google Maps ili OpenStreetMap; oni primaju područje karte koje gledaš i tvoju IP adresu.",
+            "Kad uređuješ lokaciju djelatnosti, tvoj preglednik šalje upisanu adresu ili odabranu tačku na karti direktno servisu Photon (komoot), koji pronalazi adresu. Ako tu odabereš „moja lokacija“, šalju se koordinate tvog uređaja. Karte učitava preglednik direktno od Google Maps; Google prima područje karte koje gledaš i tvoju IP adresu.",
           )}
         </p>
       </section>
@@ -122,7 +122,7 @@ export default async function PrivacyPage() {
         <h2>{t("Ko još obrađuje podatke")}</h2>
         <p>
           {t(
-            "OctaDeploy za hosting aplikacije i baze podataka, pružalac email usluge, push servis preglednika ili telefona, Photon (komoot) za adrese te Google Maps ili OpenStreetMap za karte. Aplikacija ne koristi oglasni identifikator uređaja.",
+            "OctaDeploy za hosting aplikacije i baze podataka, pružalac email usluge, push servis preglednika ili telefona, Photon (komoot) za adrese te Google Maps za karte. Aplikacija ne koristi oglasni identifikator uređaja.",
           )}
         </p>
         <p>{t("Aplikacija nema kupovina ni plaćanja.")}</p>
