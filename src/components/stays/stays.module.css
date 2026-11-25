@@ -9,7 +9,7 @@
   height: auto;
   aspect-ratio: 2.2;
   object-fit: cover;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface-soft);
 }
 .thumbnails {
@@ -23,7 +23,7 @@
   padding: 2px;
   flex: none;
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-xs);
   cursor: pointer;
 }
 .thumbnails button[aria-pressed="true"] {

@@ -1,9 +1,7 @@
 .home {
-  --home-navy: #142d44;
   --home-ink: var(--ui-text);
-  --home-gold: #d8ae56;
   --home-line: var(--ui-border);
-  --home-bg: var(--paper);
+  --home-bg: var(--ui-page);
   color: var(--home-ink);
   background: var(--home-bg);
   line-height: 1.5;
@@ -32,7 +30,7 @@
   align-items: center;
   color: #fff;
   overflow: hidden;
-  background: var(--home-navy);
+  background: var(--ui-ink);
 }
 .heroPhoto {
   object-fit: cover;
@@ -45,7 +43,7 @@
   position: absolute;
   inset: 0;
   z-index: -2;
-  background: linear-gradient(90deg, #10273df2 5%, #132d44d6 38%, #142d4470 70%, #142d4433);
+  background: linear-gradient(90deg, #0b0d10f2 5%, #0b0d10d6 38%, #0b0d1070 70%, #0b0d1033);
 }
 .hero::after {
   content: "";
@@ -90,7 +88,7 @@
   overflow-wrap: anywhere;
 }
 .hero :where(h1) span {
-  color: #e3bc6c;
+  color: var(--ui-ink-accent);
 }
 .search {
   display: flex;
@@ -99,9 +97,9 @@
   padding: 7px;
   background: color-mix(in srgb, var(--ui-surface) 92%, transparent);
   border: 1px solid var(--ui-border);
-  border-radius: 15px;
+  border-radius: var(--ui-radius-md);
   color: var(--home-ink);
-  box-shadow: 0 12px 36px #041a352b;
+  box-shadow: 0 12px 36px #0e12182b;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
@@ -141,9 +139,9 @@
 }
 .searchSubmit {
   border: 0;
-  border-radius: 10px;
-  background: var(--home-gold);
-  color: var(--home-navy);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -181,7 +179,7 @@
   min-width: 0;
   padding: 13px 20px;
   border: 1px solid var(--home-line);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface);
   font-size: 15px;
   font-weight: 600;
@@ -200,7 +198,7 @@
   width: 39px;
   height: 39px;
   background: var(--ui-surface-soft);
-  border-radius: 11px;
+  border-radius: var(--ui-radius-sm);
   color: var(--ui-accent-text);
   flex-shrink: 0;
 }
@@ -247,7 +245,7 @@
   height: 35px;
   place-items: center;
   border: 1px solid var(--ui-accent-border);
-  border-radius: 11px;
+  border-radius: var(--ui-radius-sm);
   background: var(--ui-accent-soft);
   color: var(--ui-accent-text);
 }
@@ -309,7 +307,7 @@
   gap: 13px;
   padding: 22px;
   border: 1px solid var(--home-line);
-  border-radius: 18px;
+  border-radius: var(--ui-radius-lg);
   background: var(--ui-surface);
   text-align: left;
   color: var(--ui-muted);
@@ -322,7 +320,7 @@
   width: 42px;
   height: 42px;
   background: var(--ui-surface-soft);
-  border-radius: 13px;
+  border-radius: var(--ui-radius-md);
   color: var(--ui-muted);
 }
 .empty svg {
@@ -338,10 +336,10 @@
   align-items: center;
   gap: 12px;
   min-height: 43px;
-  border-radius: 11px;
+  border-radius: var(--ui-radius-sm);
   border: 1px solid transparent;
   padding: 11px 19px;
-  background: var(--home-gold);
+  background: var(--ui-accent);
   color: var(--ui-on-accent);
   font-size: 14px;
   font-weight: 650;
@@ -425,7 +423,7 @@
     object-position: 66% 42%;
   }
   .hero::before {
-    background: linear-gradient(90deg, #11283de6, #122b4496);
+    background: linear-gradient(90deg, #0b0d10e6, #0b0d1096);
   }
   .hero::after {
     inset: 82% 0 0;
@@ -439,7 +437,7 @@
   }
   .search {
     padding: 5px;
-    border-radius: 13px;
+    border-radius: var(--ui-radius-md);
   }
   .search label {
     padding-left: 10px;
@@ -454,7 +452,7 @@
   }
   .searchSubmit {
     padding: 12px;
-    border-radius: 9px;
+    border-radius: var(--ui-radius-xs);
     min-height: 44px;
   }
   .searchSubmit span {
@@ -475,7 +473,7 @@
     gap: 10px;
     min-height: 50px;
     padding: 7px 12px 7px 8px;
-    border-radius: 14px;
+    border-radius: var(--ui-radius-md);
     background: var(--ui-glass);
     font-size: 14px;
     font-weight: 650;
@@ -486,7 +484,7 @@
   .categoryIcon {
     width: 34px;
     height: 34px;
-    border-radius: 12px;
+    border-radius: var(--ui-radius-md);
     background: var(--ui-surface-hover);
   }
   .categories svg {

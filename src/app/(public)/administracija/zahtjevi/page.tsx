@@ -126,7 +126,7 @@ export default async function SupportQueue({
                         required
                       />
                     </label>
-                    <button className="button button-navy" type="submit">
+                    <button className="button button-primary" type="submit">
                       Trajno obriši nalog
                     </button>
                   </form>
@@ -150,7 +150,7 @@ export default async function SupportQueue({
                   <form action={closeReport}>
                     <input type="hidden" name="operator" value={data.operatorId} />
                     <input type="hidden" name="id" value={item.id} />
-                    <button className="button button-navy" type="submit">
+                    <button className="button button-primary" type="submit">
                       Označi kao obrađeno
                     </button>
                   </form>

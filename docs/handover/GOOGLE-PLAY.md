@@ -8,7 +8,7 @@ Stanje pregleda: 22. 11. 2026. Put je **Trusted Web Activity (TWA) kroz Bubblewr
 | --- | --- |
 | Android identitet | `src/lib/android-association.ts`: `com.ahibizz.app`; `.qa` se prepoznaje samo kao probno pokretanje, a nije objavljeni paket u assetlinks odgovoru. |
 | Play build | `next.config.ts` čita `AHIBIZZ_DISTRIBUTION=google-play` i ugrađuje `NEXT_PUBLIC_AHIBIZZ_DISTRIBUTION`; `src/lib/distribution.ts` izvozi `IS_PLAY_EDITION`. Vrijednost je zamrznuta tokom builda. |
-| Manifest | `public/app.webmanifest`: AhiBizz, `id=/`, `start_url=/?source=pwa`, `scope=/`, `standalone`, bosanski jezik, tema `#142c40`, pozadina `#f8f9f6`, PNG 192/512 i maskable 512 u `public/app-icons/`. Ikone su prenesene iz bivšeg preview foldera bez promjene slike. |
+| Manifest | `public/app.webmanifest`: AhiBizz, `id=/`, `start_url=/?source=pwa`, `scope=/`, `standalone`, bosanski jezik, tema `#0b0d10`, pozadina `#f2f4f6`, PNG 192/512 i maskable 512 u `public/app-icons/`. Ikone su prenesene iz bivšeg preview foldera bez promjene slike. |
 | PWA | `src/components/pwa/AppPwa.tsx` registruje `/sw.js` na `/`; prepoznaje instalirani prikaz i Android referrer. Referrer je samo pomoć za izgled, nije ovlaštenje. |
 | Offline | `public/sw.js` i `public/app-offline.html`: mreža za navigaciju; pri prekidu veze neutralna poruka, bez podataka prethodnog naloga. API, RSC i korisnički mediji se ne pohranjuju u offline cache. Cache v2 zamjenjuje stare app/preview cacheove. |
 | Veza domene i aplikacije | `src/app/.well-known/assetlinks.json/route.ts`: u Play buildu objavljuje samo valjani `AHIBIZZ_PLAY_SIGNING_SHA256`. Bez potpisa vraća 404; placeholder se ne predstavlja kao valjano povezivanje. |

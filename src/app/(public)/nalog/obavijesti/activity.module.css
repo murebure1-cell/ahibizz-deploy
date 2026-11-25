@@ -33,7 +33,7 @@
   min-height: 44px;
   padding: 0.4rem 0.75rem;
   border: 1px solid var(--ui-border);
-  border-radius: 0.75rem;
+  border-radius: var(--ui-radius-md);
   color: var(--ui-text);
   background: var(--ui-surface);
   font-weight: 650;
@@ -55,7 +55,7 @@
 .event,
 .empty {
   border: 1px solid var(--ui-border);
-  border-radius: 1rem;
+  border-radius: var(--ui-radius-lg);
   background: var(--ui-surface);
   padding: 0.9rem;
 }
@@ -81,7 +81,7 @@
   height: 2.35rem;
   display: grid;
   place-items: center;
-  border-radius: 0.8rem;
+  border-radius: var(--ui-radius-md);
   color: var(--ui-accent-text);
   background: var(--ui-accent-soft);
 }

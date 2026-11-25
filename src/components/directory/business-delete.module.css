@@ -2,7 +2,7 @@
   color: var(--ui-danger);
   background: transparent;
   border: 1px solid var(--ui-border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   padding: 8px 12px;
   min-height: 44px;
   font: inherit;
@@ -20,7 +20,7 @@
   overflow: auto;
   margin: auto;
   padding: 24px;
-  border-radius: 18px;
+  border-radius: var(--ui-radius-lg);
   border: 1px solid var(--ui-border-strong);
   background: var(--ui-surface-raised);
   color: var(--ui-text);
@@ -54,7 +54,7 @@
   min-height: 44px;
   padding: 10px 14px;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   color: var(--ui-text);
   background: var(--ui-surface-soft);
   font: inherit;

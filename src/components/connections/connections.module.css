@@ -75,7 +75,7 @@
   padding: 0 14px;
   border: 1px solid var(--ui-border);
   background: var(--ui-surface);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   color: var(--ui-text-secondary);
 }
 
@@ -96,7 +96,7 @@
 
 .searchField:focus-within {
   border-color: var(--ui-accent-border);
-  box-shadow: 0 0 0 3px #d9b56d22;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 20%, transparent);
 }
 
 .primary,
@@ -109,7 +109,7 @@
   gap: 7px;
   min-height: 44px;
   padding: 10px 15px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.4;
@@ -185,7 +185,7 @@
 .connectionCard {
   min-width: 0;
   border: 1px solid var(--connections-line);
-  border-radius: 16px;
+  border-radius: var(--ui-radius-lg);
   background: var(--ui-surface);
 }
 
@@ -206,7 +206,7 @@
 
 .personLink:hover {
   background: var(--ui-surface-hover);
-  box-shadow: 0 5px 20px #17304707;
+  box-shadow: 0 5px 20px #0e121807;
 }
 
 .avatar,
@@ -307,7 +307,7 @@
   gap: 6px;
   padding: 5px;
   border: 1px solid var(--ui-border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface-soft);
   margin: 0 0 22px;
   min-width: 0;
@@ -319,7 +319,7 @@
   padding: 8px 14px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-xs);
   color: var(--ui-text-secondary);
   cursor: pointer;
   font-size: 0.8125rem;
@@ -331,7 +331,7 @@
   background: var(--ui-surface);
   border-color: var(--ui-border);
   color: var(--ui-text);
-  box-shadow: 0 2px 5px #17304705;
+  box-shadow: 0 2px 5px #0e121805;
 }
 
 .connectionList {
@@ -367,7 +367,7 @@
 .empty {
   padding: 48px 20px;
   border: 1px solid var(--connections-line);
-  border-radius: 16px;
+  border-radius: var(--ui-radius-lg);
   background: var(--ui-surface);
   text-align: center;
 }
@@ -408,7 +408,7 @@
   gap: 12px;
   padding: 13px 15px;
   border: 1px solid;
-  border-radius: 11px;
+  border-radius: var(--ui-radius-sm);
   margin-bottom: 18px;
   font-size: 0.875rem;
   line-height: 1.65;
@@ -447,7 +447,7 @@
 .profile {
   border: 1px solid var(--connections-line);
   background: var(--ui-surface);
-  border-radius: 20px;
+  border-radius: var(--ui-radius-xl);
   overflow: hidden;
 }
 .personPage,
@@ -461,8 +461,8 @@
   position: relative;
   height: 280px;
   background:
-    radial-gradient(ellipse at 75% 5%, #2c526b 0, transparent 58%),
-    linear-gradient(120deg, #10283d, #1a3c54);
+    radial-gradient(ellipse at 75% 5%, var(--ui-ink-raised) 0, transparent 58%),
+    linear-gradient(120deg, var(--ui-ink), var(--ui-ink-raised));
   overflow: hidden;
 }
 
@@ -473,11 +473,11 @@
   position: absolute;
   right: -105px;
   top: -270px;
-  border: 1px solid #d9b56d38;
+  border: 1px solid #ffffff1f;
   border-radius: 50%;
   box-shadow:
-    0 0 0 45px #d9b56d05,
-    0 0 0 90px #d9b56d03;
+    0 0 0 45px #ffffff05,
+    0 0 0 90px #ffffff03;
   pointer-events: none;
 }
 
@@ -520,7 +520,7 @@
   font-weight: 650;
   letter-spacing: -0.04em;
   z-index: 2;
-  box-shadow: 0 3px 15px #142c400d;
+  box-shadow: 0 3px 15px #0e12180d;
 }
 
 .identity h1 {
@@ -593,7 +593,7 @@
   width: 100%;
   height: 230px;
   object-fit: cover;
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
 }
 
 .work {
@@ -666,7 +666,7 @@
   gap: 12px;
   padding: 24px;
   border: 1px solid var(--ui-border);
-  border-radius: 16px;
+  border-radius: var(--ui-radius-lg);
   background: var(--ui-surface);
 }
 

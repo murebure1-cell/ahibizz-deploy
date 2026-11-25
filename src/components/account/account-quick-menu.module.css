@@ -9,8 +9,8 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  color: #f9f5ed;
-  background: linear-gradient(115deg, #183038, #274b49);
+  color: var(--ui-on-ink);
+  background: linear-gradient(115deg, var(--ui-ink), var(--ui-ink-raised));
   border-radius: 15px 15px 7px 7px;
 }
 .profile:hover {
@@ -20,9 +20,9 @@
   display: grid;
   place-items: center;
   min-height: 48px;
-  border-radius: 13px;
-  color: #f2d68b;
-  background: #ffffff17;
+  border-radius: var(--ui-radius-md);
+  color: var(--ui-ink-accent);
+  background: var(--ui-ink-line);
   font-weight: 700;
 }
 .profileText {
@@ -31,7 +31,7 @@
   gap: 3px;
 }
 .profileText > span {
-  color: #c3d7d1;
+  color: var(--ui-on-ink-muted);
   font-size: 13px;
 }
 .profileText > strong {
@@ -46,9 +46,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  border: 1px solid #b9975599;
-  border-radius: 12px;
-  background: var(--gold-soft);
+  border: 1px solid var(--ui-accent-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-accent-soft);
 }
 .balance > a:first-child {
   display: grid;
@@ -71,7 +71,7 @@
   padding: 0 10px;
   background: var(--ui-surface-raised);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-xs);
   font-size: 14px;
   font-weight: 700;
 }
@@ -90,7 +90,7 @@
   align-items: center;
   padding: 7px;
   min-height: 42px;
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   color: var(--ui-text);
   font-size: 14px;
   font-weight: 645;
@@ -137,7 +137,7 @@
   border-block: 1px solid var(--line);
 }
 .publish .row {
-  background: var(--gold-soft);
+  background: var(--ui-accent-soft);
   color: var(--ui-accent-text);
 }
 .publish .row:hover {
@@ -162,7 +162,7 @@
 .logout {
   min-height: 37px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-xs);
   background: transparent;
   color: var(--ui-text);
   font: inherit;
@@ -180,7 +180,7 @@
   min-height: 37px;
   padding-inline: 8px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-xs);
   background: transparent;
   color: var(--ui-text);
   font: inherit;

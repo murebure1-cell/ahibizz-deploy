@@ -14,7 +14,7 @@
 }
 
 .surface[data-logo-surface="dark"] {
-  background: #173047;
+  background: var(--ui-ink);
 }
 
 .surface > img {
@@ -27,6 +27,6 @@
 }
 
 .monogram {
-  color: #e9ca8a;
+  color: var(--ui-ink-accent);
   font: inherit;
 }

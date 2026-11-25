@@ -3,7 +3,7 @@
   margin: 52px auto 80px;
   padding: 28px;
   border: 1px solid var(--ui-border);
-  border-radius: 20px;
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-surface);
   color: var(--ui-text);
 }
@@ -34,7 +34,7 @@
   justify-content: center;
   padding: 10px 16px;
   border: 1px solid var(--ui-border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface);
   color: var(--ui-text);
   font: inherit;
