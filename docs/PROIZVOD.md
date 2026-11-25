@@ -210,6 +210,13 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   pišu „Uskoro” i ne vode nikuda. S crteža još nema: pregledi profila i djelatnosti (dolaze s
   analitikom), red Sponzorisano, Google nalog, obavijesti emailom, vidljivost profila, aktivne
   prijave i red Paket u Postavkama, jer za njih podatak ili funkcija još ne postoji **[novo]**.
+- **Objava djelatnosti u koracima [urađeno 25. 11. 2026.]:** po crtežima, u pet koraka: čime se
+  baviš (kategorije kao pločice, podkategorije kao oznake), osnovni podaci, mjesto na mapi s
+  adresom, slike, pa kartica onako kako će je ljudi vidjeti. Prva tri koraka spremaju nacrt, slike
+  se dodaju na taj nacrt, a zadnji korak ga šalje na pregled (administrator objavljuje odmah). Na
+  telefonu je tok ekran za sebe, s izlazom gore i radnjama uz donji rub. Postojeća djelatnost se i
+  dalje uređuje u jednom obrascu. S crteža još nema: korak „Jelovnik i meso” i potvrda „PIN je na
+  pravom mjestu”, jer podatak, odnosno pravilo, još ne postoji **[novo]**.
 - **Zamućenje** samo na slojevima koji leže preko sadržaja: donja traka, meni, listovi koji
   izlaze odozdo, prelaz pri zamjeni slike. Ne na karticama.
 - **Pokret:** kratak (150–250 ms) i sa svrhom. Tačkice za „učitavam” i za „novo”.

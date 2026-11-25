@@ -48,6 +48,7 @@ import {
 } from "../../lib/directory-mutation-recovery";
 import { msg } from "../../lib/i18n/translate";
 import { packageFullText } from "../../lib/packages";
+import { type PublicBusinessView, publicBusinessImages } from "../../lib/public-business";
 import type { DirectoryBusiness } from "../../server/directory/types";
 import { ProfileVerification } from "../admin/ProfileVerification";
 import { BusinessBookingManager } from "../booking/BusinessBookingManager";
@@ -68,7 +69,9 @@ import {
 import { BusinessLogo } from "./BusinessLogo";
 import { BusinessMediaManager } from "./BusinessMediaManager";
 import { BusinessOwnershipManager } from "./BusinessOwnershipManager";
+import { DirectoryResultCard } from "./DirectoryResultCard";
 import styles from "./directory.module.css";
+import { PublishBar, PublishHead, PublishIntro, publishStyles } from "./PublishSteps";
 
 const statuses = {
   draft: msg("Nacrt"),
@@ -225,6 +228,11 @@ export function BusinessManager({
   const [rentalBusiness, setRentalBusiness] = useState<DirectoryBusiness | null>(null);
   const [ownershipBusiness, setOwnershipBusiness] = useState<DirectoryBusiness | null>(null);
   const [editorDirty, setEditorDirty] = useState(false);
+  // Once a new draft is saved, its photographs and the preview follow as steps 4 and 5.
+  const [publishing, setPublishing] = useState<{
+    business: DirectoryBusiness;
+    step: 4 | 5;
+  } | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a fresh business version rekeys the base form and discards its dirty marker.
   useEffect(() => setEditorDirty(false), [editing?.id, editing?.version]);
   const [error, setError] = useState("");
@@ -525,6 +533,9 @@ export function BusinessManager({
 
   function cacheBusiness(business: DirectoryBusiness) {
     reads.current++;
+    setPublishing((current) =>
+      current?.business.id === business.id ? { ...current, business } : current,
+    );
     setItems((rows) =>
       patchDirectoryBusinessCache(
         rows,
@@ -828,6 +839,8 @@ export function BusinessManager({
                 ? t("Izmjene su poslane na pregled.")
                 : t("Nacrt je sačuvan."),
       );
+      // A new draft goes on to its photographs instead of back to the list.
+      if (wasNew && business.status === "draft") setPublishing({ business, step: 4 });
       setEditing(undefined);
     } catch (error) {
       if (!current(access) || controller.signal.aborted) return;
@@ -960,6 +973,8 @@ export function BusinessManager({
       setReturning(null);
       setReturnReason("");
       setNotice(mutationNotice(intent));
+      // Sent for review or published: the publishing steps are done.
+      setPublishing((current) => (current?.business.id === item.id ? null : current));
     } catch (error) {
       if (!current(access) || controller.signal.aborted) return;
       if (!uncertainDirectoryMutation(error)) forgetMutation();
@@ -1021,6 +1036,11 @@ export function BusinessManager({
     );
     setEditing((current) =>
       current?.id === manifest.businessId ? { ...current, ...patch } : current,
+    );
+    setPublishing((current) =>
+      current?.business.id === manifest.businessId
+        ? { ...current, business: { ...current.business, ...patch } }
+        : current,
     );
   }
   if (stayBusiness && expectedAccountId)
@@ -1106,6 +1126,108 @@ export function BusinessManager({
         }}
       />
     );
+  if (publishing) {
+    const draft = publishing.business;
+    const leave = () => {
+      setPublishing(null);
+      setRefresh((value) => value + 1);
+    };
+    const categoryName = (id: string | null) =>
+      categories.find((item) => item.id === id)?.name ?? null;
+    const card: PublicBusinessView = {
+      id: draft.id,
+      title: draft.title,
+      categoryName: categoryName(draft.categoryId),
+      subcategoryName: categoryName(draft.subcategoryId),
+      description: draft.description,
+      contactEmail: draft.contactEmail,
+      contactPhone: draft.contactPhone,
+      websiteUrl: draft.websiteUrl,
+      addressLine: draft.addressLine,
+      city: draft.city,
+      countryCode: draft.countryCode,
+      latitude: draft.latitude,
+      longitude: draft.longitude,
+      verified: false,
+      ...publicBusinessImages(draft.id, draft.media, (id, asset) =>
+        mediaImageUrl(id, asset, "mine"),
+      ),
+    };
+    const pictured = Boolean(card.image || card.logo);
+    return (
+      <div className={publishStyles.flow} data-publish-flow="">
+        <PublishHead step={publishing.step} onClose={leave} />
+        {publishing.step === 4 ? (
+          <>
+            <PublishIntro title={t("Slike")} text={t("Logo, naslovna i fotografije galerije.")} />
+            <BusinessMediaManager
+              key={draft.id}
+              businessId={draft.id}
+              businessTitle={draft.title}
+              active={active}
+              expectedAccountId={expectedAccountId}
+              request={mediaApi}
+              imageUrl={mediaImageUrl}
+              onAccessDenied={denied}
+              onChanged={mediaChanged}
+            />
+            <PublishBar>
+              <button
+                type="button"
+                data-kind="back"
+                onClick={() => {
+                  setPublishing(null);
+                  setEditing(draft);
+                }}
+              >
+                {t("Nazad")}
+              </button>
+              <button type="button" onClick={() => setPublishing({ business: draft, step: 5 })}>
+                {t("Dalje")}
+              </button>
+            </PublishBar>
+          </>
+        ) : (
+          <>
+            <PublishIntro
+              title={t("Ovako će izgledati")}
+              text={
+                isOwner
+                  ? t("Objava postaje vidljiva čim je objaviš.")
+                  : t("Administrator pregleda objavu prije nego što postane vidljiva.")
+              }
+            />
+            <div className={publishStyles.preview}>
+              <DirectoryResultCard preview business={card} />
+              <p className={publishStyles.ready} data-missing={pictured ? undefined : ""}>
+                <Icon name={pictured ? "check" : "info"} />
+                {pictured
+                  ? t("Podaci i slike su uneseni.")
+                  : t("Još nema slike. Kartica s fotografijom privlači više pogleda.")}
+              </p>
+              {error && (
+                <p className={styles.error} role="alert">
+                  {error}
+                </p>
+              )}
+            </div>
+            <PublishBar>
+              <button
+                type="button"
+                data-kind="back"
+                onClick={() => setPublishing({ business: draft, step: 4 })}
+              >
+                {t("Nazad")}
+              </button>
+              <button type="button" disabled={locked} onClick={() => void move(draft, "publish")}>
+                {busy ? t("Spremanje…") : isOwner ? t("Objavi") : t("Pošalji na pregled")}
+              </button>
+            </PublishBar>
+          </>
+        )}
+      </div>
+    );
+  }
   if (mediaBusiness)
     return (
       <BusinessMediaManager
