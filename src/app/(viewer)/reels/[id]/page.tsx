@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AhiLogo } from "../../../../components/brand/AhiLogo";
 import styles from "../../../../components/directory/public-search.module.css";
 import { ReelViewer } from "../../../../components/reels/ReelViewer";
 import { reelClosePath } from "../../../../lib/reel-navigation";
@@ -38,13 +38,7 @@ export default async function ReelPage({
           aria-label={t("AhiBizz — početna")}
           style={{ display: "inline-block", marginBottom: 24 }}
         >
-          <Image
-            src="/brand/ahi-logo-color.svg"
-            alt="AhiBizz"
-            width={148}
-            height={40}
-            unoptimized
-          />
+          <AhiLogo decorative />
         </Link>
         <section className={styles.unavailable}>
           <h1>{t("Ovaj Reel je istekao.")}</h1>

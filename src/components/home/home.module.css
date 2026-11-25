@@ -363,11 +363,11 @@
   padding-right: 80px;
   flex-shrink: 0;
 }
-.logoGroup img {
-  height: 32px;
+.logoGroup svg {
+  flex: none;
   width: 126px;
-  object-fit: contain;
-  filter: grayscale(1);
+  height: auto;
+  color: var(--ui-text);
 }
 @keyframes home-marquee {
   to {
@@ -406,18 +406,14 @@
     gap: 48px;
     padding-right: 48px;
   }
-  .logoGroup img {
+  .logoGroup svg {
     width: 108px;
-    height: 28px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .logoTrack {
     animation: none;
   }
-}
-:global(html[data-theme="dark"]) .logoGroup img {
-  filter: grayscale(1) brightness(0) invert(1);
 }
 :global(html[data-theme="dark"]) .logoTrack {
   opacity: 0.58;

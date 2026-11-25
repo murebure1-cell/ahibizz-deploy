@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
+import { AhiLogo } from "../components/brand/AhiLogo";
 import styles from "../components/directory/public-search.module.css";
 import { getTranslator } from "../server/i18n";
 
@@ -13,19 +13,11 @@ export default async function NotFound() {
     <main id="glavni-sadrzaj" className={styles.page}>
       <Link
         href="/"
-        // "brand" lets the dark theme switch the navy wordmark to white, as in the site header.
         className="brand"
         aria-label={t("AhiBizz — početna")}
         style={{ display: "inline-block", marginBottom: 24 }}
       >
-        <Image
-          src="/brand/ahi-logo-color.svg"
-          alt="AhiBizz"
-          width={148}
-          height={40}
-          unoptimized
-          priority
-        />
+        <AhiLogo decorative />
       </Link>
       <section className={styles.unavailable}>
         <h1>{t("Stranica nije pronađena.")}</h1>
