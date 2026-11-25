@@ -5,6 +5,7 @@ import {
   adminReturnPath,
   adminSection,
   adminSectionPath,
+  contentPaths,
   readAdminNavigation,
 } from "../src/lib/admin-navigation";
 
@@ -13,7 +14,6 @@ const sections = [
   ["odobrenja", "approvalQueue"],
   ["pregled", "businessQueue"],
   ["nalozi", "accounts"],
-  ["kategorije", "categories"],
   ["djelatnosti", "businesses"],
   ["recenzije", "reviews"],
 ] as const;
@@ -33,6 +33,29 @@ test("known administrative panes round-trip through browser and server query par
   assert.equal(adminReturnPath("/administracija/uvoz-prijava"), "/administracija/uvoz-prijava");
   assert.equal(adminReturnPath("/administracija/lokacije"), "/administracija/lokacije");
   assert.equal(adminReturnPath("/administracija/emailovi"), "/administracija/emailovi");
+});
+
+test("content pages have their own closed paths and the old ones are no destinations", () => {
+  assert.deepEqual(contentPaths, {
+    home: "/sadrzaj",
+    articles: "/sadrzaj/clanci",
+    design: "/sadrzaj/izgled",
+    designFrame: "/sadrzaj/izgled/pregled",
+    categories: "/sadrzaj/kategorije",
+  });
+  for (const path of ["/sadrzaj", "/sadrzaj/clanci", "/sadrzaj/izgled", "/sadrzaj/kategorije"])
+    assert.equal(adminReturnPath(path), path);
+  for (const path of [
+    "/administracija/blog",
+    "/administracija/izgled",
+    "/administracija?odjeljak=kategorije",
+    "/sadrzaj/",
+    "/sadrzaj/izgled/pregled",
+    "/sadrzaj/clanci?uredi=primjer",
+    "/sadrzaj/nepoznato",
+  ])
+    assert.equal(adminReturnPath(path), null, path);
+  assert.equal(adminSection("kategorije"), "today");
 });
 
 test("unknown, duplicate and prototype query values cannot select another administrative pane", () => {
@@ -101,11 +124,11 @@ test("login destinations accept only the exact closed administrative paths", () 
 
 test("a pane selection produces a canonical address without old query values or anchors", () => {
   const previous = new URL(
-    "/administracija?odjeljak=kategorije&next=https://evil.invalid#stale",
+    "/administracija?odjeljak=nalozi&next=https://evil.invalid#stale",
     "https://fixture.invalid",
   );
   const next = adminSectionPath(readAdminNavigation(previous.searchParams));
-  assert.equal(next, "/administracija?odjeljak=kategorije");
+  assert.equal(next, "/administracija?odjeljak=nalozi");
   for (const value of ["constructor", "__proto__", "//evil.invalid", "billing&role=owner"])
     assert.equal(adminSectionPath(value as AdminSection), "/administracija?odjeljak=danas");
 });

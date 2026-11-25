@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { contentPaths } from "../../lib/admin-navigation";
 import { AccountAccessError } from "../../server/auth/accounts";
 import { getContentHub } from "../../server/content-hub";
 
@@ -32,6 +33,6 @@ export async function saveBlogArticle(_: SaveResult, form: FormData): Promise<Sa
   }
   revalidatePath("/blog");
   revalidatePath(`/blog/${slug}`);
-  revalidatePath("/administracija/blog");
-  redirect(`/administracija/blog?uredi=${slug}&sacuvano=1#uredi`);
+  revalidatePath(contentPaths.articles);
+  redirect(`${contentPaths.articles}?uredi=${slug}&sacuvano=1#uredi`);
 }

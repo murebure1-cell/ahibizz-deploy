@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { contentPaths } from "../../lib/admin-navigation";
 import {
   type DesignVariant,
   defaultVisualDesign,
@@ -226,7 +227,7 @@ export function VisualDesigner({ initial, actor }: { initial: VisualDesignState;
     <main id="glavni-sadrzaj" className={styles.editor}>
       <header className={styles.head}>
         <div>
-          <a href="/administracija">Administracija</a>
+          <a href={contentPaths.home}>Sadržaj</a>
           <h1>Uređivač izgleda</h1>
         </div>
         <div className={styles.actions}>

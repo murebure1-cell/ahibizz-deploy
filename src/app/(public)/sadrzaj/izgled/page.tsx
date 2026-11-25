@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { VisualDesigner } from "../../../../components/design/VisualDesigner";
+import { contentPaths } from "../../../../lib/admin-navigation";
 import { AccountAccessError } from "../../../../server/auth/accounts";
 import { getVisualDesignStore } from "../../../../server/visual-design-store";
 
@@ -16,13 +17,13 @@ export default async function DesignPage() {
     }
   } catch (error) {
     if (error instanceof AccountAccessError && error.status === 401)
-      redirect("/prijava?nastavi=%2Fadministracija%2Fizgled");
+      redirect(`/prijava?nastavi=${encodeURIComponent(contentPaths.design)}`);
     if (error instanceof AccountAccessError && error.status === 403) redirect("/nalog");
   }
   return (
     <main className="container" id="glavni-sadrzaj">
       <h1>Uređivač trenutno nije dostupan.</h1>
-      <Link href="/administracija">Administracija</Link>
+      <Link href={contentPaths.home}>Sadržaj</Link>
     </main>
   );
 }

@@ -39,12 +39,13 @@ test("eligible sign-in shortcuts use only closed paths and preserve owner admin 
     "/administracija/lokacije",
     "/administracija/emailovi",
     "/administracija/zahtjevi",
-    "/administracija/izgled",
+    "/sadrzaj",
+    "/sadrzaj/izgled",
     "/administracija?odjeljak=danas",
     "/administracija?odjeljak=odobrenja",
     "/administracija?odjeljak=pregled",
     "/administracija?odjeljak=nalozi",
-    "/administracija?odjeljak=kategorije",
+    "/sadrzaj/kategorije",
     "/administracija?odjeljak=djelatnosti",
   ]) {
     assert.equal(signedInReturnPath(owner, path), path);
