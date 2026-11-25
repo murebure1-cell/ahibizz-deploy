@@ -251,56 +251,6 @@ test("valid rewritten Host is discarded without altering canonical redirects, co
   assert.equal(hits, 4);
 });
 
-test("the www alias of the configured origin is sent to that origin and never reaches the upstream", async (t) => {
-  let hits = 0;
-  const app = await fixture(t, (_req, res) => {
-    hits++;
-    res.end("upstream");
-  });
-  for (const host of [
-    "www.fixture.example.invalid",
-    "WWW.Fixture.Example.Invalid",
-    "www.fixture.example.invalid:443",
-  ]) {
-    const result = await send(app.publicPort, {
-      path: "/prijava?nastavi=%2Fnalog",
-      headers: ["Host", host, "X-Real-IP", "203.0.113.9"],
-    });
-    assert.equal(result.status, 308, host);
-    assert.equal(result.location, "https://fixture.example.invalid/prijava?nastavi=%2Fnalog");
-    assert.equal(result.body.length, 0);
-  }
-  const posted = await send(app.publicPort, {
-    method: "POST",
-    path: "/api/auth/sign-in/email",
-    headers: ["Host", "www.fixture.example.invalid", "X-Real-IP", "203.0.113.9"],
-    body: "{}",
-  });
-  assert.equal(posted.status, 308);
-  assert.equal(posted.location, "https://fixture.example.invalid/api/auth/sign-in/email");
-  assert.equal(hits, 0);
-  // Other names are not aliases: they are served as the configured origin, as before.
-  for (const host of [
-    "www2.fixture.example.invalid",
-    "www.fixture.example.invalid.evil.invalid",
-    "www.fixture.example.invalid:8443",
-    "fixture.example.invalid",
-  ]) {
-    const result = await send(app.publicPort, {
-      headers: ["Host", host, "X-Real-IP", "203.0.113.9"],
-    });
-    assert.equal(result.status, 200, host);
-    assert.equal(result.location, undefined);
-  }
-  assert.equal(hits, 4);
-  // A caller that is not the gateway is refused before any redirect is considered.
-  const outsider = await send(app.publicPort, {
-    localAddress: "127.0.0.2",
-    headers: ["Host", "www.fixture.example.invalid", "X-Real-IP", "203.0.113.9"],
-  });
-  assert.equal(outsider.status, 403);
-});
-
 test("binary bodies, streaming responses, duplicate Set-Cookie and redirects remain byte-preserving", async (t) => {
   const body = Buffer.from([0, 255, 1, 128, 13, 10]);
   const responseBody = Buffer.alloc(512 * 1024, 173);

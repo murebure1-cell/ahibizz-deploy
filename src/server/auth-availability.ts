@@ -8,6 +8,15 @@ export function authenticationAvailable(): boolean {
   }
 }
 
+/** The one public address sign-in works on, or null while authentication is not configured. */
+export function configuredOrigin(): string | null {
+  try {
+    return readAuthConfiguration()?.baseURL ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** True only when a valid Google client pair is configured on the server. */
 export function googleSignInAvailable(): boolean {
   try {
