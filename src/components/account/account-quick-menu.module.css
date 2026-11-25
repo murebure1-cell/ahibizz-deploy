@@ -143,20 +143,12 @@
 .publish .row:hover {
   background: var(--ui-surface-hover);
 }
-.links {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3px;
-}
-.links .row,
 .publish .row {
   grid-template-columns: 17px minmax(0, 1fr);
 }
-.links .chevron,
 .publish .chevron {
   display: none;
 }
-.links svg,
 .publish svg {
   width: 16px;
   height: 16px;
@@ -167,23 +159,6 @@
   border-top: 1px solid var(--line);
   padding-top: 10px;
 }
-.preferences fieldset {
-  border: 0;
-  margin: 0;
-  padding: 0;
-}
-.preferences legend {
-  margin-bottom: 4px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ui-text-secondary);
-}
-.themes {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-}
-.themes button,
 .logout {
   min-height: 37px;
   border: 1px solid var(--line);
@@ -211,10 +186,6 @@
   font: inherit;
   font-size: 14px;
   font-weight: 650;
-}
-.themes button[aria-pressed="true"] {
-  background: var(--gold-soft);
-  color: var(--ui-accent-text);
 }
 .logout {
   justify-self: start;

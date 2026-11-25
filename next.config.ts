@@ -8,16 +8,7 @@ export function createNextConfig(distribution: string): NextConfig {
   return {
     env: { NEXT_PUBLIC_AHIBIZZ_DISTRIBUTION: distribution },
     async rewrites() {
-      const webOnlyRoutes = [
-        "/paketi",
-        "/oglasavanje",
-        "/naplata",
-        "/podrzi",
-        "/istakni",
-        "/nalog/isticanja",
-        "/api/checkout",
-        "/api/paketi",
-      ];
+      const webOnlyRoutes = ["/naplata", "/podrzi", "/api/checkout"];
       return {
         beforeFiles:
           distribution === "google-play"

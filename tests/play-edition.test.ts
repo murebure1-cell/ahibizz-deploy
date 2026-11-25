@@ -12,18 +12,7 @@ test("Play build closes every purchase route while the web build keeps its route
   assert.ok(routes.beforeFiles);
   assert.deepEqual(
     routes.beforeFiles.map((route) => route.source).sort(),
-    [
-      "/paketi",
-      "/oglasavanje",
-      "/naplata",
-      "/podrzi",
-      "/istakni",
-      "/nalog/isticanja",
-      "/api/checkout",
-      "/api/paketi",
-    ]
-      .map((path) => `${path}/:path*`)
-      .sort(),
+    ["/naplata", "/podrzi", "/api/checkout"].map((path) => `${path}/:path*`).sort(),
   );
   assert.ok(routes.beforeFiles.every((route) => route.destination === "/store-unavailable"));
   assert.deepEqual(await createNextConfig("web").rewrites?.(), {

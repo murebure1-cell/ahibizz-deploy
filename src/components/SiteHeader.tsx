@@ -17,7 +17,7 @@ import {
   type NavigationDestination,
 } from "../lib/header-navigation";
 import { msg } from "../lib/i18n/translate";
-import { AccountQuickMenu } from "./account/AccountQuickMenu";
+import { AccountMenuFooter, AccountQuickMenu } from "./account/AccountQuickMenu";
 import { Icon } from "./Icon";
 import { useT } from "./i18n/LocaleProvider";
 import { useOptionalAppPwa } from "./pwa/AppPwa";
@@ -215,12 +215,6 @@ export function SiteHeader({
               account={account}
               close={closeMenu}
               currentHref={currentHref}
-              supportAvailable={supportAvailable}
-              confirmed={(next) =>
-                setSummary((current) =>
-                  typeof current === "object" && current.id === next.id ? next : current,
-                )
-              }
             />
           )}
           {account ? (
@@ -259,6 +253,9 @@ export function SiteHeader({
             </summary>
             {more.map(destination)}
           </details>
+          {account && (
+            <AccountMenuFooter key={`footer-${account.id}`} account={account} close={closeMenu} />
+          )}
           {access === "guest" && (
             <div className="header-access">
               {accessLinks.map((link) => (

@@ -109,7 +109,6 @@ export function SimulatorScreens({
         featuredHref="/pretraga"
         featured={cardList}
         newest={cardList.slice(0, 1)}
-        advertisingHref="/nalog?odjeljak=oglasi"
         nearbyControl={<span>Tuzla</span>}
         nearby={<HomeBusinessRail label="Djelatnosti u blizini" cards={cardList.slice(1)} />}
       />

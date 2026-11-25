@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { rich } from "../../../components/i18n/Rich";
 import styles from "../../../components/support/resources.module.css";
-import { IS_PLAY_EDITION } from "../../../lib/distribution";
 import { supportEmail } from "../../../lib/support-requests";
 import { getTranslator, titled } from "../../../server/i18n";
 
@@ -126,13 +125,7 @@ export default async function PrivacyPage() {
             "OctaDeploy za hosting aplikacije i baze podataka, pružalac email usluge, push servis preglednika ili telefona, Photon (komoot) za adrese te Google Maps ili OpenStreetMap za karte. Aplikacija ne koristi oglasni identifikator uređaja.",
           )}
         </p>
-        <p>
-          {IS_PLAY_EDITION
-            ? t("Aplikacija nema kupovina ni plaćanja.")
-            : t(
-                "Plaćanje isticanja na webu ide bankovnom uplatom. Android aplikacija nema kupovina ni plaćanja.",
-              )}
-        </p>
+        <p>{t("Aplikacija nema kupovina ni plaćanja.")}</p>
       </section>
 
       <section className={styles.section}>

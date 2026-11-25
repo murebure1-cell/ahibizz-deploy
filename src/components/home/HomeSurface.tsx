@@ -2,7 +2,6 @@ import Form from "next/form";
 import Image from "next/image";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
-import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { HomeCategory } from "../../lib/home";
 import { msg, type Translate, translator } from "../../lib/i18n/translate";
 import {
@@ -117,21 +116,6 @@ export function HomeNearbySection({
   );
 }
 
-function HomeArtwork({ kind }: { kind: "promotion" }) {
-  return (
-    <div className={styles.artwork} aria-hidden="true">
-      <Image
-        src={`/brand/home-${kind}-20261121.webp`}
-        alt=""
-        fill
-        sizes="(max-width: 700px) calc(100vw - 40px), (max-width: 1252px) calc(100vw - 72px), 1180px"
-        loading="lazy"
-        fetchPriority="low"
-      />
-    </div>
-  );
-}
-
 /** The live directory and the isolated fixture use one visual surface with separate data adapters. */
 export function HomeSurface({
   design = defaultVisualDesign(),
@@ -146,8 +130,6 @@ export function HomeSurface({
   nearby,
   nearbyControl,
   nearbyBefore,
-  advertisingHref,
-  banner,
   slots,
   after,
   t = translator("bs"),
@@ -165,15 +147,11 @@ export function HomeSurface({
   nearby?: ReactNode;
   nearbyControl?: ReactNode;
   nearbyBefore?: ReactNode;
-  advertisingHref: string;
-  banner?: { id: string; title: string; city: string; image: string | null } | null;
   slots?: {
     categories?: ReactNode;
     featured?: ReactNode;
     newest?: ReactNode;
     nearby?: ReactNode;
-    floatingAd?: ReactNode;
-    inlineAd?: (fallback: ReactNode) => ReactNode;
   };
   after?: ReactNode;
 }) {
@@ -201,41 +179,6 @@ export function HomeSurface({
         {discovery}
       </div>
     ),
-    ad: (Boolean(banner) || !IS_PLAY_EDITION) && (
-      <section
-        className={`${styles.container} ${styles.ad}`}
-        aria-label={t("Oglasni prostor")}
-        data-design="home-ad"
-      >
-        {banner?.image && (
-          <div aria-hidden="true" className={styles.sponsorBackdrop}>
-            <Image
-              src={banner.image}
-              alt=""
-              fill
-              unoptimized
-              sizes="(max-width: 800px) 100vw, 1100px"
-            />
-          </div>
-        )}
-        <div className={banner?.image ? styles.adOnPhoto : undefined}>
-          <span className={styles.kicker}>{banner ? t("SPONZORIRANO") : t("OGLASNI PROSTOR")}</span>
-          <h2>{banner?.title || t(titles.ad || msg("Tvoj posao.\nNa pravom mjestu."))}</h2>
-          {banner?.city && <small>{banner.city}</small>}
-        </div>
-        <Link
-          href={banner ? `/djelatnosti/${banner.id}` : advertisingHref}
-          className={`${styles.button} ${styles.buttonDark}`}
-        >
-          {banner ? t("Pogledaj djelatnost") : t("Oglasi se")} <Icon name="chevron" />
-        </Link>
-        {!banner && (
-          <span className={styles.adMark} aria-hidden="true">
-            a.
-          </span>
-        )}
-      </section>
-    ),
     nearby: slots?.nearby ?? (
       <HomeNearbySection
         title={t(titles.nearby || msg("Djelatnosti u blizini"))}
@@ -246,24 +189,7 @@ export function HomeSurface({
       </HomeNearbySection>
     ),
     logos: <HomeLogoMarquee title={titles.logos ? t(titles.logos) : undefined} t={t} />,
-    promotion: !IS_PLAY_EDITION && (
-      <section
-        className={`${styles.container} ${styles.callout}`}
-        data-design="home-promotion"
-        aria-labelledby="promotion-heading"
-      >
-        <HomeArtwork kind="promotion" />
-        <Link href="/istakni" className={styles.calloutLink} aria-labelledby="promotion-heading">
-          <span aria-hidden="true" className={styles.calloutIcon}>
-            <Icon name="star" />
-          </span>
-          <h2 id="promotion-heading">{t(titles.promotion || msg("Istakni svoju djelatnost"))}</h2>
-          <Icon name="chevron" className={styles.calloutArrow} />
-        </Link>
-      </section>
-    ),
   };
-  const hasAd = design.homeOrder.includes("ad");
 
   return (
     <main id="glavni-sadrzaj" className={styles.home}>
@@ -318,11 +244,8 @@ export function HomeSurface({
         </div>
       </section>
       {slots?.categories ?? <HomeCategories t={t} categories={categories} />}
-      {hasAd && slots?.floatingAd}
       {design.homeOrder.map((id) => (
-        <Fragment key={id}>
-          {id === "ad" && slots?.inlineAd ? slots.inlineAd(sections.ad) : sections[id]}
-        </Fragment>
+        <Fragment key={id}>{sections[id]}</Fragment>
       ))}
       {after}
     </main>

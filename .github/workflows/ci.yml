@@ -49,7 +49,7 @@ jobs:
           node -e '
             const rewrites = require("./.next/routes-manifest.json").rewrites.beforeFiles;
             const closed = new Set(rewrites.filter((r) => r.destination === "/store-unavailable").map((r) => r.source));
-            const required = ["/istakni", "/nalog/isticanja", "/paketi", "/oglasavanje", "/naplata", "/podrzi"];
+            const required = ["/naplata", "/podrzi"];
             const missing = required.filter((path) => !closed.has(path + "/:path*"));
             if (missing.length) { console.error("Play build leaves purchase pages open: " + missing.join(", ")); process.exit(1); }
             console.log("Play edition: " + closed.size + " purchase routes closed.");
@@ -144,12 +144,6 @@ jobs:
           CI: "true"
           AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
         run: node --import tsx --test tests/integration/reels.test.mjs
-      - name: Test promotions against isolated PostgreSQL
-        timeout-minutes: 3
-        env:
-          CI: "true"
-          AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
-        run: node --import tsx --test tests/integration/promotions.test.mjs
       - name: Build the production image
         run: docker build --pull --tag ahibizz:ci .
       - name: Scan the exact production image for high and critical vulnerabilities
