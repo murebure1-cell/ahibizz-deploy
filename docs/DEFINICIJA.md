@@ -134,8 +134,12 @@ Nova cjelina dobija isti raspored: `src/lib/<ime>.ts` (tipovi i putanje),
 
 Današnji meni se uklanja i postavlja iznova po ovome:
 
-- **Donja traka na telefonu (prijavljen):** Početna · Pretraga · Objavi · Poruke · Nalog.
-- **Zvono u zaglavlju:** obavijesti, s brojem nepročitanih.
+- **Donja traka na telefonu:** Početna · Pretraga · Objavi · Poruke · Nalog. Urađeno
+  25. 11. 2026., po crtežu koji je vlasnik odobrio; traka se prikazuje i gostu.
+- **Zvono u zaglavlju:** obavijesti, s brojem nepročitanih. Zvono je urađeno 25. 11. 2026. za
+  prijavljene; broj nepročitanih još nije.
+- **Stranica djelatnosti na telefonu:** bez zaglavlja; preko fotografije su nazad, podijeli,
+  sačuvaj i opcije. Na računaru zaglavlje ostaje.
 - **Nalog (jedan ekran umjesto menija):** profil, moje djelatnosti, termini, sačuvano, postavke,
   pomoć, odjava. Jezik i tema su u postavkama.
 - **Gost:** Početna · Pretraga · Ljudi · Prijava.

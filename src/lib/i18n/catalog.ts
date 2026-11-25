@@ -442,6 +442,12 @@ const shell: Record<string, CatalogEntry> = {
   Otvoreno: e("Open", "Geöffnet", "مفتوح", "Açık"),
   Zatvoreno: e("Closed", "Geschlossen", "مغلق", "Kapalı"),
   "Sadržaji i pogodnosti": e("Amenities", "Ausstattung", "المرافق والمزايا", "Olanaklar"),
+  "Otvoreno do {time}": e(
+    "Open until {time}",
+    "Geöffnet bis {time}",
+    "مفتوح حتى {time}",
+    "{time} saatine kadar açık",
+  ),
   "{count} recenzije": e(
     "{count} {count|review|reviews}",
     "{count} {count|Bewertung|Bewertungen}",

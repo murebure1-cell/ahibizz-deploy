@@ -1,13 +1,12 @@
 .profile {
-  width: min(1160px, calc(100% - 48px));
+  width: min(1160px, 100%);
   margin-inline: auto;
-  padding-block: 24px 64px;
+  padding-block: 0 56px;
   color: var(--ui-text);
 }
 
 .profile[data-embedded="true"] {
   width: 100%;
-  padding-top: 0;
 }
 
 .profile section,
@@ -15,97 +14,135 @@
   scroll-margin-top: 96px;
 }
 
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding-bottom: 20px;
-  color: var(--ui-text-secondary);
-  font-size: 13px;
-}
-
-.breadcrumb a {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 35px;
-}
-
-.breadcrumb a:hover {
-  color: var(--ui-text);
-}
-
-.breadcrumb svg {
-  width: 16px;
-  height: 16px;
-  transform: rotate(180deg);
-}
-
-.breadcrumb > span {
-  overflow-wrap: anywhere;
-  text-align: right;
-}
-
+/* Cover: the photo runs edge to edge and fades out toward the card that overlaps it. */
 .cover {
   position: relative;
   display: grid;
   place-items: center;
-  height: 148px;
-  overflow: hidden;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-xl);
+  height: 200px;
   background: var(--ui-ink);
 }
 
-.cover[data-photo="true"]::after {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 45%;
-  background: linear-gradient(transparent, #0b0d104f);
-  content: "";
-}
-
 .cover[data-photo="true"] {
-  height: 330px;
-  border: 0;
+  height: clamp(268px, 32vw, 400px);
+  background: transparent;
 }
 
 .cover > img {
   object-fit: cover;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 42%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 42%, transparent 100%);
+}
+
+/* A light veil at the top keeps the round controls readable on any photo. */
+.cover[data-photo="true"]::before {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ui-page) 30%, transparent) 0%,
+    transparent 45%
+  );
+  content: "";
+  pointer-events: none;
 }
 
 .cover > .brandMark {
-  margin-bottom: 14px;
+  margin-bottom: 40px;
   object-fit: contain;
   opacity: 0.69;
 }
 
+.coverBar {
+  position: absolute;
+  inset: 16px 16px auto;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.coverActions {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+
+.coverControl {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--ui-over-line);
+  border-radius: 50%;
+  background: var(--ui-over);
+  color: var(--ui-text);
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  transition: scale 160ms var(--ease-out);
+}
+
+.coverControl:active {
+  scale: 0.94;
+}
+
+.coverControl svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* The back control points against the reading direction. */
+a.coverControl > svg[data-icon="arrow"] {
+  rotate: 180deg;
+}
+
+.shareStatus {
+  position: absolute;
+  top: 52px;
+  inset-inline-end: 0;
+  max-width: min(280px, 80vw);
+  padding: 8px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface-raised);
+  color: var(--ui-text);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.shareStatus:empty {
+  display: none;
+}
+
+/* Identity: one glass card over the lower edge of the cover. */
 .identity {
   position: relative;
-  z-index: 1;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  max-width: 720px;
+  margin: -56px 16px 0;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--ui-text) 12%, transparent);
+  border-radius: var(--ui-radius-xl);
+  background: var(--ui-glass);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+.identityTop {
   display: flex;
   align-items: center;
-  gap: 23px;
+  gap: 14px;
   min-width: 0;
-  margin: -27px 23px 0;
-  padding: 26px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-lg);
-  background: var(--ui-surface);
-  box-shadow: 0 7px 25px #0e121805;
-}
-.reviewLink {
-  display: inline-flex;
-  min-height: 44px;
-  margin-top: 10px;
-  color: var(--ui-text-secondary);
-}
-.reviewLink:focus-visible {
-  outline: 2px solid var(--ui-accent-border);
-  outline-offset: 4px;
 }
 
 .logo {
@@ -113,16 +150,15 @@
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 72px;
-  height: 72px;
+  width: 54px;
+  height: 54px;
   overflow: hidden;
-  border: 1px solid var(--ui-accent-border);
-  border-radius: var(--ui-radius-lg);
+  border-radius: 50%;
   background: var(--ui-ink);
   color: var(--ui-ink-accent);
-  font-size: 24px;
-  font-weight: 600;
-  letter-spacing: -0.04em;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .logo img {
@@ -130,54 +166,81 @@
 }
 
 .title {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
-}
-
-.category {
-  margin-bottom: 8px;
-  color: var(--ui-accent-text);
-  font-size: 12px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
 }
 
 .title :is(h1, h2) {
   color: var(--ui-text);
-  font-size: clamp(28px, 3.4vw, 38px);
-  line-height: 1.12;
+  font-size: clamp(21px, 2.4vw, 28px);
+  font-weight: 800;
+  line-height: 1.24;
+  letter-spacing: -0.02em;
   overflow-wrap: anywhere;
 }
 
-.locationSummary {
-  display: flex;
-  align-items: start;
-  gap: 6px;
-  margin-top: 12px;
-  color: var(--ui-text-secondary);
+.summary {
+  color: var(--ui-muted);
   font-size: 13px;
-  line-height: 1.7;
+  line-height: 18px;
   overflow-wrap: anywhere;
 }
 
-.locationSummary svg {
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-  margin-top: 3px;
-  color: var(--ui-accent-text);
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.facts:empty {
+  display: none;
+}
+
+.facts > a:empty {
+  display: none;
+}
+
+/* A middle dot between the facts, as in a sentence. */
+.facts > :not(:empty) ~ :not(:empty)::before {
+  margin-inline-end: 12px;
+  color: var(--ui-muted);
+  content: "·";
+}
+
+.reviewLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  color: var(--ui-text);
+}
+
+.reviewLink:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 4px;
 }
 
 .quickActions {
-  display: flex;
-  align-items: stretch;
-  flex-wrap: wrap;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 8px;
-  margin-left: auto;
 }
 
-.quickActions:empty {
+.quickActions:empty,
+.extraActions:empty {
   display: none;
+}
+
+.extraActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .primary,
@@ -186,124 +249,132 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  min-height: 45px;
-  padding: 11px 17px;
+  gap: 7px;
+  min-width: 0;
+  height: 48px;
+  padding-inline: 10px;
   border: 1px solid var(--ui-accent);
-  border-radius: var(--ui-radius-sm);
+  border-radius: var(--ui-radius-md);
   background: var(--ui-accent);
   color: var(--ui-on-accent);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 800;
+  transition:
+    background-color 150ms ease,
+    scale 160ms var(--ease-out);
 }
 
-.primary:hover {
-  background: var(--ui-accent);
+.primary:active,
+.secondary:active {
+  scale: 0.97;
 }
 
 .secondary {
-  border-color: var(--ui-border);
-  background: var(--ui-surface);
-  color: var(--ui-text-secondary);
+  border-color: color-mix(in srgb, var(--ui-text) 18%, transparent);
+  background: transparent;
+  color: var(--ui-text);
+  font-weight: 700;
 }
 
-.secondary:hover {
-  background: var(--ui-surface-hover);
+@media (hover: hover) and (pointer: fine) {
+  .primary:hover {
+    background: var(--ui-accent-hover);
+  }
+
+  .secondary:hover {
+    background: var(--ui-surface-hover);
+  }
 }
 
 .primary svg,
 .secondary svg {
   flex-shrink: 0;
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
 }
 
+/* Jump links: a row of chips that scrolls sideways when it does not fit. */
 .sectionNavigation {
   display: flex;
-  gap: 32px;
-  margin-block: 24px 30px;
-  padding-inline: 3px;
+  gap: 8px;
+  margin: 18px 16px 20px;
   overflow-x: auto;
-  border-bottom: 1px solid var(--ui-border);
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+
+.sectionNavigation::-webkit-scrollbar {
+  display: none;
 }
 
 .sectionNavigation a {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  min-height: 49px;
-  padding-block: 10px;
-  border-bottom: 2px solid transparent;
-  color: var(--ui-text-secondary);
-  font-size: 14px;
-  font-weight: 500;
+  height: 36px;
+  padding-inline: 13px;
+  border: 1px solid color-mix(in srgb, var(--ui-text) 16%, transparent);
+  border-radius: 999px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.sectionNavigation a:hover,
-.sectionNavigation a:focus-visible {
-  border-bottom-color: var(--ui-accent-border);
-  color: var(--ui-text);
+@media (hover: hover) and (pointer: fine) {
+  .sectionNavigation a:hover {
+    border-color: var(--ui-accent-border);
+  }
 }
 
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 318px;
   align-items: start;
-  gap: 26px;
+  gap: 16px;
+  margin-inline: 16px;
 }
 
 .details {
   display: grid;
-  gap: 24px;
+  gap: 14px;
   min-width: 0;
 }
 
 .section,
 .contact {
   min-width: 0;
-  padding: 29px;
+  padding: 18px;
   border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-lg);
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-surface);
 }
 
 .sectionHeading,
 .contactHeading {
   display: flex;
-  align-items: center;
-  gap: 11px;
-  margin-bottom: 23px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .sectionHeading h2,
 .contactHeading h2 {
   color: var(--ui-text);
-  font-size: 23px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+  letter-spacing: -0.01em;
 }
 
-.sectionHeading > span,
-.contactHeading > span {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 33px;
-  height: 33px;
-  border-radius: var(--ui-radius-sm);
-  background: var(--ui-surface-soft);
-  color: var(--ui-accent-text);
-}
-
-.sectionHeading svg,
-.contactHeading svg {
-  width: 17px;
-  height: 17px;
+.description + ul {
+  margin-top: 14px;
 }
 
 .description {
   color: var(--ui-text-secondary);
   font-size: 15px;
-  line-height: 1.9;
+  line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -504,15 +575,6 @@
 .contact {
   position: sticky;
   top: 96px;
-  padding: 25px;
-}
-
-.contactHeading {
-  margin-bottom: 17px;
-}
-
-.contactHeading h2 {
-  font-size: 21px;
 }
 
 .contactRow {
@@ -588,26 +650,9 @@
 }
 
 .profileOptions {
-  position: absolute;
-  z-index: 2;
-  top: 12px;
-  right: 12px;
+  position: relative;
 }
 .profileOptions summary {
-  display: grid;
-  place-items: center;
-  margin-left: auto;
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--ui-border);
-  border-radius: 50%;
-  color: var(--ui-text);
-  background: var(--ui-surface);
-  font:
-    bold 16px / 1 Arial,
-    sans-serif;
-  letter-spacing: 1px;
-  cursor: pointer;
   list-style: none;
 }
 .profileOptions summary::-webkit-details-marker {
@@ -618,28 +663,28 @@
   outline-offset: 2px;
 }
 .reportLink {
+  position: absolute;
+  top: 52px;
+  inset-inline-end: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
   gap: 8px;
-  width: fit-content;
-  min-height: 44px;
-  margin-top: 6px;
+  width: max-content;
+  max-width: 80vw;
+  min-height: 48px;
   padding: 8px 14px;
-  border-radius: var(--ui-radius-sm);
+  border-radius: var(--ui-radius-md);
   border: 1px solid var(--ui-border);
-  background: var(--ui-surface);
+  background: var(--ui-surface-raised);
+  box-shadow: 0 14px 36px var(--ui-shadow);
   color: var(--ui-text);
   font-size: 15px;
   font-weight: 600;
   text-decoration: none;
 }
 .reportLink :where(svg) {
-  width: 15px;
-  height: 15px;
-}
-.reportLink:hover {
-  color: var(--ui-text);
+  width: 16px;
+  height: 16px;
 }
 
 .contactLocation svg:last-child {
@@ -649,143 +694,42 @@
 }
 
 @media (max-width: 980px) {
-  .identity {
-    flex-wrap: wrap;
-    gap: 18px;
-  }
-
-  .title {
-    flex-basis: calc(100% - 100px);
-  }
-
-  .quickActions {
-    margin: 0 0 0 90px;
-  }
-
   .layout {
     grid-template-columns: minmax(0, 1fr) 280px;
-    gap: 20px;
-  }
-
-  .section {
-    padding: 25px;
-  }
-
-  .contact {
-    padding: 22px;
+    gap: 16px;
   }
 }
 
 @media (max-width: 760px) {
   .profile {
-    width: calc(100% - 32px);
-    padding-top: 13px;
-    padding-bottom: 44px;
-  }
-
-  .breadcrumb {
-    padding-bottom: 13px;
-    font-size: 12px;
-  }
-
-  .cover {
-    height: 116px;
-    border-radius: var(--ui-radius-lg);
-  }
-
-  .cover[data-photo="true"] {
-    height: 220px;
-  }
-
-  .identity {
-    gap: 14px;
-    margin: -22px 10px 0;
-    padding: 20px 17px;
-    border-radius: var(--ui-radius-md);
-  }
-
-  .logo {
-    width: 60px;
-    height: 60px;
-    border-radius: var(--ui-radius-md);
-    font-size: 21px;
-  }
-
-  .title {
-    flex-basis: calc(100% - 74px);
-  }
-
-  .title :is(h1, h2) {
-    font-size: 27px;
-  }
-
-  .category {
-    margin-bottom: 7px;
-    font-size: 12px;
-  }
-
-  .locationSummary {
-    margin-top: 10px;
-    font-size: 12px;
-  }
-
-  .quickActions {
-    width: 100%;
-    margin: 4px 0 0;
-  }
-
-  .quickActions > a,
-  .quickActions > button {
-    flex: 1;
-    gap: 6px;
-    padding-inline: 10px;
-  }
-
-  .sectionNavigation {
-    gap: 27px;
-    margin-block: 16px 22px;
-  }
-
-  .sectionNavigation a {
-    min-height: 46px;
-    font-size: 13px;
+    padding-bottom: 40px;
   }
 
   .layout {
     grid-template-columns: minmax(0, 1fr);
-    gap: 20px;
-  }
-
-  .details {
-    gap: 20px;
-  }
-
-  .section,
-  .contact {
-    padding: 24px 21px;
-    border-radius: var(--ui-radius-md);
-  }
-
-  .sectionHeading,
-  .contactHeading {
-    margin-bottom: 20px;
-  }
-
-  .sectionHeading h2 {
-    font-size: 22px;
-  }
-
-  .description {
-    font-size: 14px;
-    line-height: 1.9;
-  }
-
-  .address {
-    font-size: 13px;
   }
 
   .contact {
     position: static;
+  }
+}
+
+@media (min-width: 761px) {
+  .layout {
+    margin-inline: 24px;
+  }
+
+  .cover[data-photo="true"] > img {
+    border-radius: 0 0 var(--ui-radius-xl) var(--ui-radius-xl);
+  }
+
+  .identity {
+    margin-inline: 24px;
+    padding: 22px;
+  }
+
+  .sectionNavigation {
+    margin-inline: 24px;
   }
 }
 

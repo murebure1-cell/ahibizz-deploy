@@ -117,9 +117,7 @@ export function SimulatorScreens({
   if (screen === "search")
     return (
       <main className={search.page}>
-        <header className={search.intro}>
-          <h1>Pretraga djelatnosti</h1>
-        </header>
+        <h1 className={search.srOnly}>Pretraga djelatnosti</h1>
         <DirectorySearchForm
           query=""
           city=""

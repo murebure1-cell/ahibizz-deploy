@@ -170,6 +170,12 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   kartice 24 px, oznake potpuno zaobljene.
 - **Donja traka:** lebdi iznad sadržaja, samo ikone, tačka ispod trenutne i krug u boji akcenta za
   objavu.
+- **Kartica djelatnosti [urađeno 25. 11. 2026.]:** fotografija s gradacijom, srce i stanje
+  („Otvoreno do 22:00” ili „Zatvoreno”) preko nje, ocjena na pločici u boji akcenta, logo na rubu
+  fotografije, naziv s oznakom verifikacije, mjesto, dva reda opisa, sadržaji kao kružići i tri
+  radnje u dnu. Nivo cijena je na crtežu, ali podatak još ne postoji **[novo]**.
+- **Početna, pretraga i stranica djelatnosti [urađeno 25. 11. 2026.]:** po crtežima; raspored na
+  širokom ekranu nije crtan i izveden je iz telefonskog.
 - **Zamućenje** samo na slojevima koji leže preko sadržaja: donja traka, meni, listovi koji
   izlaze odozdo, prelaz pri zamjeni slike. Ne na karticama.
 - **Pokret:** kratak (150–250 ms) i sa svrhom. Tačkice za „učitavam” i za „novo”.

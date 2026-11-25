@@ -2,26 +2,48 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 6px 11px;
-  border: 1px solid #ffffff80;
-  border-radius: var(--ui-radius-xl);
-  background: #f2f4f6f2;
-  color: #2a313b;
-  font-size: 12px;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--ui-over-line);
+  border-radius: 999px;
+  background: var(--ui-over);
+  color: var(--ui-muted);
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.4;
-  box-shadow: 0 3px 12px #0e121812;
-  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
 }
 .openStatus[data-open="true"] {
-  background: #dcf1ecf2;
-  color: #0b6459;
+  color: var(--ui-text);
 }
 .openStatus svg {
   width: 15px;
   height: 15px;
+}
+.openInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-muted);
+  font-weight: 700;
+}
+.openInline[data-open="true"] {
+  color: var(--ui-accent-text);
+}
+.openInline svg {
+  width: 14px;
+  height: 14px;
+}
+.openDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+}
+.openInline .openDot {
+  background: currentColor;
 }
 .amenities {
   display: flex;
@@ -44,11 +66,25 @@
   color: var(--ui-accent-text);
 }
 .amenities[data-compact] {
-  padding-top: 17px;
-  gap: 12px;
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
 }
 .amenities[data-compact] li {
   position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--ui-border);
+  border-radius: 50%;
+}
+.amenities:where([data-compact]) svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
 }
 .amenities[data-compact] li span {
   position: absolute;
@@ -69,6 +105,13 @@
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 15px;
+}
+/* On a card the pill is not over a photo, so it takes the card's own quiet surface. */
+.hoursHeader .openStatus {
+  border-color: var(--ui-border);
+  background: var(--ui-surface-soft);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 .hoursHeader small {
   color: var(--ui-text-secondary);

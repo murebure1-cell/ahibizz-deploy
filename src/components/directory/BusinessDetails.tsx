@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   type BusinessDetails,
   businessAmenities,
+  businessClosingMinute,
   businessOpenState,
   businessTimeLabel,
   businessWeekdays,
@@ -15,9 +16,12 @@ import styles from "./business-details.module.css";
 export function BusinessOpenStatus({
   details,
   checkedAt,
+  inline = false,
 }: {
   details?: BusinessDetails | null;
   checkedAt?: string;
+  /** Plain text in a line of facts instead of the pill that sits over a photo. */
+  inline?: boolean;
 }) {
   const t = useT();
   const [now, setNow] = useState<Date | null>(() => (checkedAt ? new Date(checkedAt) : null));
@@ -34,14 +38,23 @@ export function BusinessOpenStatus({
   }, [details]);
   const state = now ? businessOpenState(details, now) : null;
   if (state === null) return null;
+  const closing = now ? businessClosingMinute(details, now) : null;
   return (
     <span
-      className={styles.openStatus}
+      className={inline ? styles.openInline : styles.openStatus}
       data-open={state === "open"}
       title={details?.timezone ?? undefined}
     >
-      <Icon name="clock" />
-      {state === "open" ? t("Otvoreno") : t("Zatvoreno")}
+      {state === "open" ? (
+        <span className={styles.openDot} aria-hidden="true" />
+      ) : (
+        <Icon name="lock" />
+      )}
+      {state !== "open"
+        ? t("Zatvoreno")
+        : closing === null
+          ? t("Otvoreno")
+          : t("Otvoreno do {time}", { time: businessTimeLabel(closing) })}
     </span>
   );
 }

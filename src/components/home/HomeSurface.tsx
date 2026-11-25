@@ -72,12 +72,7 @@ export function HomeListingsSection({
       aria-labelledby={id}
     >
       <div className={styles.sectionHeading}>
-        <h2 id={id} className={styles.listingTitle}>
-          <span className={styles.sectionGlyph}>
-            <Icon name={kind === "newest" ? "plus" : "star"} />
-          </span>
-          {title}
-        </h2>
+        <h2 id={id}>{title}</h2>
         {href && (
           <Link href={href} className={styles.subtleLink}>
             {t("Sve djelatnosti")}
@@ -91,11 +86,14 @@ export function HomeListingsSection({
 
 export function HomeNearbySection({
   title,
+  mapLabel,
   control,
   before,
   children,
 }: {
   title: string;
+  /** The name of the link to the map; without it the heading stands alone. */
+  mapLabel?: string;
   control?: ReactNode;
   before?: ReactNode;
   children?: ReactNode;
@@ -108,8 +106,13 @@ export function HomeNearbySection({
     >
       <div className={styles.sectionHeading}>
         <h2 id="nearby-heading">{title}</h2>
-        {control}
+        {mapLabel && (
+          <Link href="/mapa" className={styles.subtleLink}>
+            {mapLabel}
+          </Link>
+        )}
       </div>
+      {control}
       {before}
       <div className={styles.nearbyGrid}>{children}</div>
     </section>
@@ -182,6 +185,7 @@ export function HomeSurface({
     nearby: slots?.nearby ?? (
       <HomeNearbySection
         title={t(titles.nearby || msg("Djelatnosti u blizini"))}
+        mapLabel={t("Karta")}
         control={nearbyControl}
         before={nearbyBefore}
       >
@@ -205,44 +209,39 @@ export function HomeSurface({
         />
         <div className={`${styles.container} ${styles.heroContent}`}>
           <h1 id="home-title" data-design="home-title">
-            {heroTitle.endsWith(".") ? (
-              <>
-                {heroTitle.slice(0, -1)}
-                <span>.</span>
-              </>
-            ) : (
-              heroTitle
-            )}
+            {heroTitle}
           </h1>
           {design.heroSubtitle && <p className={styles.heroSubtitle}>{t(design.heroSubtitle)}</p>}
-          <Form action={searchAction} className={styles.search} data-design="home-search">
-            <label>
-              <Icon name="search" />
-              <span className={styles.srOnly}>{t("Naziv ili usluga")}</span>
-              <input type="search" name="q" placeholder={t("Šta tražiš?")} maxLength={120} />
-            </label>
-            <label className={styles.searchPlace}>
-              <Icon name="pin" />
-              <span className={styles.srOnly}>{t("Grad ili mjesto")}</span>
-              <input
-                name={placeField}
-                placeholder={t("Grad ili mjesto")}
-                defaultValue={place}
-                maxLength={100}
-              />
-            </label>
-            <button
-              type="submit"
-              className={styles.searchSubmit}
-              aria-label={t("Pretraži djelatnosti")}
-              data-design="home-search-submit"
-            >
-              <Icon name="search" />
-              <span>{t("Pretraži")}</span>
-            </button>
-          </Form>
         </div>
       </section>
+      {/* The field sits on the photo's lower edge: what to find on the left, where on the right. */}
+      <div className={styles.container}>
+        <Form action={searchAction} className={styles.search} data-design="home-search">
+          <button
+            type="submit"
+            className={styles.searchSubmit}
+            aria-label={t("Pretraži djelatnosti")}
+            data-design="home-search-submit"
+          >
+            <Icon name="search" />
+          </button>
+          <label className={styles.searchQuery}>
+            <span className={styles.srOnly}>{t("Naziv ili usluga")}</span>
+            <input type="search" name="q" placeholder={t("Šta tražiš?")} maxLength={120} />
+          </label>
+          <label className={styles.searchPlace}>
+            <Icon name="pin" />
+            <span className={styles.srOnly}>{t("Grad ili mjesto")}</span>
+            <input
+              name={placeField}
+              placeholder={t("Grad")}
+              defaultValue={place}
+              maxLength={100}
+              autoComplete="address-level2"
+            />
+          </label>
+        </Form>
+      </div>
       {slots?.categories ?? <HomeCategories t={t} categories={categories} />}
       {design.homeOrder.map((id) => (
         <Fragment key={id}>{sections[id]}</Fragment>

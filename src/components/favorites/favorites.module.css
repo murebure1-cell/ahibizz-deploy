@@ -34,11 +34,12 @@
   width: 44px;
   height: 44px;
   padding: 11px;
-  border-color: #ffffff3d;
-  background: #0b0d10b3;
-  color: #fff;
+  border-color: var(--ui-over-line);
+  background: var(--ui-over);
+  color: var(--ui-text);
   border-radius: 50%;
-  box-shadow: 0 3px 12px #0e121822;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
 }
 .button[data-saved="true"] {
   color: var(--ui-accent-text);

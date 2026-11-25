@@ -1,5 +1,5 @@
 .section {
-  padding: clamp(20px, 4vw, 32px);
+  padding: 18px;
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-xl);
   background: var(--ui-surface);
@@ -13,8 +13,10 @@
 }
 .heading h2 {
   margin: 0;
-  font-size: 23px;
-  letter-spacing: -0.6px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+  letter-spacing: -0.01em;
 }
 .heading p {
   margin: 10px 0 0;
@@ -26,9 +28,9 @@
   color: var(--ui-text-secondary);
 }
 .refresh {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--ui-radius-md);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
   color: inherit;
