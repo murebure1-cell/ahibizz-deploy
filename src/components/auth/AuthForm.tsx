@@ -5,7 +5,8 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { accountReturnPath } from "../../lib/account-return";
 import { authReturnLinks } from "../../lib/auth-return";
 import { msg } from "../../lib/i18n/translate";
-import { Icon } from "../Icon";
+import { AhiLogo } from "../brand/AhiLogo";
+import { Icon, type IconName } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
 import { rich } from "../i18n/Rich";
 import styles from "./auth.module.css";
@@ -18,13 +19,13 @@ const text = {
     action: msg("Prijavi se"),
   },
   "sign-up": {
-    title: msg("Tvoj prostor za dobar posao."),
-    intro: msg("Napravi svoj AhiBizz nalog."),
-    action: msg("Napravi nalog"),
+    title: msg("Napravi nalog."),
+    intro: msg("Nove naloge odobrava administrator."),
+    action: msg("Registruj se"),
   },
   "reset-request": {
     title: msg("Zaboravljena lozinka?"),
-    intro: msg("Poslat ćemo ti link za novu lozinku."),
+    intro: msg("Upiši email naloga. Šaljemo ti link za novu lozinku."),
     action: msg("Pošalji link"),
   },
   "reset-password": {
@@ -39,9 +40,21 @@ const endpoints = {
   "reset-request": "/api/auth/request-password-reset",
   "reset-password": "/api/auth/reset-password",
 };
+/** Signing in and registering open with a photograph; the two password screens with a sign. */
+const covers: Partial<Record<AuthMode, string>> = {
+  "sign-in": "/preview/studio.webp",
+  "sign-up": "/preview/home.webp",
+};
+const signs: Partial<Record<AuthMode, IconName>> = {
+  "reset-request": "mail",
+  "reset-password": "key",
+};
+const pendingCodes = ["ACCOUNT_PENDING_APPROVAL", "ACCOUNT_NOT_APPROVED"];
+/** The account exists and waits: for its email link (`confirmed` false) or for the administrator. */
+type Waiting = { email: string; confirmed: boolean };
 
 function errorText(code: unknown) {
-  if (code === "ACCOUNT_PENDING_APPROVAL" || code === "ACCOUNT_NOT_APPROVED")
+  if (typeof code === "string" && pendingCodes.includes(code))
     return msg("Tvoj nalog čeka odobrenje. Javit ćemo ti emailom čim bude odobren.");
   if (code === "ACCOUNT_SUSPENDED") return msg("Nalog trenutno nije aktivan. Obrati se podršci.");
   if (code === "EMAIL_NOT_VERIFIED")
@@ -112,20 +125,30 @@ export function AuthForm({
   googleError?: string;
 }) {
   const t = useT();
+  const googlePending = googleError?.toUpperCase() === "ACCOUNT_PENDING_APPROVAL";
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
-  const [error, setError] = useState(() => (googleError ? t(googleErrorText(googleError)) : ""));
+  const [error, setError] = useState(() =>
+    googleError && !googlePending ? t(googleErrorText(googleError)) : "",
+  );
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [complete, setComplete] = useState(false);
   const [visible, setVisible] = useState(false);
   const passwordField = useRef<HTMLInputElement>(null);
+  const repeatField = useRef<HTMLInputElement>(null);
   const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationSent, setVerificationSent] = useState(false);
+  // A confirmed email link and a sign-in that is refused for approval both end on the same screen.
+  const [waiting, setWaiting] = useState<Waiting | null>(() =>
+    verified || googlePending ? { email: "", confirmed: true } : null,
+  );
   const hasPassword =
     mode === "sign-in" || mode === "sign-up" || (mode === "reset-password" && Boolean(token));
   const copy = text[mode];
   const links = authReturnLinks(returnTo);
+  const photo = waiting ? undefined : covers[mode];
+  const sign = signs[mode];
   function suggestPassword() {
     if (!passwordField.current) return;
     // A 32-character alphabet avoids both ambiguous characters and modulo bias.
@@ -135,6 +158,7 @@ export function AuthForm({
       return Array.from(bytes, (byte) => alphabet.charAt(byte % alphabet.length)).join("");
     });
     passwordField.current.value = groups.join("-");
+    if (repeatField.current) repeatField.current.value = passwordField.current.value;
     setVisible(true);
     passwordField.current.focus();
     passwordField.current.select();
@@ -174,6 +198,10 @@ export function AuthForm({
     const fields = new FormData(event.currentTarget);
     const email = String(fields.get("email") || "").trim();
     const password = String(fields.get("password") || "");
+    if (mode === "reset-password" && password !== String(fields.get("repeat") || "")) {
+      setError(t("Lozinke se ne podudaraju."));
+      return;
+    }
     let body: Record<string, unknown> = { email };
     if (mode === "sign-in") body = { email, password, rememberMe: fields.get("remember") === "on" };
     if (mode === "sign-up")
@@ -198,6 +226,10 @@ export function AuthForm({
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || result.ok !== true) {
+        if (mode === "sign-in" && pendingCodes.includes(result.code)) {
+          setWaiting({ email, confirmed: true });
+          return;
+        }
         if (mode === "sign-in" && result.code === "EMAIL_NOT_VERIFIED") setVerificationEmail(email);
         setError(
           response.status === 503
@@ -210,7 +242,11 @@ export function AuthForm({
         window.location.assign(accountReturnPath(returnTo));
         return;
       }
-      if (mode === "sign-up") setVerificationEmail(email);
+      if (mode === "sign-up") {
+        setVerificationEmail(email);
+        setWaiting({ email, confirmed: false });
+        return;
+      }
       setComplete(true);
     } catch {
       setError(t("Veza je prekinuta. Provjeri internet i pokušaj ponovo."));
@@ -265,209 +301,348 @@ export function AuthForm({
       )}
     </>
   );
+  const logo = (
+    <Link href="/" className={styles.logo} aria-label={t("Početna")}>
+      <AhiLogo decorative />
+    </Link>
+  );
+  const done = (
+    <span className={styles.stepDone} role="img" aria-label={t("Završeno")}>
+      <Icon name="check" />
+    </span>
+  );
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
       <section className={styles.card} aria-labelledby="auth-heading" data-design="auth-form">
-        <Link href="/" className={styles.back}>
-          <Icon name="chevron" />
-          {t("Početna")}
-        </Link>
-        <h1 id="auth-heading">{t(copy.title)}</h1>
-        <p className={styles.intro}>{t(copy.intro)}</p>
-        {!available && <p className={styles.notice}>{t("Prijave još nisu otvorene.")}</p>}
-        {verified && (
-          <p className={styles.notice}>
-            {t("Email je potvrđen. Nakon odobrenja možeš se prijaviti.")}
-          </p>
-        )}
-        {verificationError && (
-          <p className={styles.notice}>
-            {t("Link za potvrdu nije važeći. Zatraži novu potvrdu pri prijavi.")}
-          </p>
-        )}
-        {mode === "reset-password" && !token && (
-          <p className={styles.notice}>
-            {t("Link nije važeći.")}{" "}
-            <Link href="/zaboravljena-lozinka">{t("Zatraži novi link.")}</Link>
-          </p>
-        )}
-        {complete ? (
-          <div className={styles.done} role="status">
-            <Icon name="check" />
-            <h2>
-              {mode === "reset-password"
-                ? t("Lozinka je promijenjena.")
-                : t("Provjeri svoj email.")}
-            </h2>
-            <p>
-              {mode === "sign-up"
-                ? t(
-                    "Otvori link koji smo ti poslali na email. Zatim nalog pregleda administrator, a kad bude odobren, javimo ti emailom.",
-                  )
-                : mode === "reset-request"
-                  ? t("Ako nalog postoji, stići će ti link za novu lozinku.")
-                  : t("Sada se možeš prijaviti.")}
-            </p>
-            {mode === "sign-up" && verificationFeedback}
-            <Link href={links.login} className={styles.submit} data-design="auth-submit">
-              {t("Na prijavu")}
-            </Link>
+        {photo ? (
+          <div
+            className={styles.cover}
+            data-tall={mode === "sign-in" || undefined}
+            style={{ backgroundImage: `url(${photo})` }}
+          >
+            {logo}
           </div>
+        ) : waiting ? (
+          <header className={styles.bar}>
+            {logo}
+            {mode === "sign-in" ? (
+              <button type="button" className={styles.barLink} onClick={() => setWaiting(null)}>
+                {t("Prijava")}
+              </button>
+            ) : (
+              <Link href={links.login} className={styles.barLink}>
+                {t("Prijava")}
+              </Link>
+            )}
+          </header>
         ) : (
-          <form method="post" action={endpoints[mode]} onSubmit={submit}>
-            {mode === "sign-up" && (
-              <label>
-                {t("Ime i prezime")}
-                <input
-                  name="name"
-                  autoComplete="name"
-                  enterKeyHint="next"
-                  required
-                  minLength={2}
-                  maxLength={80}
-                  disabled={!available || busy}
-                />
-              </label>
-            )}
-            {mode !== "reset-password" && (
-              <label>
-                {t("Email")}
-                <input
-                  name="email"
-                  type="email"
-                  inputMode="email"
-                  autoComplete="username"
-                  enterKeyHint={mode === "reset-request" ? "send" : "next"}
-                  required
-                  maxLength={254}
-                  disabled={!available || busy}
-                />
-              </label>
-            )}
-            {hasPassword && (
-              <label>
-                {t("Lozinka")}
-                <span className={styles.password}>
-                  <input
-                    name="password"
-                    ref={passwordField}
-                    type={visible ? "text" : "password"}
-                    autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
-                    enterKeyHint={mode === "sign-up" ? "next" : "go"}
-                    required
-                    minLength={mode === "sign-in" ? 1 : 12}
-                    maxLength={128}
-                    disabled={!available || busy}
-                  />
+          <header className={styles.bar}>
+            <Link href={links.login} className={styles.round} aria-label={t("Nazad")}>
+              <Icon name="chevron" />
+            </Link>
+            {logo}
+          </header>
+        )}
+        {waiting ? (
+          <>
+            <div className={styles.head}>
+              <span className={styles.sign} data-kind={waiting.confirmed ? "wait" : undefined}>
+                <Icon name={waiting.confirmed ? "clock" : "mail"} />
+              </span>
+              <h1 id="auth-heading">
+                {waiting.confirmed ? t("Nalog čeka odobrenje") : t("Provjeri svoj email.")}
+              </h1>
+              <p className={styles.intro}>
+                {!waiting.confirmed
+                  ? t(
+                      "Otvori link koji smo ti poslali na email. Zatim nalog pregleda administrator, a kad bude odobren, javimo ti emailom.",
+                    )
+                  : waiting.email
+                    ? t(
+                        "Administrator pregleda svaku registraciju. Javit ćemo ti na {email} čim nalog bude odobren.",
+                        { email: waiting.email },
+                      )
+                    : t(
+                        "Administrator pregleda svaku registraciju. Javit ćemo ti emailom čim nalog bude odobren.",
+                      )}
+              </p>
+            </div>
+            <ol className={styles.steps}>
+              <li>
+                <span>{t("Registracija je poslana")}</span>
+                {done}
+              </li>
+              <li>
+                <span>{waiting.confirmed ? t("Email je potvrđen") : t("Potvrda emaila")}</span>
+                {waiting.confirmed ? (
+                  done
+                ) : (
+                  <span className={styles.pill} data-kind="wait">
+                    {t("Čeka te")}
+                  </span>
+                )}
+              </li>
+              <li>
+                <span>{t("Odobrenje administratora")}</span>
+                <span className={styles.pill} data-kind={waiting.confirmed ? "wait" : "off"}>
+                  {waiting.confirmed ? t("U toku") : t("Slijedi")}
+                </span>
+              </li>
+            </ol>
+            <div className={styles.after}>
+              {!waiting.confirmed && verificationFeedback}
+              <Link href="/pretraga" className={styles.outline}>
+                <Icon name="search" />
+                {t("Razgledaj djelatnosti")}
+              </Link>
+              <Link href="/pomoc" className={styles.quiet}>
+                {t("Piši podršci")}
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={styles.head} data-over={photo ? "" : undefined}>
+              {sign && (
+                <span className={styles.sign}>
+                  <Icon name={sign} />
+                </span>
+              )}
+              <h1 id="auth-heading">{t(copy.title)}</h1>
+              <p className={styles.intro}>{t(copy.intro)}</p>
+            </div>
+            <div className={styles.body}>
+              {!available && <p className={styles.notice}>{t("Prijave još nisu otvorene.")}</p>}
+              {verificationError && (
+                <p className={styles.notice}>
+                  {t("Link za potvrdu nije važeći. Zatraži novu potvrdu pri prijavi.")}
+                </p>
+              )}
+              {mode === "reset-password" && !token && (
+                <p className={styles.notice}>
+                  {t("Link nije važeći.")}{" "}
+                  <Link href="/zaboravljena-lozinka">{t("Zatraži novi link.")}</Link>
+                </p>
+              )}
+              {complete ? (
+                <div className={styles.done} role="status">
+                  <span className={styles.sign}>
+                    <Icon name="check" />
+                  </span>
+                  <h2>
+                    {mode === "reset-password"
+                      ? t("Lozinka je promijenjena.")
+                      : t("Provjeri svoj email.")}
+                  </h2>
+                  <p>
+                    {mode === "reset-request"
+                      ? t("Ako nalog postoji, stići će ti link za novu lozinku.")
+                      : t("Sada se možeš prijaviti.")}
+                  </p>
+                  <Link href={links.login} className={styles.submit} data-design="auth-submit">
+                    {t("Na prijavu")}
+                  </Link>
+                </div>
+              ) : (
+                <form method="post" action={endpoints[mode]} onSubmit={submit}>
+                  {mode === "sign-up" && (
+                    <label>
+                      {t("Ime i prezime")}
+                      <input
+                        name="name"
+                        autoComplete="name"
+                        enterKeyHint="next"
+                        required
+                        minLength={2}
+                        maxLength={80}
+                        disabled={!available || busy}
+                      />
+                    </label>
+                  )}
+                  {mode !== "reset-password" && (
+                    <label>
+                      {t("Email")}
+                      <input
+                        name="email"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="username"
+                        enterKeyHint={mode === "reset-request" ? "send" : "next"}
+                        required
+                        maxLength={254}
+                        disabled={!available || busy}
+                      />
+                    </label>
+                  )}
+                  {hasPassword && (
+                    <label>
+                      {mode === "reset-password" ? t("Nova lozinka") : t("Lozinka")}
+                      <span className={styles.password}>
+                        <input
+                          name="password"
+                          ref={passwordField}
+                          type={visible ? "text" : "password"}
+                          autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+                          enterKeyHint={mode === "sign-in" ? "go" : "next"}
+                          required
+                          minLength={mode === "sign-in" ? 1 : 12}
+                          maxLength={128}
+                          disabled={!available || busy}
+                        />
+                        <button
+                          type="button"
+                          aria-pressed={visible}
+                          onClick={() => setVisible(!visible)}
+                          disabled={!available || busy}
+                        >
+                          {visible ? t("Sakrij") : t("Prikaži")}
+                        </button>
+                      </span>
+                      {mode !== "sign-in" && <small>{t("Najmanje 12 znakova.")}</small>}
+                    </label>
+                  )}
+                  {mode === "reset-password" && token && (
+                    <label>
+                      {t("Ponovi lozinku")}
+                      <input
+                        name="repeat"
+                        ref={repeatField}
+                        type={visible ? "text" : "password"}
+                        autoComplete="new-password"
+                        enterKeyHint="go"
+                        required
+                        minLength={12}
+                        maxLength={128}
+                        disabled={!available || busy}
+                      />
+                    </label>
+                  )}
+                  {(mode === "sign-up" || (mode === "reset-password" && token)) && (
+                    <button
+                      type="button"
+                      className={styles.suggestion}
+                      onClick={suggestPassword}
+                      disabled={!ready || !available || busy}
+                    >
+                      {t("Predloži jaku lozinku")}
+                    </button>
+                  )}
+                  {mode === "sign-in" && (
+                    <div className={styles.options}>
+                      <label className={styles.remember}>
+                        <input
+                          name="remember"
+                          type="checkbox"
+                          defaultChecked
+                          disabled={!available || busy}
+                        />
+                        {t("Zapamti prijavu")}
+                      </label>
+                      <Link href="/zaboravljena-lozinka">{t("Zaboravljena lozinka")}</Link>
+                    </div>
+                  )}
+                  {verificationFeedback}
+                  {mode === "sign-up" && (
+                    <label className={styles.remember}>
+                      <input
+                        name="terms"
+                        type="checkbox"
+                        required
+                        disabled={!available || busy}
+                        checked={termsAccepted}
+                        onChange={(event) => setTermsAccepted(event.target.checked)}
+                      />
+                      <span className={styles.terms}>
+                        {rich(t("Imam najmanje 18 godina i prihvatam {rules} i {privacy}."), {
+                          rules: <Link href="/pravila-zajednice">{t("pravila zajednice")}</Link>,
+                          privacy: <Link href="/privatnost">{t("privatnost na AhiBizzu")}</Link>,
+                        })}
+                      </span>
+                    </label>
+                  )}
+                  <button
+                    className={styles.submit}
+                    data-design="auth-submit"
+                    disabled={!ready || !available || busy || (mode === "reset-password" && !token)}
+                    type="submit"
+                  >
+                    {busy ? t("Trenutak…") : t(copy.action)}
+                  </button>
+                  {mode === "reset-request" && (
+                    <>
+                      <p className={styles.hint}>
+                        {t(
+                          "Ako poruka ne stigne, provjeri neželjenu poštu i da li je adresa tačno unesena.",
+                        )}
+                      </p>
+                      <Link href={links.login} className={styles.quiet}>
+                        {t("Nazad na prijavu")}
+                      </Link>
+                    </>
+                  )}
+                </form>
+              )}
+              {google && !complete && (mode === "sign-in" || mode === "sign-up") && (
+                <div className={styles.social}>
+                  <p className={styles.divider}>
+                    <span>{t("ili")}</span>
+                  </p>
                   <button
                     type="button"
-                    aria-pressed={visible}
-                    onClick={() => setVisible(!visible)}
-                    disabled={!available || busy}
+                    className={styles.google}
+                    onClick={startGoogle}
+                    disabled={
+                      !ready || !available || busy || (mode === "sign-up" && !termsAccepted)
+                    }
                   >
-                    {visible ? t("Sakrij") : t("Prikaži")}
+                    <GoogleMark />
+                    {t("Nastavi s Googleom")}
                   </button>
-                </span>
-                {mode !== "sign-in" && <small>{t("Najmanje 12 znakova.")}</small>}
-              </label>
-            )}
-            {(mode === "sign-up" || (mode === "reset-password" && token)) && (
-              <button
-                type="button"
-                className={styles.suggestion}
-                onClick={suggestPassword}
-                disabled={!ready || !available || busy}
-              >
-                {t("Predloži jaku lozinku")}
-              </button>
-            )}
-            {mode === "sign-in" && (
-              <div className={styles.options}>
-                <label className={styles.remember}>
-                  <input
-                    name="remember"
-                    type="checkbox"
-                    defaultChecked
-                    disabled={!available || busy}
-                  />
-                  {t("Zapamti prijavu")}
-                </label>
-                <Link href="/zaboravljena-lozinka">{t("Zaboravljena lozinka")}</Link>
-              </div>
-            )}
-            {verificationFeedback}
-            {mode === "sign-up" && (
-              <label className={styles.remember}>
-                <input
-                  name="terms"
-                  type="checkbox"
-                  required
-                  disabled={!available || busy}
-                  checked={termsAccepted}
-                  onChange={(event) => setTermsAccepted(event.target.checked)}
-                />
-                <span>
-                  {rich(t("Imam najmanje 18 godina i prihvatam {rules} i {privacy}."), {
-                    rules: <Link href="/pravila-zajednice">{t("pravila zajednice")}</Link>,
-                    privacy: <Link href="/privatnost">{t("privatnost na AhiBizzu")}</Link>,
-                  })}
-                </span>
-              </label>
-            )}
-            <button
-              className={styles.submit}
-              data-design="auth-submit"
-              disabled={!ready || !available || busy || (mode === "reset-password" && !token)}
-              type="submit"
-            >
-              {busy ? t("Trenutak…") : t(copy.action)}
-            </button>
-          </form>
-        )}
-        {google && !complete && (mode === "sign-in" || mode === "sign-up") && (
-          <div className={styles.social}>
-            <p className={styles.divider}>
-              <span>{t("ili")}</span>
-            </p>
-            <button
-              type="button"
-              className={styles.google}
-              onClick={startGoogle}
-              disabled={!ready || !available || busy || (mode === "sign-up" && !termsAccepted)}
-            >
-              <GoogleMark />
-              {t("Nastavi s Googleom")}
-            </button>
-            <p className={styles.socialNote}>
-              {mode === "sign-up"
-                ? termsAccepted
-                  ? t("Nalog napravljen preko Googlea također čeka odobrenje administratora.")
-                  : t("Za Google prvo označi da imaš najmanje 18 godina i prihvataš pravila.")
-                : rich(
-                    t(
-                      "Nastavkom preko Googlea potvrđuješ da imaš najmanje 18 godina i prihvataš {rules} i {privacy}.",
-                    ),
-                    {
-                      rules: <Link href="/pravila-zajednice">{t("pravila zajednice")}</Link>,
-                      privacy: <Link href="/privatnost">{t("privatnost na AhiBizzu")}</Link>,
-                    },
+                  <p className={styles.socialNote}>
+                    {mode === "sign-up"
+                      ? termsAccepted
+                        ? t("Nalog napravljen preko Googlea također čeka odobrenje administratora.")
+                        : t("Za Google prvo označi da imaš najmanje 18 godina i prihvataš pravila.")
+                      : rich(
+                          t(
+                            "Nastavkom preko Googlea potvrđuješ da imaš najmanje 18 godina i prihvataš {rules} i {privacy}.",
+                          ),
+                          {
+                            rules: <Link href="/pravila-zajednice">{t("pravila zajednice")}</Link>,
+                            privacy: <Link href="/privatnost">{t("privatnost na AhiBizzu")}</Link>,
+                          },
+                        )}
+                  </p>
+                </div>
+              )}
+              {!complete && (mode === "sign-in" || mode === "sign-up") && (
+                <div className={styles.switch}>
+                  {mode === "sign-in" ? (
+                    <>
+                      <p>
+                        {t("Nemaš nalog?")}{" "}
+                        <Link href={links.registration}>{t("Registruj se")}</Link>
+                      </p>
+                      <small>{t("Nove naloge odobrava administrator.")}</small>
+                    </>
+                  ) : (
+                    <p>
+                      {rich(t("Već imaš nalog? {link}"), {
+                        link: <Link href={links.login}>{t("Prijavi se")}</Link>,
+                      })}
+                    </p>
                   )}
-            </p>
-          </div>
-        )}
-        {!complete && (
-          <p className={styles.switch}>
-            {mode === "sign-in" ? (
-              <>
-                {t("Nemaš nalog?")} <Link href={links.registration}>{t("Registruj se")}</Link>
-              </>
-            ) : (
-              <Link href={links.login}>{t("Već imaš nalog? Prijavi se")}</Link>
-            )}
-          </p>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </section>
-      <aside className={styles.story} aria-hidden="true">
+      <aside
+        className={styles.story}
+        aria-hidden="true"
+        style={photo ? { backgroundImage: `url(${photo})` } : undefined}
+      >
         <span>{rich(t("Posao počinje\ndobrim vezama."))}</span>
         <i>ahibizz.</i>
       </aside>

@@ -193,6 +193,12 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   radnje u dnu. Nivo cijena je na crtežu, ali podatak još ne postoji **[novo]**.
 - **Početna, pretraga i stranica djelatnosti [urađeno 25. 11. 2026.]:** po crtežima; raspored na
   širokom ekranu nije crtan i izveden je iz telefonskog.
+- **Prijava, registracija i lozinka [urađeno 25. 11. 2026.]:** po crtežima. Prijava i registracija
+  počinju fotografijom s logom, dva ekrana lozinke znakom i putem nazad; na telefonu nemaju
+  zaglavlje ni dno stranice. Nova lozinka se upisuje dvaput. „Nalog čeka odobrenje” pokazuje tri
+  koraka (registracija, potvrda emaila, odobrenje administratora) i javlja se nakon registracije,
+  nakon potvrde emaila i kad se neodobren nalog pokuša prijaviti. Dugme za Google ostaje s
+  Googleovim znakom u četiri boje. Na širokom ekranu obrazac je u kartici pored fotografije.
 - **Zamućenje** samo na slojevima koji leže preko sadržaja: donja traka, meni, listovi koji
   izlaze odozdo, prelaz pri zamjeni slike. Ne na karticama.
 - **Pokret:** kratak (150–250 ms) i sa svrhom. Tačkice za „učitavam” i za „novo”.

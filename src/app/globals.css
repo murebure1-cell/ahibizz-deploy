@@ -292,6 +292,10 @@ a {
   body:has([data-design="business-profile"]:not([data-embedded], [data-preview])) .site-header {
     display: none;
   }
+  /* Signing in and registering carry their own logo and way back, as drawn, and end with the form. */
+  body:has(main > [data-design="auth-form"]) :is(.site-header, .site-footer) {
+    display: none;
+  }
 }
 /* On the home page the bar has no surface of its own: logo and controls lie over the photo. */
 body:has([data-design="home-hero"]) .site-header {

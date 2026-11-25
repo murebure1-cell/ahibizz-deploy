@@ -41,6 +41,7 @@ export type IconName =
   | "download"
   | "logout"
   | "lock"
+  | "key"
   | "route";
 
 const paths: Record<IconName, ReactNode> = {
@@ -76,6 +77,12 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <rect x="5" y="11" width="14" height="9" rx="2.5" />
       <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </>
+  ),
+  key: (
+    <>
+      <circle cx="8" cy="14" r="4" />
+      <path d="m11 11 9-9M16 6l3 3" />
     </>
   ),
   route: <path d="M20.5 3.5 3.5 10.6l6.9 3 3 6.9Z" />,
