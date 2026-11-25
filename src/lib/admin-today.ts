@@ -12,12 +12,6 @@ export const adminQueues = [
     icon: "shop",
   },
   { id: "reports", title: "Zahtjevi i prijave", href: "/administracija/zahtjevi", icon: "shield" },
-  {
-    id: "promotions",
-    title: "Isticanja na čekanju",
-    href: "/administracija/isticanja",
-    icon: "star",
-  },
 ] as const;
 
 export type AdminQueueId = (typeof adminQueues)[number]["id"];

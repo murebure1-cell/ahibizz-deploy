@@ -10,7 +10,6 @@ if (!base || !/^http:\/\/127\.0\.0\.1:\d+$/.test(base)) {
 const publicPages = [
   "/",
   "/pretraga",
-  "/istakni",
   "/mapa",
   "/reels",
   "/ljudi",
@@ -23,9 +22,9 @@ const publicPages = [
   "/registracija",
 ];
 // Account and admin pages must send a guest to sign in, never render or crash.
-const privatePages = ["/nalog", "/nalog/isticanja", "/administracija", "/administracija/isticanja"];
-// Retired purchase pages lead to the promotions page.
-const retiredPages = ["/oglasavanje", "/paketi"];
+const privatePages = ["/nalog", "/administracija"];
+// Removed purchase pages must stay gone rather than render or crash.
+const retiredPages = ["/istakni", "/oglasavanje", "/paketi"];
 
 const failures = [];
 async function open(path) {
@@ -52,8 +51,7 @@ for (const path of privatePages) {
 }
 for (const path of retiredPages) {
   const page = await open(path);
-  if (![303, 307, 308].includes(page.status) || !page.location.includes("/istakni"))
-    failures.push(`${path}: expected a redirect to /istakni, got ${page.status} ${page.location}`);
+  if (page.status !== 404) failures.push(`${path}: expected 404, got ${page.status}`);
 }
 
 if (failures.length) {

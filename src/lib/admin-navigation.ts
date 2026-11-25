@@ -49,7 +49,6 @@ export function adminReturnPath(value: unknown): string | null {
     value === "/administracija/zahtjevi" ||
     value === "/administracija/blog" ||
     value === "/administracija/reels" ||
-    value === "/administracija/isticanja" ||
     value === businessImportPath ||
     value === businessLocationBatchPath ||
     value === adminMailPath

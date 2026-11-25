@@ -11,7 +11,6 @@ import {
   businessLocationBatchPath,
   readAdminNavigation,
 } from "../../lib/admin-navigation";
-import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { BusinessManager } from "../directory/BusinessManager";
 import { Icon, type IconName } from "../Icon";
@@ -163,11 +162,6 @@ export function AdminDashboard({
             <Link href="/administracija/zahtjevi">
               <Icon name="message" /> Zahtjevi i prijave
             </Link>
-            {!IS_PLAY_EDITION && (
-              <Link href="/administracija/isticanja">
-                <Icon name="star" /> Isticanja
-              </Link>
-            )}
             <Link href="/administracija/reels">
               <Icon name="play" /> Pregled Reelsa
             </Link>

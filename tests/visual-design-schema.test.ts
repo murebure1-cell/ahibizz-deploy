@@ -21,7 +21,8 @@ test("a published design preserves the actual homepage order, plain text, and in
     mobileDark: { "backdrop-filter": "blur(8px)" },
   };
   const safe = parseVisualDesign(model);
-  assert.deepEqual(safe.homeOrder, model.homeOrder);
+  // The retired ad slot and promotion call drop out; the rest keeps its arrangement.
+  assert.deepEqual(safe.homeOrder, ["nearby", "featured", "logos", "newest", "reels"]);
   assert.equal(safe.rules["home-title"]?.base?.color, "#aabbcc");
   const css = designCss(safe);
   assert.match(css, /@media\(max-width:760px\).*font-size:24px/);
@@ -33,7 +34,7 @@ test("a published design preserves the actual homepage order, plain text, and in
 
 test("both previous homepage schemas read in the current order and retain active style and title customizations", () => {
   const base = defaultVisualDesign();
-  const expectedOrder = ["ad", "reels", "newest", "nearby", "promotion", "logos", "featured"];
+  const expectedOrder = ["reels", "newest", "nearby", "logos", "featured"];
   assert.deepEqual(base.homeOrder, expectedOrder);
   // The order published while the credits section existed keeps its arrangement without it.
   const customized = [
@@ -48,11 +49,9 @@ test("both previous homepage schemas read in the current order and retain active
   ];
   assert.deepEqual(parseVisualDesign({ ...base, homeOrder: customized }).homeOrder, [
     "reels",
-    "ad",
     "newest",
     "featured",
     "nearby",
-    "promotion",
     "logos",
   ]);
   for (const homeOrder of [

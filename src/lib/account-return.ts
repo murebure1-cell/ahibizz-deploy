@@ -91,8 +91,6 @@ export function accountReturnPath(value: unknown): string {
     value === deviceNotificationSettingsPath ||
     /^\/nalog\/obavijesti\?stavka=[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value) ||
     value === "/sacuvane-pretrage" ||
-    value === "/nalog/isticanja" ||
-    /^\/nalog\/isticanja\?djelatnost=[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value) ||
     value === "/nalog?odjeljak=djelatnosti&novo=1" ||
     value === "/nalog?odjeljak=termini&prikaz=historija" ||
     /^\/nalog\/reels(?:\?djelatnost=[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})?$/i.test(value) ||

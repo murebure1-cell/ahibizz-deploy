@@ -1593,7 +1593,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             assert.deepEqual(result.data.queues.map((row) => row.id).sort(), [
               "accounts",
               "businesses",
-              "promotions",
               "reports",
             ]);
             for (const row of result.data.queues)

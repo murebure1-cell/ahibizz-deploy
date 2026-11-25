@@ -22,12 +22,8 @@ export function headerDestinations(
   const more: NavigationDestination[] = [
     { href: "/o-nama", label: msg("O AhiBizzu"), icon: "info" },
     { href: "/reels", label: msg("Reels"), icon: "play" },
-    ...(access === "member" || access === "owner"
-      ? []
-      : ([
-          { href: "/blog", label: msg("AhiBizz blog"), icon: "info" },
-          { href: "/pomoc", label: msg("Centar za pomoć"), icon: "message" },
-        ] as const)),
+    { href: "/blog", label: msg("AhiBizz blog"), icon: "info" },
+    { href: "/pomoc", label: msg("Centar za pomoć"), icon: "message" },
   ];
   if (!options.playEdition && options.supportAvailable)
     more.push({ href: "/podrzi", label: msg("Doniraj"), icon: "heart" });

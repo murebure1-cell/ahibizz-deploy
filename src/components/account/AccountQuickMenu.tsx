@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import { accountShortcuts as path } from "../../lib/account-shortcuts";
-import type { Appearance } from "../../lib/appearance";
-import { IS_PLAY_EDITION } from "../../lib/distribution";
 import type { HeaderMenuAccount } from "../../lib/header-access";
 import type { NavigationDestination } from "../../lib/header-navigation";
 import { msg } from "../../lib/i18n/translate";
@@ -16,29 +14,17 @@ import { LanguagePicker } from "../i18n/LanguagePicker";
 import { useT } from "../i18n/LocaleProvider";
 import styles from "./account-quick-menu.module.css";
 
-const appearanceOptions = [
-  ["system", msg("Uređaj")],
-  ["light", msg("Svijetla")],
-  ["dark", msg("Tamna")],
-] as const;
-
+/** Everyday account destinations. Theme, blocked people and help live in settings and the app groups. */
 export function AccountQuickMenu({
   account,
   currentHref,
-  supportAvailable,
   close,
-  confirmed,
 }: {
   account: HeaderMenuAccount;
   currentHref: string | null;
-  supportAvailable: boolean;
   close: () => void;
-  confirmed: (next: HeaderMenuAccount) => void;
 }) {
   const t = useT();
-  const { setAppearance, resetAppearance } = useAppAppearance();
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
   const initials = account.name
     .trim()
     .split(/\s+/)
@@ -62,53 +48,6 @@ export function AccountQuickMenu({
         <Icon name="chevron" className={styles.chevron} />
       </Link>
     );
-  }
-  async function changeTheme(appearance: Appearance) {
-    if (saving || appearance === account.appearance) return;
-    setSaving(true);
-    setError("");
-    try {
-      const response = await fetch("/api/account", {
-        method: "PATCH",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json", "X-AhiBizz-Account-ID": account.id },
-        body: JSON.stringify({ appearance, expectedAppearance: account.appearance }),
-      });
-      const payload = await response.json();
-      if (
-        !response.ok ||
-        payload.account?.id !== account.id ||
-        payload.account.appearance !== appearance
-      )
-        throw new Error("appearance");
-      setAppearance(appearance);
-      confirmed({ ...account, appearance });
-    } catch {
-      setError(t("Tema nije promijenjena. Otvori meni ponovo i pokušaj."));
-    } finally {
-      setSaving(false);
-    }
-  }
-  async function logout() {
-    if (saving) return;
-    setSaving(true);
-    setError("");
-    try {
-      const response = await fetch("/api/auth/sign-out", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      });
-      if (!response.ok || (await response.json()).ok !== true) throw new Error("logout");
-      clearBrowserMessagingRecovery(account.id);
-      forgetRememberedArea();
-      resetAppearance();
-      close();
-      window.location.assign("/prijava");
-    } catch {
-      setError(t("Odjava nije uspjela. Pokušaj ponovo."));
-      setSaving(false);
-    }
   }
   return (
     <div className={styles.menu}>
@@ -157,6 +96,8 @@ export function AccountQuickMenu({
           {link({ href: path.savedSearches, label: msg("Pretrage"), icon: "search" })}
           {link({ href: "/blog?sacuvano=1", label: msg("Članci"), icon: "info" })}
         </details>
+        {link({ href: path.notifications, label: msg("Obavijesti"), icon: "bell" })}
+        {link({ href: path.settings, label: msg("Postavke"), icon: "sliders" })}
       </div>
       <div className={styles.publish}>
         {link({ href: path.newBusiness, label: msg("Dodaj djelatnost"), icon: "shop" })}
@@ -166,44 +107,55 @@ export function AccountQuickMenu({
           icon: "play",
         })}
       </div>
-      <div className={styles.links}>
-        {link({ href: path.notifications, label: msg("Obavijesti"), icon: "bell" })}
-        {link({ href: path.settings, label: msg("Postavke"), icon: "sliders" })}
-        {link({ href: path.blocked, label: msg("Blokirani korisnici"), icon: "shield" })}
-        {link({ href: "/pomoc", label: msg("Centar za pomoć"), icon: "message" })}
-        {link({ href: "/blog", label: msg("AhiBizz blog"), icon: "info" })}
-        {!IS_PLAY_EDITION &&
-          supportAvailable &&
-          link({ href: "/podrzi", label: msg("Doniraj"), icon: "heart" })}
-      </div>
-      <div className={styles.preferences}>
-        <fieldset>
-          <legend>{t("Izgled")}</legend>
-          <div className={styles.themes}>
-            {appearanceOptions.map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={account.appearance === value}
-                disabled={saving}
-                onClick={() => void changeTheme(value)}
-              >
-                {t(label)}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-        <LanguagePicker className={styles.language} />
-        <button
-          type="button"
-          className={styles.logout}
-          disabled={saving}
-          onClick={() => void logout()}
-        >
-          <Icon name="external" /> {t("Odjavi se")}
-        </button>
-        {error && <p role="alert">{error}</p>}
-      </div>
+    </div>
+  );
+}
+
+/** Language and sign-out close the whole menu, below the app groups. */
+export function AccountMenuFooter({
+  account,
+  close,
+}: {
+  account: HeaderMenuAccount;
+  close: () => void;
+}) {
+  const t = useT();
+  const { resetAppearance } = useAppAppearance();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  async function logout() {
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch("/api/auth/sign-out", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (!response.ok || (await response.json()).ok !== true) throw new Error("logout");
+      clearBrowserMessagingRecovery(account.id);
+      forgetRememberedArea();
+      resetAppearance();
+      close();
+      window.location.assign("/prijava");
+    } catch {
+      setError(t("Odjava nije uspjela. Pokušaj ponovo."));
+      setSaving(false);
+    }
+  }
+  return (
+    <div className={styles.preferences}>
+      <LanguagePicker className={styles.language} />
+      <button
+        type="button"
+        className={styles.logout}
+        disabled={saving}
+        onClick={() => void logout()}
+      >
+        <Icon name="external" /> {t("Odjavi se")}
+      </button>
+      {error && <p role="alert">{error}</p>}
     </div>
   );
 }

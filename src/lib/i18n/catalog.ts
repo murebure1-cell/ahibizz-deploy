@@ -143,12 +143,6 @@ const shell: Record<string, CatalogEntry> = {
   Svijetla: e("Light", "Hell", "فاتح", "Açık"),
   Tamna: e("Dark", "Dunkel", "داكن", "Koyu"),
   "Odjavi se": e("Sign out", "Abmelden", "تسجيل الخروج", "Çıkış yap"),
-  "Tema nije promijenjena. Otvori meni ponovo i pokušaj.": e(
-    "The theme was not changed. Open the menu again and try once more.",
-    "Das Design wurde nicht geändert. Öffne das Menü erneut und versuche es noch einmal.",
-    "لم يتم تغيير المظهر. افتح القائمة مرة أخرى وحاول من جديد.",
-    "Tema değiştirilmedi. Menüyü yeniden aç ve tekrar dene.",
-  ),
   "Odjava nije uspjela. Pokušaj ponovo.": e(
     "Sign-out failed. Please try again.",
     "Abmelden fehlgeschlagen. Bitte versuche es erneut.",
@@ -666,27 +660,11 @@ const shell: Record<string, CatalogEntry> = {
     "Öne çıkan işletmeler",
   ),
   "Novi na AhiBizzu": e("New on AhiBizz", "Neu auf AhiBizz", "جديد على AhiBizz", "AhiBizz'de yeni"),
-  "Oglasni prostor": e("Advertising space", "Werbefläche", "مساحة إعلانية", "Reklam alanı"),
-  SPONZORIRANO: e("SPONSORED", "GESPONSERT", "إعلان ممول", "SPONSORLU"),
-  "OGLASNI PROSTOR": e("ADVERTISING SPACE", "WERBEFLÄCHE", "مساحة إعلانية", "REKLAM ALANI"),
-  "Tvoj posao.\nNa pravom mjestu.": e(
-    "Your business.\nIn the right place.",
-    "Dein Geschäft.\nAm richtigen Ort.",
-    "عملك.\nفي المكان المناسب.",
-    "İşin.\nDoğru yerde.",
-  ),
   "Pogledaj djelatnost": e(
     "View business",
     "Betrieb ansehen",
     "اعرض النشاط التجاري",
     "İşletmeyi gör",
-  ),
-  "Oglasi se": e("Advertise", "Werben", "أعلن", "Reklam ver"),
-  "Istakni svoju djelatnost": e(
-    "Feature your business",
-    "Hebe deinen Betrieb hervor",
-    "ميّز نشاطك التجاري",
-    "İşletmeni öne çıkar",
   ),
   "Naziv ili usluga": e(
     "Name or service",

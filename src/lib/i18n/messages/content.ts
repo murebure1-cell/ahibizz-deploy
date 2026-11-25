@@ -93,52 +93,7 @@ export const content: Messages = {
     "ثبّت AhiBizz",
     "AhiBizz'i yükle",
   ],
-  "Istakni djelatnost": [
-    "Promote a business",
-    "Betrieb hervorheben",
-    "روّج لنشاطك التجاري",
-    "İşletmeni öne çıkar",
-  ],
-  "Ovaj odjeljak nije dostupan u aplikaciji.": [
-    "This section is not available in the app.",
-    "Dieser Bereich ist in der App nicht verfügbar.",
-    "هذا القسم غير متاح في التطبيق.",
-    "Bu bölüm uygulamada kullanılamıyor.",
-  ],
-  "Na početnu": ["To the home page", "Zur Startseite", "إلى الصفحة الرئيسية", "Ana sayfaya"],
-  "Objava djelatnosti je besplatna. Za dodatnu vidljivost odaberi mjesto i period isticanja.": [
-    "Publishing a business is free. For extra visibility, choose a placement and period.",
-    "Die Veröffentlichung eines Betriebs ist kostenlos. Für mehr Sichtbarkeit wähle Platz und Zeitraum der Hervorhebung.",
-    "نشر النشاط التجاري مجاني. لمزيد من الظهور، اختر مكان الترويج ومدته.",
-    "İşletme yayımlamak ücretsizdir. Daha fazla görünürlük için yer ve süre seç.",
-  ],
-  "Isticanje traje {days} dana. Cijenu vidiš prije narudžbe. Ako je mjesto zauzeto, možeš odabrati prvi slobodan termin.":
-    [
-      "A promotion lasts {days} days. You see the price before ordering. If the slot is taken, you can choose the first free date.",
-      "Eine Hervorhebung dauert {days} Tage. Den Preis siehst du vor der Bestellung. Ist der Platz belegt, kannst du den ersten freien Termin wählen.",
-      "يستمر الترويج {days} يومًا. ترى السعر قبل الطلب. إذا كان المكان محجوزًا، يمكنك اختيار أول موعد متاح.",
-      "Öne çıkarma {days} gün sürer. Fiyatı siparişten önce görürsün. Yer doluysa ilk boş tarihi seçebilirsin.",
-    ],
-  "Uplati bankovnim transferom prema uputama uz narudžbu. Isticanje uključujemo nakon potvrde uplate.":
-    [
-      "Pay by bank transfer following the instructions with your order. We turn the promotion on after the payment is confirmed.",
-      "Zahle per Banküberweisung nach den Anweisungen zur Bestellung. Wir schalten die Hervorhebung nach Bestätigung der Zahlung ein.",
-      "ادفع بتحويل بنكي وفق التعليمات المرفقة بالطلب. نفعّل الترويج بعد تأكيد الدفع.",
-      "Siparişle gelen talimatlara göre banka havalesiyle öde. Ödeme onaylanınca öne çıkarmayı açarız.",
-    ],
-  "Moja isticanja": [
-    "My promotions",
-    "Meine Hervorhebungen",
-    "عروضي الترويجية",
-    "Öne çıkarmalarım",
-  ],
   "Lični profil": ["Personal profile", "Persönliches Profil", "الملف الشخصي", "Kişisel profil"],
-  "Isticanja trenutno nisu dostupna.": [
-    "Promotions are not available right now.",
-    "Hervorhebungen sind gerade nicht verfügbar.",
-    "العروض الترويجية غير متاحة حاليًا.",
-    "Öne çıkarmalar şu anda kullanılamıyor.",
-  ],
   "Obavijest nije ažurirana. Pokušaj ponovo.": [
     "The notification was not updated. Try again.",
     "Die Mitteilung wurde nicht aktualisiert. Versuche es erneut.",
@@ -487,13 +442,6 @@ export const content: Messages = {
     "لا يحتوي التطبيق على مشتريات أو مدفوعات.",
     "Uygulamada satın alma ya da ödeme yoktur.",
   ],
-  "Plaćanje isticanja na webu ide bankovnom uplatom. Android aplikacija nema kupovina ni plaćanja.":
-    [
-      "Promotions on the web are paid by bank transfer. The Android app has no purchases or payments.",
-      "Hervorhebungen im Web werden per Banküberweisung bezahlt. Die Android-App hat keine Käufe oder Zahlungen.",
-      "يُدفع الترويج على الويب بتحويل بنكي. لا يحتوي تطبيق Android على مشتريات أو مدفوعات.",
-      "Web'de öne çıkarma ödemesi banka havalesiyle yapılır. Android uygulamasında satın alma ya da ödeme yoktur.",
-    ],
   "Koliko dugo čuvamo podatke": [
     "How long we keep data",
     "Wie lange wir Daten speichern",
