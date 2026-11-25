@@ -31,9 +31,11 @@ Guard veže privatni Next proces na loopback. Javni parent provjerava peer, sint
 
 `AHIBIZZ_INGRESS_OBSERVE=true` uključuje ograničeno opažanje tačnog `GET /api/health/live?ingressProbe=<UUID>`. Uz guard se učitava u parentu, bez guarda u server djetetu; nikad u migraciji. Bilježi najviše 24 događaja u minuti i 96 u procesu. Ne loguje cookies, tokene ni tijela; javne IP vrijednosti pretvara u hash vezan za nonce. Opažanje ne uključuje povjerenje i ne mijenja ovlasti. U produkciji ga uključuje operater samo za određenu provjeru.
 
-Jedini izuzetak od odbacivanja `Host` zaglavlja je `www.` ispred podešene adrese: takav zahtjev
-dobija 308 na istu putanju na podešenoj adresi i ne stiže do aplikacije. Prijava radi samo na
-podešenoj adresi, pa bi `www` inače prikazivao sajt na kojem prijava ne prolazi.
+Gateway providera zamijeni `Host` prije nego što zahtjev stigne do guarda, pa server ne može
+znati da je posjetilac upisao `www.`. Preusmjeravanje tog imena zato ne može biti u guardu:
+pokušaj od 25. 11. 2026. je prošao testove, ali na produkciji nije imao učinka i vraćen je.
+`www` ispravlja sama stranica, kratkom skriptom u zaglavlju koja ide na istu putanju na podešenoj
+adresi (`src/lib/origin-alias.ts`). Prijava radi samo na podešenoj adresi.
 
 ### Novi dokaz granice (promjena javne adrese)
 
