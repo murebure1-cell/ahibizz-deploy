@@ -8,6 +8,7 @@ import { FavoritesProvider } from "../favorites/FavoritesProvider";
 import { DeviceLocationProvider } from "../location/DeviceLocation";
 import { MobileDock } from "../MobileDock";
 import { NavigationProgress } from "../NavigationProgress";
+import { PullToRefresh } from "../PullToRefresh";
 import { AppPwaProvider } from "../pwa/AppPwa";
 import { ImageArrival } from "./ImageArrival";
 
@@ -47,6 +48,9 @@ export function PublicShell({
       {header}
       <FavoritesProvider>{children}</FavoritesProvider>
       {footer}
+      <Suspense>
+        <PullToRefresh />
+      </Suspense>
       <Suspense>
         <MobileDock />
       </Suspense>

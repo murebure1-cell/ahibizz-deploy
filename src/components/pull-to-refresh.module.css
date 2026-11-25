@@ -1,0 +1,145 @@
+/*
+ * Pull to refresh. The layer sits over the gap that opens above the content and shows only as
+ * much of itself as the gap is tall. While the finger is down every position is written from
+ * script, one frame at a time; after the release the pieces travel on one curve and one
+ * duration, so they stay together.
+ */
+.root {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 15;
+  height: 150px;
+  color: var(--ui-text);
+  pointer-events: none;
+  visibility: hidden;
+  clip-path: inset(0 0 100% 0);
+}
+.root:not([data-phase="idle"]) {
+  visibility: visible;
+}
+.stage {
+  display: block;
+}
+/* The content's top edge: the line the coin rolls on. */
+.edge {
+  fill: color-mix(in srgb, var(--ui-text) 16%, transparent);
+}
+
+/* The symbol waits pale and takes its full colour the moment the coin is in. */
+.ink {
+  opacity: 0.3;
+  transition: opacity 160ms ease;
+}
+.root[data-ready] .ink {
+  opacity: 1;
+}
+.root[data-ready] .pop {
+  animation: pull-pop 230ms var(--ease-out);
+}
+.hole {
+  fill: var(--ui-page);
+  opacity: 0;
+}
+.root[data-holed] .hole {
+  opacity: 1;
+}
+
+/* After the release the gold gives way to the hole and the loading light takes over. */
+.coin {
+  transition: opacity 250ms ease;
+}
+.root:is([data-phase="refreshing"], [data-phase="leaving"]) .coin {
+  opacity: 0;
+}
+.light {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+.root[data-phase="refreshing"] .light {
+  opacity: 1;
+  transition-delay: 50ms;
+}
+.beam {
+  fill: none;
+  stroke: var(--ui-accent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 0.22 0.78;
+}
+.glow {
+  opacity: 0.75;
+}
+.root[data-phase="refreshing"] .beam {
+  animation: pull-run 1.8s linear infinite;
+}
+
+/* The fresh content is there: the symbol leaves upwards while the content comes back. */
+.leave {
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
+}
+.root[data-phase="leaving"] .leave {
+  opacity: 0;
+  transform: translateY(-18px) scale(0.9);
+}
+
+.root[data-settle] {
+  transition: clip-path 300ms var(--ease-out);
+}
+.root[data-settle] :is(.seat, .edge, .presence) {
+  transition:
+    transform 300ms var(--ease-out),
+    opacity 300ms var(--ease-out);
+}
+/* Let go too early: everything, the coin included, returns the way it came. */
+.root[data-settle="cancel"] {
+  transition-duration: 200ms;
+}
+.root[data-settle="cancel"] :is(.seat, .edge, .presence, .coinPlace, .coinLook) {
+  transition:
+    transform 200ms var(--ease-out),
+    opacity 200ms var(--ease-out);
+}
+
+/* Read aloud while the content is being refreshed; not shown. */
+.status {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@keyframes pull-pop {
+  30% {
+    transform: scale(1.08);
+  }
+}
+@keyframes pull-run {
+  to {
+    stroke-dashoffset: -1;
+  }
+}
+@keyframes pull-breathe {
+  to {
+    opacity: 0.45;
+  }
+}
+
+/* Less motion: no coin and no travelling light. The symbol appears and breathes while loading. */
+@media (prefers-reduced-motion: reduce) {
+  .coinPlace {
+    display: none;
+  }
+  .hole {
+    opacity: 1;
+  }
+  .root[data-phase="refreshing"] .ink {
+    /* biome-ignore lint/complexity/noImportantStyles: The only sign that a refresh is running; the global reduced-motion rule would remove it. */
+    animation: pull-breathe 1.2s ease-in-out infinite alternate !important;
+  }
+}
