@@ -79,6 +79,17 @@ export function createIngressForwarder({
     }
     if (!decision.allowed) return reject(request, response, decision.status);
     if (request.method === "TRACE") return reject(request, response, 405);
+    if (decision.redirect) {
+      // Sign-in only works on the configured origin, so the www alias is sent there unchanged.
+      response.writeHead(308, {
+        Location: decision.redirect,
+        "Cache-Control": "public, max-age=86400",
+        "Content-Length": "0",
+      });
+      response.end();
+      request.resume();
+      return;
+    }
     const length = request.headers["content-length"];
     if (length !== undefined && (!/^\d+$/.test(length) || Number(length) > maxBodyBytes))
       return reject(request, response, 413);
