@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { accountShortcuts } from "../lib/account-shortcuts";
+import { menuPath } from "../lib/app-menu";
 import { IS_PLAY_EDITION } from "../lib/distribution";
 import {
   type HeaderAccess,
@@ -202,6 +203,14 @@ export function SiteHeader({
           >
             <Icon name={open ? "close" : "menu"} />
           </button>
+          <Link
+            className="header-action menu-link"
+            href={menuPath}
+            prefetch={false}
+            aria-label={t("Meni")}
+          >
+            <Icon name="menu" />
+          </Link>
         </div>
         <nav
           ref={menu}

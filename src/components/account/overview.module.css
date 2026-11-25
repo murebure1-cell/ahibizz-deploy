@@ -4,73 +4,76 @@
   gap: 8px;
 }
 .workspace {
+  --hairline: color-mix(in srgb, var(--ui-text) 16%, transparent);
   display: grid;
-  gap: clamp(14px, 2.2vw, 24px);
+  gap: 18px;
   min-width: 0;
 }
-.head {
-  overflow: hidden;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-xl);
-  background: var(--ui-surface);
+/* "Moj profil" and the way into the menu. On a wide screen the sidebar and the header do this. */
+.top {
+  display: none;
 }
-.cover {
-  height: clamp(88px, 15vw, 148px);
-  background: linear-gradient(115deg, var(--ui-ink), var(--ui-ink-raised));
-}
-.coverImage {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.headBody {
-  --avatar: clamp(72px, 11vw, 96px);
+.menu {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 4px 16px;
-  padding: 0 clamp(16px, 3vw, 28px) clamp(16px, 3vw, 24px);
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--ui-border);
+  border-radius: 50%;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  transition: scale 160ms var(--ease-out);
+}
+.menu:active {
+  scale: 0.94;
+}
+.menu svg {
+  width: 20px;
+  height: 20px;
+}
+.head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
 }
 .avatar {
   display: grid;
   place-items: center;
   overflow: hidden;
-  width: var(--avatar);
-  height: var(--avatar);
-  margin-top: calc(var(--avatar) / -2);
-  border: 3px solid var(--ui-surface);
-  border-radius: 26%;
-  background: var(--ui-surface-soft);
+  width: 88px;
+  height: 88px;
+  border: 2px solid var(--ui-accent);
+  border-radius: 50%;
+  background: var(--ui-surface);
   color: var(--ui-text);
-  font-size: calc(var(--avatar) / 2.8);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 .avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.who {
-  min-width: 0;
-  padding-top: 12px;
-}
-.who h1 {
+.head h1 {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin: 0;
-  font-size: clamp(1.3rem, 2.6vw, 1.75rem);
-  letter-spacing: -0.03em;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   overflow-wrap: anywhere;
 }
 .tags {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  margin-top: 8px;
+  justify-content: center;
+  gap: 8px;
 }
 .tags:empty {
   display: none;
@@ -80,15 +83,16 @@
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
-  padding: 3px 10px;
+  padding: 4px 12px;
   border: 1px solid var(--ui-border);
   border-radius: 999px;
   color: var(--ui-muted);
-  font-size: 0.8125rem;
+  font-size: 12px;
+  line-height: 16px;
 }
 .package strong {
   color: var(--ui-text);
-  font-weight: 650;
+  font-weight: 800;
   letter-spacing: 0.02em;
 }
 .package[data-package="business"] {
@@ -100,42 +104,54 @@
   color: var(--ui-gold);
 }
 .since {
-  margin: 8px 0 0;
+  margin: 0;
   color: var(--ui-muted);
-  font-size: 0.875rem;
+  font-size: 13px;
+  line-height: 18px;
 }
 .edit,
 .add {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   min-height: 44px;
-  padding: 8px 14px;
-  border-radius: var(--ui-radius-md);
+  border: 0;
+  background: none;
+  color: var(--ui-accent-text);
   font: inherit;
-  font-size: 0.875rem;
-  font-weight: 650;
-  transition:
-    background-color 150ms ease-out,
-    transform 150ms ease-out;
-}
-.edit:active,
-.add:active {
-  transform: scale(0.97);
-}
-.edit {
-  border: 1px solid var(--ui-border);
-  background: var(--ui-surface-soft);
-  color: var(--ui-text);
-}
-.edit:hover {
-  background: var(--ui-surface-hover);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
 }
 .edit svg,
 .add svg {
   width: 16px;
   height: 16px;
+}
+.businesses {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.blockHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.blockHead h2 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.count {
+  flex: 1;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
 }
 .block {
   overflow: hidden;
@@ -143,140 +159,106 @@
   border-radius: var(--ui-radius-lg);
   background: var(--ui-surface);
 }
-.blockHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 10px;
-  padding: 12px 16px;
-}
-.blockHead h2 {
-  margin: 0;
-  font-size: 1.0625rem;
-  font-weight: 680;
-}
-.count {
-  color: var(--ui-muted);
-  font-size: 0.875rem;
-  font-variant-numeric: tabular-nums;
-}
-.add {
-  margin-inline-start: auto;
-  border: 1px solid var(--ui-accent);
-  background: var(--ui-accent);
-  color: var(--ui-on-accent);
-}
 .rows {
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.blockHead + .rows,
 .rows li + li {
   border-top: 1px solid var(--ui-border);
 }
 .rows button,
-.rows a,
 .all {
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
-  min-height: 56px;
-  padding: 10px 16px;
+  min-height: 58px;
+  padding: 0 14px;
   border: 0;
   background: none;
   color: var(--ui-text);
   font: inherit;
   text-align: start;
-  text-decoration: none;
-  transition: background-color 150ms ease-out;
+  cursor: pointer;
+  transition: background-color 150ms ease;
 }
-.rows button:hover,
-.rows a:hover,
-.all:hover {
+.rows button:active,
+.all:active {
   background: var(--ui-surface-hover);
 }
+/* A business is known by its initials: filled once it is published, outlined before that. */
 .rowMark {
   display: grid;
   flex: none;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--ui-radius-sm);
-  background: var(--ui-surface-soft);
-  color: var(--ui-text-secondary);
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  color: var(--ui-text);
+  font-size: 12px;
+  font-weight: 800;
 }
-.rowMark svg {
-  width: 17px;
-  height: 17px;
+.rowMark[data-live] {
+  border-color: var(--ui-inverse);
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
 }
 .rowTitle {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  font-size: 0.9375rem;
+  font-size: 15px;
+  line-height: 20px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .state {
   flex: none;
-  padding: 2px 9px;
-  border: 1px solid var(--ui-border);
+  padding: 3px 10px;
   border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--hairline);
   color: var(--ui-muted);
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
 }
 .state[data-state="published"] {
-  border-color: var(--ui-success-border);
-  background: var(--ui-success-soft);
-  color: var(--ui-success);
+  background: var(--ui-accent-soft);
+  box-shadow: none;
+  color: var(--ui-accent-text);
 }
 .state[data-state="pending"] {
-  border-color: var(--ui-warning-border);
   background: var(--ui-warning-soft);
+  box-shadow: none;
   color: var(--ui-warning);
-}
-.rowArrow {
-  flex: none;
-  width: 14px;
-  height: 14px;
-  color: var(--ui-muted);
-}
-.badge {
-  display: grid;
-  flex: none;
-  place-items: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: var(--ui-accent);
-  color: var(--ui-on-accent);
-  font-size: 0.75rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
 .all {
   min-height: 48px;
   border-top: 1px solid var(--ui-border);
-  color: var(--ui-text-secondary);
-  font-size: 0.875rem;
+  color: var(--ui-muted);
+  font-size: 14px;
   font-weight: 600;
 }
 .all svg {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
 }
 .note {
   margin: 0;
-  padding: 12px 16px 16px;
-  border-top: 1px solid var(--ui-border);
+  padding: 14px;
   color: var(--ui-muted);
-  font-size: 0.875rem;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 20px;
+}
+.rows + .note,
+.all + .note {
+  border-top: 1px solid var(--ui-border);
+}
+.links {
+  min-width: 0;
 }
 .srOnly {
   position: absolute;
@@ -289,25 +271,22 @@
   border: 0;
   white-space: nowrap;
 }
-.signOut {
-  display: none;
+@media (hover: hover) and (pointer: fine) {
+  .rows button:hover,
+  .all:hover {
+    background: var(--ui-surface-hover);
+  }
 }
 @media (max-width: 700px) {
-  .signOut {
-    display: block;
-  }
-}
-@media (max-width: 640px) {
-  .headBody {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-  .edit {
-    grid-row: 1;
-    grid-column: 2;
-    justify-self: end;
-  }
-  .who {
-    grid-column: 1 / -1;
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: -8px;
+    color: var(--ui-muted);
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 700;
   }
 }
 .contracts :where(header) button,

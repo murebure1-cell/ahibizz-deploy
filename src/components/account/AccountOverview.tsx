@@ -5,15 +5,18 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { type AccountOverviewFacts, readOverview } from "../../lib/account-overview";
 import type { AccountSection } from "../../lib/account-return";
+import { accountShortcuts } from "../../lib/account-shortcuts";
+import { menuPath } from "../../lib/app-menu";
 import { localDate } from "../../lib/display-date";
 import { msg } from "../../lib/i18n/translate";
 import { packageFullText, packageName } from "../../lib/packages";
 import { type PersonalProfile, profileImageUrl } from "../../lib/people";
 import { readPersonalProfile } from "../../lib/people-client";
-import { Icon, type IconName } from "../Icon";
+import { Icon } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
 import { personalProfileImage, profileInitials } from "../people/PersonalProfileCard";
 import { PlatformBadges } from "../people/PlatformBadges";
+import { Row, rowStyles } from "../ui/Rows";
 import { VerificationBadge } from "../VerificationBadge";
 import { BusinessToday } from "./BusinessToday";
 import { NextAppointmentCard } from "./NextAppointmentCard";
@@ -89,8 +92,6 @@ export function AccountOverview({
   onSection,
   onAddBusiness,
   onProfile,
-  onSignOut,
-  signingOut,
 }: {
   accountId: string;
   name: string;
@@ -101,8 +102,6 @@ export function AccountOverview({
   onSection: (section: AccountSection) => void;
   onAddBusiness: () => void;
   onProfile?: (profile: PersonalProfile) => void;
-  onSignOut?: () => void;
-  signingOut?: boolean;
 }) {
   const { result, error, retry } = useAccountRead(
     "/api/account/overview",
@@ -123,8 +122,6 @@ export function AccountOverview({
       profile={profile ?? own.result}
       onSection={onSection}
       onAddBusiness={onAddBusiness}
-      onSignOut={onSignOut}
-      signingOut={signingOut}
       error={error ? <ReadError retry={retry} /> : null}
     >
       {result && result.businesses > 0 && (
@@ -140,7 +137,10 @@ const stateLabel = {
   published: msg("Objavljeno"),
 } as const;
 
-/** The first screen after sign-in: who the person is, what they keep, and where to go next. */
+/**
+ * "Moj profil", the first screen after sign-in: who the person is, the businesses they keep and
+ * the places of their account. Everything else is one tap away, in the menu.
+ */
 export function AccountSummary({
   facts,
   name,
@@ -148,8 +148,6 @@ export function AccountSummary({
   profile,
   onSection,
   onAddBusiness,
-  onSignOut,
-  signingOut = false,
   error,
   children,
 }: {
@@ -159,9 +157,6 @@ export function AccountSummary({
   profile?: PersonalProfile | null;
   onSection: (section: AccountSection) => void;
   onAddBusiness: () => void;
-  /** On a phone the overview hides the sidebar's identity row, so signing out lives here. */
-  onSignOut?: () => void;
-  signingOut?: boolean;
   error?: ReactNode;
   children?: ReactNode;
 }) {
@@ -169,161 +164,135 @@ export function AccountSummary({
   const businessesHeading = useId();
   const displayName = profile?.name ?? name;
   const photo = profile ? personalProfileImage(profileImageUrl(profile, "photo")) : null;
-  const cover = profile ? personalProfileImage(profileImageUrl(profile, "cover")) : null;
   const full =
     facts !== null && facts.businessLimit !== null && facts.businesses >= facts.businessLimit;
-  const shortcuts: { label: string; icon: IconName; pane: AccountSection; count?: number }[] = [
-    { label: t("Poruke"), icon: "message", pane: "messages", count: facts?.unreadThreads },
-    { label: t("Moji termini"), icon: "calendar", pane: "appointments" },
-    { label: t("Sačuvane djelatnosti"), icon: "heart", pane: "saved" },
-    { label: t("Postavke"), icon: "sliders", pane: "settings" },
-  ];
+  const unread = facts?.unreadThreads ?? 0;
   return (
     <div className={styles.workspace}>
+      <div className={styles.top}>
+        <span>{t("Moj profil")}</span>
+        <Link href={menuPath} className={styles.menu} aria-label={t("Meni")} prefetch={false}>
+          <Icon name="menu" />
+        </Link>
+      </div>
       <header className={styles.head} data-design="account-summary">
-        <div className={styles.cover} data-plain={cover ? undefined : true}>
-          {cover && (
-            <Image
-              src={cover}
-              alt=""
-              width={1600}
-              height={600}
-              unoptimized
-              className={styles.coverImage}
+        <span className={styles.avatar}>
+          {photo ? (
+            <Image src={photo} alt="" width={176} height={176} unoptimized />
+          ) : (
+            <span aria-hidden="true">{profileInitials(displayName)}</span>
+          )}
+        </span>
+        <h1>
+          <bdi>{displayName}</bdi>
+          {profile?.verified && <VerificationBadge kind="person" />}
+        </h1>
+        <div className={styles.tags}>
+          {facts?.package && (
+            <span className={styles.package} data-package={facts.package}>
+              {t("Paket")} <strong>{packageName(facts.package)}</strong>
+            </span>
+          )}
+          {profile ? (
+            <PlatformBadges
+              platformFounder={profile.platformFounder}
+              platformAdministrator={profile.platformAdministrator}
             />
+          ) : (
+            administrator && <span className={styles.package}>{t("Administrator")}</span>
           )}
         </div>
-        <div className={styles.headBody}>
-          <span className={styles.avatar}>
-            {photo ? (
-              <Image src={photo} alt="" width={160} height={160} unoptimized />
-            ) : (
-              <span aria-hidden="true">{profileInitials(displayName)}</span>
-            )}
-          </span>
-          <div className={styles.who}>
-            <h1>
-              <bdi>{displayName}</bdi>
-              {profile?.verified && <VerificationBadge kind="person" />}
-            </h1>
-            <div className={styles.tags}>
-              {facts?.package && (
-                <span className={styles.package} data-package={facts.package}>
-                  {t("Paket")} <strong>{packageName(facts.package)}</strong>
-                </span>
-              )}
-              {profile ? (
-                <PlatformBadges
-                  platformFounder={profile.platformFounder}
-                  platformAdministrator={profile.platformAdministrator}
-                />
-              ) : (
-                administrator && <span className={styles.package}>{t("Administrator")}</span>
-              )}
-            </div>
-            {facts && (
-              <p className={styles.since}>
-                {t("Na AhiBizzu od")}{" "}
-                <time dateTime={facts.joinedAt}>{localDate(facts.joinedAt, locale)}</time>
-              </p>
-            )}
-          </div>
-          <button type="button" className={styles.edit} onClick={() => onSection("profile")}>
-            <Icon name="user" /> {t("Uredi profil")}
-          </button>
-        </div>
+        {facts && (
+          <p className={styles.since}>
+            {t("Na AhiBizzu od")}{" "}
+            <time dateTime={facts.joinedAt}>{localDate(facts.joinedAt, locale)}</time>
+          </p>
+        )}
+        <button type="button" className={styles.edit} onClick={() => onSection("profile")}>
+          <Icon name="user" /> {t("Uredi profil")}
+        </button>
       </header>
       {error}
       {facts?.nextAppointment && (
         <NextAppointmentCard row={facts.nextAppointment} open={() => onSection("appointments")} />
       )}
-      <section className={styles.block} aria-labelledby={businessesHeading}>
+      <section className={styles.businesses} aria-labelledby={businessesHeading}>
         <header className={styles.blockHead}>
           <h2 id={businessesHeading}>{t("Moje djelatnosti")}</h2>
-          {facts && (
-            <span className={styles.count}>
-              {facts.businessLimit
+          <span className={styles.count}>
+            {facts &&
+              (facts.businessLimit
                 ? t("{count} od {limit}", { count: facts.businesses, limit: facts.businessLimit })
-                : facts.businesses}
-            </span>
-          )}
+                : facts.businesses)}
+          </span>
           {facts && !full && (
-            <button type="button" className={styles.add} onClick={onAddBusiness}>
-              <Icon name="plus" /> {t("Dodaj djelatnost")}
+            <button
+              type="button"
+              className={styles.add}
+              aria-label={t("Dodaj djelatnost")}
+              onClick={onAddBusiness}
+            >
+              <Icon name="plus" /> {t("Dodaj")}
             </button>
           )}
         </header>
-        {facts && facts.businessList.length > 0 && (
-          <ul className={styles.rows}>
-            {facts.businessList.map((business) => (
-              <li key={business.id}>
-                <button type="button" onClick={() => onSection("businesses")}>
-                  <span className={styles.rowMark} aria-hidden="true">
-                    <Icon name="shop" />
-                  </span>
-                  <span className={styles.rowTitle} dir="auto">
-                    {business.title}
-                  </span>
-                  <span className={styles.state} data-state={business.status}>
-                    {t(stateLabel[business.status])}
-                  </span>
-                  <Icon name="chevron" className={styles.rowArrow} />
-                </button>
-              </li>
-            ))}
-          </ul>
+        {facts && (
+          <div className={styles.block}>
+            {facts.businessList.length > 0 && (
+              <ul className={styles.rows}>
+                {facts.businessList.map((business) => (
+                  <li key={business.id}>
+                    <button type="button" onClick={() => onSection("businesses")}>
+                      <span
+                        className={styles.rowMark}
+                        data-live={business.status === "published" || undefined}
+                        aria-hidden="true"
+                      >
+                        {profileInitials(business.title)}
+                      </span>
+                      <span className={styles.rowTitle} dir="auto">
+                        {business.title}
+                      </span>
+                      <span className={styles.state} data-state={business.status}>
+                        {t(stateLabel[business.status])}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {facts.businesses > facts.businessList.length && (
+              <button type="button" className={styles.all} onClick={() => onSection("businesses")}>
+                {t("Sve djelatnosti")} <Icon name="chevron" />
+              </button>
+            )}
+            {facts.businesses === 0 && (
+              <p className={styles.note}>
+                {t("Još nemaš djelatnost. Dodaj je da te ljudi pronađu u pretrazi.")}
+              </p>
+            )}
+            {full && <p className={styles.note}>{t(packageFullText)}</p>}
+          </div>
         )}
-        {facts && facts.businesses > facts.businessList.length && (
-          <button type="button" className={styles.all} onClick={() => onSection("businesses")}>
-            {t("Sve djelatnosti")} <Icon name="chevron" />
-          </button>
-        )}
-        {facts && facts.businesses === 0 && (
-          <p className={styles.note}>
-            {t("Još nemaš djelatnost. Dodaj je da te ljudi pronađu u pretrazi.")}
-          </p>
-        )}
-        {full && <p className={styles.note}>{t(packageFullText)}</p>}
       </section>
-      <nav className={styles.block} aria-label={t("Moj nalog")}>
-        <ul className={styles.rows}>
-          {shortcuts.map(({ label, icon, pane, count }) => (
-            <li key={pane}>
-              <button type="button" data-design="account-metric" onClick={() => onSection(pane)}>
-                <span className={styles.rowMark} aria-hidden="true">
-                  <Icon name={icon} />
-                </span>
-                <span className={styles.rowTitle}>{label}</span>
-                {count !== undefined && count > 0 && (
-                  <span className={styles.badge}>
-                    <span className={styles.srOnly}>{t("Nepročitani razgovori")} </span>
-                    {count}
-                  </span>
-                )}
-                <Icon name="chevron" className={styles.rowArrow} />
-              </button>
-            </li>
-          ))}
-          <li>
-            <Link href="/pomoc" data-design="account-metric">
-              <span className={styles.rowMark} aria-hidden="true">
-                <Icon name="info" />
+      <nav className={`${rowStyles.card} ${styles.links}`} aria-label={t("Moj nalog")}>
+        <Row
+          icon="message"
+          title={t("Poruke")}
+          onClick={() => onSection("messages")}
+          end={
+            unread > 0 ? (
+              <span className={rowStyles.count}>
+                <span className={styles.srOnly}>{t("Nepročitani razgovori")} </span>
+                {unread}
               </span>
-              <span className={styles.rowTitle}>{t("Pomoć")}</span>
-              <Icon name="chevron" className={styles.rowArrow} />
-            </Link>
-          </li>
-          {onSignOut && (
-            <li className={styles.signOut}>
-              <button type="button" disabled={signingOut} onClick={onSignOut}>
-                <span className={styles.rowMark} aria-hidden="true">
-                  <Icon name="logout" />
-                </span>
-                <span className={styles.rowTitle}>{t("Odjava")}</span>
-              </button>
-            </li>
-          )}
-        </ul>
+            ) : undefined
+          }
+        />
+        <Row icon="calendar" title={t("Termini")} onClick={() => onSection("appointments")} />
+        <Row icon="people" title={t("Prijatelji")} onClick={() => onSection("connections")} />
+        <Row icon="heart" title={t("Sačuvano")} onClick={() => onSection("saved")} />
+        <Row icon="play" title={t("Moji reels")} href={accountShortcuts.manageReels} />
       </nav>
       {children}
     </div>

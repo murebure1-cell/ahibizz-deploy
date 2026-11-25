@@ -199,6 +199,17 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   koraka (registracija, potvrda emaila, odobrenje administratora) i javlja se nakon registracije,
   nakon potvrde emaila i kad se neodobren nalog pokuša prijaviti. Dugme za Google ostaje s
   Googleovim znakom u četiri boje. Na širokom ekranu obrazac je u kartici pored fotografije.
+- **Moj profil, Meni, Postavke i Jezik [urađeno 25. 11. 2026.]:** po crtežima. Na telefonu je
+  „Moj profil” prvi ekran naloga: avatar s prstenom u boji akcenta, paket, „Moje djelatnosti” s
+  inicijalima i stanjem, pa redovi Poruke, Termini, Prijatelji, Sačuvano i Moji reels. Dugme u
+  njegovom zaglavlju i dugme menija u zaglavlju stranice vode na ekran **Meni** (`/meni`), koji
+  na telefonu zamjenjuje padajući meni: kartica naloga ili prijava, pa grupe Nalog, AhiBizz,
+  Pomoć i pravila i Brisanje, i Odjava na dnu. **Jezik** (`/jezik`) je lista s jednim izborom.
+  **Postavke** su grupe redova; tema se bira u tri dijela i sprema odmah. Na širokom ekranu
+  ostaju bočna traka naloga i padajući meni. Bedževi, Ahi zajednica i Ahi investment u Meniju
+  pišu „Uskoro” i ne vode nikuda. S crteža još nema: pregledi profila i djelatnosti (dolaze s
+  analitikom), red Sponzorisano, Google nalog, obavijesti emailom, vidljivost profila, aktivne
+  prijave i red Paket u Postavkama, jer za njih podatak ili funkcija još ne postoji **[novo]**.
 - **Zamućenje** samo na slojevima koji leže preko sadržaja: donja traka, meni, listovi koji
   izlaze odozdo, prelaz pri zamjeni slike. Ne na karticama.
 - **Pokret:** kratak (150–250 ms) i sa svrhom. Tačkice za „učitavam” i za „novo”.
