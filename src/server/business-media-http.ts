@@ -13,6 +13,10 @@ import {
 } from "./business-media";
 
 const noCache = { "Cache-Control": "no-store", Pragma: "no-cache" };
+// A public image address carries its version, so the bytes behind one address never change.
+// "private" keeps the copy in the visitor's own browser and out of shared caches, which limits a
+// removed image to the people who had already seen it.
+const publicImageCache = { "Cache-Control": "private, max-age=2592000, immutable" };
 const uuidPattern = "[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}";
 const resource = new RegExp(
   `^/api/business-media/(mine|public)/(${uuidPattern})(?:/(logo|cover|gallery)/([0-8]))?$`,
@@ -120,7 +124,7 @@ export function createBusinessMediaHttpHandler({
           return reply({ code: "MEDIA_NOT_FOUND" }, 404);
         return new Response(new Uint8Array(image.bytes), {
           headers: {
-            ...noCache,
+            ...(area === "public" ? publicImageCache : noCache),
             "Content-Type": "image/webp",
             "X-Content-Type-Options": "nosniff",
             "Cross-Origin-Resource-Policy": "same-origin",
