@@ -18,14 +18,15 @@ Vlasnik platforme odobrava naloge i sadržaj.
 |---|---|---|
 | Javno | svako | `ahibizz.com` **[važi od 25. 11. 2026.]** |
 | Nalog | prijavljeni član | `ahibizz.com/nalog` |
-| Administracija | vlasnik platforme | `ahibizz.com/administracija` **[važi]**; `admin.ahibizz.com` **[cilj]** |
-| CMS | vlasnik platforme, kasnije urednik | `ahibizz.com/sadrzaj` **[važi od 25. 11. 2026.]**; `cms.ahibizz.com` **[cilj]** |
+| Administracija | vlasnik platforme | `ahibizz.com/administracija` **[važi]** |
+| CMS | vlasnik platforme, kasnije urednik | `ahibizz.com/sadrzaj` **[važi od 25. 11. 2026.]** |
 
 ## 2. Adrese i šta gdje ide
 
-Jedna aplikacija, jedna baza, tri prostora: javni, administracija i sadržaj. Danas su sva tri na
-`ahibizz.com`, razdvojena putanjom; poddomene dolaze kad ih hosting bude mogao služiti (vidi
-„Stanje poddomena” ispod).
+Jedna aplikacija, jedna baza, jedna adresa, tri prostora razdvojena putanjom: javni,
+administracija i sadržaj. Vlasnik je 25. 11. 2026. odlučio da ostajemo na putanjama i da se
+posebne poddomene ne uvode (vidi „Odluka o poddomenama” ispod). `www.ahibizz.com` preusmjerava
+na `ahibizz.com`.
 
 **`ahibizz.com` — javno i nalog [važi]**
 
@@ -50,22 +51,14 @@ Jedna aplikacija, jedna baza, tri prostora: javni, administracija i sadržaj. Da
   `/administracija?odjeljak=kategorije`) preusmjeravaju ovamo.
 - Tekstovi centra za pomoć su još u kodu i nemaju uređivač.
 
-Pravila za poddomene **[cilj]**:
-
-1. `admin.ahibizz.com` otvara samo `/administracija`, `cms.ahibizz.com` samo `/sadrzaj`; na
-   `ahibizz.com` te putanje preusmjeravaju na svoju adresu.
-2. Javne stranice ne otvaraju se na `admin.` i `cms.`; te adrese nisu u pretraživačima.
-3. Na svakoj adresi se prijavljuje posebno, istim nalogom. Kolačić se ne dijeli preko cijele
-   domene, jer `prijava.ahibizz.com` i `api.ahibizz.com` vode na druge servere i dobili bi ga.
-4. Svaka stranica i svaka radnja i dalje sama provjerava ulogu na serveru. Adresa nikad ne daje
-   pravo.
-
-Stanje poddomena, 25. 11. 2026.: DNS za `admin.` i `cms.` pokazuje na OctaDeploy, ali ih
-platforma ne služi. Panel prima samo cijele domene (s `www`), a pokušaj da se `admin.ahibizz.com`
-zakači odbijen je pri kreiranju DNS zone („unsupported tld”). Treba podrška OctaDeploya: dva
-dodatna imena servera za aplikaciju 213, s certifikatima. Kad to bude gotovo, u kodu ostaje
-usmjeravanje po hostu, prijava po adresi i izmjena zaštite ulaza, koja danas gradi jednu fiksnu
-adresu (vidi `docs/handover/OPERACIJE.md`).
+Odluka o poddomenama, 25. 11. 2026.: ostajemo na putanjama. `admin.ahibizz.com` i
+`cms.ahibizz.com` su bili planirani, ali hosting kroz svoj panel služi samo cijele domene, a
+pokušaj da se `admin.ahibizz.com` zakači odbijen je pri kreiranju DNS zone. Razdvajanje putanjom
+daje isto: administracija i sadržaj su odvojeni prostori, oba samo za vlasnika, i svaka stranica i
+radnja sama provjerava ulogu na serveru. Ako se poddomene ikad uvedu, treba podrška hostinga
+(dodatna imena servera i certifikati), usmjeravanje po hostu i izmjena zaštite ulaza, koja gradi
+jednu fiksnu adresu. Kolačić prijave se tada ne smije dijeliti preko cijele domene, jer
+`prijava.ahibizz.com` i `api.ahibizz.com` vode na druge servere.
 
 ## 3. Gdje šta ide u kodu [važi]
 
@@ -170,8 +163,8 @@ zdravlja i same izmjene uživo.
 1. Očistiti probne podatke. Urađeno 25. 11. 2026.; vidi `docs/handover/OBRISANO.md`.
 2. Prebaciti `ahibizz.com` na OctaDeploy; email ostaje na starom serveru. Urađeno
    25. 11. 2026.; vidi `docs/handover/OPERACIJE.md`.
-3. Odvojiti administraciju i sadržaj. Putanje su odvojene 25. 11. 2026.; poddomene čekaju
-   OctaDeploy (dio 2).
+3. Odvojiti administraciju i sadržaj. Urađeno 25. 11. 2026. putanjama `/administracija` i
+   `/sadrzaj`; poddomene se ne uvode (dio 2).
 4. Nova navigacija po dijelu 8.
 5. Zajedničke komponente (dugme, kartica, polje, lista) i prelazak ekrana na njih.
 6. Pregled koda po cjelinama: prijava, djelatnosti, poruke, termini, Reels, administracija.

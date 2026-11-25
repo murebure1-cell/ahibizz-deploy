@@ -186,5 +186,9 @@ export function inspectIngressRequest(request, policy) {
   const supplied = singleRawHeader(request, "x-real-ip");
   const clientIp = normalizeIngressIp(supplied?.trim());
   if (!clientIp) return { allowed: false, status: 400 };
+  // The one alias people type by habit. The destination is the configured origin and the already
+  // validated path, so the caller's Host still chooses nothing but whether to be sent there.
+  if (host.replace(/:(?:80|443)$/, "") === `www.${new URL(policy.origin).host}`)
+    return { allowed: true, health: false, clientIp, redirect: `${policy.origin}${request.url}` };
   return { allowed: true, health: false, clientIp };
 }
