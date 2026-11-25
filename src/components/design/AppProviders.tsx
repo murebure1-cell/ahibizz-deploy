@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
+import { contentPaths } from "../../lib/admin-navigation";
 import { AppAppearance } from "../appearance/AppAppearance";
 import { FavoritesProvider } from "../favorites/FavoritesProvider";
 import { DeviceLocationProvider } from "../location/DeviceLocation";
@@ -10,7 +11,7 @@ import { NavigationProgress } from "../NavigationProgress";
 import { AppPwaProvider } from "../pwa/AppPwa";
 import { ImageArrival } from "./ImageArrival";
 
-export const designerFramePath = "/administracija/izgled/pregled";
+export const designerFramePath = contentPaths.designFrame;
 
 export function AppProviders({ children }: { children: ReactNode }) {
   if (usePathname() === designerFramePath) return <>{children}</>;
@@ -42,7 +43,7 @@ export function PublicShell({
   if (pathname === designerFramePath) return <>{children}</>;
   return (
     <>
-      {pathname !== "/administracija/izgled" && stylesheet}
+      {pathname !== contentPaths.design && stylesheet}
       {header}
       <FavoritesProvider>{children}</FavoritesProvider>
       {footer}

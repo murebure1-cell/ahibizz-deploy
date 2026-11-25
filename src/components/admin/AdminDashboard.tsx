@@ -9,6 +9,7 @@ import {
   adminSectionPath,
   businessImportPath,
   businessLocationBatchPath,
+  contentPaths,
   readAdminNavigation,
 } from "../../lib/admin-navigation";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
@@ -18,7 +19,6 @@ import { ReviewsAdmin } from "../reviews/ReviewsAdmin";
 import { AccountApprovals } from "./AccountApprovals";
 import { AdminToday } from "./AdminToday";
 import styles from "./admin.module.css";
-import { CategoryManager } from "./CategoryManager";
 
 const sections = [
   { id: "today", label: "Danas", icon: "calendar", title: "Danas" },
@@ -27,12 +27,6 @@ const sections = [
     label: "Nalozi",
     icon: "user",
     title: "Nalozi",
-  },
-  {
-    id: "categories",
-    label: "Kategorije",
-    icon: "sliders",
-    title: "Kategorije",
   },
   {
     id: "businesses",
@@ -91,7 +85,6 @@ export function AdminDashboard({
     approvalQueue: section === "approvalQueue",
     businessQueue: section === "businessQueue",
     accounts: section === "accounts",
-    categories: section === "categories",
     businesses: section === "businesses",
     reviews: section === "reviews",
   });
@@ -165,11 +158,8 @@ export function AdminDashboard({
             <Link href="/administracija/reels">
               <Icon name="play" /> Pregled Reelsa
             </Link>
-            <Link href="/administracija/blog">
-              <Icon name="info" /> Uređivanje bloga
-            </Link>
-            <Link href="/administracija/izgled">
-              <Icon name="sliders" /> Uređivač izgleda
+            <Link href={contentPaths.home}>
+              <Icon name="info" /> Sadržaj: članci, izgled, kategorije
             </Link>
             <Link href={adminMailPath}>
               <Icon name="mail" /> Email poruke
@@ -202,11 +192,6 @@ export function AdminDashboard({
               active={accountsActive}
               embedded
             />
-          )}
-        </div>
-        <div hidden={section !== "categories"}>
-          {(visited.categories || section === "categories") && (
-            <CategoryManager key={initial.id} expectedAccountId={initial.id} />
           )}
         </div>
         <div hidden={!businessesActive}>

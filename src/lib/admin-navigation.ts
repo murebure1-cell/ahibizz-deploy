@@ -3,7 +3,6 @@ const adminSections = {
   odobrenja: "approvalQueue",
   pregled: "businessQueue",
   nalozi: "accounts",
-  kategorije: "categories",
   djelatnosti: "businesses",
   recenzije: "reviews",
 } as const;
@@ -15,7 +14,6 @@ const sectionQueries: Record<AdminSection, keyof typeof adminSections> = {
   approvalQueue: "odobrenja",
   businessQueue: "pregled",
   accounts: "nalozi",
-  categories: "kategorije",
   businesses: "djelatnosti",
   reviews: "recenzije",
 };
@@ -38,6 +36,18 @@ export function readAdminNavigation(params: URLSearchParams): AdminSection {
   return adminSection(values.length === 1 ? values[0] : undefined);
 }
 
+/**
+ * Content the visitor sees is edited in its own place, apart from work with people and businesses.
+ * These pages are owner-only like administration; the address never grants access.
+ */
+export const contentPaths = {
+  home: "/sadrzaj",
+  articles: "/sadrzaj/clanci",
+  design: "/sadrzaj/izgled",
+  designFrame: "/sadrzaj/izgled/pregled",
+  categories: "/sadrzaj/kategorije",
+} as const;
+
 /** This closed return destination never grants access; the server still requires an owner. */
 export const businessImportPath = "/administracija/uvoz-prijava";
 export const businessLocationBatchPath = "/administracija/lokacije";
@@ -45,9 +55,11 @@ export const adminMailPath = "/administracija/emailovi";
 export function adminReturnPath(value: unknown): string | null {
   if (
     value === "/administracija" ||
-    value === "/administracija/izgled" ||
     value === "/administracija/zahtjevi" ||
-    value === "/administracija/blog" ||
+    value === contentPaths.home ||
+    value === contentPaths.articles ||
+    value === contentPaths.design ||
+    value === contentPaths.categories ||
     value === "/administracija/reels" ||
     value === businessImportPath ||
     value === businessLocationBatchPath ||

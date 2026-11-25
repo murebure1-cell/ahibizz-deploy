@@ -20,7 +20,7 @@ test("help tickets and destinations accept only expected values", () => {
   );
   assert.equal(supportTarget("help", "novosti--0a2b09a0-2f06-4b31-96e7-ca0f335d72d6"), null);
   assert.equal(accountReturnPath("/blog/siguran-razgovor"), "/blog/siguran-razgovor");
-  assert.equal(accountReturnPath("/administracija/blog"), "/administracija/blog");
+  assert.equal(accountReturnPath("/sadrzaj/clanci"), "/sadrzaj/clanci");
   assert.equal(accountReturnPath("/pomoc"), "/pomoc");
   assert.equal(accountReturnPath(blogPath({ saved: true })), "/blog?sacuvano=1");
   assert.equal(accountReturnPath("/blog//example.com"), "/nalog");
