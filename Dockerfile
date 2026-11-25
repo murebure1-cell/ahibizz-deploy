@@ -34,8 +34,6 @@ COPY --from=build --chown=node:node /app/.next/static ./.next/static
 COPY --from=build --chown=node:node /app/public ./public
 COPY --from=build --chown=node:node /app/scripts/start.mjs /app/scripts/migrate.mjs /app/scripts/initial-owner.mjs /app/scripts/ingress-observe.mjs ./scripts/
 COPY --from=build --chown=node:node /app/scripts/ingress-policy.mjs /app/scripts/ingress-evidence.mjs /app/scripts/ingress-forwarder.mjs /app/scripts/ingress-start.mjs ./scripts/
-# One-time operator command; remove together with the owner page once the reset is done.
-COPY --from=build --chown=node:node /app/scripts/prelaunch-reset.mjs /app/scripts/prelaunch-reset-core.mjs ./scripts/
 COPY --from=build --chown=node:node /app/db/migrations ./db/migrations
 COPY --from=build --chown=node:node /app/src/server/env.ts ./src/server/env.ts
 COPY --from=build --chown=node:node /app/src/server/auth/initial-owner.ts ./src/server/auth/initial-owner.ts
@@ -45,5 +43,4 @@ USER node
 # Importing the mailer validates packaging without creating a transport or sending mail.
 RUN node --input-type=module -e "await import('pg'); const { default: smtp } = await import('nodemailer'); if (typeof smtp.createTransport !== 'function') throw new Error('SMTP runtime unavailable')"
 RUN node scripts/initial-owner.mjs --help
-RUN node scripts/prelaunch-reset.mjs --help
 CMD ["node", "scripts/start.mjs"]
