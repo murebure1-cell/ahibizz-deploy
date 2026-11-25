@@ -21,6 +21,24 @@ export function createNextConfig(distribution: string): NextConfig {
         fallback: [],
       };
     },
+    // Content editing moved out of administration on 2026-11-25; old addresses keep working.
+    async redirects() {
+      return [
+        { source: "/administracija/blog", destination: "/sadrzaj/clanci", permanent: false },
+        { source: "/administracija/izgled", destination: "/sadrzaj/izgled", permanent: false },
+        {
+          source: "/administracija/izgled/pregled",
+          destination: "/sadrzaj/izgled/pregled",
+          permanent: false,
+        },
+        {
+          source: "/administracija",
+          has: [{ type: "query", key: "odjeljak", value: "kategorije" }],
+          destination: "/sadrzaj/kategorije",
+          permanent: false,
+        },
+      ];
+    },
     output: "standalone",
     // Reuse a page visited in the last 30 seconds on Back or a repeat tap instead of waiting for
     // the server again. Sign-in and sign-out reload the whole page, which clears this cache.
@@ -55,7 +73,7 @@ export function createNextConfig(distribution: string): NextConfig {
           ],
         },
         {
-          source: "/administracija/izgled/pregled",
+          source: "/sadrzaj/izgled/pregled",
           headers: [
             { key: "X-Frame-Options", value: "SAMEORIGIN" },
             {

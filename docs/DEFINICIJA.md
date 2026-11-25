@@ -18,13 +18,14 @@ Vlasnik platforme odobrava naloge i sadržaj.
 |---|---|---|
 | Javno | svako | `ahibizz.com` **[važi od 25. 11. 2026.]** |
 | Nalog | prijavljeni član | `ahibizz.com/nalog` |
-| Administracija | vlasnik platforme | `admin.ahibizz.com` **[cilj]**, danas `/administracija` |
-| CMS | vlasnik platforme, kasnije urednik | `cms.ahibizz.com` **[cilj]**, danas dio `/administracija` |
+| Administracija | vlasnik platforme | `ahibizz.com/administracija` **[važi]**; `admin.ahibizz.com` **[cilj]** |
+| CMS | vlasnik platforme, kasnije urednik | `ahibizz.com/sadrzaj` **[važi od 25. 11. 2026.]**; `cms.ahibizz.com` **[cilj]** |
 
 ## 2. Adrese i šta gdje ide
 
-Jedna aplikacija, jedna baza, tri adrese. Adresa određuje koje se stranice smiju otvoriti; prijava
-je zajednička.
+Jedna aplikacija, jedna baza, tri prostora: javni, administracija i sadržaj. Danas su sva tri na
+`ahibizz.com`, razdvojena putanjom; poddomene dolaze kad ih hosting bude mogao služiti (vidi
+„Stanje poddomena” ispod).
 
 **`ahibizz.com` — javno i nalog [važi]**
 
@@ -36,23 +37,35 @@ je zajednička.
 - Pravne i pomoćne: `/o-nama`, `/privatnost`, `/pravila-zajednice`, `/prijavi-sadrzaj`,
   `/brisanje-naloga`, `/instaliraj`, `/podrzi`.
 
-**`admin.ahibizz.com` — rad s ljudima i djelatnostima [cilj]**
+**Administracija, `/administracija` — rad s ljudima i djelatnostima [važi]**
 
 - Danas (šta čeka odluku), odobrenja naloga, pregled djelatnosti prije objave, nalozi,
   djelatnosti, recenzije, zahtjevi i prijave, moderacija Reelsa, verifikacija profila,
   poslani emailovi, uvoz prijava, lokacije.
 
-**`cms.ahibizz.com` — sadržaj koji vidi posjetilac [cilj]**
+**Sadržaj (CMS), `/sadrzaj` — ono što posjetilac čita [važi]**
 
-- Članci bloga, izgled početne, kategorije djelatnosti, tekstovi centra za pomoć.
+- Pregled `/sadrzaj`, članci `/sadrzaj/clanci`, izgled početne `/sadrzaj/izgled`, kategorije
+  `/sadrzaj/kategorije`. Stare adrese (`/administracija/blog`, `/administracija/izgled`,
+  `/administracija?odjeljak=kategorije`) preusmjeravaju ovamo.
+- Tekstovi centra za pomoć su još u kodu i nemaju uređivač.
 
-Pravila za adrese **[cilj]**:
+Pravila za poddomene **[cilj]**:
 
-1. Stranice administracije i CMS-a ne otvaraju se na `ahibizz.com`; stara putanja
-   `/administracija` preusmjerava na odgovarajuću adresu.
+1. `admin.ahibizz.com` otvara samo `/administracija`, `cms.ahibizz.com` samo `/sadrzaj`; na
+   `ahibizz.com` te putanje preusmjeravaju na svoju adresu.
 2. Javne stranice ne otvaraju se na `admin.` i `cms.`; te adrese nisu u pretraživačima.
-3. Kolačić prijave važi za sve tri adrese, ali svaka stranica i svaka radnja i dalje sama
-   provjerava ulogu na serveru. Adresa nikad ne daje pravo.
+3. Na svakoj adresi se prijavljuje posebno, istim nalogom. Kolačić se ne dijeli preko cijele
+   domene, jer `prijava.ahibizz.com` i `api.ahibizz.com` vode na druge servere i dobili bi ga.
+4. Svaka stranica i svaka radnja i dalje sama provjerava ulogu na serveru. Adresa nikad ne daje
+   pravo.
+
+Stanje poddomena, 25. 11. 2026.: DNS za `admin.` i `cms.` pokazuje na OctaDeploy, ali ih
+platforma ne služi. Panel prima samo cijele domene (s `www`), a pokušaj da se `admin.ahibizz.com`
+zakači odbijen je pri kreiranju DNS zone („unsupported tld”). Treba podrška OctaDeploya: dva
+dodatna imena servera za aplikaciju 213, s certifikatima. Kad to bude gotovo, u kodu ostaje
+usmjeravanje po hostu, prijava po adresi i izmjena zaštite ulaza, koja danas gradi jednu fiksnu
+adresu (vidi `docs/handover/OPERACIJE.md`).
 
 ## 3. Gdje šta ide u kodu [važi]
 
@@ -157,7 +170,8 @@ zdravlja i same izmjene uživo.
 1. Očistiti probne podatke. Urađeno 25. 11. 2026.; vidi `docs/handover/OBRISANO.md`.
 2. Prebaciti `ahibizz.com` na OctaDeploy; email ostaje na starom serveru. Urađeno
    25. 11. 2026.; vidi `docs/handover/OPERACIJE.md`.
-3. Odvojiti `admin.` i `cms.` po dijelu 2.
+3. Odvojiti administraciju i sadržaj. Putanje su odvojene 25. 11. 2026.; poddomene čekaju
+   OctaDeploy (dio 2).
 4. Nova navigacija po dijelu 8.
 5. Zajedničke komponente (dugme, kartica, polje, lista) i prelazak ekrana na njih.
 6. Pregled koda po cjelinama: prijava, djelatnosti, poruke, termini, Reels, administracija.

@@ -36,7 +36,9 @@ test("sign-in accepts only exact known administration continuations", () => {
     "/administracija?odjeljak=odobrenja",
     "/administracija?odjeljak=pregled",
     "/administracija?odjeljak=nalozi",
-    "/administracija?odjeljak=kategorije",
+    "/sadrzaj",
+    "/sadrzaj/clanci",
+    "/sadrzaj/kategorije",
     "/administracija?odjeljak=djelatnosti",
     "/administracija?odjeljak=recenzije",
   ])

@@ -22,7 +22,7 @@ const publicPages = [
   "/registracija",
 ];
 // Account and admin pages must send a guest to sign in, never render or crash.
-const privatePages = ["/nalog", "/administracija"];
+const privatePages = ["/nalog", "/administracija", "/sadrzaj"];
 // Removed purchase pages must stay gone rather than render or crash.
 const retiredPages = ["/istakni", "/oglasavanje", "/paketi"];
 

@@ -3,15 +3,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArticleEditor } from "../../../../components/content-hub/ArticleEditor";
 import styles from "../../../../components/content-hub/content-hub.module.css";
+import { contentPaths } from "../../../../lib/admin-navigation";
 import { articleCategories, articleSlug } from "../../../../lib/content-hub";
 import { AccountAccessError } from "../../../../server/auth/accounts";
 import { getContentHub } from "../../../../server/content-hub";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Uređivanje bloga" };
-const route = "/administracija/blog";
+const route = contentPaths.articles;
 
-export default async function AdminBlog({
+export default async function ContentArticles({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -28,14 +29,14 @@ export default async function AdminBlog({
     data = await service?.adminPage(await headers(), slug, page);
   } catch (error) {
     if (error instanceof AccountAccessError) {
-      if (error.status === 401) redirect("/prijava?nastavi=%2Fadministracija%2Fblog");
+      if (error.status === 401) redirect(`/prijava?nastavi=${encodeURIComponent(route)}`);
       if (error.status === 403) redirect("/nalog");
     }
   }
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
-      <Link href="/administracija" className={styles.backLink}>
-        Administracija
+      <Link href={contentPaths.home} className={styles.backLink}>
+        Sadržaj
       </Link>
       <h1>Uređivanje bloga</h1>
       {query.sacuvano === "1" && data?.editing && <p role="status">Članak je sačuvan.</p>}
@@ -60,7 +61,7 @@ export default async function AdminBlog({
               </Link>
             ))}
             {(page > 1 || data.more) && (
-              <nav className={styles.pageFooter} aria-label="Stranice članaka u administraciji">
+              <nav className={styles.pageFooter} aria-label="Stranice članaka">
                 {page > 1 && (
                   <Link href={`${route}?strana=${page - 1}`} className={styles.secondary}>
                     Prethodna
