@@ -1,8 +1,13 @@
+/*
+ * Messages, as drawn: a list of conversations with a search field and three pills over it, and a
+ * conversation of round bubbles with the time under each group. On a wide screen the two stand
+ * side by side in one card; on a phone each is a screen of its own.
+ */
 .workspace {
   --ink: var(--ui-text);
   --muted: var(--ui-muted);
   --line: var(--ui-border);
-  --dialog-paper: color-mix(in srgb, var(--ui-page) 80%, var(--ui-surface-soft));
+  --hairline: color-mix(in srgb, var(--ui-text) 16%, transparent);
   min-width: 0;
   width: 100%;
   container: inbox / inline-size;
@@ -26,21 +31,20 @@
   outline-offset: 2px;
 }
 .workspace svg {
-  width: 19px;
-  height: 19px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
 }
 
 .layout {
   display: grid;
-  grid-template-columns: clamp(228px, 34%, 320px) minmax(0, 1fr);
+  grid-template-columns: clamp(280px, 36%, 380px) minmax(0, 1fr);
   min-height: 410px;
   height: clamp(410px, 72dvh, 760px);
   border: 1px solid var(--line);
   border-radius: var(--ui-radius-xl);
   overflow: hidden;
-  background: var(--ui-surface);
-  box-shadow: 0 12px 38px var(--ui-shadow);
+  background: var(--ui-page);
 }
 .sidebar,
 .conversation {
@@ -51,73 +55,83 @@
 }
 .sidebar {
   border-inline-end: 1px solid var(--line);
-  background: var(--ui-surface);
 }
 .inboxHeader {
   display: grid;
   gap: 12px;
-  padding: 17px 14px 12px;
-  border-bottom: 1px solid var(--line);
+  padding: 22px 20px 0;
 }
-.inboxTitle,
-.listControls {
+.inboxTitle {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
 }
 .inboxTitle h1 {
   min-width: 0;
-  font-size: clamp(1.72rem, 7.5vw, 2rem);
-  font-weight: 750;
-  letter-spacing: -0.045em;
-  line-height: 1.17;
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
+.inboxTitle > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.unreadTotal {
+  color: var(--ui-accent-text);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.sectionLabel {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+/* The round buttons of this screen: refresh, the way back, the menu of a conversation. */
 .refresh,
 .back,
 .conversationMenu summary {
   display: grid;
   place-items: center;
-  flex-shrink: 0;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 9px;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   border: 1px solid var(--line);
-  border-radius: var(--ui-radius-md);
+  border-radius: 50%;
   background: var(--ui-surface);
-  color: var(--ui-text-secondary);
+  color: var(--ink);
+  transition: scale 160ms var(--ease-out);
 }
-.refresh {
-  font-size: 0.8125rem;
-  font-weight: 650;
+.refresh:active,
+.back:active,
+.conversationMenu summary:active {
+  scale: 0.94;
 }
 .conversationMenu summary {
   list-style: none;
-}
-.refresh:hover,
-.back:hover,
-.conversationMenu summary:hover,
-.conversationMenu[open] summary {
-  background: var(--ui-surface-hover);
-  color: var(--ink);
 }
 .searchField {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 9px;
-  min-height: 46px;
+  gap: 10px;
+  height: 48px;
   min-width: 0;
-  padding: 0 10px;
-  border: 1px solid var(--ui-border-strong);
+  padding: 0 6px 0 16px;
+  border: 1px solid var(--hairline);
   border-radius: var(--ui-radius-md);
-  background: var(--ui-surface-soft);
+  background: var(--ui-surface);
   color: var(--muted);
 }
 .searchField:focus-within {
-  border-color: var(--ui-focus);
-  box-shadow: inset 0 0 0 1px var(--ui-focus);
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
 }
 .searchIcon {
   display: grid;
@@ -125,15 +139,19 @@
   flex: none;
   color: var(--muted);
 }
+.searchIcon svg {
+  width: 18px;
+  height: 18px;
+}
 .searchField input {
   width: 100%;
   min-width: 0;
-  min-height: 44px;
+  height: 44px;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--ink);
-  font-size: 1rem;
+  font-size: 16px;
 }
 .searchField input:focus-visible {
   outline: none;
@@ -148,122 +166,117 @@
 .clearSearch {
   display: grid;
   place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: var(--ui-radius-xs);
   width: 40px;
   height: 44px;
   flex: none;
-  background: transparent;
-  color: var(--muted);
-}
-.clearSearch:hover {
-  color: var(--ink);
-}
-.listControls {
-  flex-wrap: wrap;
-}
-.tabs,
-.filterGroup {
-  display: flex;
-  min-inline-size: 0;
-  margin: 0;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.tabs {
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-surface-soft);
-}
-.filterGroup {
   padding: 0;
   border: 0;
-}
-.tabs button,
-.filterGroup button {
-  min-height: 38px;
-  padding: 5px 10px;
-  border: 1px solid transparent;
   border-radius: var(--ui-radius-xs);
   background: transparent;
   color: var(--muted);
-  font-size: 0.8125rem;
-  font-weight: 650;
 }
-.tabs button[aria-pressed="true"] {
+/* Whose conversations, and whether only the unread ones: three pills in one row. */
+.pills {
+  display: flex;
+  gap: 8px;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pills button {
+  flex: none;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
   background: var(--ui-surface);
-  border-color: var(--line);
   color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
 }
-.filterGroup button {
-  color: var(--ui-text-secondary);
+.pills button[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
+  font-weight: 800;
 }
-.filterGroup button[aria-pressed="true"] {
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent-text);
-}
-.tabs button:hover:not([aria-pressed="true"]),
-.filterGroup button:hover:not([aria-pressed="true"]) {
-  background: var(--ui-surface-hover);
-  color: var(--ink);
-}
-.sectionLabel {
-  color: var(--muted);
-  font-size: 0.8125rem;
-  font-weight: 650;
+.pills button[data-toggle][aria-pressed="true"] {
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
 }
 
 .threadList {
   flex: 1;
-  overflow: auto;
   min-height: 0;
+  padding: 14px 20px 16px;
+  overflow: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  padding: 4px 7px 6px;
+}
+.threads {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--ui-surface);
 }
 .thread {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  min-height: 72px;
+  align-items: start;
+  gap: 12px;
   width: 100%;
-  padding: 11px 8px;
-  border: 1px solid transparent;
-  border-bottom-color: color-mix(in srgb, var(--line) 58%, transparent);
-  border-radius: var(--ui-radius-md);
+  padding: 12px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
   background: transparent;
   color: var(--ink);
   text-align: start;
-  transition:
-    background-color 150ms ease,
-    border-color 150ms ease;
+  transition: background-color 150ms ease;
 }
-.thread:hover {
-  background: var(--ui-surface-hover);
+.thread:first-child {
+  border-radius: 21px 21px 0 0;
+}
+.thread:last-child {
+  border-bottom: 0;
+  border-radius: 0 0 21px 21px;
+}
+.thread:only-child {
+  border-radius: 21px;
 }
 .thread.selected {
   background: var(--ui-accent-soft);
-  border-color: color-mix(in srgb, var(--ui-accent-border) 62%, var(--line));
 }
 .thread:focus-visible {
   outline-offset: -2px;
 }
+/* A person is a circle with initials; a business is a rounded square with its sign. */
 .avatar {
   display: grid;
   place-items: center;
-  width: 43px;
-  height: 43px;
+  width: 48px;
+  height: 48px;
   flex: none;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 35%;
-  background: var(--ui-surface-soft);
-  color: var(--ui-text-secondary);
-  font-size: 0.875rem;
-  font-weight: 730;
+  border-radius: 50%;
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
+  font-size: 15px;
+  font-weight: 800;
+}
+.avatar[data-kind="business"] {
+  box-sizing: border-box;
+  border: 1px solid var(--hairline);
+  border-radius: var(--ui-radius-md);
+  background: none;
+  color: var(--ink);
 }
 .avatar img {
   display: block;
@@ -271,12 +284,9 @@
   height: 100%;
   object-fit: cover;
 }
-:is(.thread.selected, .unreadThread) .avatar {
-  color: var(--ui-accent-text);
-}
 .threadBody {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 .threadBody strong,
@@ -287,53 +297,54 @@
   white-space: nowrap;
 }
 .threadBody strong {
-  font-size: 0.9375rem;
-  font-weight: 730;
-  line-height: 1.25;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 700;
 }
-.threadBody > span,
 .threadPreview {
   color: var(--muted);
-  font-size: 0.8125rem;
-  line-height: 1.35;
+  font-size: 14px;
+  line-height: 18px;
 }
 .unreadThread .threadPreview {
   color: var(--ink);
-  font-weight: 650;
+  font-weight: 600;
 }
 .threadBody .threadContext {
-  width: fit-content;
-  max-width: 100%;
-  padding: 2px 6px;
-  border-radius: 5px;
-  background: var(--ui-surface-soft);
-  color: var(--ui-text-secondary);
-  font-size: 0.75rem;
+  order: 3;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
 }
 .threadMeta {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  align-self: start;
-  gap: 6px;
+  gap: 4px;
 }
 .threadMeta time {
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 12px;
+  line-height: 20px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+.unreadThread .threadMeta time {
+  color: var(--ui-accent-text);
+  font-weight: 700;
 }
 .unread {
   display: grid;
   place-items: center;
   min-width: 20px;
   height: 20px;
-  padding: 0 5px;
-  border-radius: var(--ui-radius-xs);
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 999px;
   background: var(--ui-accent);
   color: var(--ui-on-accent);
-  font-size: 0.75rem;
-  font-weight: 750;
+  font-size: 12px;
+  font-weight: 800;
 }
 .listEmpty,
 .welcome,
@@ -341,12 +352,13 @@
   display: grid;
   justify-items: center;
   align-content: center;
-  gap: 7px;
+  gap: 8px;
   min-width: 0;
   padding: 26px 18px;
   color: var(--muted);
   text-align: center;
-  font-size: 0.875rem;
+  font-size: 14px;
+  line-height: 20px;
 }
 .listEmpty {
   min-height: 170px;
@@ -362,27 +374,27 @@
 .welcome h2,
 .emptyConversation strong {
   color: var(--ink);
-  font-size: 1.025rem;
-  font-weight: 730;
-  line-height: 1.3;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 700;
 }
 .welcome {
   flex: 1;
 }
 .welcomeIcon {
   display: grid;
-  width: 63px;
-  height: 63px;
+  width: 64px;
+  height: 64px;
   margin-bottom: 8px;
   place-items: center;
   border: 1px solid var(--line);
-  border-radius: var(--ui-radius-xl);
+  border-radius: 50%;
   background: var(--ui-surface);
   color: var(--ui-accent-text);
 }
 .welcomeIcon svg {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
 }
 .emptyConversation {
   min-height: 180px;
@@ -392,45 +404,30 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 48px;
-  padding: 4px 9px;
+  min-height: 52px;
+  padding: 4px 20px;
   border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 0.8125rem;
+  font-size: 13px;
 }
 .pagination button {
-  min-height: 38px;
-  padding: 4px 7px;
+  min-height: 44px;
+  padding: 4px 8px;
   border: 0;
   border-radius: var(--ui-radius-xs);
   background: transparent;
   color: var(--ink);
-  font-weight: 650;
-}
-.pagination button:hover:not(:disabled) {
-  background: var(--ui-surface-hover);
+  font-weight: 700;
 }
 
-.conversation {
-  background:
-    radial-gradient(
-      ellipse at 0% 0%,
-      color-mix(in srgb, var(--ui-accent) 8%, transparent),
-      transparent 48%
-    ),
-    var(--dialog-paper);
-}
 .conversationHeader {
   position: relative;
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 11px;
-  min-height: 70px;
-  padding: 11px 16px;
+  gap: 10px;
+  padding: 14px 16px 12px;
   border-bottom: 1px solid var(--line);
-  background: var(--ui-glass);
-  backdrop-filter: blur(14px);
 }
 .conversationIdentity {
   display: flex;
@@ -438,6 +435,14 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
+}
+.conversationHeader .avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+}
+.conversationHeader .avatar[data-kind="business"] {
+  border-radius: 14px;
 }
 .conversationTitle {
   flex: 1;
@@ -447,18 +452,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 1rem;
-  font-weight: 730;
-  line-height: 1.3;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 700;
 }
 .conversationTitle > span {
   display: block;
-  margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--muted);
-  font-size: 0.8125rem;
+  font-size: 12px;
+  line-height: 16px;
 }
 .back {
   display: none;
@@ -485,7 +490,7 @@
   padding: 5px;
   border: 1px solid var(--line);
   border-radius: var(--ui-radius-md);
-  background: var(--ui-surface);
+  background: var(--ui-surface-raised);
   box-shadow: 0 10px 30px var(--ui-shadow);
 }
 .block,
@@ -501,163 +506,179 @@
   background: transparent;
   color: var(--ink);
   text-align: start;
-  font-size: 0.875rem;
-  font-weight: 650;
+  font-size: 14px;
+  font-weight: 600;
 }
-.menuItems :is(button, a):hover {
-  background: var(--ui-surface-hover);
-}
-.block:hover {
+.block {
   color: var(--ui-danger);
 }
 
 .messages {
   flex: 1;
   min-height: 0;
+  padding: 14px 16px 16px;
   overflow: auto;
   overscroll-behavior: contain;
-  padding: 16px 20px 20px;
   scrollbar-width: thin;
 }
 .day {
   width: fit-content;
-  margin: 13px auto 14px;
-  padding: 4px 10px;
+  margin: 10px auto;
+  padding: 3px 12px;
   border: 1px solid var(--line);
-  border-radius: var(--ui-radius-xl);
-  background: var(--ui-glass);
+  border-radius: 999px;
+  background: var(--ui-surface);
   color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 650;
-  line-height: 1.35;
-}
-.messageRow {
-  display: flex;
-  margin-block: 4px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
 }
 .bubbleStack {
   min-width: 0;
 }
+.messageRow {
+  display: flex;
+  margin-block: 3px;
+}
 .groupStart {
-  margin-block-start: 11px;
+  margin-block-start: 10px;
 }
 .groupEnd {
-  margin-block-end: 9px;
+  margin-block-end: 10px;
 }
 .fromMe {
   justify-content: flex-end;
 }
+/* The holder of one message: the bubble itself, and under the last bubble of a group its time. */
 .bubble {
-  max-width: min(85%, 35rem);
-  min-width: min(68px, 100%);
-  padding: 9px 13px 6px;
-  border: 1px solid var(--line);
-  border-radius: 9px 18px 18px 9px;
-  background: var(--ui-surface);
-}
-.groupStart .bubble {
-  border-start-start-radius: 18px;
-}
-.groupEnd .bubble {
-  border-end-start-radius: 5px;
-}
-.bubble p {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-size: 0.94rem;
-  line-height: 1.6;
-}
-.bubble time {
-  display: block;
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-  text-align: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: min(78%, 34rem);
+  min-width: 0;
 }
 .fromMe .bubble {
-  border-color: color-mix(in srgb, var(--ui-accent-border) 70%, var(--line));
-  border-radius: 18px 9px 9px 18px;
-  background: var(--ui-accent-soft);
-  color: var(--ink);
+  align-items: flex-end;
 }
-.fromMe .bubble time {
-  color: var(--ui-accent-text);
+.bubble p {
+  max-width: 100%;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--ui-surface);
+  font-size: 15px;
+  line-height: 21px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
-.fromMe.groupStart .bubble {
-  border-start-end-radius: 18px;
+.groupEnd .bubble p {
+  border-end-start-radius: 6px;
 }
-.fromMe.groupEnd .bubble {
-  border-end-end-radius: 5px;
+.fromMe .bubble p {
+  border-color: transparent;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font-weight: 500;
+}
+.fromMe.groupEnd .bubble p {
+  border-end-start-radius: 20px;
+  border-end-end-radius: 6px;
+}
+.bubble time {
+  display: none;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.groupEnd .bubble time {
+  display: block;
 }
 .older {
   display: block;
-  min-height: 42px;
-  margin: 0 auto 13px;
-  padding: 6px 12px;
+  min-height: 40px;
+  margin: 0 auto 12px;
+  padding: 6px 14px;
   border: 1px solid var(--line);
-  border-radius: var(--ui-radius-md);
+  border-radius: 999px;
   background: var(--ui-surface);
-  color: var(--ui-text-secondary);
-  font-size: 0.8125rem;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
 }
 .centerNote {
   padding: 24px 12px;
   color: var(--muted);
   text-align: center;
-  font-size: 0.875rem;
+  font-size: 14px;
 }
 
+/* Writing: a round field and a round button in the accent. */
 .composer,
 .composerInfo {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  padding: 11px 14px 13px;
+  padding: 10px 16px 14px;
   border-top: 1px solid var(--line);
-  background: var(--ui-glass);
-  backdrop-filter: blur(14px);
 }
 .composer textarea {
   flex: 1;
   min-width: 0;
-  min-height: 46px;
+  min-height: 48px;
   max-height: 125px;
-  resize: vertical;
-  padding: 10px 12px;
-  border: 1px solid var(--ui-border-strong);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-input);
+  /* The field grows with what is written, up to its limit. */
+  field-sizing: content;
+  resize: none;
+  padding: 12px 18px;
+  box-sizing: border-box;
+  border: 1px solid var(--hairline);
+  border-radius: var(--ui-radius-xl);
+  background: var(--ui-surface);
   color: var(--ink);
-  font-size: 1rem;
-  line-height: 1.4;
+  font-size: 16px;
+  line-height: 22px;
 }
 .composer textarea::placeholder {
   color: var(--muted);
+  opacity: 1;
 }
 .send {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 46px;
-  padding: 0 12px;
-  border: 1px solid var(--ui-accent);
-  border-radius: var(--ui-radius-md);
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
   background: var(--ui-accent);
   color: var(--ui-on-accent);
-  font-size: 0.875rem;
-  font-weight: 730;
+  transition: scale 160ms var(--ease-out);
 }
-.send:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--ui-accent) 86%, white);
+.send:active:not(:disabled) {
+  scale: 0.94;
+}
+/* The arrow points up, as a sent message goes; the word stays for screen readers. */
+.send svg {
+  rotate: -90deg;
+}
+.send > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .composerInfo {
   align-items: center;
   min-height: 54px;
   color: var(--muted);
-  font-size: 0.875rem;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 20px;
 }
 .composerInfo svg {
   color: var(--ui-accent-text);
@@ -669,36 +690,34 @@
   border: 0;
   background: transparent;
   color: var(--ui-accent-text);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-weight: 700;
 }
 .infoBanner,
 .error,
 .pending {
   flex: none;
-  margin: 8px 10px;
-  padding: 9px 12px;
+  margin: 12px 20px 0;
+  padding: 10px 14px;
   border: 1px solid var(--line);
   border-radius: var(--ui-radius-md);
-  background: var(--ui-surface-soft);
+  background: var(--ui-surface);
   color: var(--ui-text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.4;
+  font-size: 14px;
+  line-height: 20px;
 }
 .infoBanner {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  padding-block: 3px;
+  padding-block: 2px;
 }
 .infoBanner > svg {
   color: var(--ui-accent-text);
 }
 .infoBanner a {
   padding-block: 6px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-weight: 600;
 }
 .pending {
   display: flex;
@@ -706,25 +725,23 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
+  border-color: var(--ui-warning-border);
+  background: var(--ui-warning-soft);
+  color: var(--ink);
 }
 .error {
   border-color: var(--ui-danger-border);
   background: var(--ui-danger-soft);
   color: var(--ui-danger);
 }
-.pending {
-  border-color: var(--ui-warning-border);
-  background: var(--ui-warning-soft);
-  color: var(--ink);
-}
 .pending button {
   min-height: 36px;
-  padding: 3px 10px;
+  padding: 3px 12px;
   border: 1px solid var(--line);
-  border-radius: var(--ui-radius-xs);
+  border-radius: 999px;
   background: var(--ui-surface);
   color: var(--ink);
-  font-weight: 650;
+  font-weight: 700;
 }
 .error a {
   text-decoration: underline;
@@ -742,15 +759,6 @@
   border: 0;
 }
 
-@container inbox (max-width: 800px) {
-  .send > span {
-    display: none;
-  }
-  .send {
-    width: 48px;
-    padding: 0;
-  }
-}
 @container inbox (max-width: 640px) {
   .layout {
     display: flex;
@@ -773,42 +781,19 @@
   .back {
     display: grid;
   }
-  .conversationHeader {
-    gap: 8px;
-    min-height: 66px;
-    padding-inline: 11px;
-  }
-  .conversationHeader .avatar {
-    width: 39px;
-    height: 39px;
-  }
-  .messages {
-    padding: 12px 13px 14px;
-  }
   .bubble {
-    max-width: 88%;
-  }
-  .composer {
-    padding: 10px 11px;
-  }
-  .composer textarea {
-    resize: none;
-  }
-  .tabs button,
-  .filterGroup button,
-  .pagination button {
-    min-height: 44px;
+    max-width: 84%;
   }
 }
 
+/* On a phone the messages are a screen of their own, under no header and over the dock. */
 @media (max-width: 760px) {
   :global(main[data-account-pane="messages"]) .layout {
     display: flex;
     min-height: 300px;
-    height: calc(100dvh - 63px - var(--mobile-dock-space, 0px));
+    height: calc(100dvh - var(--mobile-dock-space, 0px));
     border: 0;
     border-radius: 0;
-    box-shadow: none;
   }
   :global(main[data-account-pane="messages"]) .sidebar,
   :global(main[data-account-pane="messages"]) .conversation {
@@ -826,29 +811,26 @@
     display: flex;
   }
   :global(main[data-account-pane="messages"]) .inboxHeader {
-    padding: 17px max(13px, env(safe-area-inset-right)) 12px max(13px, env(safe-area-inset-left));
+    padding-block-start: calc(22px + env(safe-area-inset-top, 0px));
+    padding-inline: max(20px, env(safe-area-inset-left)) max(20px, env(safe-area-inset-right));
   }
-  :global(main[data-account-pane="messages"]) .thread {
-    min-height: 75px;
-    gap: 12px;
-  }
-  :global(main[data-account-pane="messages"]) .thread .avatar {
-    width: 48px;
-    height: 48px;
+  /* Pulling the list down refreshes it here, so the button is not needed. */
+  :global(main[data-account-pane="messages"]) .refresh {
+    display: none;
   }
   :global(main[data-account-pane="messages"]) .threadList {
-    padding-inline: max(7px, env(safe-area-inset-left)) max(7px, env(safe-area-inset-right));
+    padding-inline: max(20px, env(safe-area-inset-left)) max(20px, env(safe-area-inset-right));
   }
   :global(main[data-account-pane="messages"]) .back {
     display: grid;
   }
   :global(main[data-account-pane="messages"]) .conversationHeader {
-    padding-block-start: max(11px, env(safe-area-inset-top));
-    padding-inline: max(11px, env(safe-area-inset-left)) max(11px, env(safe-area-inset-right));
+    padding-block-start: max(14px, env(safe-area-inset-top));
+    padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
   }
   :global(main[data-account-pane="messages"]) :is(.composer, .composerInfo) {
-    padding-block-end: max(11px, env(safe-area-inset-bottom));
-    padding-inline: max(11px, env(safe-area-inset-left)) max(11px, env(safe-area-inset-right));
+    padding-block-end: max(14px, env(safe-area-inset-bottom));
+    padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
   }
 }
 
