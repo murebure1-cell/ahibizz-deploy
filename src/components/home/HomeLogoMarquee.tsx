@@ -1,5 +1,5 @@
-import Image from "next/image";
 import { type Translate, translator } from "../../lib/i18n/translate";
+import { AhiLogo } from "../brand/AhiLogo";
 import styles from "./home.module.css";
 
 export function HomeLogoMarquee({
@@ -20,14 +20,7 @@ export function HomeLogoMarquee({
         {[0, 1].map((copy) => (
           <div className={styles.logoGroup} key={copy} aria-hidden={copy === 1 ? true : undefined}>
             {[0, 1, 2, 3, 4, 5].map((item) => (
-              <Image
-                key={item}
-                src="/brand/ahi-logo-color.svg"
-                alt={copy === 0 && item === 0 ? "AhiBizz" : ""}
-                width={142}
-                height={40}
-                unoptimized
-              />
+              <AhiLogo key={item} tone="one" decorative={copy !== 0 || item !== 0} />
             ))}
           </div>
         ))}
