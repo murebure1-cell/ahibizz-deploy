@@ -31,12 +31,20 @@ Stare oznake `basic`, `business`, `premium` žive samo u arhivi ranijih ugovora 
 | Djelatnosti | 1 | do 3 | do 10 |
 | Cijena mjesečno | besplatno prvih 12 mjeseci, zatim 19,90 KM | 39,90 KM | 79,90 KM |
 | Analitika | osnovna | proširena | puna |
+| Reels | 1 sedmično | 3 sedmično | 1 svaki dan |
 | Oznaka na profilu | „Basic”, neutralna | „Startup” | „Business”, zlatna slova |
 
 Brojevi djelatnosti i cijene su **[odlučeno]**. Granica broja djelatnosti se provodi
 **[postoji]**; cijene se još nigdje ne naplaćuju ni prikazuju. Administratorski nalog nema paket
 ni granicu. Paket se ne može spustiti ispod broja djelatnosti koje nalog već vodi; arhivirane
 djelatnosti se ne broje.
+
+Broj Reelsa po paketu je **[odlučeno]**: Basic jedan sedmično, Startup tri sedmično, Business jedan
+svaki dan. Kod to još ne provodi po paketu **[novo]**: danas dopušta najviše 3 aktivna Reela po
+djelatnosti i 12 po nalogu, a objavljeni Reel se prikazuje 24 sata **[postoji]**. Reels se prikazuju
+na početnoj **[postoji]** i ostaju tamo i u novom izgledu **[odlučeno]**. Nije rečeno važi li broj
+po nalogu ili po djelatnosti, kojim danom počinje sedmica, ni ostaje li prikaz od 24 sata
+**[pitanje]**.
 
 Pravila koja već važe i ostaju:
 
@@ -170,7 +178,7 @@ Svaka faza završava nečim što se vidi i može probati.
    Iz ove faze ostaju aktivne prijave po uređajima i zadnji razgovori na pregledu.
 2. Tok dodavanja djelatnosti s lokacijom i PIN-om; nova lista kategorija.
 3. Jelovnik i porijeklo mesa; vezivanje vozila i soba u tok.
-4. Prikupljanje analitike i prikaz po paketu.
+4. Prikupljanje analitike i prikaz po paketu; broj Reelsa po paketu.
 5. Verifikacija iz postavki i značke.
 6. Sponzorisano po novom modelu, s rezultatima.
 7. Naplata na webu.
@@ -185,3 +193,5 @@ Zajedničke komponente i izgled grade se uz prvu fazu i koriste u svim ostalim.
 4. Tačan spisak potkategorija.
 5. Primjeri animacija koje vlasnik želi poslati kao uzor.
 6. Da li vlastitu naslovnu sliku profila dobijaju svi paketi.
+7. Reels: važi li broj po nalogu ili po djelatnosti, kojim danom počinje sedmica, i ostaje li
+   prikaz od 24 sata.
