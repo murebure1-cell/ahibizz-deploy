@@ -1194,6 +1194,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
               await pool.query('SELECT "createdAt" FROM auth_user WHERE id=$1', [userId])
             ).rows[0].createdAt.toISOString(),
             businesses: 1,
+            businessList: (
+              await pool.query(
+                "SELECT id,title,status FROM directory_business WHERE owner_user_id=$1 AND title='Current'",
+                [userId],
+              )
+            ).rows.map((row) => ({ id: row.id, title: "Current", status: "draft" })),
             package: "basic",
             businessLimit: 1,
             promotedBusinesses: 0,

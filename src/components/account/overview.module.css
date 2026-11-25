@@ -8,29 +8,308 @@
   gap: clamp(14px, 2.2vw, 24px);
   min-width: 0;
 }
-.masthead {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  padding: clamp(21px, 4vw, 38px);
+.head {
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
   border-radius: 22px;
-  background: linear-gradient(115deg, #132a40, #21445b);
-  color: #fff;
+  background: var(--ui-surface);
 }
-.masthead h1 {
+.cover {
+  height: clamp(88px, 15vw, 148px);
+  background: linear-gradient(115deg, #132a40, #21445b);
+}
+.coverImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.headBody {
+  --avatar: clamp(72px, 11vw, 96px);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 4px 16px;
+  padding: 0 clamp(16px, 3vw, 28px) clamp(16px, 3vw, 24px);
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  width: var(--avatar);
+  height: var(--avatar);
+  margin-top: calc(var(--avatar) / -2);
+  border: 3px solid var(--ui-surface);
+  border-radius: 26%;
+  background: var(--ui-surface-soft);
+  color: var(--ui-text);
+  font-size: calc(var(--avatar) / 2.8);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.who {
+  min-width: 0;
+  padding-top: 12px;
+}
+.who h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
-  font-size: clamp(1.55rem, 3vw, 2.25rem);
-  letter-spacing: -0.04em;
+  font-size: clamp(1.3rem, 2.6vw, 1.75rem);
+  letter-spacing: -0.03em;
   overflow-wrap: anywhere;
 }
-.masthead p {
-  margin: 7px 0 0;
-  color: #d6e2ed;
-  font-size: 0.9375rem;
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
 }
-.masthead button,
+.tags:empty {
+  display: none;
+}
+/* The package an account holds. Gold is kept for the Business name alone. */
+.package {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  color: var(--ui-muted);
+  font-size: 0.8125rem;
+}
+.package strong {
+  color: var(--ui-text);
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+.package[data-package="business"] {
+  border-color: #132a40;
+  background: #132a40;
+  color: #c9d6e2;
+}
+.package[data-package="business"] strong {
+  color: var(--gold);
+}
+.since {
+  margin: 8px 0 0;
+  color: var(--ui-muted);
+  font-size: 0.875rem;
+}
+.edit,
+.add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 650;
+  transition:
+    background-color 150ms ease-out,
+    transform 150ms ease-out;
+}
+.edit:active,
+.add:active {
+  transform: scale(0.97);
+}
+.edit {
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface-soft);
+  color: var(--ui-text);
+}
+.edit:hover {
+  background: var(--ui-surface-hover);
+}
+.edit svg,
+.add svg {
+  width: 16px;
+  height: 16px;
+}
+.block {
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  background: var(--ui-surface);
+}
+.blockHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 12px 16px;
+}
+.blockHead h2 {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 680;
+}
+.count {
+  color: var(--ui-muted);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+.add {
+  margin-inline-start: auto;
+  border: 1px solid var(--ui-accent-border);
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+}
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.blockHead + .rows,
+.rows li + li {
+  border-top: 1px solid var(--ui-border);
+}
+.rows button,
+.rows a,
+.all {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 16px;
+  border: 0;
+  background: none;
+  color: var(--ui-text);
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+  transition: background-color 150ms ease-out;
+}
+.rows button:hover,
+.rows a:hover,
+.all:hover {
+  background: var(--ui-surface-hover);
+}
+.rowMark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--ui-surface-soft);
+  color: var(--ui-text-secondary);
+}
+.rowMark svg {
+  width: 17px;
+  height: 17px;
+}
+.rowTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.state {
+  flex: none;
+  padding: 2px 9px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  color: var(--ui-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.state[data-state="published"] {
+  border-color: var(--ui-success-border);
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+.state[data-state="pending"] {
+  border-color: var(--ui-warning-border);
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+.rowArrow {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ui-muted);
+}
+.badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.all {
+  min-height: 48px;
+  border-top: 1px solid var(--ui-border);
+  color: var(--ui-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.all svg {
+  width: 13px;
+  height: 13px;
+}
+.note {
+  margin: 0;
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--ui-border);
+  color: var(--ui-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.srOnly {
+  position: absolute;
+  overflow: hidden;
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
+}
+.signOut {
+  display: none;
+}
+@media (max-width: 700px) {
+  .signOut {
+    display: block;
+  }
+}
+@media (max-width: 640px) {
+  .headBody {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .edit {
+    grid-row: 1;
+    grid-column: 2;
+    justify-self: end;
+  }
+  .who {
+    grid-column: 1 / -1;
+  }
+}
 .contracts :where(header) button,
 .manage {
   display: inline-flex;
@@ -45,44 +324,11 @@
   font-size: 0.875rem;
   text-decoration: none;
 }
-.masthead button {
-  border: 1px solid #ffffff36;
-  background: #ffffff14;
-  color: #fff;
-}
-.masthead button:hover {
-  background: #ffffff25;
-}
-.masthead svg,
 .contracts :where(header button) svg,
 .manage svg {
   height: 16px;
   width: 16px;
 }
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-}
-.metric {
-  position: relative;
-  min-width: 0;
-  display: grid;
-  gap: 5px;
-  justify-items: start;
-  text-align: start;
-  padding: clamp(14px, 2vw, 22px);
-  border: 1px solid var(--ui-border);
-  border-radius: 17px;
-  color: var(--ui-text);
-  background: var(--ui-surface);
-  font: inherit;
-}
-button.metric:hover {
-  border-color: var(--ui-accent-border);
-  background: var(--ui-surface-hover);
-}
-.metricIcon,
 .mark {
   display: grid;
   place-items: center;
@@ -92,30 +338,9 @@ button.metric:hover {
   background: var(--ui-accent-soft);
   color: var(--ui-accent-text);
 }
-.metricIcon svg,
 .mark svg {
   width: 18px;
   height: 18px;
-}
-.metric strong {
-  margin-top: 7px;
-  font-weight: 720;
-  line-height: 1.15;
-  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
-}
-.metric > span:last-of-type {
-  font-size: 0.8125rem;
-  font-weight: 550;
-  color: var(--ui-muted);
-  overflow-wrap: anywhere;
-}
-.metricArrow {
-  position: absolute;
-  inset-inline-end: 12px;
-  top: 20px;
-  width: 14px;
-  height: 14px;
-  color: var(--ui-muted);
 }
 .contracts {
   margin-bottom: 18px;
@@ -213,38 +438,4 @@ button.metric:hover {
   margin-block: 14px;
   border-radius: 7px;
   background: var(--ui-surface-soft);
-}
-@media (max-width: 990px) {
-  .metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 480px) {
-  .masthead {
-    padding: 20px 17px;
-    gap: 12px;
-  }
-  .metric {
-    padding: 14px;
-  }
-}
-
-/* The package an account holds. Gold is kept for the Business name alone. */
-.masthead .package {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-top: 12px;
-  padding: 4px 11px;
-  border: 1px solid #ffffff36;
-  border-radius: 999px;
-  font-size: 0.8125rem;
-}
-.package strong {
-  color: #fff;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-}
-.package[data-package="business"] strong {
-  color: var(--gold);
 }

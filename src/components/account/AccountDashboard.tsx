@@ -145,6 +145,12 @@ function AccountWorkspace({
       moreControl.current.focus({ preventScroll: true });
     setMoreMenu(false);
   }
+  function addBusiness() {
+    const href = accountShortcuts.newBusiness;
+    if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== href)
+      window.history.pushState(null, "", href);
+    setError("");
+  }
   function tab(item: (typeof accountMenu)[number]) {
     return (
       <button
@@ -280,17 +286,7 @@ function AccountWorkspace({
               disabled={busy}
               onClick={logout}
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M10 4H5v16h5M9 12h12m-4-4 4 4-4 4" />
-              </svg>
+              <Icon name="logout" />
               <span>{t("Odjava")}</span>
             </button>
           </aside>
@@ -313,8 +309,15 @@ function AccountWorkspace({
             <AccountPane selected={section === "overview"}>
               <AccountOverview
                 accountId={initial.id}
+                name={profile.name}
+                administrator={profile.role === "owner"}
+                profile={personal}
                 active={hasAccess && section === "overview"}
                 onSection={changeSection}
+                onAddBusiness={addBusiness}
+                onProfile={setPersonal}
+                onSignOut={logout}
+                signingOut={busy}
               />
             </AccountPane>
             <AccountPane selected={section === "profile"}>
@@ -398,6 +401,7 @@ function AccountWorkspace({
                 initial={initial}
                 active={hasAccess && section === "settings"}
                 focusNotifications={focusNotifications}
+                verified={personal ? personal.verified : null}
                 onConfirmed={(next) =>
                   setProfile((current) => ({
                     ...current,

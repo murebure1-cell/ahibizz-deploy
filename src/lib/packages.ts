@@ -3,6 +3,8 @@
  * businesses an account may keep; it never grants an identity or Halal badge. The names are
  * product names and stay untranslated.
  */
+import { msg } from "./i18n/translate";
+
 export const packageIds = ["basic", "startup", "business"] as const;
 export type PackageId = (typeof packageIds)[number];
 
@@ -21,6 +23,11 @@ export function packageName(id: PackageId): string {
 export function packageBusinessLimit(id: PackageId): number {
   return catalogue[id].businessLimit;
 }
+
+/** Said wherever an account with a full package reaches for one more business. */
+export const packageFullText = msg(
+  "Tvoj paket ne dozvoljava još jednu djelatnost. Basic dozvoljava jednu, Startup do 3, a Business do 10.",
+);
 
 export type AccountPackageDecision = {
   previousPackage: PackageId;

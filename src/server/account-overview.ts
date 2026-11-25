@@ -1,5 +1,9 @@
 import type { PoolClient } from "pg";
-import type { AccountOverviewFacts } from "../lib/account-overview";
+import {
+  type AccountOverviewFacts,
+  type OverviewBusiness,
+  overviewBusinessLimit,
+} from "../lib/account-overview";
 import { isPackageId, packageBusinessLimit } from "../lib/packages";
 import { readNextAppointment } from "./customer-next-appointment";
 import { activePromotionSql } from "./promotions/read";
@@ -10,7 +14,7 @@ export async function readOwnerOverview(
   accountId: string,
 ): Promise<AccountOverviewFacts> {
   const result = await client.query<
-    Omit<AccountOverviewFacts, "package" | "businessLimit" | "nextAppointment"> & {
+    Omit<AccountOverviewFacts, "package" | "businessLimit" | "businessList" | "nextAppointment"> & {
       role: string;
       held: string;
     }
@@ -36,9 +40,16 @@ export async function readOwnerOverview(
   );
   if (!result.rows[0]) throw new Error("Account overview unavailable");
   const { role, held, ...facts } = result.rows[0];
+  const list = await client.query<OverviewBusiness>(
+    `SELECT id,title,status FROM directory_business
+      WHERE owner_user_id=$1 AND deleted_at IS NULL AND status<>'archived'
+      ORDER BY (status='published') DESC, updated_at DESC, id LIMIT $2`,
+    [accountId, overviewBusinessLimit],
+  );
   const limited = role === "member" && isPackageId(held) ? held : null;
   return {
     ...facts,
+    businessList: list.rows,
     package: limited,
     businessLimit: limited ? packageBusinessLimit(limited) : null,
     nextAppointment: await readNextAppointment(client, accountId),
