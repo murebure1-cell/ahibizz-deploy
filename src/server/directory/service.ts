@@ -5,6 +5,7 @@ import {
   emptyBusinessDetails,
   readBusinessDetails,
 } from "../../lib/business-details";
+import { readBusinessAllowance } from "../account-package";
 import { type AuthService, getAuthService } from "../auth";
 import { AccountAccessError, type AccountService, getAccountService } from "../auth/accounts";
 import { type CurrentAuthUser, getAuthDatabasePool } from "../auth/service";
@@ -171,20 +172,12 @@ function current(before: DirectoryBusiness, expected: number): void {
 function editable(before: DirectoryBusiness): void {
   if (before.status === "archived") fail(409, "BUSINESS_ARCHIVED");
 }
-async function quota(
-  client: PoolClient,
-  user: CurrentAuthUser | undefined,
-  limit: number,
-): Promise<void> {
+/** The account's package decides how many businesses it may keep; the administrator has no limit. */
+async function quota(client: PoolClient, user: CurrentAuthUser | undefined): Promise<void> {
   if (!user) fail(404, "ACCOUNT_NOT_FOUND");
   if (user.role === "owner") return;
-  const count = (
-    await client.query<{ count: number }>(
-      "SELECT count(*)::integer AS count FROM directory_business b WHERE owner_user_id = $1 AND status <> 'archived'",
-      [user.id],
-    )
-  ).rows[0]?.count;
-  if (count === undefined || count >= limit) fail(409, "BUSINESS_LIMIT_REACHED");
+  const allowance = await readBusinessAllowance(client, user.id);
+  if (allowance.used >= allowance.limit) fail(409, "BUSINESS_LIMIT_REACHED");
 }
 async function save(
   client: PoolClient,
@@ -270,19 +263,11 @@ export function createDirectoryService({
   accounts,
   auth,
   pool,
-  memberBusinessLimit = 1,
 }: {
   accounts: AccountService;
   auth: AuthService;
   pool: Pool;
-  memberBusinessLimit?: number;
 }) {
-  if (
-    !Number.isInteger(memberBusinessLimit) ||
-    memberBusinessLimit < 1 ||
-    memberBusinessLimit > 100
-  )
-    fail(503, "DIRECTORY_CONFIGURATION_INVALID");
   const actor = (headers: Headers) =>
     safe(async () => {
       const expectedAccountId = headers.get("X-AhiBizz-Account-ID");
@@ -428,7 +413,7 @@ export function createDirectoryService({
           if (replay.fingerprint !== fingerprint) fail(409, "IDEMPOTENCY_CONFLICT");
           return business(client, replay.business_id);
         }
-        await quota(client, currentActor, memberBusinessLimit);
+        await quota(client, currentActor);
         await classify(client, value);
         const id = randomUUID(),
           values = [id, currentActor.id, ...businessKeys.map((key) => value[key])];
@@ -601,7 +586,7 @@ export function createDirectoryService({
         const { businessOwner, before } = await lockedBusiness(client, identity, key);
         current(before, expected);
         if (before.status !== "archived") fail(409, "BUSINESS_NOT_ARCHIVED");
-        await quota(client, businessOwner, memberBusinessLimit);
+        await quota(client, businessOwner);
         await classify(client, fields(before));
         return save(client, before, fields(before), "draft");
       });
@@ -681,13 +666,6 @@ export function getDirectoryService(): DirectoryService | null {
     auth = getAuthService(),
     pool = getAuthDatabasePool();
   if (!accounts || !auth || !pool) return null;
-  const raw = process.env.DIRECTORY_MEMBER_BUSINESS_LIMIT;
-  if (raw !== undefined && !/^\d+$/.test(raw)) fail(503, "DIRECTORY_CONFIGURATION_INVALID");
-  directoryService = createDirectoryService({
-    accounts,
-    auth,
-    pool,
-    memberBusinessLimit: raw === undefined ? 1 : Number(raw),
-  });
+  directoryService = createDirectoryService({ accounts, auth, pool });
   return directoryService;
 }

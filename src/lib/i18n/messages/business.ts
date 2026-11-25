@@ -539,12 +539,13 @@ export const business: Messages = {
     "سبب الإعادة إلى المسودة",
     "Taslağa döndürme nedeni",
   ],
-  "Već imaš djelatnost koja čeka aktivaciju.": [
-    "You already have a business waiting for activation.",
-    "Du hast bereits einen Betrieb, der auf Aktivierung wartet.",
-    "لديك بالفعل نشاط تجاري ينتظر التفعيل.",
-    "Zaten etkinleştirme bekleyen bir işletmen var.",
-  ],
+  "Tvoj paket ne dozvoljava još jednu djelatnost. Basic dozvoljava jednu, Startup do 3, a Business do 10.":
+    [
+      "Your package does not allow another business. Basic allows one, Startup up to 3 and Business up to 10.",
+      "Dein Paket erlaubt keinen weiteren Betrieb. Basic erlaubt einen, Startup bis zu 3 und Business bis zu 10.",
+      "باقتك لا تسمح بإضافة نشاط تجاري آخر. Basic تسمح بنشاط واحد، وStartup حتى 3، وBusiness حتى 10.",
+      "Paketin başka bir işletmeye izin vermiyor. Basic bir, Startup en fazla 3, Business en fazla 10 işletmeye izin verir.",
+    ],
   "Nacrt je sačuvan. Za objavu je potreban aktivan paket.": [
     "Draft saved. Publishing needs an active plan.",
     "Entwurf gespeichert. Für die Veröffentlichung ist ein aktives Paket nötig.",

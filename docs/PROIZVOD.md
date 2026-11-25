@@ -21,8 +21,10 @@ bio odlučen.
 ## 2. Paketi
 
 Tri paketa: **Basic**, **Startup**, **Business**. Paket određuje koliko djelatnosti nalog smije
-imati i koliko analitike vidi. U bazi danas postoje oznake `basic`, `business`, `premium`
-**[postoji]**; imena i značenja treba uskladiti **[novo]**.
+imati i koliko analitike vidi. Paket pripada nalogu, a ne pojedinoj djelatnosti; nalog bez upisa
+ima Basic **[postoji]**. Dok ne bude naplate na webu, paket ručno mijenja administrator u
+`/administracija` → Nalozi → Odobreni → „Paket”, uz razlog koji ostaje zapisan **[postoji]**.
+Stare oznake `basic`, `business`, `premium` žive samo u arhivi ranijih ugovora i ne koriste se.
 
 | | Basic | Startup | Business |
 |---|---|---|---|
@@ -31,7 +33,10 @@ imati i koliko analitike vidi. U bazi danas postoje oznake `basic`, `business`, 
 | Analitika | osnovna | proširena | puna |
 | Oznaka na profilu | „Basic”, neutralna | „Startup” | „Business”, zlatna slova |
 
-Brojevi djelatnosti i cijene su **[odlučeno]**.
+Brojevi djelatnosti i cijene su **[odlučeno]**. Granica broja djelatnosti se provodi
+**[postoji]**; cijene se još nigdje ne naplaćuju ni prikazuju. Administratorski nalog nema paket
+ni granicu. Paket se ne može spustiti ispod broja djelatnosti koje nalog već vodi; arhivirane
+djelatnosti se ne broje.
 
 Pravila koja već važe i ostaju:
 
@@ -45,8 +50,8 @@ Pravila koja već važe i ostaju:
   Šta biva s djelatnošću kad rok istekne bez uplate (skriva se ili ostaje vidljiva bez izmjena)
   nije odlučeno **[pitanje]**.
 
-Kad nalog dosegne granicu paketa, dugme „Dodaj djelatnost” objašnjava granicu i nudi viši paket,
-umjesto da prijavi grešku.
+Kad nalog dosegne granicu paketa, dugme „Dodaj djelatnost” objašnjava granicu prije nego što se
+obrazac otvori **[postoji]**. Ponuda višeg paketa s tog mjesta dolazi s naplatom **[novo]**.
 
 ## 3. Moj profil
 
@@ -54,9 +59,10 @@ Prvi ekran nakon prijave. Odozgo nadolje:
 
 1. **Zaglavlje:** naslovna slika, profilna slika, ime, oznaka paketa, značka verifikacije ako
    postoji, „član od” s datumom. Slike se mijenjaju dodirom, s mekim prelazom **[dio postoji]**.
+   Oznaka paketa i datum već stoje na pregledu naloga; Business je ispisan zlatnim slovima.
 2. **Pregled:** brojke po paketu (dio 7). Na Basicu dvije: pregledi profila i pregledi djelatnosti.
 3. **Moje djelatnosti:** lista sa stanjem (nacrt, na pregledu, objavljena), brojač „1 od 1” i
-   dugme za dodavanje **[postoji, treba novi prikaz]**.
+   dugme za dodavanje **[postoji, treba novi prikaz]**. Brojač već stoji na pregledu naloga.
 4. **Poruke:** broj nepročitanih i zadnji razgovori **[postoji]**.
 5. **Termini:** sljedeći termin, ako djelatnost prima termine **[postoji]**.
 6. **Sponzorisano:** gdje se djelatnost prikazuje i s kakvim rezultatom (dio 6) **[novo]**.
@@ -155,7 +161,7 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
 
 Svaka faza završava nečim što se vidi i može probati.
 
-1. Paketi i granice u modelu; novi kostur profila; postavke.
+1. Paketi i granice u modelu (urađeno 25. 11. 2026.); novi kostur profila; postavke.
 2. Tok dodavanja djelatnosti s lokacijom i PIN-om; nova lista kategorija.
 3. Jelovnik i porijeklo mesa; vezivanje vozila i soba u tok.
 4. Prikupljanje analitike i prikaz po paketu.

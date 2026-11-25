@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { type AccountOverviewFacts, readOverview } from "../../lib/account-overview";
 import type { AccountSection } from "../../lib/account-return";
 import { localDate } from "../../lib/display-date";
+import { packageName } from "../../lib/packages";
 import { Icon, type IconName } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
 import { BusinessToday } from "./BusinessToday";
@@ -106,9 +107,16 @@ export function AccountSummary({
     label: string;
     icon: IconName;
     count: number | undefined;
+    limit?: number | null;
     pane: AccountSection;
   }[] = [
-    { label: t("Moje djelatnosti"), icon: "shop", count: result?.businesses, pane: "businesses" },
+    {
+      label: t("Moje djelatnosti"),
+      icon: "shop",
+      count: result?.businesses,
+      limit: result?.businessLimit,
+      pane: "businesses",
+    },
     {
       label: t("Nepročitani razgovori"),
       icon: "message",
@@ -127,6 +135,11 @@ export function AccountSummary({
               <time dateTime={result.joinedAt}>{localDate(result.joinedAt, locale)}</time>
             </p>
           )}
+          {result?.package && (
+            <p className={styles.package} data-package={result.package}>
+              {t("Paket")} <strong>{packageName(result.package)}</strong>
+            </p>
+          )}
         </div>
         <button type="button" onClick={() => onSection("profile")}>
           <Icon name="user" /> Moj profil
@@ -137,13 +150,19 @@ export function AccountSummary({
         <NextAppointmentCard row={result.nextAppointment} open={() => onSection("appointments")} />
       )}
       <div className={styles.metrics}>
-        {entries.map(({ label, icon, count, pane }) => {
+        {entries.map(({ label, icon, count, limit, pane }) => {
           const content = (
             <>
               <span className={styles.metricIcon}>
                 <Icon name={icon} />
               </span>
-              <strong>{count ?? "—"}</strong>
+              <strong>
+                {count === undefined
+                  ? "—"
+                  : limit
+                    ? t("{count} od {limit}", { count, limit })
+                    : count}
+              </strong>
               <span>{label}</span>
             </>
           );

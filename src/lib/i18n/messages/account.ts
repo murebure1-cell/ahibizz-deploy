@@ -78,6 +78,13 @@ export const account: Messages = {
     "Okunmamış sohbetler",
   ],
   "Pregled naloga": ["Account overview", "Kontoübersicht", "نظرة عامة على الحساب", "Hesap özeti"],
+  Paket: ["Package", "Paket", "الباقة", "Paket"],
+  "{count} od {limit}": [
+    "{count} of {limit}",
+    "{count} von {limit}",
+    "{count} من {limit}",
+    "{count} / {limit}",
+  ],
   "Na AhiBizzu od": [
     "On AhiBizz since",
     "Bei AhiBizz seit",

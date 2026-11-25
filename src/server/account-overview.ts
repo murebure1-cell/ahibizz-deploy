@@ -1,5 +1,6 @@
 import type { PoolClient } from "pg";
 import type { AccountOverviewFacts } from "../lib/account-overview";
+import { isPackageId, packageBusinessLimit } from "../lib/packages";
 import { readNextAppointment } from "./customer-next-appointment";
 import { activePromotionSql } from "./promotions/read";
 
@@ -8,8 +9,14 @@ export async function readOwnerOverview(
   client: PoolClient,
   accountId: string,
 ): Promise<AccountOverviewFacts> {
-  const result = await client.query<AccountOverviewFacts>(
+  const result = await client.query<
+    Omit<AccountOverviewFacts, "package" | "businessLimit" | "nextAppointment"> & {
+      role: string;
+      held: string;
+    }
+  >(
     `SELECT u.id AS "accountId", to_char(u."createdAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "joinedAt",
+       u.role, COALESCE((SELECT package FROM account_package p WHERE p.user_id=u.id),'basic') AS held,
        stats.businesses, stats."promotedBusinesses", 
        (SELECT count(*)::integer FROM message_thread t
           JOIN message_thread_member own ON own.thread_id=t.id AND own.user_id=u.id
@@ -28,8 +35,12 @@ export async function readOwnerOverview(
     [accountId],
   );
   if (!result.rows[0]) throw new Error("Account overview unavailable");
+  const { role, held, ...facts } = result.rows[0];
+  const limited = role === "member" && isPackageId(held) ? held : null;
   return {
-    ...result.rows[0],
+    ...facts,
+    package: limited,
+    businessLimit: limited ? packageBusinessLimit(limited) : null,
     nextAppointment: await readNextAppointment(client, accountId),
   };
 }

@@ -69,6 +69,17 @@ Stanje 25. 11. 2026.: adresa je `https://ahibizz.com`, dokaz je izmjeren i uklju
 sačuvana izvan repozitorija. Guard odbacuje dolazni `Host` i gradi jednu fiksnu adresu, pa
 poddomene `admin.` i `cms.` traže izmjenu guarda, ne samo DNS.
 
+## Paketi naloga
+
+Paket (Basic, Startup, Business) određuje koliko djelatnosti nalog smije voditi: 1, 3 ili 10.
+Nalog bez upisa u `account_package` ima Basic. Dok nema naplate, paket mijenja administrator:
+`/administracija` → Nalozi → Odobreni → „Paket” uz nalog, s obaveznim razlogom. Svaka izmjena
+ostaje u `account_package_decision` s prethodnim i novim paketom, administratorom i razlogom.
+Izmjena se odbija ako nalog već vodi više djelatnosti nego što novi paket dozvoljava. Granica
+važi i pri dodjeli vlasništva nad djelatnošću drugom nalogu i pri vraćanju iz arhive.
+Administratorski nalog nema paket ni granicu. Brisanje naloga briše i njegov paket i zapise o
+izmjenama. Paket ne daje značku identiteta ni Halal oznaku i ne uključuje nikakvu naplatu.
+
 ## Kontrolna lista izdanja
 
 1. Fetch i pregled worktreeova/PR-ova; potvrdi tačan integration commit i jednog objavljivača.
