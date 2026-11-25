@@ -243,8 +243,15 @@ a {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
+  color: var(--ui-text);
+  transition: scale 160ms var(--ease-out);
 }
-.brand img {
+.brand:active {
+  scale: 0.97;
+}
+/* The logo is drawn in the colours of its place: text colour, with "ahi" in the accent. */
+.brand svg {
+  display: block;
   width: 178px;
   height: auto;
 }
@@ -532,7 +539,11 @@ body:has([data-design="home-hero"]) .site-header {
   gap: 30px;
   padding-bottom: 34px;
 }
-.footer-brand img {
+.footer-brand {
+  --logo-accent: var(--ui-ink-accent);
+  color: var(--ui-on-ink);
+}
+.footer-brand svg {
   width: 156px;
 }
 .footer-main nav {
@@ -693,7 +704,7 @@ body:has([data-design="home-hero"]) .site-header {
   .header-menu {
     height: 100dvh;
   }
-  .brand img {
+  .brand svg {
     width: 144px;
   }
   .empty-directory {
@@ -782,8 +793,4 @@ body:has([data-design="home-hero"]) .site-header {
   }
 }
 
-/* Only the wordmark changes; photographs and user media keep their original colors. */
-:root[data-theme="dark"] :is(.brand, .preview-header) img[src="/brand/ahi-logo-color.svg"] {
-  filter: brightness(0) invert(1);
-}
 /* Page, menu and feedback motion lives in motion.css. */

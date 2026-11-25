@@ -165,6 +165,14 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   svijetla) i jedan akcenat za glavnu radnju: mint na tamnoj, tirkizna na svijetloj. Vrijednosti su
   u `src/app/globals.css` (`--ui-*`); boja se u stilove ne upisuje direktno.
 - **Zlato** samo za riječ Business, uvijek na tamnoj podlozi. Glavna radnja je u boji akcenta.
+  Jedini izuzetak je zlatnik u animaciji otvaranja, koji je vlasnik tražio.
+- **Logo [odobreno 25. 11. 2026., uz animaciju otvaranja]:** oblik znaka i slova je nepromijenjen.
+  „ahi” i tačka su u boji akcenta, znak i „bizz” u boji teksta teme; na podlozi u boji akcenta i
+  preko fotografije logo je jednobojan. Crta ga komponenta `AhiLogo`.
+- **Otvaranje [odobreno 25. 11. 2026.]:** pri prvoj posjeti početnoj na jednom uređaju odigra se
+  jednom: zlatnik padne ispod znaka, uskoči u krug u njegovom ćošku i postane ta rupa, zatim
+  isklizne natpis i ispod njega „Naša mreža, naša snaga.” Traje oko četiri i po sekunde, dodir ili
+  tipka je prekida, a uz smanjeno kretanje se ne prikazuje.
 - **Pismo:** Manrope za cijeli interfejs, s vlastitog servera; arapski tekst koristi sistemsko pismo.
 - **Oblik:** jedna ljestvica zaobljenja (`--ui-radius-xs` do `--ui-radius-xl`): kontrole 16 px,
   kartice 24 px, oznake potpuno zaobljene.

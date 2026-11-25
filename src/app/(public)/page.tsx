@@ -1,4 +1,5 @@
 import { type ReactNode, Suspense } from "react";
+import { LogoIntro } from "../../components/brand/LogoIntro";
 import { DirectoryResultCard } from "../../components/directory/DirectoryResultCard";
 import { HomeCategories } from "../../components/home/HomeCategories";
 import { HomeFeaturedRail } from "../../components/home/HomeFeaturedRail";
@@ -187,56 +188,59 @@ export default async function HomePage({
   const titles = design.sectionTitles ?? {};
   const nearbyTitle = t(titles.nearby || msg("Djelatnosti u blizini"));
   return (
-    <HomeSurface
-      t={t}
-      design={design}
-      searchAction="/pretraga"
-      placeField="mjesto"
-      place={place}
-      discovery={
-        <Suspense fallback={null}>
-          <RecentReels />
-        </Suspense>
-      }
-      slots={{
-        categories: (
-          <Suspense fallback={<HomeCategories t={t} categories={[]} />}>
-            <HomeDirectoryCategories data={classification} place={place} sponsor={null} t={t} />
-          </Suspense>
-        ),
-        featured: (
+    <>
+      <LogoIntro />
+      <HomeSurface
+        t={t}
+        design={design}
+        searchAction="/pretraga"
+        placeField="mjesto"
+        place={place}
+        discovery={
           <Suspense fallback={null}>
-            <HomePromotedListings
-              data={featured}
-              classification={classification}
-              title={t(titles.featured || msg("Istaknute djelatnosti"))}
-              t={t}
-            />
+            <RecentReels />
           </Suspense>
-        ),
-        newest: (
-          <Suspense fallback={null}>
-            <HomeNewestListings
-              data={newest}
-              example={example}
-              classification={classification}
-              title={t(titles.newest || msg("Novi na AhiBizzu"))}
-              t={t}
-            />
-          </Suspense>
-        ),
-        nearby: (
-          <Suspense fallback={<HomeNearbySection title={nearbyTitle} mapLabel={t("Karta")} />}>
-            <HomeLocalDirectory
-              data={local}
-              classification={classification}
-              place={place}
-              title={nearbyTitle}
-              mapLabel={t("Karta")}
-            />
-          </Suspense>
-        ),
-      }}
-    />
+        }
+        slots={{
+          categories: (
+            <Suspense fallback={<HomeCategories t={t} categories={[]} />}>
+              <HomeDirectoryCategories data={classification} place={place} sponsor={null} t={t} />
+            </Suspense>
+          ),
+          featured: (
+            <Suspense fallback={null}>
+              <HomePromotedListings
+                data={featured}
+                classification={classification}
+                title={t(titles.featured || msg("Istaknute djelatnosti"))}
+                t={t}
+              />
+            </Suspense>
+          ),
+          newest: (
+            <Suspense fallback={null}>
+              <HomeNewestListings
+                data={newest}
+                example={example}
+                classification={classification}
+                title={t(titles.newest || msg("Novi na AhiBizzu"))}
+                t={t}
+              />
+            </Suspense>
+          ),
+          nearby: (
+            <Suspense fallback={<HomeNearbySection title={nearbyTitle} mapLabel={t("Karta")} />}>
+              <HomeLocalDirectory
+                data={local}
+                classification={classification}
+                place={place}
+                title={nearbyTitle}
+                mapLabel={t("Karta")}
+              />
+            </Suspense>
+          ),
+        }}
+      />
+    </>
   );
 }

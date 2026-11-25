@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -19,6 +18,7 @@ import {
 } from "../lib/header-navigation";
 import { msg } from "../lib/i18n/translate";
 import { AccountMenuFooter, AccountQuickMenu } from "./account/AccountQuickMenu";
+import { AhiLogo } from "./brand/AhiLogo";
 import { Icon } from "./Icon";
 import { useT } from "./i18n/LocaleProvider";
 import { useOptionalAppPwa } from "./pwa/AppPwa";
@@ -165,15 +165,8 @@ export function SiteHeader({
     <header ref={header} className="site-header" data-design="app-header">
       <div className="container header-inner">
         <Link className="brand" href="/" aria-label={t("AhiBizz — početna")} onClick={closeMenu}>
-          {/* The supplied SVG is a complete wordmark with its own aspect ratio. */}
-          <Image
-            src="/brand/ahi-logo-color.svg"
-            alt="AhiBizz"
-            width={178}
-            height={48}
-            unoptimized
-            priority
-          />
+          {/* The link carries the name; the drawing itself stays silent. */}
+          <AhiLogo decorative />
         </Link>
         <div className="header-actions">
           {account && (

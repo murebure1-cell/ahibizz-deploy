@@ -1,0 +1,496 @@
+/*
+ * The opening animation, played once on a device's first visit to the home page. A gold coin
+ * drops under the symbol, jumps into the round hole in its corner and becomes that hole; then
+ * the name slides out and the line appears. Every animation runs on one 4500 ms timeline, so
+ * the beats cannot drift apart. Falling speeds up and rising slows down (easeInQuad and
+ * easeOutQuad from easings.net); the rest uses the app's own curves.
+ * Generated from one timeline; change the timeline, not single percentages.
+ */
+.intro {
+  display: none;
+}
+:global(html[data-intro="play"]) .intro {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 2.4vw, 20px);
+  padding: 24px;
+  background: var(--ui-page);
+  color: var(--ui-text);
+  animation: intro-out 4500ms linear 1 both;
+}
+/* A tap or a key ends it early. */
+:global(html[data-intro="play"]) .intro[data-skip] {
+  animation: intro-skip 200ms ease 1 both;
+}
+.stage {
+  display: block;
+  width: min(100%, 560px);
+  height: auto;
+  overflow: visible;
+}
+.tagline {
+  margin: 0;
+  font-size: clamp(18px, 4.6vw, 24px);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  text-align: center;
+  animation: intro-tagline 4500ms linear 1 both;
+}
+.accent {
+  fill: var(--ui-accent);
+  animation: intro-accent 4500ms linear 1 both;
+}
+.hole {
+  fill: var(--ui-page);
+  animation: intro-hole 4500ms linear 1 both;
+}
+@keyframes intro-out {
+  0% {
+    opacity: 1;
+  }
+  93.333% {
+    opacity: 1;
+    animation-timing-function: ease;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@keyframes intro-skip {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+/* Sideways only during the jump; the drop is straight down. */
+@keyframes intro-coin-x {
+  0% {
+    transform: translateX(54.66px);
+  }
+  20% {
+    transform: translateX(54.66px);
+    animation-timing-function: linear;
+  }
+  29.778% {
+    transform: translateX(0px);
+  }
+  100% {
+    transform: translateX(0px);
+  }
+}
+.coinX {
+  animation: intro-coin-x 4500ms linear 1 both;
+}
+@keyframes intro-coin-y {
+  0% {
+    transform: translateY(-1500px);
+  }
+  6.667% {
+    transform: translateY(-1500px);
+    animation-timing-function: cubic-bezier(0.11, 0, 0.5, 0);
+  }
+  18.222% {
+    transform: translateY(100.18px);
+  }
+  20% {
+    transform: translateY(100.18px);
+    animation-timing-function: cubic-bezier(0.5, 1, 0.89, 1);
+  }
+  25.778% {
+    transform: translateY(-46px);
+    animation-timing-function: cubic-bezier(0.11, 0, 0.5, 0);
+  }
+  29.778% {
+    transform: translateY(0px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+.coinY {
+  animation: intro-coin-y 4500ms linear 1 both;
+}
+/* It flattens on the ground and stretches as it pushes off. */
+@keyframes intro-coin-squash {
+  0% {
+    transform: scale(1, 1);
+  }
+  18% {
+    transform: scale(1, 1);
+    animation-timing-function: var(--ease-out);
+  }
+  19.111% {
+    transform: scale(1.2, 0.76);
+    animation-timing-function: var(--ease-out);
+  }
+  20.667% {
+    transform: scale(0.94, 1.08);
+    animation-timing-function: var(--ease-out);
+  }
+  23.111% {
+    transform: scale(1, 1);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+.coinSquash {
+  transform-origin: 245.34px 308.76px;
+  animation: intro-coin-squash 4500ms linear 1 both;
+}
+/* It turns in the air, shrinks to the size of the hole, then the gold gives way to the hole. */
+@keyframes intro-coin-spin {
+  0% {
+    opacity: 1;
+    transform: scale(1.5, 1.5);
+  }
+  6.667% {
+    opacity: 1;
+    transform: scale(1.5, 1.5);
+    animation-timing-function: linear;
+  }
+  9.556% {
+    opacity: 1;
+    transform: scale(0.22, 1.5);
+    animation-timing-function: linear;
+  }
+  12.444% {
+    opacity: 1;
+    transform: scale(1.5, 1.5);
+    animation-timing-function: linear;
+  }
+  15.333% {
+    opacity: 1;
+    transform: scale(0.22, 1.5);
+    animation-timing-function: linear;
+  }
+  18.222% {
+    opacity: 1;
+    transform: scale(1.5, 1.5);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.5, 1.5);
+    animation-timing-function: linear;
+  }
+  24.889% {
+    opacity: 1;
+    transform: scale(0.22, 1.24);
+    animation-timing-function: linear;
+  }
+  29.778% {
+    opacity: 1;
+    transform: scale(1, 1);
+  }
+  32% {
+    opacity: 1;
+    transform: scale(1, 1);
+    animation-timing-function: ease;
+  }
+  37.556% {
+    opacity: 0;
+    transform: scale(1, 1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1, 1);
+  }
+}
+.coinSpin {
+  transform-origin: 245.34px 288.81px;
+  animation: intro-coin-spin 4500ms linear 1 both;
+}
+@keyframes intro-hole {
+  0% {
+    opacity: 0;
+  }
+  29.756% {
+    opacity: 0;
+  }
+  29.778% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes intro-shadow {
+  0% {
+    opacity: 0;
+  }
+  14.222% {
+    opacity: 0;
+    animation-timing-function: ease;
+  }
+  18.222% {
+    opacity: 0.3;
+  }
+  20% {
+    opacity: 0.3;
+    animation-timing-function: ease;
+  }
+  23.556% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.shadow {
+  animation: intro-shadow 4500ms linear 1 both;
+}
+/* The symbol waits pale and takes its colour the moment the coin is in. */
+@keyframes intro-symbol {
+  0% {
+    opacity: 0.3;
+  }
+  29.778% {
+    opacity: 0.3;
+    animation-timing-function: ease;
+  }
+  34.667% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.symbol {
+  animation: intro-symbol 4500ms linear 1 both;
+}
+/* Then the symbol moves aside and the name slides out from behind it, letter by letter. */
+@keyframes intro-logo {
+  0% {
+    transform: translateX(159px);
+  }
+  38.889% {
+    transform: translateX(159px);
+    animation-timing-function: var(--ease-in-out);
+  }
+  48.889% {
+    transform: translateX(0px);
+  }
+  100% {
+    transform: translateX(0px);
+  }
+}
+.logo {
+  animation: intro-logo 4500ms linear 1 both;
+}
+@keyframes intro-letter-0 {
+  0% {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  41.111% {
+    opacity: 0;
+    transform: translateX(-28px);
+    animation-timing-function: var(--ease-out);
+  }
+  48.222% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.letter0 {
+  animation: intro-letter-0 4500ms linear 1 both;
+}
+@keyframes intro-letter-1 {
+  0% {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  42% {
+    opacity: 0;
+    transform: translateX(-28px);
+    animation-timing-function: var(--ease-out);
+  }
+  49.111% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.letter1 {
+  animation: intro-letter-1 4500ms linear 1 both;
+}
+@keyframes intro-letter-2 {
+  0% {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  42.889% {
+    opacity: 0;
+    transform: translateX(-28px);
+    animation-timing-function: var(--ease-out);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.letter2 {
+  animation: intro-letter-2 4500ms linear 1 both;
+}
+@keyframes intro-letter-3 {
+  0% {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  43.778% {
+    opacity: 0;
+    transform: translateX(-28px);
+    animation-timing-function: var(--ease-out);
+  }
+  50.889% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.letter3 {
+  animation: intro-letter-3 4500ms linear 1 both;
+}
+@keyframes intro-letter-4 {
+  0% {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  44.667% {
+    opacity: 0;
+    transform: translateX(-28px);
+    animation-timing-function: var(--ease-out);
+  }
+  51.778% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.letter4 {
+  animation: intro-letter-4 4500ms linear 1 both;
+}
+@keyframes intro-letter-5 {
+  0% {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  45.556% {
+    opacity: 0;
+    transform: translateX(-28px);
+    animation-timing-function: var(--ease-out);
+  }
+  52.667% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.letter5 {
+  animation: intro-letter-5 4500ms linear 1 both;
+}
+@keyframes intro-letter-6 {
+  0% {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  46.444% {
+    opacity: 0;
+    transform: translateX(-28px);
+    animation-timing-function: var(--ease-out);
+  }
+  53.556% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.letter6 {
+  animation: intro-letter-6 4500ms linear 1 both;
+}
+@keyframes intro-letter-7 {
+  0% {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  47.333% {
+    opacity: 0;
+    transform: translateX(-28px);
+    animation-timing-function: var(--ease-out);
+  }
+  54.444% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.letter7 {
+  animation: intro-letter-7 4500ms linear 1 both;
+}
+@keyframes intro-accent {
+  0% {
+    opacity: 0;
+  }
+  56% {
+    opacity: 0;
+    animation-timing-function: ease;
+  }
+  60.444% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes intro-tagline {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  57.778% {
+    opacity: 0;
+    transform: translateY(8px);
+    animation-timing-function: var(--ease-out);
+  }
+  64.444% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

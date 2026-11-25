@@ -1,8 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { IS_PLAY_EDITION } from "../lib/distribution";
 import { getSupportConfig } from "../lib/support";
 import { getTranslator } from "../server/i18n";
+import { AhiLogo } from "./brand/AhiLogo";
 import { LanguagePicker } from "./i18n/LanguagePicker";
 
 export async function SiteFooter() {
@@ -11,13 +11,7 @@ export async function SiteFooter() {
     <footer className="site-footer">
       <div className="container footer-main">
         <Link className="brand footer-brand" href="/" aria-label={t("AhiBizz — početna")}>
-          <Image
-            src="/brand/ahi-logo-white.svg"
-            alt="AhiBizz"
-            width={156}
-            height={42}
-            unoptimized
-          />
+          <AhiLogo decorative />
         </Link>
         <nav aria-label={t("Navigacija podnožja")}>
           <Link href="/o-nama">{t("O AhiBizzu")}</Link>
