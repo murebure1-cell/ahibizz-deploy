@@ -225,12 +225,27 @@ export function SimulatorScreens({
               accountId: person.getProfile().id,
               joinedAt: "2026-11-01T09:00:00Z",
               businesses: 2,
+              businessList: [
+                {
+                  id: "00000000-0000-4000-8000-000000000001",
+                  title: "Pekara Zlatno zrno",
+                  status: "published",
+                },
+                {
+                  id: "00000000-0000-4000-8000-000000000002",
+                  title: "Zlatno zrno catering",
+                  status: "pending",
+                },
+              ],
               package: "business",
               businessLimit: 10,
               unreadThreads: 1,
               promotedBusinesses: 1,
             }}
+            name={person.getProfile().name}
+            profile={person.getProfile()}
             onSection={() => {}}
+            onAddBusiness={() => {}}
           />
         )}
       </section>

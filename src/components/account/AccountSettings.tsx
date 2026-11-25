@@ -16,9 +16,9 @@ import { msg } from "../../lib/i18n/translate";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { useAppAppearance } from "../appearance/AppAppearance";
 import { Icon } from "../Icon";
+import { LanguagePicker } from "../i18n/LanguagePicker";
 import { useT } from "../i18n/LocaleProvider";
 import { DevicePush } from "../pwa/DevicePush";
-import permissionStyles from "../pwa/permissions.module.css";
 import { AccountPassword } from "./AccountPassword";
 import styles from "./account.module.css";
 
@@ -32,6 +32,8 @@ type Props = {
   initial: SafeAccountProfile;
   active?: boolean;
   focusNotifications?: boolean;
+  /** Whether the personal profile carries the verification badge; null while that is unknown. */
+  verified?: boolean | null;
   request?: typeof accountSettingsRequest;
   onConfirmed?: (account: SafeAccountProfile) => void;
 };
@@ -44,6 +46,7 @@ function SettingsWorkspace({
   initial,
   active = true,
   focusNotifications = false,
+  verified = null,
   request = accountSettingsRequest,
   onConfirmed,
 }: Props) {
@@ -243,16 +246,44 @@ function SettingsWorkspace({
             </dl>
             <div className={styles.settingsLinks}>
               <Link href="/nalog?odjeljak=profil">
-                <Icon name="user" /> Uredi lične podatke
+                <Icon name="user" /> {t("Uredi lične podatke")}
               </Link>
               <Link href="/nalog?odjeljak=djelatnosti">
-                <Icon name="shop" /> Moje djelatnosti
+                <Icon name="shop" /> {t("Moje djelatnosti")}
               </Link>
             </div>
           </section>
           <AccountPassword accountId={account.id} email={account.email} />
+          <section className={styles.settingsCard} aria-labelledby="verification-heading">
+            <h2 id="verification-heading">{t("Verifikacija profila")}</h2>
+            {verified !== null && (
+              <p className={styles.settingsState} data-verified={verified}>
+                {verified && <Icon name="check" className={styles.settingsStateIcon} />}
+                {verified
+                  ? t("Tvoj profil je verifikovan.")
+                  : t("Tvoj profil još nije verifikovan.")}
+              </p>
+            )}
+            <p className={styles.settingsText}>
+              {t(
+                "Oznaka potvrđuje da je AhiBizz provjerio tvoj identitet. Dodjeljuje je administrator nakon ručne provjere; paket je ne donosi.",
+              )}
+            </p>
+            {verified !== true && (
+              <div className={styles.settingsLinks}>
+                <Link href="/pomoc?tema=nalog#kontakt">
+                  <Icon name="shield" /> {t("Zatraži verifikaciju")}
+                </Link>
+              </div>
+            )}
+          </section>
         </>
       )}
+      <section className={styles.settingsCard} aria-labelledby="language-heading">
+        <h2 id="language-heading">{t("Jezik")}</h2>
+        <LanguagePicker className={styles.settingsLanguage} />
+        <p className={styles.settingsText}>{t("Izbor se pamti samo na ovom uređaju.")}</p>
+      </section>
       <section className={styles.settingsCard} aria-labelledby="appearance-heading">
         <h2 id="appearance-heading">{t("Izgled")}</h2>
         <fieldset
@@ -323,12 +354,13 @@ function SettingsWorkspace({
       </section>
       {active && !accessLost && request === accountSettingsRequest && (
         <section
-          aria-label={t("Obavijesti na uređaju")}
+          aria-labelledby="push-heading"
           className={styles.settingsCard}
           ref={deviceNotifications}
           tabIndex={-1}
         >
-          <div className={permissionStyles.permissions}>
+          <h2 id="push-heading">{t("Obavijesti na uređaju")}</h2>
+          <div className={styles.settingsPush}>
             <DevicePush actor={initial.id} />
           </div>
         </section>
@@ -337,16 +369,16 @@ function SettingsWorkspace({
         <h2 id="privacy-heading">{t("Privatnost i podaci")}</h2>
         <div className={styles.settingsLinks}>
           <Link href={blockedPeoplePath}>
-            <Icon name="user" /> Blokirani korisnici
+            <Icon name="user" /> {t("Blokirani korisnici")}
           </Link>
           <Link href="/privatnost">
-            <Icon name="info" /> Pravila privatnosti
+            <Icon name="info" /> {t("Pravila privatnosti")}
           </Link>
           <Link href="/pomoc?tema=sigurnost#kontakt">
-            <Icon name="mail" /> Zatraži pristup podacima
+            <Icon name="mail" /> {t("Zatraži pristup podacima")}
           </Link>
           <Link href="/brisanje-naloga">
-            <Icon name="shield" /> Zatraži brisanje naloga
+            <Icon name="shield" /> {t("Zatraži brisanje naloga")}
           </Link>
         </div>
       </section>

@@ -17,6 +17,9 @@ test("private account reads reject foreign and malformed account facts", () => {
     accountId: "member-1",
     joinedAt: "2026-11-18T23:30:00.000Z",
     businesses: 1,
+    businessList: [
+      { id: "00000000-0000-4000-8000-000000000001", title: "Pekara", status: "published" },
+    ],
     package: "basic",
     businessLimit: 1,
     promotedBusinesses: 1,
@@ -30,6 +33,13 @@ test("private account reads reject foreign and malformed account facts", () => {
     { package: "premium", businessLimit: 1 },
     { package: null, businessLimit: 1 },
     { package: "startup", businessLimit: null },
+    { businessList: null },
+    { businessList: [{ id: "not-a-uuid", title: "Pekara", status: "published" }] },
+    { businessList: [{ ...facts.businessList[0], status: "archived" }] },
+    { businessList: [{ ...facts.businessList[0], ownerId: "member-2" }] },
+    { businessList: [{ ...facts.businessList[0], title: "" }] },
+    { businesses: 0 },
+    { businesses: 9, businessList: Array.from({ length: 6 }, () => facts.businessList[0]) },
   ])
     assert.throws(() => readOverview({ overview: { ...facts, ...wrong } }, "member-1"));
   assert.throws(() => readOverview({ overview: facts }, "member-2"));

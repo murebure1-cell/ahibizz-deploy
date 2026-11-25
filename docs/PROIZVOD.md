@@ -55,27 +55,32 @@ obrazac otvori **[postoji]**. Ponuda višeg paketa s tog mjesta dolazi s naplato
 
 ## 3. Moj profil
 
-Prvi ekran nakon prijave. Odozgo nadolje:
+Prvi ekran nakon prijave (`/nalog`, odjeljak Pregled). Kostur je izgrađen 25. 11. 2026.: zaglavlje,
+moje djelatnosti i lista prečica **[postoji]**. Odozgo nadolje:
 
 1. **Zaglavlje:** naslovna slika, profilna slika, ime, oznaka paketa, značka verifikacije ako
-   postoji, „član od” s datumom. Slike se mijenjaju dodirom, s mekim prelazom **[dio postoji]**.
-   Oznaka paketa i datum već stoje na pregledu naloga; Business je ispisan zlatnim slovima.
+   postoji, „član od” s datumom **[postoji]**. Business je ispisan zlatnim slovima na tamnoj
+   podlozi. Slike se mijenjaju u odjeljku „Moj profil”; promjena dodirom iz zaglavlja, s mekim
+   prelazom, tek dolazi **[novo]**. Vlastitu naslovnu sliku danas ima samo nalog kojem je uključena
+   **[pitanje: da li je dobijaju svi paketi]**.
 2. **Pregled:** brojke po paketu (dio 7). Na Basicu dvije: pregledi profila i pregledi djelatnosti.
-3. **Moje djelatnosti:** lista sa stanjem (nacrt, na pregledu, objavljena), brojač „1 od 1” i
-   dugme za dodavanje **[postoji, treba novi prikaz]**. Brojač već stoji na pregledu naloga.
-4. **Poruke:** broj nepročitanih i zadnji razgovori **[postoji]**.
+3. **Moje djelatnosti:** do pet djelatnosti sa stanjem (nacrt, na pregledu, objavljeno), brojač
+   „1 od 1” i dugme za dodavanje; kad je paket pun, umjesto dugmeta stoji objašnjenje **[postoji]**.
+4. **Poruke:** broj nepročitanih **[postoji]**; zadnji razgovori na samom pregledu **[novo]**.
 5. **Termini:** sljedeći termin, ako djelatnost prima termine **[postoji]**.
 6. **Sponzorisano:** gdje se djelatnost prikazuje i s kakvim rezultatom (dio 6) **[novo]**.
-7. **Postavke** i **Pomoć**.
+7. **Postavke** i **Pomoć**, a na telefonu i **Odjava** na dnu liste **[postoji]**.
 
 Sve što danas stoji na profilu, a nije na ovom spisku, uklanja se nakon pregleda ekrana.
 
 ## 4. Postavke
 
-Jezik; tema (uređaj, svijetla, tamna); obavijesti (push i email, po vrsti); vidljivost profila;
-blokirani korisnici; lozinka i povezani Google nalog; aktivne prijave po uređajima **[novo]**;
-verifikacija profila (zahtjev i stanje) **[postoji ručno, treba ulaz iz postavki]**; brisanje
-naloga, s jasnim spiskom šta se briše a šta zakon traži da ostane **[postoji]**.
+U postavkama danas stoje **[postoji]**: podaci naloga i lozinka; verifikacija profila (stanje i
+link za zahtjev; dodjela ostaje ručna); jezik; tema (uređaj, svijetla, tamna); obavijesti na
+uređaju; blokirani korisnici, pravila privatnosti, pristup podacima i brisanje naloga.
+
+Još nema **[novo]**: obavijesti emailom po vrsti; vidljivost profila iz postavki (danas je u
+uređivanju profila); povezani Google nalog; aktivne prijave po uređajima s odjavom pojedine.
 
 ## 5. Dodavanje djelatnosti
 
@@ -161,7 +166,8 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
 
 Svaka faza završava nečim što se vidi i može probati.
 
-1. Paketi i granice u modelu (urađeno 25. 11. 2026.); novi kostur profila; postavke.
+1. Paketi i granice u modelu, novi kostur profila i sređene postavke (urađeno 25. 11. 2026.).
+   Iz ove faze ostaju aktivne prijave po uređajima i zadnji razgovori na pregledu.
 2. Tok dodavanja djelatnosti s lokacijom i PIN-om; nova lista kategorija.
 3. Jelovnik i porijeklo mesa; vezivanje vozila i soba u tok.
 4. Prikupljanje analitike i prikaz po paketu.
@@ -178,3 +184,4 @@ Zajedničke komponente i izgled grade se uz prvu fazu i koriste u svim ostalim.
 3. Mjesta, trajanja i cijene za „Sponzorisano”.
 4. Tačan spisak potkategorija.
 5. Primjeri animacija koje vlasnik želi poslati kao uzor.
+6. Da li vlastitu naslovnu sliku profila dobijaju svi paketi.

@@ -439,6 +439,8 @@
   font-size: 14px;
 }
 .settings {
+  display: grid;
+  gap: 16px;
   min-width: 0;
 }
 .settingsHeading {
@@ -446,7 +448,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 18px;
-  margin: 3px 0 23px;
+  margin: 3px 0 7px;
 }
 .settingsHeading h1 {
   font-size: clamp(25px, 3vw, 32px);
@@ -473,16 +475,15 @@
 
 .settingsCard {
   border: 1px solid var(--ui-border);
-  border-radius: 24px;
-  padding: 28px;
+  border-radius: 18px;
+  padding: clamp(18px, 3vw, 28px);
   background: var(--ui-surface);
-  box-shadow: 0 14px 42px var(--ui-shadow);
 }
 .settingsCard h2 {
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 650;
-  letter-spacing: -0.035em;
-  margin: 0 0 23px;
+  letter-spacing: -0.03em;
+  margin: 0 0 16px;
 }
 .passwordChange {
   min-width: 0;
@@ -752,4 +753,71 @@
   :global(body):has(.layout[data-account-pane="messages"] [data-message-chat="open"]) {
     padding-bottom: 0;
   }
+}
+
+/* On a phone the overview opens with the profile itself, so the sidebar keeps only its tabs
+   there; signing out moves to the end of the overview's list. */
+@media (max-width: 700px) {
+  .layout[data-account-pane="overview"] .identity,
+  .layout[data-account-pane="overview"] .logout {
+    display: none;
+  }
+  .layout[data-account-pane="overview"] .navigationViewport {
+    grid-row: 1;
+  }
+}
+
+.settingsText {
+  max-width: 62ch;
+  margin: 0 0 16px;
+  color: var(--ui-text-secondary);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.settingsText:last-child {
+  margin-bottom: 0;
+}
+.settingsState {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-weight: 650;
+}
+.settingsStateIcon {
+  flex: none;
+  width: 17px;
+  height: 17px;
+}
+.settingsState[data-verified="true"] {
+  color: var(--ui-success);
+}
+.settingsLanguage {
+  display: block;
+  margin-bottom: 12px;
+}
+/* The card's heading already names the control. */
+.settingsLanguage > span {
+  position: absolute;
+  overflow: hidden;
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  white-space: nowrap;
+}
+.settingsLanguage select {
+  width: min(100%, 320px);
+  min-height: 46px;
+  padding-inline: 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-input);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 16px;
+}
+/* The notification row brings a divider and spacing meant for a list; alone in a card it needs neither. */
+.settingsPush > * {
+  padding-block: 0;
+  border-top: 0;
 }
