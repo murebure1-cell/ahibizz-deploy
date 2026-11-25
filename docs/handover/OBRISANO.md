@@ -127,3 +127,10 @@ imao vlasničku stranicu `/administracija/ciscenje` i komandu za kontejner; oboj
 istog dana, zajedno s testovima. U `platform_settings` ostaje zapis
 `maintenance.prelaunch_reset` s vremenom i brojevima. Ako takav alat ponovo zatreba, nalazi se u
 historiji repozitorija (PR #34 i #36).
+
+## Jedna granica djelatnosti za sve naloge (25. 11. 2026.)
+
+Varijabla okruženja `DIRECTORY_MEMBER_BUSINESS_LIMIT` je uklonjena. Do tada je jedan broj važio
+za sve članove (podrazumijevano 1); sada granicu određuje paket naloga (`docs/PROIZVOD.md`,
+`docs/handover/OPERACIJE.md` → Paketi naloga). Ako je varijabla ostala upisana na serveru, više
+se ne čita i može se obrisati.

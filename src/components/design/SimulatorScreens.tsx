@@ -225,6 +225,8 @@ export function SimulatorScreens({
               accountId: person.getProfile().id,
               joinedAt: "2026-11-01T09:00:00Z",
               businesses: 2,
+              package: "business",
+              businessLimit: 10,
               unreadThreads: 1,
               promotedBusinesses: 1,
             }}

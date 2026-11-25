@@ -6,6 +6,7 @@ import type {
   OwnershipReceipt,
   OwnershipSnapshot,
 } from "../../lib/business-ownership";
+import { readBusinessAllowance } from "../account-package";
 import {
   AccountAccessError,
   type AccountService,
@@ -162,19 +163,11 @@ export function createBusinessOwnershipService({
   accounts,
   auth,
   pool,
-  memberBusinessLimit = 1,
 }: {
   accounts: AccountService;
   auth: AuthService;
   pool: Pool;
-  memberBusinessLimit?: number;
 }) {
-  if (
-    !Number.isInteger(memberBusinessLimit) ||
-    memberBusinessLimit < 1 ||
-    memberBusinessLimit > 100
-  )
-    fail(503, "OWNERSHIP_CONFIGURATION_INVALID");
   async function session(headers: Headers): Promise<Session> {
     return safe(async () => {
       const expected = headers.get("X-AhiBizz-Account-ID");
@@ -297,14 +290,9 @@ export function createBusinessOwnershipService({
         if (email(target.email) !== value.targetEmail) fail(409, "TARGET_ACCOUNT_CHANGED");
         if (target.id === state.business.ownerId) fail(409, "BUSINESS_OWNER_UNCHANGED");
         if (state.business.status !== "archived" && target.role !== "owner") {
-          const count = (
-            await client.query<{ n: number }>(
-              "SELECT count(*)::integer AS n FROM directory_business WHERE owner_user_id=$1 AND status<>'archived'",
-              [target.id],
-            )
-          ).rows[0]?.n;
-          if (count === undefined || count >= memberBusinessLimit)
-            fail(409, "BUSINESS_LIMIT_REACHED");
+          // The new owner's package decides whether one more business fits.
+          const allowance = await readBusinessAllowance(client, target.id);
+          if (allowance.used >= allowance.limit) fail(409, "BUSINESS_LIMIT_REACHED");
         }
         const changed = await client.query(
           "UPDATE directory_business SET owner_user_id=$1,version=version+1,updated_at=clock_timestamp() WHERE id=$2 AND version=$3",
@@ -345,13 +333,6 @@ export function getBusinessOwnershipService(): BusinessOwnershipService | null {
     auth = getAuthService(),
     pool = getAuthDatabasePool();
   if (!accounts || !auth || !pool) return null;
-  const raw = process.env.DIRECTORY_MEMBER_BUSINESS_LIMIT;
-  if (raw !== undefined && !/^\d+$/.test(raw)) fail(503, "OWNERSHIP_CONFIGURATION_INVALID");
-  singleton = createBusinessOwnershipService({
-    accounts,
-    auth,
-    pool,
-    memberBusinessLimit: raw === undefined ? 1 : Number(raw),
-  });
+  singleton = createBusinessOwnershipService({ accounts, auth, pool });
   return singleton;
 }

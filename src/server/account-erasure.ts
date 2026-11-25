@@ -75,6 +75,9 @@ export function createAccountErasure(auth: AuthService, pool: Pool) {
         [target.id, `erased-${randomUUID()}@ahibizz.invalid`],
       );
       await client.query("SELECT erase_account_content($1,$2)", [target.id, target.email]);
+      // The package and the notes about it belong to the erased account.
+      await client.query("DELETE FROM account_package_decision WHERE user_id=$1", [target.id]);
+      await client.query("DELETE FROM account_package WHERE user_id=$1", [target.id]);
       await client.query(
         "INSERT INTO account_erasure_receipt(request_id,account_id,processed_by) VALUES($1,$2,$3)",
         [requestId, target.id, operator.id],

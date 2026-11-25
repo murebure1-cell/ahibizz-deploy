@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { readOverview } from "../../lib/account-overview";
 import type { BookingSettings } from "../../lib/booking";
 import {
   bookingActorRequest,
@@ -85,9 +86,31 @@ function ReturnedBusinessNote({ business }: { business?: DirectoryBusiness | nul
     </div>
   );
 }
+const packageLimitText = msg(
+  "Tvoj paket ne dozvoljava još jednu djelatnost. Basic dozvoljava jednu, Startup do 3, a Business do 10.",
+);
+/** True when the account's package has no room left. A failed read leaves the answer to the server. */
+async function packageFull(accountId: string | undefined): Promise<boolean> {
+  if (!accountId) return false;
+  try {
+    const response = await fetch("/api/account/overview", {
+      cache: "no-store",
+      credentials: "same-origin",
+      redirect: "error",
+      mode: "same-origin",
+      headers: { "X-AhiBizz-Account-ID": accountId },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) return false;
+    const facts = readOverview(await response.json(), accountId);
+    return facts.businessLimit !== null && facts.businesses >= facts.businessLimit;
+  } catch {
+    return false;
+  }
+}
 function errorMessage(error: unknown) {
   const code = error instanceof RequestError ? error.code : "";
-  if (code === "BUSINESS_LIMIT_REACHED") return msg("Već imaš djelatnost koja čeka aktivaciju.");
+  if (code === "BUSINESS_LIMIT_REACHED") return packageLimitText;
   if (code === "PACKAGE_PAYMENT_REQUIRED")
     return msg("Nacrt je sačuvan. Za objavu je potreban aktivan paket.");
   if (code === "REVIEW_REQUIRED")
@@ -251,6 +274,7 @@ export function BusinessManager({
   const creation = useRef(createDirectoryCreation());
   const mutation = useRef<DirectoryMutation | null>(null);
   const openedFromLink = useRef(false);
+  const checkingRoom = useRef(false);
   useEffect(() => {
     if (!startCreation) {
       openedFromLink.current = false;
@@ -1144,11 +1168,23 @@ export function BusinessManager({
             className={styles.primary}
             disabled={locked || loading || categories.length === 0}
             onClick={() => {
-              if (creation.current.intent) return;
-              setEditing(null);
+              if (creation.current.intent || checkingRoom.current) return;
               setError("");
               setNotice("");
               setBookingNote("");
+              if (isOwner) {
+                setEditing(null);
+                return;
+              }
+              // Say that the package is full before the form is filled in, not after.
+              checkingRoom.current = true;
+              const access = epoch.current;
+              void packageFull(expectedAccountId).then((full) => {
+                checkingRoom.current = false;
+                if (!current(access)) return;
+                if (full) setError(t(packageLimitText));
+                else setEditing(null);
+              });
             }}
           >
             <Icon name="shop" />

@@ -228,3 +228,23 @@ button.metric:hover {
     padding: 14px;
   }
 }
+
+/* The package an account holds. Gold is kept for the Business name alone. */
+.masthead .package {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 4px 11px;
+  border: 1px solid #ffffff36;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+}
+.package strong {
+  color: #fff;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+.package[data-package="business"] strong {
+  color: var(--gold);
+}
