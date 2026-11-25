@@ -153,6 +153,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       const denied = (run, status, code) =>
         assert.rejects(run, (error) => error.status === status && (!code || error.code === code));
 
+      const categories = await count("directory_category");
+      assert.ok(categories >= 1);
       const reset = createPrelaunchReset(auth, pool);
       await denied(() => reset.plan(new Headers()), 401);
       await denied(() => reset.plan(alice.headers), 403, "OWNER_REQUIRED");
@@ -195,7 +197,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       ]);
       for (const table of ["directory_business", "business_favorite", "auth_account_audit"])
         assert.equal(await count(table), 0, `${table} is empty`);
-      assert.equal(await count("directory_category"), 1);
+      // Categories, including the ones a migration seeds, are untouched.
+      assert.equal(await count("directory_category"), categories);
       assert.deepEqual(
         (await pool.query('SELECT DISTINCT "userId" AS id FROM auth_session')).rows,
         [{ id: admin.user.id }],
