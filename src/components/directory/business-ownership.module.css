@@ -22,7 +22,7 @@
 .panel {
   padding: clamp(20px, 4vw, 30px);
   border: 1px solid var(--ui-border);
-  border-radius: 22px;
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-surface);
   box-shadow: 0 10px 30px var(--ui-shadow);
   min-width: 0;
@@ -68,7 +68,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: 11px 13px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   border: 1px solid var(--ui-border);
   background: var(--ui-input);
   color: var(--ui-text);

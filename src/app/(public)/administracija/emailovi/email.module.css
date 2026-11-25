@@ -33,7 +33,7 @@
 .controls button {
   min-height: 44px;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   padding: 0 14px;
   font: inherit;
 }
@@ -46,14 +46,14 @@
 }
 .controls button {
   background: var(--ui-accent);
-  border-color: var(--ui-accent-border);
+  border-color: var(--ui-accent);
   color: var(--ui-on-accent);
   cursor: pointer;
 }
 .preview {
   min-width: 0;
   border: 1px solid var(--ui-border);
-  border-radius: 16px;
+  border-radius: var(--ui-radius-lg);
   background: var(--ui-surface-raised);
   overflow: hidden;
 }
@@ -98,7 +98,7 @@
   margin: 0 20px 16px;
   padding: 3px;
   border: 1px solid var(--ui-border);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
 }
 .hidden,
 .devices input {

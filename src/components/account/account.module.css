@@ -60,7 +60,7 @@
     linear-gradient(145deg, color-mix(in srgb, var(--ui-accent) 7%, transparent), transparent 48%),
     var(--ui-glass-soft);
   border: 1px solid var(--ui-border);
-  border-radius: 20px;
+  border-radius: var(--ui-radius-xl);
   padding: 22px 12px 16px;
   box-shadow:
     0 16px 40px var(--ui-shadow),
@@ -104,11 +104,11 @@
   width: 43px;
   height: 43px;
   border: 1px solid var(--ui-accent-border);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   display: grid;
   place-items: center;
-  background: var(--ui-primary);
-  color: var(--ui-on-primary);
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
   font-size: 15px;
   font-weight: 650;
 }
@@ -165,7 +165,7 @@
   gap: 11px;
   width: 100%;
   padding: 11px 12px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   text-align: left;
   color: var(--ui-muted);
   font-size: 15px;
@@ -190,7 +190,7 @@
 .sidebar nav button:hover:not([aria-current]),
 .sidebar .adminLink:hover,
 .logout:hover {
-  color: var(--ui-primary);
+  color: var(--ui-text);
   background: var(--ui-surface-hover);
 }
 .sidebar :where(button, a):focus-visible {
@@ -205,7 +205,7 @@
 .card {
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
-  border-radius: 17px;
+  border-radius: var(--ui-radius-lg);
   padding: 30px;
   box-shadow: 0 10px 40px var(--ui-shadow);
 }
@@ -227,7 +227,7 @@
   width: 100%;
   min-height: 48px;
   border: 1px solid var(--ui-border);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   padding: 10px 13px;
   color: var(--ui-text);
   background: var(--ui-surface);
@@ -278,7 +278,7 @@
   .sidebar {
     position: static;
     padding: 12px 12px 8px;
-    border-radius: 20px;
+    border-radius: var(--ui-radius-xl);
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
@@ -292,7 +292,7 @@
   .identity > span {
     width: 40px;
     height: 40px;
-    border-radius: 12px;
+    border-radius: var(--ui-radius-md);
   }
   .navigationViewport {
     grid-column: 1 / -1;
@@ -315,7 +315,7 @@
     min-width: 0;
     font-size: 13px;
     overflow-wrap: anywhere;
-    border-radius: 10px;
+    border-radius: var(--ui-radius-sm);
   }
   .sidebar nav button[aria-current],
   .sidebar nav .moreControl[data-current="true"] {
@@ -368,7 +368,7 @@
     padding: 10px;
     margin: 0;
     border: 1px solid var(--ui-border);
-    border-radius: 12px;
+    border-radius: var(--ui-radius-md);
     background: var(--ui-glass);
   }
   .logout span {
@@ -412,7 +412,7 @@
   align-items: center;
   min-height: 44px;
   padding: 6px 10px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   border: 1px solid var(--ui-border);
   text-decoration: none;
 }
@@ -428,13 +428,13 @@
   padding: 13px 12px;
   color: var(--ui-muted);
   font-size: 14px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
 }
 .feedback {
   color: var(--ui-danger);
   background: var(--ui-danger-soft);
   padding: 13px 16px;
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   margin-bottom: 20px;
   font-size: 14px;
 }
@@ -466,7 +466,7 @@
   width: 45px;
   height: 45px;
   border: 1px solid var(--ui-border);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   display: grid;
   place-items: center;
   background: var(--ui-surface);
@@ -475,7 +475,7 @@
 
 .settingsCard {
   border: 1px solid var(--ui-border);
-  border-radius: 18px;
+  border-radius: var(--ui-radius-lg);
   padding: clamp(18px, 3vw, 28px);
   background: var(--ui-surface);
 }
@@ -495,7 +495,7 @@
   color: var(--ui-text);
   background: var(--ui-surface-soft);
   border: 1px solid var(--ui-border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   font-size: 15px;
   font-weight: 650;
   cursor: pointer;
@@ -521,7 +521,7 @@
   background: var(--ui-input);
   color: var(--ui-text);
   border: 1px solid var(--ui-border);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   font: inherit;
   font-size: 16px;
 }
@@ -544,7 +544,7 @@
   min-width: 0;
   padding: 10px;
   border: 1px solid var(--ui-border);
-  border-radius: 16px;
+  border-radius: var(--ui-radius-lg);
   transition:
     border-color 140ms ease,
     background 140ms ease,
@@ -586,27 +586,33 @@
   height: 87px;
   padding: 10px;
   gap: 6px;
-  border-radius: 8px;
-  background: #edf1f3;
-  border: 1px solid #dfe4e8;
+  border-radius: var(--ui-radius-xs);
+  background: #f2f4f6;
+  border: 1px solid #e1e5e9;
 }
 
 .themePreview > span:first-child {
   grid-column: 1 / -1;
-  background: #203b51;
+  background: #0e7a6d;
 }
 .themePreview[data-preview="dark"] {
-  background: #111f2c;
-  border-color: #304657;
+  background: #0b0d10;
+  border-color: #262b32;
+}
+.themePreview[data-preview="dark"] > span:first-child {
+  background: #7be3b7;
 }
 .themePreview[data-preview="dark"] > span:not(:first-child) {
-  background: #2e4354;
+  background: #1b2027;
 }
 .themePreview[data-preview="system"] {
-  background: linear-gradient(90deg, #edf1f3 50%, #111f2c 50%);
+  background: linear-gradient(90deg, #f2f4f6 50%, #0b0d10 50%);
+}
+.themePreview[data-preview="system"] > span:first-child {
+  background: linear-gradient(90deg, #0e7a6d 50%, #7be3b7 50%);
 }
 .themePreview[data-preview="system"] > span:last-child {
-  background: linear-gradient(90deg, #fff 28%, #2e4354 28%);
+  background: linear-gradient(90deg, #fff 28%, #1b2027 28%);
 }
 .themeLabel {
   display: flex;
@@ -629,7 +635,7 @@
 }
 .settingsActions button {
   border: 1px solid var(--ui-accent-border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: linear-gradient(
     135deg,
     color-mix(in srgb, var(--ui-accent) 84%, white),
@@ -698,7 +704,7 @@
   }
   .appearanceChoices label {
     padding: 6px;
-    border-radius: 11px;
+    border-radius: var(--ui-radius-sm);
   }
   .themePreview {
     height: 70px;
@@ -810,7 +816,7 @@
   min-height: 46px;
   padding-inline: 12px;
   border: 1px solid var(--ui-border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-input);
   color: var(--ui-text);
   font: inherit;

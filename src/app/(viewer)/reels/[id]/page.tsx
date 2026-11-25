@@ -10,7 +10,7 @@ import { currentReelViewer } from "../../../../server/reels/viewer";
 
 export const dynamic = "force-dynamic";
 export const generateMetadata = titled("Reel djelatnosti");
-export const viewport = { themeColor: "#0b1725", viewportFit: "cover" as const };
+export const viewport = { themeColor: "#0b0d10", viewportFit: "cover" as const };
 
 export default async function ReelPage({
   params,

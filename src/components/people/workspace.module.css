@@ -6,7 +6,7 @@
   background: var(--ui-danger-soft);
   border: 1px solid var(--ui-danger-border);
   color: var(--ui-danger);
-  border-radius: 13px;
+  border-radius: var(--ui-radius-md);
   margin-bottom: 20px;
   font-size: 14px;
   line-height: 1.6;
@@ -15,7 +15,7 @@
   background: var(--ui-surface);
   color: var(--ui-danger);
   border: 1px solid var(--ui-danger-border);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-xs);
   padding: 11px 14px;
   margin-top: 12px;
   min-height: 44px;
@@ -26,7 +26,7 @@
   padding: 13px 17px;
   background: var(--ui-success-soft);
   color: var(--ui-success);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   font-size: 14px;
 }
 .loading {
@@ -41,7 +41,7 @@
   gap: 16px;
   margin-top: 16px;
   border: 1px solid var(--ui-border);
-  border-radius: 22px;
+  border-radius: var(--ui-radius-xl);
   padding: 24px;
   background: var(--ui-glass);
   box-shadow: 0 10px 30px var(--ui-shadow);
@@ -68,7 +68,7 @@
   min-height: 46px;
   border: 1px solid var(--ui-border);
   padding: 10px 14px;
-  border-radius: 13px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface);
   color: var(--ui-text);
   font: inherit;
@@ -129,7 +129,7 @@
   .visibility {
     padding: 20px;
     gap: 14px;
-    border-radius: 20px;
+    border-radius: var(--ui-radius-xl);
   }
   .visibility div {
     min-width: 0;

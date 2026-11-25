@@ -25,7 +25,7 @@
   font: inherit;
   font-size: 15px;
   font-weight: 650;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   padding: 11px 18px;
   display: inline-flex;
   align-items: center;
@@ -78,7 +78,7 @@
 .editor {
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
-  border-radius: 24px;
+  border-radius: var(--ui-radius-xl);
   padding: 29px 32px;
   box-shadow: 0 18px 50px var(--ui-shadow);
 }
@@ -100,7 +100,7 @@
   flex-shrink: 0;
   background: var(--ui-surface-soft);
   color: var(--ui-accent-text);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   display: grid;
   place-items: center;
 }
@@ -139,7 +139,7 @@
   min-width: 0;
   width: 100%;
   border: 1px solid var(--ui-border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   padding: 11px 12px;
   min-height: 46px;
   color: var(--ui-text);
@@ -194,7 +194,7 @@
 .notice,
 .error {
   padding: 13px 16px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   font-size: 14px;
   line-height: 1.6;
   margin-bottom: 20px;
@@ -206,7 +206,7 @@
 .returnForm {
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
-  border-radius: 13px;
+  border-radius: var(--ui-radius-md);
   padding: 22px;
   margin-bottom: 20px;
 }
@@ -239,7 +239,7 @@
   color: var(--ui-text);
   background: var(--ui-input);
   border: 1px solid var(--ui-border);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
 }
 .returnActions {
   display: flex;
@@ -273,7 +273,7 @@
   padding: 12px 14px;
   border: 1px solid var(--ui-border);
   background: var(--ui-surface-soft);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   margin-block: 12px;
   font-size: 13px;
   color: var(--ui-text-secondary);
@@ -289,7 +289,7 @@
 }
 .empty {
   border: 1px dashed var(--ui-border);
-  border-radius: 16px;
+  border-radius: var(--ui-radius-lg);
   background: var(--ui-surface);
   padding: 50px 25px;
   text-align: center;
@@ -315,7 +315,7 @@
 .business {
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
-  border-radius: 13px;
+  border-radius: var(--ui-radius-md);
   padding: 21px;
   display: grid;
   grid-template-columns: 50px minmax(0, 1fr);
@@ -326,7 +326,7 @@
   width: 50px;
   height: 50px;
   background: var(--ui-surface-soft);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   display: grid;
   place-items: center;
   color: var(--ui-accent-text);
@@ -396,7 +396,7 @@
   justify-content: space-between;
   gap: 6px;
   padding: 6px 10px;
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   color: var(--ui-text);
   background: var(--ui-surface-soft);
   font-size: 15px;
@@ -424,7 +424,7 @@
   min-width: 0;
   min-height: 44px;
   border: 1px solid var(--ui-border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   padding: 8px 12px;
   font: inherit;
   color: var(--ui-text);
@@ -472,7 +472,7 @@
   }
   .editor {
     padding: 22px 19px;
-    border-radius: 20px;
+    border-radius: var(--ui-radius-xl);
   }
   .formHeading h2 {
     font-size: 21px;
@@ -519,7 +519,7 @@
     border: 1px solid var(--ui-border);
     background: var(--ui-surface);
     padding: 12px;
-    border-radius: 13px;
+    border-radius: var(--ui-radius-md);
   }
   .listControls .manageSearch {
     display: grid;

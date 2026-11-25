@@ -20,7 +20,7 @@ void main() {
 }`;
 
 // Every pixel of the ball looks up its latitude and longitude in the land texture, then gets lit:
-// lacquered deep blue sea, smooth polished gold land, a soft highlight and a thin blue rim.
+// lacquered graphite sea, smooth mint land, a soft highlight and a thin cool rim.
 const fragmentShader = `#version 300 es
 precision highp float;
 in vec2 spot;
@@ -58,13 +58,13 @@ void main() {
   float diffuse = max(dot(n, light), 0.0);
   float facing = max(dot(n, half_), 0.0);
 
-  // AhiBizz palette: navy sea (#0b1a2b to #2f5a85) and the brand gold #e9ca8a.
-  vec3 sea = mix(vec3(0.043, 0.102, 0.169), vec3(0.184, 0.353, 0.522), diffuse);
-  sea += vec3(0.72, 0.8, 0.9) * pow(facing, 120.0) * 0.22;
-  vec3 gold = mix(vec3(0.42, 0.33, 0.17), vec3(0.914, 0.792, 0.541), diffuse);
-  gold += vec3(1.0, 0.95, 0.82) * pow(facing, 24.0) * 0.2;
-  vec3 c = mix(sea, gold, isLand);
-  c += vec3(0.48, 0.6, 0.74) * pow(1.0 - n.z, 2.8) * (0.08 + 0.16 * diffuse);
+  // AhiBizz palette: graphite sea (#0b0d10 to #2a313b) and the mint accent #7be3b7 for land.
+  vec3 sea = mix(vec3(0.043, 0.051, 0.063), vec3(0.165, 0.192, 0.231), diffuse);
+  sea += vec3(0.8, 0.85, 0.9) * pow(facing, 120.0) * 0.18;
+  vec3 land = mix(vec3(0.13, 0.33, 0.27), vec3(0.482, 0.89, 0.718), diffuse);
+  land += vec3(0.85, 1.0, 0.93) * pow(facing, 24.0) * 0.2;
+  vec3 c = mix(sea, land, isLand);
+  c += vec3(0.55, 0.62, 0.68) * pow(1.0 - n.z, 2.8) * (0.08 + 0.16 * diffuse);
   colour = vec4(c * edge, edge);
 }`;
 
@@ -124,8 +124,8 @@ function project([vx, vy, vz]: [number, number, number], spin: number) {
 }
 
 /**
- * Clean, sharp blue globe with smooth gold continents that turns slowly; AhiBizz locations glow softly in
- * gold while they face the viewer.
+ * Clean, sharp graphite globe with smooth mint continents that turns slowly; AhiBizz locations glow
+ * softly while they face the viewer. The component keeps its earlier name.
  */
 export function GoldGlobe({
   places,
@@ -240,7 +240,7 @@ export function GoldGlobe({
       overlay.clearRect(0, 0, pixels, pixels);
       const centre = pixels / 2;
       if (!gl || !program) {
-        // No WebGL 2: a plain lacquered blue ball, still with the lights.
+        // No WebGL 2: a plain lacquered graphite ball, still with the lights.
         const sea = overlay.createRadialGradient(
           centre - radius * 0.4,
           centre - radius * 0.45,
@@ -249,9 +249,9 @@ export function GoldGlobe({
           centre,
           radius,
         );
-        sea.addColorStop(0, "#2f5a85");
-        sea.addColorStop(0.6, "#173047");
-        sea.addColorStop(1, "#0b1a2b");
+        sea.addColorStop(0, "#2a313b");
+        sea.addColorStop(0.6, "#14181d");
+        sea.addColorStop(1, "#0b0d10");
         overlay.fillStyle = sea;
         overlay.beginPath();
         overlay.arc(centre, centre, radius, 0, Math.PI * 2);
@@ -266,13 +266,13 @@ export function GoldGlobe({
         const x = centre + p.x * radius;
         const y = centre - p.y * radius;
         const halo = overlay.createRadialGradient(x, y, 0, x, y, unit * 6);
-        halo.addColorStop(0, `rgba(255, 226, 150, ${0.55 * light * breath})`);
-        halo.addColorStop(1, "rgba(255, 226, 150, 0)");
+        halo.addColorStop(0, `rgba(170, 245, 212, ${0.55 * light * breath})`);
+        halo.addColorStop(1, "rgba(170, 245, 212, 0)");
         overlay.fillStyle = halo;
         overlay.beginPath();
         overlay.arc(x, y, unit * 6, 0, Math.PI * 2);
         overlay.fill();
-        overlay.fillStyle = `rgba(255, 248, 225, ${light})`;
+        overlay.fillStyle = `rgba(236, 255, 246, ${light})`;
         overlay.beginPath();
         overlay.arc(x, y, unit * 1.5, 0, Math.PI * 2);
         overlay.fill();

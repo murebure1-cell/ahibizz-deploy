@@ -15,14 +15,14 @@
 }
 
 .seal {
-  fill: #e9b94f;
-  stroke: #966716;
+  fill: var(--ui-accent);
+  stroke: var(--ui-accent);
   stroke-width: 0.8;
 }
 
 .check {
   fill: none;
-  stroke: #142e43;
+  stroke: var(--ui-on-accent);
   stroke-width: 2.7;
   stroke-linecap: round;
   stroke-linejoin: round;

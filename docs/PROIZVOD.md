@@ -42,9 +42,9 @@ djelatnosti se ne broje.
 Broj Reelsa po paketu je **[odlučeno]**: Basic jedan sedmično, Startup tri sedmično, Business jedan
 svaki dan. Kod to još ne provodi po paketu **[novo]**: danas dopušta najviše 3 aktivna Reela po
 djelatnosti i 12 po nalogu, a objavljeni Reel se prikazuje 24 sata **[postoji]**. Reels se prikazuju
-na početnoj **[postoji]** i ostaju tamo i u novom izgledu **[odlučeno]**. Nije rečeno važi li broj
-po nalogu ili po djelatnosti, kojim danom počinje sedmica, ni ostaje li prikaz od 24 sata
-**[pitanje]**.
+na početnoj **[postoji]** i ostaju tamo i u novom izgledu **[odlučeno]**. Broj važi po nalogu, za
+sve njegove djelatnosti zajedno **[odlučeno]**. Nije rečeno kojim danom počinje sedmica ni ostaje
+li prikaz od 24 sata **[pitanje]**.
 
 Pravila koja već važe i ostaju:
 
@@ -161,7 +161,15 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
 ## 9. Izgled
 
 - **Minimalizam:** jedna mirna površina, tanke linije, mnogo prostora, malo boja.
-- **Zlato** samo za oznaku Business i za glavnu radnju na ekranu.
+- **Paleta [odlučeno 25. 11. 2026.]:** isti logo, nove boje. Grafitna osnova u dvije teme (tamna i
+  svijetla) i jedan akcenat za glavnu radnju: mint na tamnoj, tirkizna na svijetloj. Vrijednosti su
+  u `src/app/globals.css` (`--ui-*`); boja se u stilove ne upisuje direktno.
+- **Zlato** samo za riječ Business, uvijek na tamnoj podlozi. Glavna radnja je u boji akcenta.
+- **Pismo:** Manrope za cijeli interfejs, s vlastitog servera; arapski tekst koristi sistemsko pismo.
+- **Oblik:** jedna ljestvica zaobljenja (`--ui-radius-xs` do `--ui-radius-xl`): kontrole 16 px,
+  kartice 24 px, oznake potpuno zaobljene.
+- **Donja traka:** lebdi iznad sadržaja, samo ikone, tačka ispod trenutne i krug u boji akcenta za
+  objavu.
 - **Zamućenje** samo na slojevima koji leže preko sadržaja: donja traka, meni, listovi koji
   izlaze odozdo, prelaz pri zamjeni slike. Ne na karticama.
 - **Pokret:** kratak (150–250 ms) i sa svrhom. Tačkice za „učitavam” i za „novo”.
@@ -193,5 +201,4 @@ Zajedničke komponente i izgled grade se uz prvu fazu i koriste u svim ostalim.
 4. Tačan spisak potkategorija.
 5. Primjeri animacija koje vlasnik želi poslati kao uzor.
 6. Da li vlastitu naslovnu sliku profila dobijaju svi paketi.
-7. Reels: važi li broj po nalogu ili po djelatnosti, kojim danom počinje sedmica, i ostaje li
-   prikaz od 24 sata.
+7. Reels: kojim danom počinje sedmica i ostaje li prikaz od 24 sata.

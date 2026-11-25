@@ -45,22 +45,22 @@ export const googleMapsLight: Style[] = [
   },
 ];
 
-/** Deep navy map for the dark theme. */
+/** Graphite map for the dark theme. */
 export const googleMapsDark: Style[] = [
-  { elementType: "geometry", stylers: [{ color: "#142739" }] },
+  { elementType: "geometry", stylers: [{ color: "#14181d" }] },
   { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#8ea3b7" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#0e1d2b" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#98a1ad" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#0b0d10" }] },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#1f3a55" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#2a4b6b" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#16304a" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0b1a29" }] },
-  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#173049" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#252b33" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#323a45" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#1b2027" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0b0d10" }] },
+  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#171c22" }] },
   {
     featureType: "administrative",
     elementType: "geometry.stroke",
-    stylers: [{ color: "#2c4862" }],
+    stylers: [{ color: "#3a424c" }],
   },
 ];

@@ -13,7 +13,7 @@
   height: 48px;
   margin-bottom: 24px;
   border: 1px solid var(--ui-accent-border);
-  border-radius: 15px;
+  border-radius: var(--ui-radius-md);
   color: var(--ui-accent-text);
   background: linear-gradient(135deg, var(--ui-surface-soft), var(--ui-accent-soft));
 }
@@ -57,7 +57,7 @@
   flex-shrink: 0;
   padding: 6px 11px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   color: var(--muted);
   background: var(--ui-surface);
   font-size: 13px;
@@ -68,9 +68,9 @@
   min-width: 0;
   padding: 30px;
   border: 1px solid var(--ui-border);
-  border-radius: 24px;
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-surface-raised);
-  box-shadow: 0 18px 56px #10243708;
+  box-shadow: 0 18px 56px #0e121808;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   animation: arrive 0.28s ease both;
@@ -102,7 +102,7 @@
   min-width: 0;
   padding: 8px 14px;
   border: 1px solid var(--ui-border);
-  border-radius: 11px;
+  border-radius: var(--ui-radius-sm);
   background: var(--ui-surface);
   color: var(--ui-text);
   cursor: pointer;
@@ -138,7 +138,7 @@
   min-height: 44px;
   padding: 8px 12px;
   border: 1px solid var(--ui-border);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   color: var(--ui-text);
   background: var(--ui-surface);
   font-size: 16px;
@@ -161,7 +161,7 @@
   width: 100%;
   padding: 12px 16px;
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   font-size: 15px;
   font-weight: 650;
   line-height: 1.5;
@@ -254,7 +254,7 @@
   min-height: 140px;
   padding: 13px;
   border: 1px solid var(--ui-border);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   color: var(--ink);
   background: var(--ui-surface-soft);
   font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
@@ -290,7 +290,7 @@
   }
   .card {
     padding: 23px 20px;
-    border-radius: 20px;
+    border-radius: var(--ui-radius-xl);
   }
   .methodOptions .option {
     flex: 1 1 auto;

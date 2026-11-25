@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import type { CSSProperties } from "react";
 import { accountSectionPath } from "../lib/account-return";
 import { accountShortcuts } from "../lib/account-shortcuts";
 import { headerCurrentDestination, type NavigationDestination } from "../lib/header-navigation";
@@ -56,6 +57,7 @@ export function MobileDock() {
         : pathname === "/"
           ? home.href
           : null;
+  const activeIndex = destinations.findIndex(({ href }) => href === active);
   return (
     <nav className={styles.dock} aria-label={t("Glavna mobilna navigacija")} data-mobile-dock>
       {destinations.map(({ href, label, icon }) => (
@@ -73,6 +75,12 @@ export function MobileDock() {
           <span>{t(label)}</span>
         </Link>
       ))}
+      <span
+        aria-hidden="true"
+        className={styles.dot}
+        data-visible={activeIndex >= 0 || undefined}
+        style={{ "--dock-index": Math.max(activeIndex, 0) } as CSSProperties}
+      />
     </nav>
   );
 }

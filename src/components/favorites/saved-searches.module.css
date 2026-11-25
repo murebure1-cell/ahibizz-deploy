@@ -7,7 +7,7 @@
 .page header {
   padding: 24px;
   border: 1px solid var(--line);
-  border-radius: 17px;
+  border-radius: var(--ui-radius-lg);
   background: var(--ui-surface-raised);
 }
 .page h1 {
@@ -33,7 +33,7 @@
   gap: 6px;
   min-height: 42px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   background: var(--ui-surface-raised);
   padding: 5px 11px;
   color: var(--ui-text);
@@ -62,7 +62,7 @@
   gap: 8px;
   padding: 8px;
   border: 1px solid var(--line);
-  border-radius: 13px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface-raised);
 }
 .list li a {

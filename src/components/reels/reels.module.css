@@ -11,12 +11,12 @@
   padding: var(--shelf-pad);
   /* Cards slide right up to the rounded border and are clipped by it, never past it. */
   overflow: hidden;
-  border: 1px solid #5b7089;
+  border: 1px solid #647080;
   border-radius: clamp(1.15rem, 4vw, 1.8rem);
   color: #fff;
   background:
-    radial-gradient(ellipse at 98% 115%, #a57f383d, transparent 57%),
-    radial-gradient(ellipse at 8% -38%, #486586, transparent 71%), #13283d;
+    radial-gradient(ellipse at 98% 115%, #38a5783d, transparent 57%),
+    radial-gradient(ellipse at 8% -38%, #5b6573, transparent 71%), #1c2026;
 }
 
 .page {
@@ -65,7 +65,7 @@
   gap: 0.4rem;
   padding-inline: 0.8rem;
   border: 1px solid #fff4;
-  border-radius: 0.8rem;
+  border-radius: var(--ui-radius-md);
   background: #fff1;
   color: #fff;
   font-weight: 680;
@@ -143,7 +143,7 @@
   border: 1px solid #fff4;
   border-radius: 1.05rem;
   color: #fff;
-  background: radial-gradient(ellipse at 23% 9%, #466b8d, #1b364e 56%, #101e2d);
+  background: radial-gradient(ellipse at 23% 9%, #5d6776, #242a32 56%, #15181d);
 }
 
 .reelCard::before {
@@ -153,12 +153,12 @@
   inset: 0;
   background: linear-gradient(
     180deg,
-    #071421bd,
-    #07142126 26%,
+    #0e1013bd,
+    #0e101326 26%,
     transparent 40%,
-    #07142155 61%,
-    #071421ed 87%,
-    #071421 100%
+    #0e101355 61%,
+    #0e1013ed 87%,
+    #0e1013 100%
   );
 }
 
@@ -172,7 +172,7 @@
 }
 
 .reelCard:focus-visible {
-  outline: 2px solid #f6d99b;
+  outline: 2px solid #a5ecce;
   outline-offset: -4px;
 }
 
@@ -194,8 +194,8 @@
   overflow: hidden;
   border: 1px solid #fff8;
   border-radius: 50%;
-  background: #12283d;
-  color: #ffe1a0;
+  background: #1b2026;
+  color: #b0efd5;
 }
 
 .reelAvatar img {
@@ -263,8 +263,8 @@
   max-height: min(78dvh, 760px);
   max-width: 540px;
   min-height: min(360px, 48dvh);
-  background: #0d1822;
-  border-radius: 0.9rem;
+  background: #101316;
+  border-radius: var(--ui-radius-md);
   object-fit: contain;
 }
 
@@ -275,7 +275,7 @@
 
 .form {
   border: 1px solid var(--ui-border);
-  border-radius: 1.2rem;
+  border-radius: var(--ui-radius-xl);
   padding: clamp(1rem, 3.4vw, 1.65rem);
   background: var(--ui-surface);
 }
@@ -341,7 +341,7 @@
   gap: 0.65rem;
   padding: 0.9rem;
   border: 1px solid var(--ui-border);
-  border-radius: 0.8rem;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface-soft);
 }
 
@@ -372,7 +372,7 @@
   padding: 0.64rem 0.9rem;
   min-height: 44px;
   border: 1px solid var(--ui-border);
-  border-radius: 0.7rem;
+  border-radius: var(--ui-radius-sm);
   width: fit-content;
   font-weight: 660;
   font-size: 0.9375rem;
@@ -397,7 +397,7 @@
   color: var(--ui-text-secondary);
   padding: 1rem;
   border: 1px solid var(--ui-border);
-  border-radius: 0.8rem;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface-soft);
 }
 
@@ -412,7 +412,7 @@
   gap: 0.85rem;
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
-  border-radius: 1rem;
+  border-radius: var(--ui-radius-lg);
   padding: 1rem;
 }
 
@@ -436,7 +436,7 @@
 
 .status {
   width: fit-content;
-  border-radius: 1rem;
+  border-radius: var(--ui-radius-lg);
   color: var(--ui-text-secondary);
   background: var(--ui-surface-soft);
   padding: 0.2rem 0.65rem;

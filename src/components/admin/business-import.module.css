@@ -19,7 +19,7 @@
   padding: 24px;
   background: var(--ui-surface, #fff);
   border: 1px solid var(--ui-border, #dce4ea);
-  border-radius: 20px;
+  border-radius: var(--ui-radius-xl);
 }
 .label {
   display: block;
@@ -35,7 +35,7 @@
   margin-right: 12px;
   padding: 12px 16px;
   border: 1px solid var(--ui-border, #dce4ea);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface-soft, #f4f6f8);
   color: var(--ui-text, #153347);
   font: inherit;
@@ -49,10 +49,10 @@
 }
 .error {
   padding: 14px 16px;
-  border: 1px solid #e9c8be;
-  border-radius: 12px;
-  background: #fff4ee;
-  color: #803c2d;
+  border: 1px solid var(--ui-danger-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
   margin-top: 16px;
 }
 .summary {
@@ -92,10 +92,10 @@
   margin-top: 24px;
 }
 .actions button {
-  border: 1px solid #cb9a33;
-  background: #e2b854;
-  color: #153347;
-  border-radius: 12px;
+  border: 1px solid var(--ui-accent);
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  border-radius: var(--ui-radius-md);
   min-height: 46px;
   padding: 12px 20px;
   font: inherit;

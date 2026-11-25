@@ -27,7 +27,13 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const viewport: Viewport = { themeColor: "#142c40", viewportFit: "cover" };
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f2f4f6" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0d10" },
+  ],
+  viewportFit: "cover",
+};
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const locale = await getLocale();
@@ -42,17 +48,17 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             dangerouslySetInnerHTML={{ __html: aliasBootstrap }}
           />
         )}
-        {/* Headings use this face on the first paint; without the preload they would swap in late. */}
+        {/* The whole interface uses this face; without the preload the text would swap in late. */}
         <link
           rel="preload"
-          href="/fonts/bricolage-grotesque-latin.woff2"
+          href="/fonts/manrope-latin.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
         />
         <link
           rel="preload"
-          href="/fonts/bricolage-grotesque-latin-ext.woff2"
+          href="/fonts/manrope-latin-ext.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"

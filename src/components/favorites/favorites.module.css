@@ -13,7 +13,7 @@
   min-height: 44px;
   padding: 10px 15px;
   border: 1px solid var(--ui-border);
-  border-radius: 13px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface);
   color: var(--ui-text);
   font: inherit;
@@ -34,11 +34,11 @@
   width: 44px;
   height: 44px;
   padding: 11px;
-  border-color: #ffffff60;
-  background: #18384bee;
+  border-color: #ffffff3d;
+  background: #0b0d10b3;
   color: #fff;
   border-radius: 50%;
-  box-shadow: 0 3px 12px #10243722;
+  box-shadow: 0 3px 12px #0e121822;
 }
 .button[data-saved="true"] {
   color: var(--ui-accent-text);
@@ -63,7 +63,7 @@
   font-size: 13px;
   line-height: 1.45;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-xs);
 }
 .recovery {
   display: block;
