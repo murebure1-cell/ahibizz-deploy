@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { localDate } from "../../lib/display-date";
+import { localDate, recentDay } from "../../lib/display-date";
 import type { Locale } from "../../lib/i18n/locales";
-import { msg } from "../../lib/i18n/translate";
+import { bosnianForm, msg } from "../../lib/i18n/translate";
 import {
   type ChatConversation,
   type ChatMessage,
@@ -44,17 +44,18 @@ import { Icon } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
 import styles from "./messaging.module.css";
 
+const messageZone = "Europe/Sarajevo";
 const messageTime = new Intl.DateTimeFormat("bs-BA", {
   hour: "2-digit",
   minute: "2-digit",
   hourCycle: "h23",
-  timeZone: "Europe/Sarajevo",
+  timeZone: messageZone,
 });
 const messageDate = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
   month: "2-digit",
   year: "numeric",
-  timeZone: "Europe/Sarajevo",
+  timeZone: messageZone,
 });
 type MailboxFilters = { query: string; unreadOnly: boolean };
 const baseFilters: MailboxFilters = { query: "", unreadOnly: false };
@@ -80,9 +81,15 @@ function initials(name: string) {
 function messageDayLabel(value: Date, locale: Locale) {
   return localDate(value, locale);
 }
+/** The line over the messages of a day: "Danas", "Jučer", otherwise the date. */
+function dayHeading(value: Date, today: Date, locale: Locale) {
+  return recentDay(value, today, locale, { heading: true, timeZone: messageZone });
+}
+/** As short as it can be told in a list: the time today, "jučer", the weekday, then the date. */
 function previewDate(value: Date, today: Date, locale: Locale) {
-  if (messageDate.format(value) === messageDate.format(today)) return messageTime.format(value);
-  return messageDayLabel(value, locale);
+  return messageDate.format(value) === messageDate.format(today)
+    ? messageTime.format(value)
+    : recentDay(value, today, locale, { timeZone: messageZone });
 }
 function threadContext(thread: ChatThread) {
   if (thread.kind === "person") return msg("Lični razgovor");
@@ -90,7 +97,7 @@ function threadContext(thread: ChatThread) {
 }
 function ThreadAvatar({ thread }: { thread?: ChatThread }) {
   return (
-    <span className={styles.avatar} aria-hidden="true">
+    <span className={styles.avatar} data-kind={thread?.kind} aria-hidden="true">
       {thread?.kind === "business" ? (
         <Icon name="shop" />
       ) : thread?.title ? (
@@ -994,8 +1001,10 @@ export function MessagingInbox({
   const today = new Date();
   const datedMessages = conversation?.items.map((item) => {
     const date = new Date(item.createdAt);
-    return { item, date, day: messageDayLabel(date, locale) };
+    return { item, date, day: dayHeading(date, today, locale) };
   });
+  // Conversations with something unread among those listed; the list itself has more pages.
+  const unreadShown = threads.filter((item) => item.unreadCount > 0).length;
   const feedback = (
     <>
       {error && (
@@ -1048,16 +1057,31 @@ export function MessagingInbox({
               ) : (
                 <strong className={styles.sectionLabel}>{t("Razgovori")}</strong>
               )}
-              <button
-                type="button"
-                className={styles.refresh}
-                onClick={refresh}
-                disabled={interactionLocked || !usable}
-                aria-label={t("Osvježi razgovore")}
-                title={t("Osvježi razgovore")}
-              >
-                <Icon name="refresh" />
-              </button>
+              <div>
+                {unreadShown > 0 && (
+                  <span className={styles.unreadTotal}>
+                    {t(
+                      bosnianForm(
+                        unreadShown,
+                        msg("{count} nepročitan"),
+                        msg("{count} nepročitana"),
+                        msg("{count} nepročitanih"),
+                      ),
+                      { count: unreadShown },
+                    )}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className={styles.refresh}
+                  onClick={refresh}
+                  disabled={interactionLocked || !usable}
+                  aria-label={t("Osvježi razgovore")}
+                  title={t("Osvježi razgovore")}
+                >
+                  <Icon name="refresh" />
+                </button>
+              </div>
             </div>
             <div className={styles.searchField}>
               <span className={styles.searchIcon}>
@@ -1089,46 +1113,34 @@ export function MessagingInbox({
                 </button>
               )}
             </div>
-            <div className={styles.listControls}>
-              <fieldset className={styles.tabs}>
-                <legend className={styles.srOnly}>{t("Sandučić")}</legend>
-                <button
-                  type="button"
-                  aria-pressed={inbox === "personal"}
-                  onClick={() => switchInbox("personal")}
-                  disabled={interactionLocked}
-                >
-                  {t("Lično")}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={inbox === "business"}
-                  onClick={() => switchInbox("business")}
-                  disabled={interactionLocked}
-                >
-                  {t("Djelatnosti")}
-                </button>
-              </fieldset>
-              <fieldset className={styles.filterGroup}>
-                <legend className={styles.srOnly}>{t("Status razgovora")}</legend>
-                <button
-                  type="button"
-                  aria-pressed={!filters.unreadOnly}
-                  onClick={() => filterUnread(false)}
-                  disabled={interactionLocked}
-                >
-                  {t("Svi")}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={filters.unreadOnly}
-                  onClick={() => filterUnread(true)}
-                  disabled={interactionLocked}
-                >
-                  {t("Nepročitani")}
-                </button>
-              </fieldset>
-            </div>
+            <fieldset className={styles.pills}>
+              <legend className={styles.srOnly}>{t("Sandučić")}</legend>
+              <button
+                type="button"
+                aria-pressed={inbox === "personal"}
+                onClick={() => switchInbox("personal")}
+                disabled={interactionLocked}
+              >
+                {t("Lično")}
+              </button>
+              <button
+                type="button"
+                aria-pressed={inbox === "business"}
+                onClick={() => switchInbox("business")}
+                disabled={interactionLocked}
+              >
+                {t("Moje djelatnosti")}
+              </button>
+              <button
+                type="button"
+                data-toggle=""
+                aria-pressed={filters.unreadOnly}
+                onClick={() => filterUnread(!filters.unreadOnly)}
+                disabled={interactionLocked}
+              >
+                {t("Nepročitani")}
+              </button>
+            </fieldset>
           </header>
           {!selected && feedback}
           {showSafetyTip && !filters.query && !filters.unreadOnly && (
@@ -1146,43 +1158,47 @@ export function MessagingInbox({
             </div>
           )}
           <div className={styles.threadList} aria-busy={loading}>
-            {threads.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={`${styles.thread} ${selected === item.id ? styles.selected : ""} ${item.unreadCount ? styles.unreadThread : ""}`}
-                aria-current={selected === item.id ? "true" : undefined}
-                onClick={(event) => choose(item, event.currentTarget)}
-                disabled={interactionLocked}
-              >
-                <ThreadAvatar thread={item} />
-                <span className={styles.threadBody}>
-                  <strong dir="auto">{item.title}</strong>
-                  {item.kind === "business" && (
-                    <span className={styles.threadContext}>{t(threadContext(item))}</span>
-                  )}
-                  <span className={styles.threadPreview}>
-                    {item.lastMessage?.body ?? t("Započni razgovor")}
-                  </span>
-                </span>
-                <span className={styles.threadMeta}>
-                  {item.lastMessage && (
-                    <time
-                      dateTime={item.lastMessage.createdAt}
-                      title={messageDayLabel(new Date(item.lastMessage.createdAt), locale)}
-                    >
-                      {previewDate(new Date(item.lastMessage.createdAt), today, locale)}
-                    </time>
-                  )}
-                  {item.unreadCount > 0 && (
-                    <span className={styles.unread}>
-                      {item.unreadCount > 99 ? "99+" : item.unreadCount}
-                      <span className={styles.srOnly}> {t("nepročitanih poruka")}</span>
+            {threads.length > 0 && (
+              <div className={styles.threads}>
+                {threads.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`${styles.thread} ${selected === item.id ? styles.selected : ""} ${item.unreadCount ? styles.unreadThread : ""}`}
+                    aria-current={selected === item.id ? "true" : undefined}
+                    onClick={(event) => choose(item, event.currentTarget)}
+                    disabled={interactionLocked}
+                  >
+                    <ThreadAvatar thread={item} />
+                    <span className={styles.threadBody}>
+                      <strong dir="auto">{item.title}</strong>
+                      {item.kind === "business" && (
+                        <span className={styles.threadContext}>{t(threadContext(item))}</span>
+                      )}
+                      <span className={styles.threadPreview}>
+                        {item.lastMessage?.body ?? t("Započni razgovor")}
+                      </span>
                     </span>
-                  )}
-                </span>
-              </button>
-            ))}
+                    <span className={styles.threadMeta}>
+                      {item.lastMessage && (
+                        <time
+                          dateTime={item.lastMessage.createdAt}
+                          title={messageDayLabel(new Date(item.lastMessage.createdAt), locale)}
+                        >
+                          {previewDate(new Date(item.lastMessage.createdAt), today, locale)}
+                        </time>
+                      )}
+                      {item.unreadCount > 0 && (
+                        <span className={styles.unread}>
+                          {item.unreadCount > 99 ? "99+" : item.unreadCount}
+                          <span className={styles.srOnly}> {t("nepročitanih poruka")}</span>
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
             {threads.length === 0 && (
               <div className={styles.listEmpty} role="status">
                 <Icon name={filters.query ? "search" : "message"} />
@@ -1372,7 +1388,7 @@ export function MessagingInbox({
                   </label>
                   <textarea
                     id={`message-${selected}`}
-                    rows={2}
+                    rows={1}
                     maxLength={2000}
                     value={draft}
                     placeholder={t("Napiši poruku…")}
