@@ -12,12 +12,12 @@ Stanje: 23. 11. 2026. Ovo je spisak za odluku, ne implementacija. Na ovoj grani 
 - Isticanje se plaća bankovnom uplatom na webu (promotions-v2). Play build zatvara `/istakni`, `/paketi`, `/oglasavanje`, `/naplata`, `/podrzi`, `/nalog/isticanja` i `/api/checkout`, `/api/paketi` (CI to provjerava).
 - Raniji Dodo **test** (sandbox, EUR 5,11, sedmodnevni testni zapis) je radio, ali je kod uklonjen (`docs/handover/OBRISANO.md`). Ostale su samo već primijenjene migracije (`0022_dodo_test_checkout.sql`); ne mijenjati ih.
 - U testu **povrat novca nije prošao** (Dodo je vratio 409, povrat nije potvrđen).
-- `AGENTS.md` bilježi potvrđene uslove: 29/49/89 BAM mjesečno uz 12 mjeseci obaveze ili 290/490/890 BAM godišnje unaprijed. Nazivi Basic/Startup/Business tu nisu povezani s iznosima.
+- Cijene je vlasnik zamijenio 25. 11. 2026. (`docs/PROIZVOD.md`): Basic je besplatan prvih 12 mjeseci, zatim 19,90 KM; Startup 39,90 KM; Business 79,90 KM mjesečno. Raniji uslovi 29/49/89 BAM mjesečno i 290/490/890 BAM godišnje više ne važe.
 
 ## Šta Ajdin mora potvrditi prije bilo kakve naplate
 
 1. **Obuhvat Dodo odobrenja**: koje ponude Dodo dozvoljava (pretplate, jednokratni krediti, oboje), za koje zemlje i u kojoj valuti naplaćuje (BAM ili EUR/USD). Pisani dokaz iz Dodo naloga.
-2. **Javne cijene i intervali**: koji iznos pripada Basic, Startup i Business (AI Pro), mjesečno i godišnje. Da li važi 12-mjesečna obaveza kod mjesečnog plaćanja. Cijene i količine paketa kredita.
+2. **Javne cijene i intervali**: mjesečni iznosi su odlučeni 25. 11. 2026. (`docs/PROIZVOD.md`). Ostaje: postoji li godišnja cijena, da li važi 12-mjesečna obaveza kod mjesečnog plaćanja, te cijene i količine paketa kredita.
 3. **Uslovi**: uslovi korištenja i pretplate, ko je prodavač (Dodo kao merchant of record ili AhiBizz), porez i PDV.
 4. **Povrat i otkazivanje**: kada i kako korisnik otkazuje, šta se dešava s ostatkom perioda i neiskorištenim kreditima, rok povrata. Povrat mora proći test prije uključivanja.
 5. **Wise isplata**, odvojeno: da li je Wise račun za isplate od Dodo-a otvoren, potvrđen i povezan. Status Wise isplate ne potvrđuje da je naplata spremna, niti obrnuto.
