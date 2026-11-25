@@ -2,7 +2,7 @@ export type HomeCategory = {
   id: string;
   label: string;
   href: string;
-  icon?: "heart" | "home" | "coffee" | "shop" | "bed";
+  icon?: "heart" | "home" | "coffee" | "shop" | "bed" | "car";
 };
 
 /** A missing, duplicated or control-character location never becomes an active place. */
@@ -37,10 +37,13 @@ export function homeCategories(
     }));
 }
 
-function categoryIcon(name: string): HomeCategory["icon"] {
+/** The icon a category gets wherever it is shown: home tiles and the listing card. */
+export function categoryIcon(name: string): NonNullable<HomeCategory["icon"]> {
   const label = name.toLocaleLowerCase("bs");
   if (/zdrav|ljepot/.test(label)) return "heart";
   if (/\bdom\b|namje[šs]taj|ure[đd]enje/.test(label)) return "home";
-  if (/ugostitelj|restoran|kafi[ćc]|prehran/.test(label)) return "coffee";
+  if (/ugostitelj|restoran|kafi[ćc]|prehran|hran[ae]/.test(label)) return "coffee";
+  if (/smje[šs]taj|apartman|hotel|no[ćc]enj/.test(label)) return "bed";
+  if (/vozil|rent|automobil/.test(label)) return "car";
   return "shop";
 }

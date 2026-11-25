@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { accountShortcuts } from "../lib/account-shortcuts";
 import { IS_PLAY_EDITION } from "../lib/distribution";
 import {
   type HeaderAccess,
@@ -174,28 +175,41 @@ export function SiteHeader({
             priority
           />
         </Link>
-        <button
-          ref={toggle}
-          className="menu-toggle"
-          data-design="app-toggle"
-          type="button"
-          aria-label={open ? t("Zatvori meni") : t("Otvori meni")}
-          aria-expanded={open}
-          aria-controls="site-navigation"
-          onClick={() => {
-            if (open) {
-              closeMenu();
-              return;
-            }
-            setCurrentHref(
-              headerCurrentDestination(pathname, new URLSearchParams(window.location.search)),
-            );
-            setOpen(true);
-            readAccess();
-          }}
-        >
-          <Icon name={open ? "close" : "menu"} />
-        </button>
+        <div className="header-actions">
+          {account && (
+            <Link
+              className="header-action"
+              href={accountShortcuts.notifications}
+              prefetch={false}
+              aria-label={t("Obavijesti")}
+              onClick={closeMenu}
+            >
+              <Icon name="bell" />
+            </Link>
+          )}
+          <button
+            ref={toggle}
+            className="header-action menu-toggle"
+            data-design="app-toggle"
+            type="button"
+            aria-label={open ? t("Zatvori meni") : t("Otvori meni")}
+            aria-expanded={open}
+            aria-controls="site-navigation"
+            onClick={() => {
+              if (open) {
+                closeMenu();
+                return;
+              }
+              setCurrentHref(
+                headerCurrentDestination(pathname, new URLSearchParams(window.location.search)),
+              );
+              setOpen(true);
+              readAccess();
+            }}
+          >
+            <Icon name={open ? "close" : "menu"} />
+          </button>
+        </div>
         <nav
           ref={menu}
           id="site-navigation"

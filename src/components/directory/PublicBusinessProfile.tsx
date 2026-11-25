@@ -20,12 +20,13 @@ import { Icon } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
 import { BusinessReviews } from "../reviews/BusinessReviews";
 import { VerificationBadge } from "../VerificationBadge";
-import { BusinessAmenities, BusinessHours } from "./BusinessDetails";
+import { BusinessAmenities, BusinessHours, BusinessOpenStatus } from "./BusinessDetails";
 import { BusinessGallery } from "./BusinessGallery";
 import { BusinessLogo } from "./BusinessLogo";
 import { BusinessRating } from "./BusinessRating";
 import { PublicProfileMap } from "./PublicProfileMap";
 import styles from "./public-profile.module.css";
+import { ShareButton } from "./ShareButton";
 
 export function PublicBusinessProfile({
   business,
@@ -89,16 +90,6 @@ export function PublicBusinessProfile({
       data-preview={preview || undefined}
       data-embedded={backHref === null || undefined}
     >
-      {backHref !== null && (
-        <nav className={styles.breadcrumb} aria-label={t("Povratak na djelatnosti")}>
-          <Link href={backHref}>
-            <Icon name="arrow" />{" "}
-            {backHref.startsWith("/pretraga?") ? t("Nazad na rezultate") : t("Sve djelatnosti")}
-          </Link>
-          {business.city && <span dir="auto">{business.city}</span>}
-        </nav>
-      )}
-
       <div className={styles.cover} data-design="business-cover" data-photo={Boolean(cover)}>
         {cover ? (
           <Image
@@ -114,93 +105,137 @@ export function PublicBusinessProfile({
         ) : (
           <AhiMark size={57} className={styles.brandMark} />
         )}
-        {!preview && (
-          <details
-            className={styles.profileOptions}
-            onBlur={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.open = false;
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                e.currentTarget.open = false;
-                e.currentTarget.querySelector("summary")?.focus();
+        <div className={styles.coverBar}>
+          {backHref !== null && (
+            <Link
+              className={styles.coverControl}
+              href={backHref}
+              aria-label={
+                backHref.startsWith("/pretraga?") ? t("Nazad na rezultate") : t("Sve djelatnosti")
               }
-            }}
-          >
-            <summary aria-label={t("Opcije djelatnosti")}>
-              <span aria-hidden="true">•••</span>
-            </summary>
-            <Link className={styles.reportLink} href={reportUrl("business", business.id)}>
-              <Icon name="shield" /> {t("Prijavi djelatnost")}
+            >
+              <Icon name="arrow" />
             </Link>
-          </details>
-        )}
+          )}
+          {!preview && (
+            <div className={styles.coverActions}>
+              <ShareButton
+                title={business.title}
+                path={`/djelatnosti/${business.id}`}
+                className={styles.coverControl}
+                statusClassName={styles.shareStatus}
+              />
+              <FavoriteButton businessId={business.id} title={business.title} compact />
+              <details
+                className={styles.profileOptions}
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.open = false;
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.currentTarget.open = false;
+                    e.currentTarget.querySelector("summary")?.focus();
+                  }
+                }}
+              >
+                <summary className={styles.coverControl} aria-label={t("Opcije djelatnosti")}>
+                  <Icon name="more" />
+                </summary>
+                <Link className={styles.reportLink} href={reportUrl("business", business.id)}>
+                  <Icon name="shield" /> {t("Prijavi djelatnost")}
+                </Link>
+              </details>
+            </div>
+          )}
+        </div>
       </div>
 
       <header className={styles.identity}>
-        <div className={styles.logo}>
-          <BusinessLogo src={logo?.src} alt={logo ? t(logo.alt) : ""} sizes="72px" priority />
+        <div className={styles.identityTop}>
+          <div className={styles.logo}>
+            <BusinessLogo src={logo?.src} alt={logo ? t(logo.alt) : ""} sizes="54px" priority />
+          </div>
+          <div className={styles.title}>
+            <Title>
+              <bdi>{business.title}</bdi>
+              {business.verified && <VerificationBadge kind="business" />}
+            </Title>
+            {(taxonomy || hasLocation) && (
+              <p className={styles.summary}>
+                {taxonomy}
+                {taxonomy && hasLocation && " · "}
+                {hasLocation && <bdi>{location}</bdi>}
+              </p>
+            )}
+          </div>
         </div>
-        <div className={styles.title}>
-          {taxonomy && <p className={styles.category}>{taxonomy}</p>}
-          <Title>
-            <bdi>{business.title}</bdi>
-            {business.verified && <VerificationBadge kind="business" />}
-          </Title>
-          {hasLocation && (
-            <p className={styles.locationSummary}>
-              <Icon name="pin" />
-              <bdi>{location}</bdi>
-            </p>
+        <div className={styles.facts}>
+          {business.details?.hours && (
+            <a href="#business-hours" aria-label={t("Radno vrijeme")}>
+              <BusinessOpenStatus details={business.details} inline />
+            </a>
           )}
           {Boolean(business.reviews?.count) &&
             (preview ? (
               <span className={styles.reviewLink}>
-                <BusinessRating summary={business.reviews} />
+                <BusinessRating summary={business.reviews} inline />
               </span>
             ) : (
               <a className={styles.reviewLink} href="#recenzije">
-                <BusinessRating summary={business.reviews} />
+                <BusinessRating summary={business.reviews} inline />
               </a>
             ))}
         </div>
         <div className={styles.quickActions}>
-          {actions}
-          {!preview && <FavoriteButton businessId={business.id} title={business.title} />}
-          {contactMessage && (
-            <Link
-              className={styles.secondary}
-              href={contactMessage}
-              aria-label={t("Pošalji poruku")}
-            >
-              <Icon name="message" /> {t("Poruka")}
-            </Link>
-          )}
           {links.phone ? (
-            <a className={styles.primary} href={links.phone}>
+            <a className={styles.secondary} href={links.phone}>
               <Icon name="phone" />
               {t("Pozovi")}
             </a>
           ) : links.email ? (
-            <a className={styles.primary} href={links.email} aria-label={t("Pošalji email")}>
+            <a className={styles.secondary} href={links.email} aria-label={t("Pošalji email")}>
               <Icon name="mail" />
               {t("Email")}
             </a>
           ) : (
             links.website && (
               <a
-                className={styles.primary}
+                className={styles.secondary}
                 href={links.website}
                 aria-label={t("Web stranica")}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Web
                 <Icon name="external" />
+                Web
+              </a>
+            )
+          )}
+          {contactMessage && (
+            <Link className={styles.primary} href={contactMessage} aria-label={t("Pošalji poruku")}>
+              <Icon name="message" /> {t("Poruka")}
+            </Link>
+          )}
+          {driving ? (
+            <a
+              className={styles.secondary}
+              href={driving}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Icon name="route" />
+              {t("Uputstva")}
+            </a>
+          ) : (
+            hasLocation && (
+              <a className={styles.secondary} href="#business-location">
+                <Icon name="pin" />
+                {t("Lokacija")}
               </a>
             )
           )}
         </div>
+        {actions && <div className={styles.extraActions}>{actions}</div>}
       </header>
       {sponsor}
 
@@ -228,9 +263,6 @@ export function PublicBusinessProfile({
               aria-labelledby="business-about-heading"
             >
               <div className={styles.sectionHeading}>
-                <span>
-                  <Icon name="shop" />
-                </span>
                 <h2 id="business-about-heading">{t("O djelatnosti")}</h2>
               </div>
               {business.description?.trim() && (
@@ -249,9 +281,6 @@ export function PublicBusinessProfile({
               aria-labelledby="business-hours-heading"
             >
               <div className={styles.sectionHeading}>
-                <span>
-                  <Icon name="clock" />
-                </span>
                 <h2 id="business-hours-heading">{t("Radno vrijeme")}</h2>
               </div>
               <BusinessHours details={business.details} />
@@ -289,9 +318,6 @@ export function PublicBusinessProfile({
               aria-labelledby="business-location-heading"
             >
               <div className={styles.sectionHeading}>
-                <span>
-                  <Icon name="pin" />
-                </span>
                 <h2 id="business-location-heading">{t("Lokacija")}</h2>
               </div>
               <p className={styles.address} dir="auto">
@@ -333,9 +359,6 @@ export function PublicBusinessProfile({
             aria-labelledby="business-contact-heading"
           >
             <div className={styles.contactHeading}>
-              <span>
-                <Icon name="phone" />
-              </span>
               <h2 id="business-contact-heading">{t("Kontakt")}</h2>
             </div>
             {links.phone && (

@@ -91,12 +91,13 @@ export function businessTimeLabel(minute: number): string {
   return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
 }
 
-/** Converts the real instant into the business's local wall time, including DST folds/gaps. */
-export function businessOpenState(
+/** The opening window that contains `now`: null when closed, undefined when it cannot be told.
+    The real instant is converted into the business's local wall time, including DST folds/gaps. */
+function currentWindow(
   details: BusinessDetails | null | undefined,
   now: Date,
-): "open" | "closed" | null {
-  if (!details?.hours || !details.timezone || !Number.isFinite(now.getTime())) return null;
+): BusinessHoursDay["windows"][number] | null | undefined {
+  if (!details?.hours || !details.timezone || !Number.isFinite(now.getTime())) return undefined;
   try {
     const parts = new Intl.DateTimeFormat("en-GB-u-ca-gregory-nu-latn", {
       timeZone: details.timezone,
@@ -110,11 +111,28 @@ export function businessOpenState(
       ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(values.weekday ?? "") + 1;
     const minute = Number(values.hour) * 60 + Number(values.minute);
     const day = details.hours.find((entry) => entry.weekday === weekday);
-    if (!day || !Number.isInteger(minute)) return null;
-    return day.windows.some((window) => window.startMinute <= minute && minute < window.endMinute)
-      ? "open"
-      : "closed";
+    if (!day || !Number.isInteger(minute)) return undefined;
+    return (
+      day.windows.find((window) => window.startMinute <= minute && minute < window.endMinute) ??
+      null
+    );
   } catch {
-    return null;
+    return undefined;
   }
+}
+export function businessOpenState(
+  details: BusinessDetails | null | undefined,
+  now: Date,
+): "open" | "closed" | null {
+  const window = currentWindow(details, now);
+  return window === undefined ? null : window ? "open" : "closed";
+}
+/** When open, the minute of the day at which today's current window ends; otherwise null. A
+    window that runs to midnight returns null, because the next day may continue it. */
+export function businessClosingMinute(
+  details: BusinessDetails | null | undefined,
+  now: Date,
+): number | null {
+  const window = currentWindow(details, now);
+  return window && window.endMinute < 1440 ? window.endMinute : null;
 }

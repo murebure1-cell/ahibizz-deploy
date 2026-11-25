@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { categoryIcon } from "../../lib/home";
 import { messageLink } from "../../lib/messaging";
 import {
   businessLocationLabel,
@@ -76,6 +77,12 @@ export function DirectoryResultCard({
         <span className={styles.openStatus}>
           <BusinessOpenStatus details={business.details} checkedAt={checkedAt} />
         </span>
+        {(business.featured || example) && (
+          <span className={styles.tags}>
+            {business.featured && <span className={styles.tag}>{t("Istaknuto")}</span>}
+            {example && <span className={styles.tag}>{t("Primjer")}</span>}
+          </span>
+        )}
         {Boolean(business.reviews?.count) && (
           <span className={styles.rating}>
             <BusinessRating summary={business.reviews} />
@@ -83,13 +90,12 @@ export function DirectoryResultCard({
         )}
       </div>
 
+      <div className={styles.logo} aria-hidden="true">
+        <BusinessLogo src={logo?.src} alt="" sizes="56px" />
+      </div>
+
       <div className={styles.body}>
-        <div className={styles.logo} aria-hidden="true">
-          <BusinessLogo src={logo?.src} alt="" sizes="72px" />
-        </div>
         <header className={styles.identity}>
-          {business.featured && <span className={styles.example}>{t("Istaknuto")}</span>}
-          {example && <span className={styles.example}>{t("Primjer")}</span>}
           <h2 data-design="directory-title">
             <Link href={profile} title={business.title} dir="auto">
               {business.title}
@@ -110,7 +116,12 @@ export function DirectoryResultCard({
             {business.description}
           </p>
         )}
-        {!compact && <BusinessAmenities details={business.details} compact />}
+        {!compact && Boolean(business.details?.amenities.length) && (
+          <div className={styles.amenities}>
+            <span>{t("Sadržaji")}</span>
+            <BusinessAmenities details={business.details} compact />
+          </div>
+        )}
       </div>
 
       <footer className={styles.footer}>
@@ -123,7 +134,7 @@ export function DirectoryResultCard({
               .join(" · ")}
           >
             <span className={styles.categoryIcon}>
-              <Icon name="shop" />
+              <Icon name={categoryIcon(business.categoryName ?? category)} />
             </span>
             <span>{t(category)}</span>
           </span>

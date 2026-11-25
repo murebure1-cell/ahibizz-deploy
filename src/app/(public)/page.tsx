@@ -126,11 +126,13 @@ async function HomeLocalDirectory({
   classification,
   place,
   title,
+  mapLabel,
 }: {
   data: Listings;
   classification: Categories;
   place: string;
   title: string;
+  mapLabel: string;
 }) {
   const [businesses, categories] = await Promise.all([data, classification]);
   return (
@@ -144,7 +146,7 @@ async function HomeLocalDirectory({
         available={place ? businesses !== null : categories !== null}
         place={place}
       >
-        <HomeNearbySection title={title} control={<HomeNearbyControl />}>
+        <HomeNearbySection title={title} mapLabel={mapLabel} control={<HomeNearbyControl />}>
           <HomeNearbyResults exampleId={homeExampleId} />
         </HomeNearbySection>
       </HomeNearbyProvider>
@@ -224,12 +226,13 @@ export default async function HomePage({
           </Suspense>
         ),
         nearby: (
-          <Suspense fallback={<HomeNearbySection title={nearbyTitle} />}>
+          <Suspense fallback={<HomeNearbySection title={nearbyTitle} mapLabel={t("Karta")} />}>
             <HomeLocalDirectory
               data={local}
               classification={classification}
               place={place}
               title={nearbyTitle}
+              mapLabel={t("Karta")}
             />
           </Suspense>
         ),
