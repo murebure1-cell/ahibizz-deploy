@@ -88,8 +88,6 @@ export const designTargets: readonly DesignTarget[] = [
   target("home-search", "Brza pretraga", "home"),
   target("home-categories", "Traka kategorija", "home"),
   target("home-featured", "Istaknute djelatnosti", "home"),
-  target("home-promotion", "Poziv na isticanje", "home"),
-  target("home-ad", "Oglas", "home"),
   target("home-reels", "Reels djelatnosti", "home"),
   target("home-newest", "Novi na AhiBizzu", "home"),
   target("home-nearby", "Djelatnosti u blizini", "home"),
@@ -128,6 +126,8 @@ const retiredHomeTargetIds = [
   "home-category-featured",
   "home-local-featured",
   "home-community",
+  "home-ad",
+  "home-promotion",
 ];
 
 /** Inspect the closest editable element; an explicit name on that element wins. */
@@ -144,16 +144,15 @@ export function findDesignTarget(element: Element, boundary: Element) {
 }
 
 export const homeSections = [
-  { id: "ad", label: "Oglasni prostor" },
   { id: "reels", label: "Reels djelatnosti" },
   { id: "newest", label: "Novi na AhiBizzu" },
   { id: "nearby", label: "Djelatnosti u blizini" },
-  { id: "promotion", label: "Poziv na isticanje" },
   { id: "logos", label: "Poslovna mreža" },
   { id: "featured", label: "Sve istaknute djelatnosti" },
 ] as const;
 const originalHomeSections = ["featured", "ad", "nearby", "logos", "credits"];
-const retiredHomeSections = ["categoryFeatured", "community", "credits"];
+// The ad slot and the promotion call left with the purchase flow on 2026-11-25.
+const retiredHomeSections = ["categoryFeatured", "community", "credits", "ad", "promotion"];
 const previousHomeSections = [
   ...new Set([...originalHomeSections, "promotion", ...retiredHomeSections]),
 ];

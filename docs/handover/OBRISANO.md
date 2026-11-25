@@ -104,3 +104,9 @@ Testni fajlovi uklonjeni u ovoj fazi: 35. Broj svih uklonjenih fajlova i linija 
 ## 24. 11. 2026. — Potpuno uklanjanje PayPala
 
 Po odluci vlasnika PayPal je uklonjen i iz donacija: donacije idu samo bankovnom uplatom. Migracija `0057_drop_paypal_archive.sql` briše arhivske tabele `paypal_checkout_order`, `paypal_checkout_event`, `paypal_webhook_event`, `paypal_refund_command` i `paypal_promotion_entitlement` te funkcije koje su ih čitale. Pogled `ahi_credit_movements` i zaštite `guard_production_receipt_link` i `guard_bank_topup_instructions` rade kao da PayPal narudžbi nema. Računovodstveni zapisi (`billing_receipt`), knjiga razvojnog fonda i ostale arhivske narudžbe nisu mijenjani; njihove historijske vrijednosti `paypal` ostaju. Obrisani redovi postoje u backupu `2026-11-24_16-45-28` (čuva se 30 dana).
+
+## 25. 11. 2026. — Uklanjanje isticanja i oglasnog prostora
+
+Po odluci vlasnika uklonjene su sve trenutne opcije isticanja; novi model se dogovara naknadno. Obrisani su stranice `/istakni`, `/nalog/isticanja`, `/administracija/isticanja` te preusmjerenja `/oglasavanje` i `/paketi`, API `/api/promotions` i `/api/admin/promotions`, servis narudžbi i bankovnih uputa, radni ekran isticanja, red „Isticanja na čekanju” u administraciji, link „Istakni djelatnost” u Mojim djelatnostima, te sekcije „Oglasni prostor” i „Poziv na isticanje” na početnoj (u uređivaču izgleda vode se kao povučene, pa raniji objavljeni redoslijed ostaje čitljiv). Uklonjeni su i njihovi prevodi i testovi.
+
+Tabele iz migracije `0054_promotions.sql` i njihovi redovi nisu dirani. `activePromotionSql` i prikaz „Istaknuto” ostaju, pa isticanje koje je već bilo aktivno vrijedi do svog kraja; narudžbe na čekanju ostaju u bazi bez ekrana za potvrdu. Brisanje tabela traži posebnu odluku vlasnika i novu migraciju.

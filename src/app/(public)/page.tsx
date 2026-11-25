@@ -24,7 +24,6 @@ import {
 } from "../../server/directory";
 import { publicBusinessView } from "../../server/directory/public-view";
 import { getTranslator } from "../../server/i18n";
-import { getActiveBanner } from "../../server/promotions/read";
 import { readPublishedDesign } from "../../server/visual-design-store";
 
 type Categories = Promise<DirectoryCategory[] | null>;
@@ -161,10 +160,9 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ mjesto?: string | string[] }>;
 }) {
-  const [params, design, banner, t] = await Promise.all([
+  const [params, design, t] = await Promise.all([
     searchParams,
     readPublishedDesign(),
-    getActiveBanner().catch(() => null),
     getTranslator(),
   ]);
   const place = homePlace(params.mjesto);
@@ -198,8 +196,6 @@ export default async function HomePage({
           <RecentReels />
         </Suspense>
       }
-      advertisingHref="/istakni"
-      banner={banner ? { ...banner, id: banner.businessId, city: banner.city ?? "" } : null}
       slots={{
         categories: (
           <Suspense fallback={<HomeCategories t={t} categories={[]} />}>

@@ -45,7 +45,6 @@ import {
   patchDirectoryBusinessCache,
   uncertainDirectoryMutation,
 } from "../../lib/directory-mutation-recovery";
-import { IS_PLAY_EDITION } from "../../lib/distribution";
 import { msg } from "../../lib/i18n/translate";
 import type { DirectoryBusiness } from "../../server/directory/types";
 import { ProfileVerification } from "../admin/ProfileVerification";
@@ -1621,16 +1620,6 @@ export function BusinessManager({
                             {cars ? t("Automobili") : "Booking"}
                           </button>
                         )}
-                        {!IS_PLAY_EDITION &&
-                          item.status === "published" &&
-                          item.ownerId === expectedAccountId && (
-                            <Link
-                              className={styles.secondary}
-                              href={`/nalog/isticanja?djelatnost=${item.id}`}
-                            >
-                              <Icon name="star" /> Istakni djelatnost
-                            </Link>
-                          )}
                         {["draft", "pending"].includes(item.status) && (
                           <button
                             type="button"
