@@ -26,3 +26,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -File C:\Users\tabak\AppData\Local
 - The interface speaks Bosnian (source), English, German, Arabic and Turkish, chosen automatically from the device; user content is not translated. Write interface text in Bosnian through `t()`, `msg()` or `titled()` and add all four translations to `src/lib/i18n/catalog.ts` (see `docs/I18N.md`); `tests/i18n.test.ts` checks this.
 - New Ahi Credits top-ups use bank transfer and administrator approval after matching the payment. AhiBizz purchases use credits. Preserve past payment records and keep Facebook integration deferred.
 - Keep credentials, production data and private exports out of Git. Before an authorized release, designate one publisher to verify the deployed revision, create a fresh backup, deploy the reviewed revision and confirm it on the live app.
+
+- Read docs/DEFINICIJA.md first: it defines the three addresses (public, admin, CMS), where code goes, roles, behaviour, the navigation model and the order of work to launch. A change that does not fit it starts by changing that document.

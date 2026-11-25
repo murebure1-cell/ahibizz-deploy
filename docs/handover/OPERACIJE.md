@@ -31,6 +31,38 @@ Guard veže privatni Next proces na loopback. Javni parent provjerava peer, sint
 
 `AHIBIZZ_INGRESS_OBSERVE=true` uključuje ograničeno opažanje tačnog `GET /api/health/live?ingressProbe=<UUID>`. Uz guard se učitava u parentu, bez guarda u server djetetu; nikad u migraciji. Bilježi najviše 24 događaja u minuti i 96 u procesu. Ne loguje cookies, tokene ni tijela; javne IP vrijednosti pretvara u hash vezan za nonce. Opažanje ne uključuje povjerenje i ne mijenja ovlasti. U produkciji ga uključuje operater samo za određenu provjeru.
 
+### Novi dokaz granice (promjena javne adrese)
+
+Dokaz je vezan za `BETTER_AUTH_URL`. Promjena adrese bez novog dokaza zaustavlja pokretanje, pa se
+radi ovim redom. Alat je `scripts/ingress-prove.mjs`; on ne mijenja ništa na produkciji.
+
+1. DNS i certifikat nove adrese moraju već raditi na gatewayu.
+2. U postavkama: nova `BETTER_AUTH_URL`, `AHIBIZZ_INGRESS_ENFORCE=false`,
+   `AHIBIZZ_INGRESS_OBSERVE=true`; Redeploy. Dok ovo traje, port aplikacije je dostupan direktno,
+   bez HTTPS-a. Vlasnik mora unaprijed odobriti to gašenje.
+3. `node scripts/ingress-prove.mjs probe --origin https://<adresa> --gateway-ip <IP gatewaya>
+   --direct http://<IP>:<javni port> --out controlled.json`. Svih devet zahtjeva mora vratiti 200.
+4. U roku od 5 minuta iz runtime loga providera prepisati devet linija `ahibizz_ingress_observe`
+   s tim nonceom u `provider.log`, bajt po bajt (uporediti SHA-256 sa stranice i lokalne kopije).
+5. `node scripts/ingress-prove.mjs assemble --controlled controlled.json --log provider.log
+   --source-commit <commit izdanja> --manifest sha256:<otisak> --deployed <kad je izdanje postalo
+   aktivno> --checked <kad je log pročitan> --internal-port <AHIBIZZ_NEXT_INTERNAL_PORT>
+   --out-dir proof`. Otisak izdanja je SHA-256 izlaza `git ls-tree -r --full-tree <commit>`.
+   Alat izvršava isti čitač politike kao produkcija i ne piše dokaz koji bi bio odbijen.
+6. Pregledati opažanja: šest kanonskih ima isti privatni peer (`AHIBIZZ_INGRESS_PROXY_PEERS`) i
+   isti otisak stvarne adrese uprkos lažnim zaglavljima; tri direktna imaju javni peer s tim
+   istim otiskom.
+7. U postavkama: `AHIBIZZ_INGRESS_BOUNDARY_PROOF` (sadržaj `boundary-proof.json`, jedna linija,
+   bez navodnika), `AHIBIZZ_INGRESS_BOUNDARY_SHA256`, `AHIBIZZ_INGRESS_ENFORCE=true`,
+   `AHIBIZZ_INGRESS_OBSERVE=false`; Redeploy.
+8. Provjera: direktan port vraća 403, `/api/health/live` i `/api/health/ready` kroz gateway 200,
+   prijava s nepostojećim nalogom 401, prijava sa stranim `Origin` 403.
+
+Stanje 25. 11. 2026.: adresa je `https://ahibizz.com`, dokaz je izmjeren i uključen tog dana
+(SHA-256 počinje s `1dbb09b8`, peer `172.18.0.1`, javni port 3056, interni 3057). Mjerenja su
+sačuvana izvan repozitorija. Guard odbacuje dolazni `Host` i gradi jednu fiksnu adresu, pa
+poddomene `admin.` i `cms.` traže izmjenu guarda, ne samo DNS.
+
 ## Kontrolna lista izdanja
 
 1. Fetch i pregled worktreeova/PR-ova; potvrdi tačan integration commit i jednog objavljivača.
