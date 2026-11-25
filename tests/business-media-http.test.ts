@@ -99,8 +99,16 @@ function fixture(
     const response = await http(
       new Request(new URL(path, baseURL), { method, headers, body: options.body }),
     );
-    assert.equal(response.headers.get("cache-control"), "no-store");
-    assert.equal(response.headers.get("pragma"), "no-cache");
+    // Only a delivered public image may be kept by the browser; every other reply stays uncached.
+    const keptImage =
+      method === "GET" &&
+      response.status === 200 &&
+      /^\/api\/business-media\/public\/[^/]+\/(logo|cover|gallery)\//.test(path);
+    assert.equal(
+      response.headers.get("cache-control"),
+      keptImage ? "private, max-age=2592000, immutable" : "no-store",
+    );
+    assert.equal(response.headers.get("pragma"), keptImage ? null : "no-cache");
     return response;
   }
   return { calls, http, send };
@@ -298,13 +306,18 @@ test("actual streamed upload bytes exceed four MiB despite false Content-Length 
   );
 });
 
-test("private and public images require the exact requested version and always return protected no-store bytes", async () => {
+test("images require the exact requested version; own images stay no-store and public ones are kept by the browser", async () => {
   const f = fixture({ imageVersion: 2147483647 });
   for (const area of ["mine", "public"]) {
     const response = await f.send("GET", `/api/business-media/${area}/${id}/logo/0?v=2147483647`);
     assert.equal(response.status, 200);
     assert.deepEqual(Buffer.from(await response.arrayBuffer()), image.bytes);
     assert.equal(response.headers.get("content-type"), "image/webp");
+    assert.equal(
+      response.headers.get("cache-control"),
+      area === "mine" ? "no-store" : "private, max-age=2592000, immutable",
+    );
+    assert.equal(response.headers.get("pragma"), area === "mine" ? "no-cache" : null);
     assert.equal(response.headers.get("x-content-type-options"), "nosniff");
     assert.equal(response.headers.get("cross-origin-resource-policy"), "same-origin");
     assert.equal(response.headers.get("content-security-policy"), "default-src 'none'; sandbox");
@@ -327,6 +340,7 @@ test("private and public images require the exact requested version and always r
   );
   assert.equal(missing.status, 404);
   assert.deepEqual(await missing.json(), { code: "MEDIA_NOT_FOUND" });
+  assert.equal(missing.headers.get("cache-control"), "no-store");
   assert.equal(
     (await fixture().send("GET", `/api/business-media/public/${id}/logo/0?v=3`)).status,
     404,
