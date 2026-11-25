@@ -231,6 +231,15 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   Filteri na mapi, marker „Sponzorisano” i uputstva unutar aplikacije s animiranom putanjom, koja
   čekaju da se za ključ mape uključi Googleov Routes API (do tada „Uputstva” otvaraju Google
   Maps) **[novo]**.
+- **Poruke [urađeno 25. 11. 2026.]:** po crtežima Poruke i Razgovor. Lista: naslov s brojem
+  nepročitanih razgovora, pretraga, tri oznake (Lično, Moje djelatnosti, Nepročitani) i razgovori
+  u jednoj kartici; vrijeme je sat za danas, zatim „jučer”, dan u sedmici, pa datum. Razgovor:
+  okrugli balončići (vlastiti u boji akcenta), vrijeme ispod grupe poruka, „Danas” i „Jučer” iznad
+  dana, okruglo polje za pisanje i okruglo dugme za slanje. Na telefonu su Poruke ekran za sebe,
+  bez zaglavlja stranice. S crteža još nema: prilozi (dokument, lokacija), poziv i profil u
+  zaglavlju razgovora, „Odgovara za oko 1 h”, kvačice „pročitano”, jedna lista „Sve” za lične i
+  poslovne razgovore zajedno, te vlasnikovi brzi odgovori i oznaka „nove poruke” u razgovoru, jer
+  podatak ili funkcija još ne postoji **[novo]**.
 - **Zamućenje** samo na slojevima koji leže preko sadržaja: donja traka, meni, listovi koji
   izlaze odozdo, prelaz pri zamjeni slike. Ne na karticama.
 - **Pokret:** kratak (150–250 ms) i sa svrhom. Tačkice za „učitavam” i za „novo”.

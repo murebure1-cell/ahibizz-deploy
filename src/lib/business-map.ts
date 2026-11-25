@@ -2,6 +2,8 @@ import { type BusinessDetails, readBusinessDetails } from "./business-details";
 import { initialLocationPoint, type LocationPoint } from "./business-location";
 import type { BusinessMediaSummary } from "./business-media";
 import { distanceMetres } from "./device-location";
+import type { Locale } from "./i18n/locales";
+import { localNumber } from "./number-format";
 import { publicBusinessImages } from "./public-business";
 
 export type MapPin = {
@@ -350,13 +352,10 @@ function fold(value: string) {
 }
 
 /** "450 m" under a kilometre, "1,2 km" under ten, whole kilometres beyond. */
-export function distanceLabel(metres: number, locale = "bs"): string {
+export function distanceLabel(metres: number, locale: Locale = "bs"): string {
   if (!Number.isFinite(metres) || metres < 0) return "";
   if (metres < 995) return `${Math.max(10, Math.round(metres / 10) * 10)} m`;
   const km = metres / 1000;
   const digits = km < 9.95 ? 1 : 0;
-  return `${new Intl.NumberFormat(locale, {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(km)} km`;
+  return `${localNumber(locale, km, { minimumFractionDigits: digits, maximumFractionDigits: digits })} km`;
 }

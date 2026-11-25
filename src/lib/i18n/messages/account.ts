@@ -837,6 +837,24 @@ export const account: Messages = {
   ],
   Svi: ["All", "Alle", "الكل", "Tümü"],
   Nepročitani: ["Unread", "Ungelesen", "غير المقروءة", "Okunmamış"],
+  "{count} nepročitan": [
+    "{count} unread",
+    "{count} ungelesen",
+    "{count} غير مقروءة",
+    "{count} okunmamış",
+  ],
+  "{count} nepročitana": [
+    "{count} unread",
+    "{count} ungelesen",
+    "{count} غير مقروءة",
+    "{count} okunmamış",
+  ],
+  "{count} nepročitanih": [
+    "{count} unread",
+    "{count} ungelesen",
+    "{count} غير مقروءة",
+    "{count} okunmamış",
+  ],
   "Savjeti za sigurno dopisivanje": [
     "Tips for safe messaging",
     "Tipps für sicheres Schreiben",
