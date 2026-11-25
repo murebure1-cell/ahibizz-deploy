@@ -4,6 +4,8 @@ import { AppProviders } from "../components/design/AppProviders";
 import { LocaleProvider } from "../components/i18n/LocaleProvider";
 import { appearanceBootstrap } from "../lib/appearance";
 import { isRtl } from "../lib/i18n/locales";
+import { wwwAliasBootstrap } from "../lib/origin-alias";
+import { configuredOrigin } from "../server/auth-availability";
 import { getLocale, getTranslator } from "../server/i18n";
 import "./globals.css";
 import "./motion.css";
@@ -30,9 +32,16 @@ export const viewport: Viewport = { themeColor: "#142c40", viewportFit: "cover" 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const locale = await getLocale();
   const t = await getTranslator();
+  const aliasBootstrap = wwwAliasBootstrap(configuredOrigin());
   return (
     <html lang={locale} dir={isRtl(locale) ? "rtl" : "ltr"} suppressHydrationWarning>
       <head>
+        {aliasBootstrap && (
+          <script
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: Built only from the validated configured host; no user content.
+            dangerouslySetInnerHTML={{ __html: aliasBootstrap }}
+          />
+        )}
         {/* Headings use this face on the first paint; without the preload they would swap in late. */}
         <link
           rel="preload"
