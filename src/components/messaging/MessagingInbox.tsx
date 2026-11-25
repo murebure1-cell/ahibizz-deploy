@@ -38,6 +38,7 @@ import {
   type MessagingRecoveryStore,
   MessagingStorageError,
 } from "../../lib/messaging-recovery-storage";
+import { type PullRefreshDetail, pullRefreshEvent } from "../../lib/pull-to-refresh";
 import { reportUrl } from "../../lib/support-requests";
 import { Icon } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
@@ -848,11 +849,20 @@ export function MessagingInbox({
       void loadList(view.current.inbox, view.current.page, true);
       if (selection.current) void loadConversation(selection.current);
     };
+    // Pulling the screen down reads the same two things at once and holds the light until they arrive.
+    const onPull = (event: Event) => {
+      if (writing.current || pendingRef.current) return;
+      const work: Promise<unknown>[] = [loadList(view.current.inbox, view.current.page, true)];
+      if (selection.current) work.push(loadConversation(selection.current));
+      (event as CustomEvent<PullRefreshDetail>).detail?.waitUntil(Promise.allSettled(work));
+    };
     const timer = window.setInterval(refresh, 10000);
     document.addEventListener("visibilitychange", refresh);
+    window.addEventListener(pullRefreshEvent, onPull);
     return () => {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener(pullRefreshEvent, onPull);
     };
   }, [active, loadConversation, loadList, usable]);
   useEffect(() => {

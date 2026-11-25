@@ -165,7 +165,8 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   svijetla) i jedan akcenat za glavnu radnju: mint na tamnoj, tirkizna na svijetloj. Vrijednosti su
   u `src/app/globals.css` (`--ui-*`); boja se u stilove ne upisuje direktno.
 - **Zlato** samo za riječ Business, uvijek na tamnoj podlozi. Glavna radnja je u boji akcenta.
-  Jedini izuzetak je zlatnik u animaciji otvaranja, koji je vlasnik tražio.
+  Jedini izuzetak je zlatnik u animaciji otvaranja i pri povlačenju za osvježavanje, koji je
+  vlasnik tražio.
 - **Logo [odobreno 25. 11. 2026., uz animaciju otvaranja]:** oblik znaka i slova je nepromijenjen.
   „ahi” i tačka su u boji akcenta, znak i „bizz” u boji teksta teme; na podlozi u boji akcenta i
   preko fotografije logo je jednobojan. Crta ga komponenta `AhiLogo`.
@@ -173,6 +174,14 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   jednom: zlatnik padne ispod znaka, uskoči u krug u njegovom ćošku i postane ta rupa, zatim
   isklizne natpis i ispod njega „Naša mreža, naša snaga.” Traje oko četiri i po sekunde, dodir ili
   tipka je prekida, a uz smanjeno kretanje se ne prikazuje.
+- **Povlačenje za osvježavanje [odobreno 25. 11. 2026.]:** na Početnoj, Pretrazi, Porukama i
+  Obavijestima, samo kad je ekran na samom vrhu. Sadržaj ide za prstom, sve teže što se dalje
+  vuče, a zlatnik se kotrlja po njegovom rubu prema znaku. Na 80 px zlatnik uskoči u rupu i znak
+  dobije punu boju; ko tada pusti, osvježava. Zlato postane rupa, svjetlo ide rubom znaka dok
+  sadržaj ne stigne (najmanje 0,6 s), zatim znak ode gore. Ko pusti ranije, sve se vrati za 200 ms
+  i ništa se ne učitava. Na Početnoj logo putuje sa fotografijom, na ostalim ekranima zaglavlje
+  stoji. Uz smanjeno kretanje nema zlatnika: znak se pojavi i blago pulsira dok traje učitavanje.
+  Pravila su u `src/lib/pull-to-refresh.ts`.
 - **Pismo:** Manrope za cijeli interfejs, s vlastitog servera; arapski tekst koristi sistemsko pismo.
 - **Oblik:** jedna ljestvica zaobljenja (`--ui-radius-xs` do `--ui-radius-xl`): kontrole 16 px,
   kartice 24 px, oznake potpuno zaobljene.

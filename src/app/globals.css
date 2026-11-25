@@ -116,6 +116,10 @@
 html {
   scroll-padding-top: 100px;
 }
+/* On screens with the app's own pull to refresh, the browser's pull-down reload stays out of it. */
+html[data-pull-refresh] {
+  overscroll-behavior-y: contain;
+}
 /* Manrope (SIL Open Font License), self-hosted: no request leaves the site.
    One variable file per subset serves every weight; latin-ext carries č, ć, đ, š, ž, ğ and ş.
    Arabic has no glyphs in Manrope and falls through to the system face. */

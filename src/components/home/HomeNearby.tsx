@@ -14,6 +14,7 @@ import {
 } from "react";
 import { fetchNearbyPages, nearbyDirectoryPath } from "../../lib/home-nearby";
 import type { PublicBusinessView } from "../../lib/public-business";
+import { pullRefreshEvent } from "../../lib/pull-to-refresh";
 import { DirectoryResultCard } from "../directory/DirectoryResultCard";
 import { Icon } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
@@ -117,6 +118,16 @@ export function HomeNearbyProvider({
       abort.abort();
     };
   }, [path, categories, request]);
+  // Pulling the screen down reads the nearby list again from its first page.
+  useEffect(() => {
+    if (!path) return;
+    const again = () => {
+      latest.current = null;
+      setRequest({ path, page: 1 });
+    };
+    window.addEventListener(pullRefreshEvent, again);
+    return () => window.removeEventListener(pullRefreshEvent, again);
+  }, [path]);
   const value = useMemo<NearbyContext>(() => {
     const gpsResults = path ? snapshot : null;
     const refreshFailed = failure?.path === path && failure.kind === "refresh";
