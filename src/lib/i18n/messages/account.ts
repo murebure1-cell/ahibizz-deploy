@@ -2,6 +2,21 @@ import type { Messages } from "./types";
 
 // Account, settings, friends and people, messages, saved items, Reels and the map.
 export const account: Messages = {
+  "Podaci naloga": ["Account details", "Kontodaten", "بيانات الحساب", "Hesap bilgileri"],
+  Verifikacija: ["Verification", "Verifizierung", "التوثيق", "Doğrulama"],
+  Verifikovan: ["Verified", "Verifiziert", "موثَّق", "Doğrulandı"],
+  "Ručna provjera. Ne dolazi s paketom.": [
+    "Checked by hand. It does not come with a package.",
+    "Von Hand geprüft. Kommt nicht mit einem Paket.",
+    "تحقق يدوي. لا يأتي مع أي باقة.",
+    "Elle kontrol edilir. Paketle birlikte gelmez.",
+  ],
+  "Jezik i izgled": [
+    "Language and look",
+    "Sprache und Aussehen",
+    "اللغة والمظهر",
+    "Dil ve görünüm",
+  ],
   "Pristup nalogu": ["Account access", "Kontozugang", "الوصول إلى الحساب", "Hesap erişimi"],
   "Provjeravam prijavu…": [
     "Checking sign-in…",

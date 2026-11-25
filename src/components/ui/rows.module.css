@@ -1,0 +1,205 @@
+/*
+ * The list screens reached from the menu: a bar with a way back and the screen's name, then
+ * groups of rows in one card each. One row is an icon, a title with an optional second line, and
+ * at its end a value, a mark or a chevron.
+ */
+.screen {
+  --hairline: color-mix(in srgb, var(--ui-text) 16%, transparent);
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding-bottom: max(32px, env(safe-area-inset-bottom, 0px));
+}
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px var(--rows-inset, 20px) 0;
+}
+.bar h1 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.back {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--ui-border);
+  border-radius: 50%;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  transition: scale 160ms var(--ease-out);
+}
+.back:active {
+  scale: 0.94;
+}
+.back svg {
+  width: 20px;
+  height: 20px;
+  transform: rotate(180deg);
+}
+:global([dir="rtl"]) .back svg {
+  transform: none;
+}
+.lead {
+  margin: 0;
+  padding: 16px calc(var(--rows-inset, 20px) + 4px) 0;
+  color: var(--ui-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px var(--rows-inset, 20px) 0;
+}
+.group h2 {
+  margin: 0;
+  padding: 0 4px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 54px;
+  padding: 0 14px;
+  border: 0;
+  background: none;
+  color: var(--ui-text);
+  font: inherit;
+  text-align: start;
+  transition: background-color 150ms ease;
+}
+.row[data-two] {
+  min-height: 60px;
+  padding-block: 8px;
+}
+.row + .row,
+.card > * + * {
+  border-top: 1px solid var(--ui-border);
+}
+:is(a, button).row {
+  cursor: pointer;
+}
+:is(a, button).row:active {
+  background: var(--ui-surface-hover);
+}
+.row:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--ui-muted);
+}
+.text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+.title {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.row[data-tone="danger"] :is(.title, .icon) {
+  color: var(--ui-danger);
+}
+.sub {
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.value {
+  flex: none;
+  max-width: 46%;
+  overflow: hidden;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chevron {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ui-muted);
+}
+:global([dir="rtl"]) .chevron {
+  transform: scaleX(-1);
+}
+
+/* Small marks at the end of a row. */
+.pill {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pill[data-kind="ok"] {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+}
+.pill[data-kind="wait"] {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+.pill[data-kind="off"] {
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--ui-muted);
+}
+.count {
+  display: grid;
+  place-items: center;
+  flex: none;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :is(a, button).row:hover {
+    background: var(--ui-surface-hover);
+  }
+}
+@media (min-width: 761px) {
+  .screen {
+    padding-top: 24px;
+  }
+}

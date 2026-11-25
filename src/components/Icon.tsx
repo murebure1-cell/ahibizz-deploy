@@ -42,6 +42,15 @@ export type IconName =
   | "logout"
   | "lock"
   | "key"
+  | "globe"
+  | "doc"
+  | "book"
+  | "help"
+  | "chart"
+  | "layers"
+  | "block"
+  | "trash"
+  | "moon"
   | "route";
 
 const paths: Record<IconName, ReactNode> = {
@@ -85,6 +94,45 @@ const paths: Record<IconName, ReactNode> = {
       <path d="m11 11 9-9M16 6l3 3" />
     </>
   ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9Z" />
+    </>
+  ),
+  doc: (
+    <>
+      <path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+      <path d="M14 3v5h5M9 13h6M9 17h4" />
+    </>
+  ),
+  book: (
+    <>
+      <path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3Z" />
+      <path d="M5 17a3 3 0 0 1 3-3h10" />
+    </>
+  ),
+  help: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 1-1 1.7M12 17v.5" />
+    </>
+  ),
+  chart: <path d="M5 20V10M12 20V4M19 20v-7" />,
+  layers: (
+    <>
+      <path d="m12 4 9 5-9 5-9-5Z" />
+      <path d="m3 14 9 5 9-5" />
+    </>
+  ),
+  block: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m6 6 12 12" />
+    </>
+  ),
+  trash: <path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" />,
+  moon: <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />,
   route: <path d="M20.5 3.5 3.5 10.6l6.9 3 3 6.9Z" />,
   phone: <path d="m7 3 3 5-2 2a15 15 0 0 0 6 6l2-2 5 3c0 3-2 4-4 4C9 20 4 15 3 7c0-2 1-4 4-4Z" />,
   chevron: <path d="m9 5 7 7-7 7" />,

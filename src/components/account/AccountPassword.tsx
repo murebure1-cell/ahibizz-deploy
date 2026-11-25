@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { type FormEvent, useRef, useState } from "react";
 import { msg } from "../../lib/i18n/translate";
+import { Icon } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
-import styles from "./account.module.css";
+import { rowStyles } from "../ui/Rows";
+import styles from "./settings.module.css";
 
 const errors: Record<string, string> = {
   INVALID_CURRENT_PASSWORD: msg("Trenutna lozinka nije tačna."),
@@ -67,10 +69,16 @@ export function AccountPassword({ accountId, email }: { accountId: string; email
     }
   }
   return (
-    <section className={styles.settingsCard} aria-labelledby="password-heading">
-      <h2 id="password-heading">{t("Lozinka")}</h2>
-      <details ref={details} className={styles.passwordChange}>
-        <summary>{t("Promijeni lozinku")}</summary>
+    <>
+      <details ref={details} className={styles.password}>
+        <summary className={rowStyles.row}>
+          <Icon name="key" className={rowStyles.icon} />
+          <span className={rowStyles.text}>
+            <span className={rowStyles.title}>{t("Lozinka")}</span>
+          </span>
+          <span className={rowStyles.value}>{t("Promijeni lozinku")}</span>
+          <Icon name="chevron" className={rowStyles.chevron} />
+        </summary>
         <form method="post" action="/api/account/password" onSubmit={submit} aria-busy={busy}>
           <input type="hidden" name="username" autoComplete="username" value={email} />
           <label>
@@ -97,9 +105,7 @@ export function AccountPassword({ accountId, email }: { accountId: string; email
               disabled={busy}
             />
           </label>
-          <small id="password-length" className={styles.passwordLength}>
-            {t("Najmanje 12 znakova.")}
-          </small>
+          <small id="password-length">{t("Najmanje 12 znakova.")}</small>
           <label>
             {t("Potvrdi novu lozinku")}
             <input
@@ -113,25 +119,25 @@ export function AccountPassword({ accountId, email }: { accountId: string; email
             />
           </label>
           {error && (
-            <p role="alert" className={styles.settingsError}>
+            <p role="alert" className={styles.error}>
               {error}
             </p>
           )}
-          <div className={styles.settingsActions}>
+          <div className={styles.actions}>
             <button type="submit" disabled={busy}>
               {busy ? t("Spremam…") : t("Sačuvaj novu lozinku")}
             </button>
           </div>
+          <Link href="/zaboravljena-lozinka" className={styles.forgot}>
+            {t("Zaboravljena lozinka")}
+          </Link>
         </form>
       </details>
-      <Link href="/zaboravljena-lozinka" className={styles.settingsLogin}>
-        {t("Zaboravljena lozinka")}
-      </Link>
       {notice && (
-        <p role="status" className={styles.settingsNotice}>
+        <p role="status" className={styles.notice}>
           {notice}
         </p>
       )}
-    </section>
+    </>
   );
 }

@@ -316,8 +316,6 @@ function AccountWorkspace({
                 onSection={changeSection}
                 onAddBusiness={addBusiness}
                 onProfile={setPersonal}
-                onSignOut={logout}
-                signingOut={busy}
               />
             </AccountPane>
             <AccountPane selected={section === "profile"}>
