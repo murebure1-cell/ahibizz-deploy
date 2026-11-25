@@ -306,11 +306,8 @@ export function LocationPicker({
         {t("Upit i odabrana tačka šalju se servisu")}{" "}
         <a href="https://photon.komoot.io/" target="_blank" rel="noreferrer">
           Photon
-        </a>{" "}
-        . Kartu pruža{" "}
-        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-          OpenStreetMap
         </a>
+        . {t("Mapu prikazuje Google.")}
       </small>
     </section>
   );

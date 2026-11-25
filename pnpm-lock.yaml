@@ -169,9 +169,6 @@ importers:
       better-auth:
         specifier: 1.7.23
         version: 1.7.23(next@16.4.6(@babel/core@7.29.13)(@types/node@24.10.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      leaflet:
-        specifier: 1.9.4
-        version: 1.9.4
       next:
         specifier: 16.4.6
         version: 16.4.6(@babel/core@7.29.13)(@types/node@24.10.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -197,9 +194,6 @@ importers:
       '@biomejs/biome':
         specifier: 2.6.7
         version: 2.6.7
-      '@types/leaflet':
-        specifier: 1.9.22
-        version: 1.9.22
       '@types/node':
         specifier: 24.10.1
         version: 24.10.1
@@ -842,12 +836,6 @@ packages:
   '@swc/helpers@0.5.23':
     resolution: {integrity: sha512-5lSsMOTXURePglDfvuAQUqkGek9Hg2kksOYay2m0+XR++b2NWYL/4sWyuvVBIs8oKnJaxkdi9whaL/sqN13afw==}
 
-  '@types/geojson@7946.0.16':
-    resolution: {integrity: sha512-6C8nqWur3j98U6+lXDfTUWIfgvZU+EumvpHKcYjujKH7woYyLj2sUmff0tRhrqM7BohUw7Pz3ZB1jj2gW9Fvmg==}
-
-  '@types/leaflet@1.9.22':
-    resolution: {integrity: sha512-h3lhECYEKDasG7LFHu+GiHqAvsgLuQvlJvVZzJDGONo3sEL+wUOqSFLnwkZlK0qVxnxbuGFW8iBlJNYs5wgndA==}
-
   '@types/node@24.10.1':
     resolution: {integrity: sha512-GNWcUTRBgIRJD5zj+Tq0fKOJ5XZajIiBroOF0yvj2bSU1WvNdYS/dn9UxwsujGW4JX06dnHyjV2y9rRaybH0iQ==}
 
@@ -1163,9 +1151,6 @@ packages:
   kysely@0.29.8:
     resolution: {integrity: sha512-ixHU1H4R+LeC5Y0nAhYgiGRFpFRHm2DXKEmJSs/vbes9sKXyssyzxzE/NYiOJX5fY0BL28biCre3GqlCqUwyXQ==}
     engines: {node: '>=22.0.0'}
-
-  leaflet@1.9.4:
-    resolution: {integrity: sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA==}
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
@@ -1840,12 +1825,6 @@ snapshots:
     dependencies:
       tslib: 2.9.1
 
-  '@types/geojson@7946.0.16': {}
-
-  '@types/leaflet@1.9.22':
-    dependencies:
-      '@types/geojson': 7946.0.16
-
   '@types/node@24.10.1':
     dependencies:
       undici-types: 7.16.0
@@ -2086,8 +2065,6 @@ snapshots:
       safe-buffer: 5.2.1
 
   kysely@0.29.8: {}
-
-  leaflet@1.9.4: {}
 
   lru-cache@5.1.1:
     dependencies:

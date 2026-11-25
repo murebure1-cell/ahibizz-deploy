@@ -403,12 +403,12 @@ export const content: Messages = {
       "لا يُستخدم الموقع إلا إذا سمحت بذلك. للأنشطة القريبة يرسل التطبيق إلى الخادم إحداثيات مقربة إلى نحو 100 م. لا يحفظها AhiBizz مع حسابك. يحتفظ الجهاز فقط بمنطقة تقريبية (نحو 1 كم) لمدة 24 ساعة كحد أقصى لعرض النتائج فورًا. وتُحذف عند إيقاف الموقع أو تسجيل الخروج.",
       "Konum yalnızca izin verirsen kullanılır. Yakındaki işletmeler için uygulama sunucuya yaklaşık 100 m'ye yuvarlanmış koordinatlar gönderir. AhiBizz bunları hesabınla saklamaz. Sonuçların hemen görünmesi için cihaz en fazla 24 saat yalnızca yaklaşık bir alanı (yaklaşık 1 km) hatırlar. Konumu kapattığında ya da çıkış yaptığında silinir.",
     ],
-  "Kad uređuješ lokaciju djelatnosti, tvoj preglednik šalje upisanu adresu ili odabranu tačku na karti direktno servisu Photon (komoot), koji pronalazi adresu. Ako tu odabereš „moja lokacija“, šalju se koordinate tvog uređaja. Karte učitava preglednik direktno od Google Maps ili OpenStreetMap; oni primaju područje karte koje gledaš i tvoju IP adresu.":
+  "Kad uređuješ lokaciju djelatnosti, tvoj preglednik šalje upisanu adresu ili odabranu tačku na karti direktno servisu Photon (komoot), koji pronalazi adresu. Ako tu odabereš „moja lokacija“, šalju se koordinate tvog uređaja. Karte učitava preglednik direktno od Google Maps; Google prima područje karte koje gledaš i tvoju IP adresu.":
     [
-      "When you edit a business location, your browser sends the entered address or the chosen map point directly to the Photon (komoot) service, which finds the address. If you choose “my location” there, your device's coordinates are sent. The browser loads maps directly from Google Maps or OpenStreetMap; they receive the map area you view and your IP address.",
-      "Wenn du den Standort eines Betriebs bearbeitest, sendet dein Browser die eingegebene Adresse oder den gewählten Kartenpunkt direkt an den Dienst Photon (komoot), der die Adresse findet. Wählst du dort „mein Standort“, werden die Koordinaten deines Geräts gesendet. Karten lädt der Browser direkt von Google Maps oder OpenStreetMap; diese erhalten den angezeigten Kartenausschnitt und deine IP-Adresse.",
-      "عند تعديل موقع النشاط التجاري، يرسل متصفحك العنوان المدخل أو النقطة المختارة على الخريطة مباشرة إلى خدمة Photon (komoot) التي تعثر على العنوان. إذا اخترت «موقعي» هناك، تُرسل إحداثيات جهازك. يحمّل المتصفح الخرائط مباشرة من Google Maps أو OpenStreetMap، وهما يتلقيان منطقة الخريطة التي تشاهدها وعنوان IP الخاص بك.",
-      "İşletme konumunu düzenlerken tarayıcın girilen adresi ya da haritada seçilen noktayı adresi bulan Photon (komoot) hizmetine doğrudan gönderir. Orada “konumum”u seçersen cihazının koordinatları gönderilir. Tarayıcı haritaları doğrudan Google Maps ya da OpenStreetMap'ten yükler; bunlar baktığın harita alanını ve IP adresini alır.",
+      "When you edit a business location, your browser sends the entered address or the chosen map point directly to the Photon (komoot) service, which finds the address. If you choose “my location” there, your device's coordinates are sent. The browser loads maps directly from Google Maps; Google receives the map area you view and your IP address.",
+      "Wenn du den Standort eines Betriebs bearbeitest, sendet dein Browser die eingegebene Adresse oder den gewählten Kartenpunkt direkt an den Dienst Photon (komoot), der die Adresse findet. Wählst du dort „mein Standort“, werden die Koordinaten deines Geräts gesendet. Karten lädt der Browser direkt von Google Maps; Google erhält den angezeigten Kartenausschnitt und deine IP-Adresse.",
+      "عند تعديل موقع النشاط التجاري، يرسل متصفحك العنوان المدخل أو النقطة المختارة على الخريطة مباشرة إلى خدمة Photon (komoot) التي تعثر على العنوان. إذا اخترت «موقعي» هناك، تُرسل إحداثيات جهازك. يحمّل المتصفح الخرائط مباشرة من Google Maps، وتتلقى Google منطقة الخريطة التي تشاهدها وعنوان IP الخاص بك.",
+      "İşletme konumunu düzenlerken tarayıcın girilen adresi ya da haritada seçilen noktayı adresi bulan Photon (komoot) hizmetine doğrudan gönderir. Orada “konumum”u seçersen cihazının koordinatları gönderilir. Tarayıcı haritaları doğrudan Google Maps'ten yükler; Google baktığın harita alanını ve IP adresini alır.",
     ],
   "Obavijesti i email": [
     "Notifications and email",
@@ -429,12 +429,12 @@ export const content: Messages = {
     "من يعالج البيانات أيضًا",
     "Verileri başka kim işler",
   ],
-  "OctaDeploy za hosting aplikacije i baze podataka, pružalac email usluge, push servis preglednika ili telefona, Photon (komoot) za adrese te Google Maps ili OpenStreetMap za karte. Aplikacija ne koristi oglasni identifikator uređaja.":
+  "OctaDeploy za hosting aplikacije i baze podataka, pružalac email usluge, push servis preglednika ili telefona, Photon (komoot) za adrese te Google Maps za karte. Aplikacija ne koristi oglasni identifikator uređaja.":
     [
-      "OctaDeploy for app and database hosting, an email provider, the browser's or phone's push service, Photon (komoot) for addresses, and Google Maps or OpenStreetMap for maps. The app does not use the device advertising ID.",
-      "OctaDeploy für das Hosting von App und Datenbank, ein E-Mail-Dienstleister, der Push-Dienst des Browsers oder Telefons, Photon (komoot) für Adressen sowie Google Maps oder OpenStreetMap für Karten. Die App nutzt keine Werbe-ID des Geräts.",
-      "OctaDeploy لاستضافة التطبيق وقاعدة البيانات، ومزود بريد إلكتروني، وخدمة الإشعارات في المتصفح أو الهاتف، وPhoton (komoot) للعناوين، وGoogle Maps أو OpenStreetMap للخرائط. لا يستخدم التطبيق معرّف الإعلانات للجهاز.",
-      "Uygulama ve veritabanı barındırma için OctaDeploy, bir e-posta sağlayıcısı, tarayıcının ya da telefonun push hizmeti, adresler için Photon (komoot) ve haritalar için Google Maps ya da OpenStreetMap. Uygulama cihazın reklam kimliğini kullanmaz.",
+      "OctaDeploy for app and database hosting, an email provider, the browser's or phone's push service, Photon (komoot) for addresses, and Google Maps for maps. The app does not use the device advertising ID.",
+      "OctaDeploy für das Hosting von App und Datenbank, ein E-Mail-Dienstleister, der Push-Dienst des Browsers oder Telefons, Photon (komoot) für Adressen sowie Google Maps für Karten. Die App nutzt keine Werbe-ID des Geräts.",
+      "OctaDeploy لاستضافة التطبيق وقاعدة البيانات، ومزود بريد إلكتروني، وخدمة الإشعارات في المتصفح أو الهاتف، وPhoton (komoot) للعناوين، وGoogle Maps للخرائط. لا يستخدم التطبيق معرّف الإعلانات للجهاز.",
+      "Uygulama ve veritabanı barındırma için OctaDeploy, bir e-posta sağlayıcısı, tarayıcının ya da telefonun push hizmeti, adresler için Photon (komoot) ve haritalar için Google Maps. Uygulama cihazın reklam kimliğini kullanmaz.",
     ],
   "Aplikacija nema kupovina ni plaćanja.": [
     "The app has no purchases or payments.",

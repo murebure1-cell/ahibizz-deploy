@@ -22,6 +22,11 @@ export type MapPinRow = {
   latitude: number | string;
   longitude: number | string;
   media: DirectoryBusiness["media"];
+  categoryName: string | null;
+  subcategoryName: string | null;
+  verified: boolean;
+  details: DirectoryBusiness["details"];
+  reviews: DirectoryBusiness["reviews"];
 };
 type PromotionFilter = boolean | "category" | "all";
 type ListOptions = { maximumPageSize?: number; newestFirst?: boolean };
@@ -366,12 +371,20 @@ export function createPublicDirectoryService({
       });
       return result.items;
     },
-    /** Published businesses with coordinates, for the map; only public fields and media. */
+    /**
+     * Published businesses with coordinates, for the map: what a pin and its card show (name,
+     * place, category, verification, opening hours, rating and media), all of it public.
+     */
     mapPins(): Promise<MapPinRow[]> {
       return safeRead(async () => {
         const result = await database.query(
-          `SELECT b.id, b.title, b.city, b.country_code AS "countryCode", b.latitude, b.longitude, ${businessMediaProjection} AS media
+          `SELECT b.id, b.title, b.city, b.country_code AS "countryCode", b.latitude, b.longitude,
+                  b.is_verified AS verified, c.name AS "categoryName", s.name AS "subcategoryName",
+                  (SELECT jsonb_build_object('timezone', d.timezone, 'hours', d.hours, 'amenities', d.amenities) FROM directory_business_details d WHERE d.business_id = b.id) AS details,
+                  ${businessMediaProjection} AS media, ${businessReviewsProjection("b")}
              FROM directory_business b JOIN auth_user u ON u.id = b.owner_user_id
+             LEFT JOIN directory_category c ON c.id = b.category_id
+             LEFT JOIN directory_category s ON s.id = b.subcategory_id
             WHERE ${publicBusinessWhere} AND b.latitude IS NOT NULL AND b.longitude IS NOT NULL
             ORDER BY b.published_at DESC NULLS LAST, b.id
             LIMIT 2000`,

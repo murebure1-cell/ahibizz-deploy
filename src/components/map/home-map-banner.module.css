@@ -1,106 +1,73 @@
+/*
+ * The banner of the world map on the home page, as drawn: a card with the title at its foot and
+ * the dotted globe on the right, standing a third above the card's top edge.
+ */
 .banner {
   position: relative;
   width: min(1180px, calc(100% - 40px));
-  margin: 72px auto 28px;
-  border: 1px solid var(--ui-ink-line);
-  border-radius: var(--ui-radius-xl);
-  background:
-    radial-gradient(circle at 82% 40%, #1f2a33 0%, transparent 55%),
-    linear-gradient(120deg, #0b0d10 0%, #14181d 55%, #1b2129 100%);
-  color: #fff;
-  isolation: isolate;
+  margin: 20px auto 28px;
   container-type: inline-size;
+  isolation: isolate;
 }
-/* One size, from the card width, drives the globe and the space kept free for the text beside it. */
+/* One size, from the banner's width, places the globe and keeps the card's top clear of it. */
 .link,
 .stage {
-  --globe: clamp(100px, 30cqw, 184px);
+  --globe: clamp(124px, 20cqw, 176px);
 }
 .link {
   display: flex;
-  align-items: center;
-  min-height: clamp(128px, 14vw, 168px);
-  padding: clamp(18px, 3vw, 34px);
-  padding-right: calc(var(--globe) + clamp(26px, 5vw, 64px));
-  color: inherit;
+  min-height: calc(var(--globe) * 1.18);
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: calc(var(--globe) * 0.355);
+  padding: 0 20px 18px;
+  border: 1px solid var(--ui-border);
+  border-radius: 26px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
   text-decoration: none;
-  border-radius: inherit;
 }
 .link:focus-visible {
   outline: 2px solid var(--ui-focus);
   outline-offset: 3px;
 }
-.text {
-  display: grid;
-  gap: 6px;
-}
 .kicker {
-  color: var(--ui-ink-accent);
+  color: var(--ui-accent-text);
   font-size: 13px;
+  line-height: 18px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
-.text h2 {
+.link h2 {
   margin: 0;
-  font-size: clamp(21px, 2.4vw, 28px);
-  line-height: 1.15;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 .cta {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 4px;
-  margin-top: 4px;
-  color: var(--ui-on-ink-muted);
+  color: var(--ui-muted);
   font-size: 15px;
-  font-weight: 600;
+  line-height: 22px;
+  font-weight: 700;
 }
 .cta svg {
   width: 16px;
   height: 16px;
 }
-
-/* The globe sits on the right and comes out over the top edge of the card, never over the text. */
+/* The banner holds the card's top margin, so its own top edge is where the globe begins. */
 .stage {
   position: absolute;
   top: 0;
-  right: clamp(14px, 4vw, 48px);
+  inset-inline-end: 10px;
   width: var(--globe);
-  aspect-ratio: 1;
-  margin-top: calc(var(--globe) * -0.32);
   pointer-events: none;
-}
-.glow {
-  position: absolute;
-  inset: -16%;
-  border-radius: 50%;
-  background: radial-gradient(circle, #7be3b726 0%, #7be3b70d 48%, transparent 68%);
-}
-.globe {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  filter: drop-shadow(0 12px 20px #0e121899);
-}
-.globe canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .stage {
-    animation: banner-globe-float 6s ease-in-out infinite;
-  }
-  @keyframes banner-globe-float {
-    50% {
-      translate: 0 -5px;
-    }
-  }
 }
 @media (max-width: 560px) {
   .banner {
     width: calc(100% - 32px);
-    margin-top: 52px;
   }
 }
