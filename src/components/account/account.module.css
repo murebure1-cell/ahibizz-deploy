@@ -1,21 +1,3 @@
-.settingsMark svg {
-  width: 20px;
-  height: 20px;
-}
-.themePreview > span {
-  display: block;
-  border-radius: 3px;
-  background: #fff;
-}
-.themeLabel > span {
-  font-size: 16px;
-}
-.themeLabel svg {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  margin-left: auto;
-}
 .savedLinks {
   display: flex;
   gap: 14px;
@@ -202,67 +184,11 @@
   border-top: 1px solid var(--ui-border);
   border-radius: 0;
 }
-.card {
-  background: var(--ui-surface);
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-lg);
-  padding: 30px;
-  box-shadow: 0 10px 40px var(--ui-shadow);
-}
-.card h2 {
-  font-size: 20px;
-  margin-bottom: 27px;
-}
-.card label {
-  display: grid;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--ui-text-secondary);
-  max-width: 490px;
-  margin: 19px 0 7px;
-}
-.card input {
-  font: inherit;
-  font-size: 16px;
-  width: 100%;
-  min-height: 48px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-xs);
-  padding: 10px 13px;
-  color: var(--ui-text);
-  background: var(--ui-surface);
-}
-.card input[readonly] {
-  background: var(--ui-surface-soft);
-  color: var(--ui-muted);
-}
-.card > small {
-  font-size: 12px;
-  color: var(--ui-success);
-  display: flex;
-  gap: 5px;
-  align-items: center;
-}
-.card > small svg {
-  width: 14px;
-  height: 14px;
-}
-.card > p {
-  font-size: 14px;
-  line-height: 1.6;
-  margin-top: 18px;
-  color: var(--ui-success);
-}
-.card p.error {
-  color: var(--ui-danger);
-}
+
 @media (max-width: 900px) {
   .layout {
     grid-template-columns: 210px minmax(0, 1fr);
     gap: 18px;
-  }
-  .card {
-    padding: 23px;
   }
 }
 @media (max-width: 700px) {
@@ -374,52 +300,8 @@
   .logout span {
     display: none;
   }
-  .card {
-    padding: 23px 20px;
-  }
 }
 
-.settingsIdentity {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 185px), 1fr));
-  gap: 14px;
-  margin: 0 0 16px;
-}
-.settingsIdentity dt {
-  font-size: 14px;
-  color: var(--ui-text-secondary);
-}
-.settingsIdentity dd {
-  margin: 4px 0 0;
-  font-weight: 650;
-  overflow-wrap: anywhere;
-}
-.settingsIdentity dd svg,
-.settingsLinks a svg {
-  display: inline-block;
-  width: 17px;
-  height: 17px;
-  vertical-align: middle;
-}
-.settingsLinks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.settingsLinks a {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  min-height: 44px;
-  padding: 6px 10px;
-  border-radius: var(--ui-radius-sm);
-  border: 1px solid var(--ui-border);
-  text-decoration: none;
-}
-.settingsLinks a:hover {
-  background: var(--ui-accent-soft);
-  border-color: var(--ui-accent-border);
-}
 .adminLink {
   display: flex;
   align-items: center;
@@ -438,287 +320,13 @@
   margin-bottom: 20px;
   font-size: 14px;
 }
-.settings {
-  display: grid;
-  gap: 16px;
-  min-width: 0;
-}
-.settingsHeading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 18px;
-  margin: 3px 0 7px;
-}
-.settingsHeading h1 {
-  font-size: clamp(25px, 3vw, 32px);
-  letter-spacing: -0.045em;
-  font-weight: 700;
-  line-height: 1.2;
-}
-.settingsEyebrow {
-  display: block;
-  color: var(--ui-muted);
-  font-size: 13px;
-  margin-bottom: 7px;
-}
-.settingsMark {
-  width: 45px;
-  height: 45px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-md);
-  display: grid;
-  place-items: center;
-  background: var(--ui-surface);
-  color: var(--ui-text);
-}
 
-.settingsCard {
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-lg);
-  padding: clamp(18px, 3vw, 28px);
-  background: var(--ui-surface);
-}
-.settingsCard h2 {
-  font-size: 19px;
-  font-weight: 650;
-  letter-spacing: -0.03em;
-  margin: 0 0 16px;
-}
-.passwordChange {
-  min-width: 0;
-}
-.passwordChange summary {
-  width: fit-content;
-  min-height: 46px;
-  padding: 12px 16px;
-  color: var(--ui-text);
-  background: var(--ui-surface-soft);
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-md);
-  font-size: 15px;
-  font-weight: 650;
-  cursor: pointer;
-}
-.passwordChange form {
-  display: grid;
-  gap: 14px;
-  max-width: 440px;
-  margin: 18px 0 0;
-}
-.passwordChange label {
-  display: grid;
-  gap: 6px;
-  font-size: 15px;
-  font-weight: 600;
-}
-.passwordChange input[type="password"] {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  min-height: 46px;
-  padding: 10px 13px;
-  background: var(--ui-input);
-  color: var(--ui-text);
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-sm);
-  font: inherit;
-  font-size: 16px;
-}
-.passwordLength {
-  margin-top: -9px;
-  color: var(--ui-muted);
-}
-.appearanceChoices {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  padding: 0;
-  margin: 0;
-  border: 0;
-}
-.appearanceChoices label {
-  position: relative;
-  cursor: pointer;
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-lg);
-  transition:
-    border-color 140ms ease,
-    background 140ms ease,
-    box-shadow 140ms ease;
-}
-.appearanceChoices label:hover {
-  border-color: var(--ui-border-strong);
-}
-.appearanceChoices label[data-selected="true"] {
-  border-color: var(--ui-accent);
-  background: var(--ui-accent-soft);
-  box-shadow: inset 0 0 0 1px var(--ui-accent);
-}
-.appearanceChoices label:focus-within {
-  outline: 2px solid var(--ui-accent);
-  outline-offset: 3px;
-}
-.appearanceChoices:disabled label {
-  cursor: default;
-  opacity: 0.65;
-}
-.appearanceChoices input,
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
-.themePreview {
-  /* These fixed miniature colours depict each available theme in either active theme. */
-  display: grid;
-  grid-template-columns: 22% 1fr;
-  grid-template-rows: 13px 1fr;
-  height: 87px;
-  padding: 10px;
-  gap: 6px;
-  border-radius: var(--ui-radius-xs);
-  background: #f2f4f6;
-  border: 1px solid #e1e5e9;
-}
-
-.themePreview > span:first-child {
-  grid-column: 1 / -1;
-  background: #0e7a6d;
-}
-.themePreview[data-preview="dark"] {
-  background: #0b0d10;
-  border-color: #262b32;
-}
-.themePreview[data-preview="dark"] > span:first-child {
-  background: #7be3b7;
-}
-.themePreview[data-preview="dark"] > span:not(:first-child) {
-  background: #1b2027;
-}
-.themePreview[data-preview="system"] {
-  background: linear-gradient(90deg, #f2f4f6 50%, #0b0d10 50%);
-}
-.themePreview[data-preview="system"] > span:first-child {
-  background: linear-gradient(90deg, #0e7a6d 50%, #7be3b7 50%);
-}
-.themePreview[data-preview="system"] > span:last-child {
-  background: linear-gradient(90deg, #fff 28%, #1b2027 28%);
-}
-.themeLabel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 8px 2px 0;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--ui-text);
-}
-
-.settingsActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 26px;
-}
-.settingsActions button {
-  border: 1px solid var(--ui-accent-border);
-  border-radius: var(--ui-radius-md);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--ui-accent) 84%, white),
-    var(--ui-accent)
-  );
-  color: var(--ui-on-accent);
-  font-size: 15px;
-  font-weight: 650;
-  min-height: 46px;
-  padding: 10px 19px;
-  transition:
-    box-shadow 160ms ease,
-    transform 160ms ease;
-}
-.settingsActions button:hover:not(:disabled) {
-  box-shadow: 0 6px 16px var(--ui-shadow);
-  transform: translateY(-1px);
-}
-.settingsActions button:focus-visible {
-  outline: 2px solid var(--ui-focus);
-  outline-offset: 3px;
-}
-.settingsActions .settingsRefresh {
-  border-color: var(--ui-border);
-  background: transparent;
-  color: var(--ui-text);
-}
-.settingsActions button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.settingsError,
-.settingsNotice {
-  margin-top: 18px;
-  font-size: 14px;
-  line-height: 1.6;
-}
-.settingsError {
-  color: var(--ui-danger);
-}
-.settingsNotice {
-  color: var(--ui-success);
-}
-.settingsLogin {
-  display: inline-block;
-  margin-top: 10px;
-  font-size: 14px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.passwordChange .settingsActions,
-.passwordChange .settingsError {
-  margin-top: 0;
-}
 @media (max-width: 350px) {
   .sidebar nav {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr);
   }
 }
-@media (max-width: 480px) {
-  .settingsCard {
-    padding: 22px 18px;
-  }
-  .appearanceChoices {
-    gap: 7px;
-  }
-  .appearanceChoices label {
-    padding: 6px;
-    border-radius: var(--ui-radius-sm);
-  }
-  .themePreview {
-    height: 70px;
-    padding: 7px;
-    gap: 4px;
-  }
-  .themeLabel {
-    font-size: 13px;
-    gap: 4px;
-  }
-  .themeLabel > span {
-    display: none;
-  }
-}
+
 @media (max-width: 700px) {
   .adminLink {
     padding: 10px 12px;
@@ -731,13 +339,8 @@
   .content > div:not([hidden]) {
     animation: none;
   }
-  .sidebar :where(button, a),
-  .appearanceChoices label,
-  .settingsActions button {
+  .sidebar :where(button, a) {
     transition: none;
-  }
-  .settingsActions button:hover:not(:disabled) {
-    transform: none;
   }
 }
 
@@ -761,69 +364,21 @@
   }
 }
 
-/* On a phone the overview opens with the profile itself, so the sidebar keeps only its tabs
-   there; signing out moves to the end of the overview's list. */
+/* On a phone "Moj profil" and the settings are screens of their own, as drawn: no sidebar tabs
+   and no site header. The profile leads to the menu, the settings lead back to it. */
 @media (max-width: 700px) {
-  .layout[data-account-pane="overview"] .identity,
-  .layout[data-account-pane="overview"] .logout {
+  .layout:is([data-account-pane="overview"], [data-account-pane="settings"]) > .sidebar,
+  :global(body):has(.layout:is([data-account-pane="overview"], [data-account-pane="settings"]))
+    :global(.site-header) {
     display: none;
   }
-  .layout[data-account-pane="overview"] .navigationViewport {
-    grid-row: 1;
+  .layout[data-account-pane="overview"] {
+    width: calc(100% - 40px);
+    margin-top: 18px;
   }
-}
-
-.settingsText {
-  max-width: 62ch;
-  margin: 0 0 16px;
-  color: var(--ui-text-secondary);
-  font-size: 15px;
-  line-height: 1.55;
-}
-.settingsText:last-child {
-  margin-bottom: 0;
-}
-.settingsState {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 10px;
-  font-weight: 650;
-}
-.settingsStateIcon {
-  flex: none;
-  width: 17px;
-  height: 17px;
-}
-.settingsState[data-verified="true"] {
-  color: var(--ui-success);
-}
-.settingsLanguage {
-  display: block;
-  margin-bottom: 12px;
-}
-/* The card's heading already names the control. */
-.settingsLanguage > span {
-  position: absolute;
-  overflow: hidden;
-  clip-path: inset(50%);
-  width: 1px;
-  height: 1px;
-  white-space: nowrap;
-}
-.settingsLanguage select {
-  width: min(100%, 320px);
-  min-height: 46px;
-  padding-inline: 12px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-input);
-  color: var(--ui-text);
-  font: inherit;
-  font-size: 16px;
-}
-/* The notification row brings a divider and spacing meant for a list; alone in a card it needs neither. */
-.settingsPush > * {
-  padding-block: 0;
-  border-top: 0;
+  .layout[data-account-pane="settings"] {
+    display: block;
+    width: 100%;
+    margin: 0 auto 32px;
+  }
 }

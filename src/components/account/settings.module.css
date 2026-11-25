@@ -1,0 +1,218 @@
+/*
+ * Settings: groups of rows (ui/rows) and the few controls that live inside a group: the
+ * password form, the theme choice and the device notifications.
+ */
+.settings {
+  --hairline: color-mix(in srgb, var(--ui-text) 16%, transparent);
+  min-width: 0;
+  padding-bottom: 8px;
+}
+/* On a wide screen the sidebar leads back, and the column already has its own margins. */
+@media (min-width: 701px) {
+  .settings {
+    --rows-inset: 0px;
+  }
+  .back {
+    display: none;
+  }
+}
+
+/* The password row opens its form in place. */
+.password summary {
+  list-style: none;
+  cursor: pointer;
+}
+.password summary::-webkit-details-marker {
+  display: none;
+}
+.password[open] summary svg:last-child {
+  transform: rotate(90deg);
+}
+.password form {
+  display: grid;
+  gap: 12px;
+  max-width: 440px;
+  padding: 4px 14px 16px;
+}
+.password label {
+  display: grid;
+  gap: 6px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+}
+.password input[type="password"] {
+  width: 100%;
+  min-width: 0;
+  height: 50px;
+  padding: 0 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-input);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 400;
+}
+.password small {
+  margin-top: -6px;
+  color: var(--ui-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+.forgot {
+  justify-self: start;
+  color: var(--ui-accent-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* The theme: one of three, chosen in place and saved at once. */
+.theme {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 14px;
+}
+.themeName {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.themeName svg {
+  width: 20px;
+  height: 20px;
+  color: var(--ui-muted);
+}
+.segments {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  padding: 3px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+}
+.segments label {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 38px;
+  border-radius: 11px;
+  color: var(--ui-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+.segments label[data-selected="true"] {
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
+  font-weight: 800;
+}
+.segments label:has(input:focus-visible) {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+.segments input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.segments:disabled label {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The device's own notification control brings its layout; here it only needs room. */
+.push {
+  padding: 4px 14px 12px;
+}
+.push > * {
+  border-top: 0;
+}
+.push:focus {
+  outline: none;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.actions button {
+  min-height: 46px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.actions .quiet {
+  border: 1px solid var(--hairline);
+  background: none;
+  color: var(--ui-text);
+  font-weight: 700;
+}
+.actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.feedback {
+  display: grid;
+  gap: 8px;
+  padding: 12px var(--rows-inset, 20px) 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+.feedback:empty {
+  display: none;
+}
+.feedback p {
+  margin: 0;
+}
+.error {
+  margin: 0;
+  color: var(--ui-danger);
+  font-size: 14px;
+  line-height: 20px;
+}
+.notice {
+  margin: 0;
+  color: var(--ui-success);
+  font-size: 14px;
+  line-height: 20px;
+}
+.password + .notice {
+  padding: 0 14px 14px;
+}
+.login {
+  color: var(--ui-accent-text);
+  font-weight: 700;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
+}

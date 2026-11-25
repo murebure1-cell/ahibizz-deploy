@@ -11,21 +11,23 @@ import {
   appearanceUpdate,
   readAccountSettings,
 } from "../../lib/account-settings";
+import { languagePath, menuPath } from "../../lib/app-menu";
 import type { Appearance } from "../../lib/appearance";
+import { localeNames } from "../../lib/i18n/locales";
 import { msg } from "../../lib/i18n/translate";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { useAppAppearance } from "../appearance/AppAppearance";
 import { Icon } from "../Icon";
-import { LanguagePicker } from "../i18n/LanguagePicker";
-import { useT } from "../i18n/LocaleProvider";
+import { useI18n } from "../i18n/LocaleProvider";
 import { DevicePush } from "../pwa/DevicePush";
+import { Row, RowGroup, RowPill, rowStyles } from "../ui/Rows";
 import { AccountPassword } from "./AccountPassword";
-import styles from "./account.module.css";
+import styles from "./settings.module.css";
 
 const choices = [
-  { value: "system", label: msg("Prema uređaju"), symbol: "◐" },
-  { value: "light", label: msg("Svijetlo"), symbol: "☀" },
-  { value: "dark", label: msg("Tamno"), symbol: "☾" },
+  { value: "system", label: msg("Uređaj") },
+  { value: "light", label: msg("Svijetla") },
+  { value: "dark", label: msg("Tamna") },
 ] as const;
 
 type Props = {
@@ -50,7 +52,7 @@ function SettingsWorkspace({
   request = accountSettingsRequest,
   onConfirmed,
 }: Props) {
-  const t = useT();
+  const { t, locale } = useI18n();
   const { setAppearance, resetAppearance } = useAppAppearance();
   const [account, setAccount] = useState(initial);
   const scopedRequest = useMemo(
@@ -164,13 +166,14 @@ function SettingsWorkspace({
     if (!attempted.current) void load();
   }, [active, load]);
 
-  async function save() {
-    if (!active || writing.current || loading || !loaded || blocked || draft === confirmed) return;
+  /** The theme is saved the moment it is chosen; `next` is that choice. */
+  async function save(next: Appearance = draft) {
+    if (!active || writing.current || loading || !loaded || blocked || next === confirmed) return;
     writing.current = true;
     controller.current?.abort();
     const current = ++revision.current,
       abort = new AbortController(),
-      body = JSON.stringify(appearanceUpdate(draft, confirmed));
+      body = JSON.stringify(appearanceUpdate(next, confirmed));
     controller.current = abort;
     const timeout = window.setTimeout(() => abort.abort(), 20000);
     setSaving(true);
@@ -180,7 +183,7 @@ function SettingsWorkspace({
       const account = readAccountSettings(
         await scopedRequest({ method: "PATCH", body, signal: abort.signal }),
         initial.id,
-        draft,
+        next,
       );
       if (!live.current || boundary.current !== scopedRequest || current !== revision.current)
         return;
@@ -207,181 +210,142 @@ function SettingsWorkspace({
     }
   }
 
+  const own = active && !accessLost && request === accountSettingsRequest;
+  const manual = t("Ručna provjera. Ne dolazi s paketom.");
   return (
     <div className={styles.settings} aria-busy={loading || saving}>
-      <header className={styles.settingsHeading}>
-        <div>
-          <span className={styles.settingsEyebrow}>{t("Moj nalog")}</span>
-          <h1>{t("Postavke")}</h1>
-        </div>
-        <span className={styles.settingsMark} aria-hidden="true">
-          <Icon name="sliders" />
-        </span>
+      <header className={rowStyles.bar}>
+        <Link
+          href={menuPath}
+          className={`${rowStyles.back} ${styles.back}`}
+          aria-label={t("Nazad")}
+          prefetch={false}
+        >
+          <Icon name="chevron" />
+        </Link>
+        <h1>{t("Postavke")}</h1>
       </header>
-      {active && !accessLost && request === accountSettingsRequest && (
+      {own && (
         <>
-          <section className={styles.settingsCard} aria-labelledby="identity-heading">
-            <h2 id="identity-heading">{t("Korisničke informacije")}</h2>
-            <dl className={styles.settingsIdentity}>
-              <div>
-                <dt>{t("Ime i prezime")}</dt>
-                <dd>{account.name}</dd>
-              </div>
-              <div>
-                <dt>{t("Email za prijavu")}</dt>
-                <dd>{account.email}</dd>
-              </div>
-              <div>
-                <dt>{t("Verifikacija emaila")}</dt>
-                <dd>
-                  {account.emailVerified ? (
-                    <>
-                      <Icon name="check" /> {t("Potvrđen")}
-                    </>
-                  ) : (
-                    t("Čeka potvrdu")
-                  )}
-                </dd>
-              </div>
-            </dl>
-            <div className={styles.settingsLinks}>
-              <Link href="/nalog?odjeljak=profil">
-                <Icon name="user" /> {t("Uredi lične podatke")}
-              </Link>
-              <Link href="/nalog?odjeljak=djelatnosti">
-                <Icon name="shop" /> {t("Moje djelatnosti")}
-              </Link>
-            </div>
-          </section>
-          <AccountPassword accountId={account.id} email={account.email} />
-          <section className={styles.settingsCard} aria-labelledby="verification-heading">
-            <h2 id="verification-heading">{t("Verifikacija profila")}</h2>
-            {verified !== null && (
-              <p className={styles.settingsState} data-verified={verified}>
-                {verified && <Icon name="check" className={styles.settingsStateIcon} />}
-                {verified
-                  ? t("Tvoj profil je verifikovan.")
-                  : t("Tvoj profil još nije verifikovan.")}
-              </p>
+          <RowGroup title={t("Nalog")}>
+            <Row
+              icon="user"
+              title={t("Podaci naloga")}
+              sub={`${account.name} · ${account.email}`}
+              href="/nalog?odjeljak=profil"
+              end={
+                account.emailVerified ? undefined : (
+                  <RowPill kind="wait">{t("Čeka potvrdu")}</RowPill>
+                )
+              }
+            />
+            <Row icon="shop" title={t("Moje djelatnosti")} href="/nalog?odjeljak=djelatnosti" />
+            <AccountPassword accountId={account.id} email={account.email} />
+          </RowGroup>
+          <RowGroup title={t("Verifikacija")}>
+            {verified === false ? (
+              <Row
+                icon="shield"
+                title={t("Verifikacija profila")}
+                sub={manual}
+                value={t("Zatraži verifikaciju")}
+                href="/pomoc?tema=nalog#kontakt"
+              />
+            ) : (
+              <Row
+                icon="shield"
+                title={t("Verifikacija profila")}
+                sub={manual}
+                end={verified ? <RowPill kind="ok">{t("Verifikovan")}</RowPill> : undefined}
+              />
             )}
-            <p className={styles.settingsText}>
-              {t(
-                "Oznaka potvrđuje da je AhiBizz provjerio tvoj identitet. Dodjeljuje je administrator nakon ručne provjere; paket je ne donosi.",
-              )}
-            </p>
-            {verified !== true && (
-              <div className={styles.settingsLinks}>
-                <Link href="/pomoc?tema=nalog#kontakt">
-                  <Icon name="shield" /> {t("Zatraži verifikaciju")}
-                </Link>
-              </div>
-            )}
-          </section>
+          </RowGroup>
         </>
       )}
-      <section className={styles.settingsCard} aria-labelledby="language-heading">
-        <h2 id="language-heading">{t("Jezik")}</h2>
-        <LanguagePicker className={styles.settingsLanguage} />
-        <p className={styles.settingsText}>{t("Izbor se pamti samo na ovom uređaju.")}</p>
-      </section>
-      <section className={styles.settingsCard} aria-labelledby="appearance-heading">
-        <h2 id="appearance-heading">{t("Izgled")}</h2>
-        <fieldset
-          className={styles.appearanceChoices}
-          disabled={loading || saving || !loaded || blocked}
-        >
-          <legend className={styles.srOnly}>{t("Tema aplikacije")}</legend>
-          {choices.map((choice) => (
-            <label key={choice.value} data-selected={draft === choice.value}>
-              <input
-                type="radio"
-                name="appearance"
-                value={choice.value}
-                checked={draft === choice.value}
-                onChange={() => {
-                  setDraft(choice.value);
-                  setNotice("");
-                }}
-              />
-              <span className={styles.themePreview} data-preview={choice.value} aria-hidden="true">
-                <span />
-                <span />
-                <span />
-              </span>
-              <span className={styles.themeLabel}>
-                <span aria-hidden="true">{choice.symbol}</span>
+      <RowGroup title={t("Jezik i izgled")}>
+        <Row icon="globe" title={t("Jezik")} value={localeNames[locale]} href={languagePath} />
+        <div className={styles.theme}>
+          <span className={styles.themeName} aria-hidden="true">
+            <Icon name="moon" />
+            {t("Tema aplikacije")}
+          </span>
+          <fieldset className={styles.segments} disabled={loading || saving || !loaded || blocked}>
+            <legend className={styles.srOnly}>{t("Tema aplikacije")}</legend>
+            {choices.map((choice) => (
+              <label key={choice.value} data-selected={draft === choice.value}>
+                <input
+                  type="radio"
+                  name="appearance"
+                  value={choice.value}
+                  checked={draft === choice.value}
+                  onChange={() => {
+                    setDraft(choice.value);
+                    setNotice("");
+                    void save(choice.value);
+                  }}
+                />
                 {t(choice.label)}
-                {draft === choice.value && <Icon name="check" />}
-              </span>
-            </label>
-          ))}
-        </fieldset>
-        <div className={styles.settingsActions}>
-          <button
-            type="button"
-            disabled={loading || saving || !loaded || blocked || draft === confirmed}
-            onClick={() => void save()}
-          >
-            {saving ? t("Spremam…") : t("Sačuvaj")}
-          </button>
-          <button
-            type="button"
-            className={styles.settingsRefresh}
-            disabled={loading || saving}
-            onClick={() => void load()}
-          >
-            {t("Osvježi postavke")}
-          </button>
+              </label>
+            ))}
+          </fieldset>
         </div>
+      </RowGroup>
+      <div className={styles.feedback}>
         {error && (
-          <p role="alert" className={styles.settingsError}>
+          <p role="alert" className={styles.error}>
             {error}
           </p>
         )}
         {notice && (
-          <p role="status" className={styles.settingsNotice}>
+          <p role="status" className={styles.notice}>
             {notice}
           </p>
         )}
+        {blocked && !accessLost && (
+          <div className={styles.actions}>
+            <button
+              type="button"
+              className={styles.quiet}
+              disabled={loading || saving}
+              onClick={() => void load()}
+            >
+              {t("Osvježi postavke")}
+            </button>
+          </div>
+        )}
         {accessLost && (
-          <Link
-            className={styles.settingsLogin}
-            href="/prijava?nastavi=%2Fnalog%3Fodjeljak%3Dpostavke"
-          >
+          <Link className={styles.login} href="/prijava?nastavi=%2Fnalog%3Fodjeljak%3Dpostavke">
             {t("Prijavi se ponovo")}
           </Link>
         )}
-      </section>
-      {active && !accessLost && request === accountSettingsRequest && (
-        <section
-          aria-labelledby="push-heading"
-          className={styles.settingsCard}
-          ref={deviceNotifications}
-          tabIndex={-1}
-        >
-          <h2 id="push-heading">{t("Obavijesti na uređaju")}</h2>
-          <div className={styles.settingsPush}>
+      </div>
+      {own && (
+        <RowGroup title={t("Obavijesti na uređaju")}>
+          <section
+            className={styles.push}
+            ref={deviceNotifications}
+            tabIndex={-1}
+            aria-label={t("Obavijesti na uređaju")}
+          >
             <DevicePush actor={initial.id} />
-          </div>
-        </section>
+          </section>
+        </RowGroup>
       )}
-      <section className={styles.settingsCard} aria-labelledby="privacy-heading">
-        <h2 id="privacy-heading">{t("Privatnost i podaci")}</h2>
-        <div className={styles.settingsLinks}>
-          <Link href={blockedPeoplePath}>
-            <Icon name="user" /> {t("Blokirani korisnici")}
-          </Link>
-          <Link href="/privatnost">
-            <Icon name="info" /> {t("Pravila privatnosti")}
-          </Link>
-          <Link href="/pomoc?tema=sigurnost#kontakt">
-            <Icon name="mail" /> {t("Zatraži pristup podacima")}
-          </Link>
-          <Link href="/brisanje-naloga">
-            <Icon name="shield" /> {t("Zatraži brisanje naloga")}
-          </Link>
-        </div>
-      </section>
+      <RowGroup title={t("Privatnost i podaci")}>
+        <Row icon="block" title={t("Blokirani korisnici")} href={blockedPeoplePath} />
+        <Row icon="lock" title={t("Pravila privatnosti")} href="/privatnost" />
+        <Row
+          icon="download"
+          title={t("Zatraži pristup podacima")}
+          href="/pomoc?tema=sigurnost#kontakt"
+        />
+        <Row
+          icon="trash"
+          title={t("Zatraži brisanje naloga")}
+          href="/brisanje-naloga"
+          tone="danger"
+        />
+      </RowGroup>
     </div>
   );
 }
