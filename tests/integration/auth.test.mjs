@@ -716,6 +716,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0055_reel_lifetime.sql",
           "0056_business_content_erasure.sql",
           "0057_drop_paypal_archive.sql",
+          "0058_account_packages.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -1193,6 +1194,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
               await pool.query('SELECT "createdAt" FROM auth_user WHERE id=$1', [userId])
             ).rows[0].createdAt.toISOString(),
             businesses: 1,
+            package: "basic",
+            businessLimit: 1,
             promotedBusinesses: 0,
             nextAppointment: null,
             unreadThreads: 0,

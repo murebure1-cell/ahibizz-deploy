@@ -12,6 +12,7 @@ import {
 } from "../../lib/admin-accounts";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { Icon } from "../Icon";
+import { AccountPackage } from "./AccountPackage";
 import styles from "./admin.module.css";
 import { ProfileVerification } from "./ProfileVerification";
 import {
@@ -457,6 +458,15 @@ function ApprovalWorkspace({
                 <span className={styles.accountReadOnly}>Administrator</span>
               ) : (
                 <>
+                  {expectedAccountId && active && account.approval === "approved" && (
+                    <AccountPackage
+                      id={account.id}
+                      actorId={expectedAccountId}
+                      request={request}
+                      disabled={disabled}
+                      onAccessDenied={clearPrivate}
+                    />
+                  )}
                   {account.approval !== "approved" && (
                     <button
                       className={styles.primary}

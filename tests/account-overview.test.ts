@@ -17,10 +17,21 @@ test("private account reads reject foreign and malformed account facts", () => {
     accountId: "member-1",
     joinedAt: "2026-11-18T23:30:00.000Z",
     businesses: 1,
+    package: "basic",
+    businessLimit: 1,
     promotedBusinesses: 1,
     unreadThreads: 0,
   };
   assert.deepEqual(readOverview({ overview: facts }, "member-1"), facts);
+  const administrator = { ...facts, package: null, businessLimit: null };
+  assert.deepEqual(readOverview({ overview: administrator }, "member-1"), administrator);
+  for (const wrong of [
+    { package: "basic", businessLimit: 3 },
+    { package: "premium", businessLimit: 1 },
+    { package: null, businessLimit: 1 },
+    { package: "startup", businessLimit: null },
+  ])
+    assert.throws(() => readOverview({ overview: { ...facts, ...wrong } }, "member-1"));
   assert.throws(() => readOverview({ overview: facts }, "member-2"));
   assert.throws(() => readOverview({ overview: { ...facts, businesses: null } }, "member-1"));
 });

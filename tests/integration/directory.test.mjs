@@ -5,6 +5,7 @@ import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { loadMigrations, runMigrations } from "../../scripts/migrate.mjs";
+import { testAccountPackages } from "./account-package-cases.mjs";
 import { testDirectoryRemoval } from "./directory-removal-cases.mjs";
 import { integrationConfiguration } from "./postgres.test.mjs";
 
@@ -141,6 +142,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0055_reel_lifetime.sql",
           "0056_business_content_erasure.sql",
           "0057_drop_paypal_archive.sql",
+          "0058_account_packages.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -1855,6 +1857,17 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         member,
         other,
         categoryId: root.id,
+      });
+      await testAccountPackages(t, {
+        auth,
+        accounts,
+        pool,
+        owner,
+        member,
+        create: (actor, title) =>
+          directory.create(actor.headers, { ...valid(), title }, randomUUID()),
+        baseURL,
+        DirectoryAccessError,
       });
       assert.equal(outboundAttempts, 0);
       assert.deepEqual(await outsideTables(administration, schema), outside);
