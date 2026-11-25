@@ -1192,7 +1192,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           const url = `${baseURL}/api/business-media/public/${business.id}/logo/0?v=${response.receipt.mediaVersion}`;
           const visible = await http(new Request(url));
           assert.equal(visible.status, 200);
-          assert.equal(visible.headers.get("cache-control"), "no-store");
+          assert.equal(visible.headers.get("cache-control"), "private, max-age=2592000, immutable");
           assert.equal(visible.headers.get("x-content-type-options"), "nosniff");
           assert.equal(
             (await sharp(Buffer.from(await visible.arrayBuffer())).metadata()).width,
@@ -1201,7 +1201,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           await directory.archive(owner.headers, business.id, {
             expectedVersion: response.receipt.businessVersion,
           });
-          assert.equal((await http(new Request(url))).status, 404);
+          const revoked = await http(new Request(url));
+          assert.equal(revoked.status, 404);
+          assert.equal(revoked.headers.get("cache-control"), "no-store");
         },
       );
 
