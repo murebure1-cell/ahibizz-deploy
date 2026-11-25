@@ -561,6 +561,7 @@ const shell: Record<string, CatalogEntry> = {
     "جارٍ تحديث النتائج…",
     "Sonuçlar yenileniyor…",
   ),
+  "Osvježavamo sadržaj…": e("Refreshing…", "Wird aktualisiert…", "جارٍ التحديث…", "Yenileniyor…"),
   "Rezultati za prethodnu lokaciju": e(
     "Results for your previous location",
     "Ergebnisse für deinen vorherigen Standort",
