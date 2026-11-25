@@ -72,7 +72,17 @@ export function safeBusinessImage(
     /^\/api\/business-media\/public\/[A-Za-z0-9_-]{1,128}\/(?:logo|cover|gallery)\/[0-8]\?v=[1-9]\d{0,9}$/.test(
       image.src,
     );
-  if (publicPath || (preview && image.src.startsWith("/preview/") && !image.src.includes("..")))
+  // An owner previewing a draft sees their own photographs, which are not public yet.
+  const ownPath =
+    preview &&
+    /^\/api\/business-media\/mine\/[A-Za-z0-9_-]{1,128}\/(?:logo|cover|gallery)\/[0-8]\?v=[1-9]\d{0,9}$/.test(
+      image.src,
+    );
+  if (
+    publicPath ||
+    ownPath ||
+    (preview && image.src.startsWith("/preview/") && !image.src.includes(".."))
+  )
     return image;
   if (preview && image.src.startsWith("blob:") && typeof window !== "undefined") {
     try {

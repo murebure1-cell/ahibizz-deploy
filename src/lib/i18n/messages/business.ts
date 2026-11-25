@@ -2,6 +2,88 @@ import type { Messages } from "./types";
 
 // Owner tools: business editor, details, photos, ownership, booking settings and promotions.
 export const business: Messages = {
+  // Publishing a business, step by step
+  "Objavi djelatnost": [
+    "Publish a business",
+    "Betrieb veröffentlichen",
+    "انشر نشاطًا تجاريًا",
+    "İşletme yayınla",
+  ],
+  "Korak {step} od {total}": [
+    "Step {step} of {total}",
+    "Schritt {step} von {total}",
+    "الخطوة {step} من {total}",
+    "Adım {step} / {total}",
+  ],
+  Dalje: ["Next", "Weiter", "التالي", "İleri"],
+  "Čime se baviš?": ["What do you do?", "Was machst du?", "ما هو نشاطك؟", "Ne iş yapıyorsun?"],
+  "Po kategoriji te ljudi nalaze u pretrazi.": [
+    "People find you in search by your category.",
+    "Über die Kategorie finden dich Menschen in der Suche.",
+    "يجدك الناس في البحث حسب الفئة.",
+    "İnsanlar seni aramada kategorine göre bulur.",
+  ],
+  "Izaberi kategoriju.": [
+    "Choose a category.",
+    "Wähle eine Kategorie.",
+    "اختر فئة.",
+    "Bir kategori seç.",
+  ],
+  "Ovo ljudi prvo vide na tvojoj kartici.": [
+    "This is what people see first on your card.",
+    "Das sehen Menschen zuerst auf deiner Karte.",
+    "هذا أول ما يراه الناس في بطاقتك.",
+    "İnsanlar kartında önce bunu görür.",
+  ],
+  "Gdje te ljudi nalaze?": [
+    "Where do people find you?",
+    "Wo finden dich die Menschen?",
+    "أين يجدك الناس؟",
+    "İnsanlar seni nerede bulur?",
+  ],
+  "Upiši adresu, pa provjeri mjesto na mapi.": [
+    "Enter the address, then check the place on the map.",
+    "Gib die Adresse ein und prüfe dann den Ort auf der Karte.",
+    "أدخل العنوان ثم تحقق من الموقع على الخريطة.",
+    "Adresi yaz, sonra haritadaki yeri kontrol et.",
+  ],
+  Slike: ["Pictures", "Bilder", "الصور", "Görseller"],
+  "Logo, naslovna i fotografije galerije.": [
+    "The logo, the cover and the gallery photographs.",
+    "Logo, Titelbild und Fotos der Galerie.",
+    "الشعار وصورة الغلاف وصور المعرض.",
+    "Logo, kapak ve galeri fotoğrafları.",
+  ],
+  "Ovako će izgledati": [
+    "This is how it will look",
+    "So wird es aussehen",
+    "هكذا سيبدو",
+    "Böyle görünecek",
+  ],
+  "Objava postaje vidljiva čim je objaviš.": [
+    "The listing becomes visible as soon as you publish it.",
+    "Der Eintrag ist sichtbar, sobald du ihn veröffentlichst.",
+    "يصبح الإعلان ظاهرًا فور نشره.",
+    "İlan, yayınladığın anda görünür olur.",
+  ],
+  "Administrator pregleda objavu prije nego što postane vidljiva.": [
+    "An administrator reviews the listing before it becomes visible.",
+    "Ein Administrator prüft den Eintrag, bevor er sichtbar wird.",
+    "يراجع المشرف الإعلان قبل أن يصبح ظاهرًا.",
+    "İlan görünür olmadan önce yönetici tarafından incelenir.",
+  ],
+  "Podaci i slike su uneseni.": [
+    "The data and the pictures are in.",
+    "Daten und Bilder sind eingetragen.",
+    "تم إدخال البيانات والصور.",
+    "Bilgiler ve görseller girildi.",
+  ],
+  "Još nema slike. Kartica s fotografijom privlači više pogleda.": [
+    "No picture yet. A card with a photograph draws more looks.",
+    "Noch kein Bild. Eine Karte mit Foto zieht mehr Blicke an.",
+    "لا توجد صورة بعد. البطاقة التي تحمل صورة تجذب نظرات أكثر.",
+    "Henüz görsel yok. Fotoğraflı kart daha çok ilgi çeker.",
+  ],
   "ODABRANI DAN": ["SELECTED DAY", "AUSGEWÄHLTER TAG", "اليوم المحدد", "SEÇİLEN GÜN"],
   "Termin telefonom / ručni unos": [
     "Phone booking / manual entry",
