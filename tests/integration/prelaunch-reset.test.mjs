@@ -58,6 +58,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       } = await import("../../src/server/auth/index.ts");
       const { createAuthHttpHandler } = await import("../../src/server/auth-http.ts");
       const { createFavoritesService } = await import("../../src/server/favorites/service.ts");
+      const { readPrelaunchResetPlan } = await import("../../scripts/prelaunch-reset-core.mjs");
       const { createPrelaunchReset, prelaunchResetClosesAt } = await import(
         "../../src/server/maintenance/prelaunch-reset.ts"
       );
@@ -183,6 +184,20 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       assert.equal(plan.tables.find((table) => table.name === "business_favorite").rows, 1);
       assert.equal(await count("auth_user"), 4);
 
+      // The operator command confirms by digest: it is stable while the plan is the same and
+      // ignores rows that come and go, such as rate-limit counters.
+      const reader = await pool.connect();
+      let shown;
+      try {
+        shown = await readPrelaunchResetPlan(reader);
+        await reader.query("DELETE FROM auth_rate_limit");
+        assert.equal((await readPrelaunchResetPlan(reader)).digest, shown.digest);
+      } finally {
+        reader.release();
+      }
+      assert.match(shown.digest, /^[a-f0-9]{64}$/);
+      assert.deepEqual(shown.kept, [admin.user.id]);
+
       await denied(() => reset.apply(admin.headers, "someone@else.invalid"), 400);
       await denied(() => reset.apply(admin.headers, null), 400);
       assert.equal(await count("auth_user"), 4);
@@ -228,6 +243,16 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         accounts: 0,
         businesses: 0,
       });
+
+      const after = await pool.connect();
+      try {
+        const empty = await readPrelaunchResetPlan(after);
+        assert.notEqual(empty.digest, shown.digest);
+        assert.equal(empty.accounts, 0);
+        assert.equal(empty.businesses, 0);
+      } finally {
+        after.release();
+      }
 
       const closed = createPrelaunchReset(auth, pool, () => prelaunchResetClosesAt);
       await denied(() => closed.plan(admin.headers), 410, "RESET_CLOSED");
