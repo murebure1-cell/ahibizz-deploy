@@ -39,7 +39,9 @@ export type IconName =
   | "share"
   | "eye"
   | "download"
-  | "logout";
+  | "logout"
+  | "lock"
+  | "route";
 
 const paths: Record<IconName, ReactNode> = {
   people: (
@@ -70,6 +72,13 @@ const paths: Record<IconName, ReactNode> = {
     <path d="M20.8 4.9a5.4 5.4 0 0 0-7.6 0L12 6.1l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6L12 21l8.8-8.5a5.4 5.4 0 0 0 0-7.6Z" />
   ),
   check: <path d="m5 12 4 4L19 6" />,
+  lock: (
+    <>
+      <rect x="5" y="11" width="14" height="9" rx="2.5" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </>
+  ),
+  route: <path d="M20.5 3.5 3.5 10.6l6.9 3 3 6.9Z" />,
   phone: <path d="m7 3 3 5-2 2a15 15 0 0 0 6 6l2-2 5 3c0 3-2 4-4 4C9 20 4 15 3 7c0-2 1-4 4-4Z" />,
   chevron: <path d="m9 5 7 7-7 7" />,
   clock: (

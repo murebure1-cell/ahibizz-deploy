@@ -43,6 +43,8 @@
   --ui-glass-soft: #ffffffb8;
   --ui-shadow: #0e121814;
   --ui-page: #f2f4f6;
+  --ui-over: #ffffffe0;
+  --ui-over-line: #ffffff99;
   --ui-ink: #0e1218;
   --ui-ink-raised: #1b2129;
   --ui-on-ink: #f3f5f7;
@@ -101,6 +103,8 @@
   --ui-glass-soft: #14181db8;
   --ui-shadow: #00000052;
   --ui-page: #0b0d10;
+  --ui-over: #0b0d108c;
+  --ui-over-line: #ffffff2e;
   --ui-ink: #14181d;
   --ui-ink-raised: #1f252d;
   color-scheme: dark;
@@ -244,18 +248,49 @@ a {
   width: 178px;
   height: auto;
 }
-.menu-toggle {
-  display: inline-flex;
+.header-actions {
+  display: flex;
   flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  margin-left: auto;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--line);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-surface);
+  gap: 8px;
+  margin-inline-start: auto;
+}
+/* Round glass controls: the same on a plain bar and over the home photograph. */
+.header-action {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--ui-text) 16%, transparent);
+  border-radius: 50%;
+  background: var(--ui-over);
   color: var(--ui-text);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  transition: scale 160ms var(--ease-out);
+}
+.header-action:active {
+  scale: 0.94;
+}
+.header-action svg {
+  width: 20px;
+  height: 20px;
+}
+@media (max-width: 760px) {
+  body:has([data-design="business-profile"]:not([data-embedded], [data-preview])) .site-header {
+    display: none;
+  }
+}
+/* On the home page the bar has no surface of its own: logo and controls lie over the photo. */
+body:has([data-design="home-hero"]) .site-header {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  border-bottom: 0;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 .header-menu[hidden] {
   display: none;

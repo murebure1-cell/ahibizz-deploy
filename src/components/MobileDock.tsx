@@ -12,19 +12,16 @@ import { useT } from "./i18n/LocaleProvider";
 import styles from "./mobile-dock.module.css";
 
 const home = { href: "/", label: msg("Početna"), icon: "home" } as const;
+const directory = { href: "/pretraga", label: msg("Pretraga"), icon: "search" } as const;
 const messages = {
   href: accountSectionPath("messages"),
   label: msg("Poruke"),
   icon: "message",
 } as const;
 const publish = { href: accountShortcuts.newBusiness, label: msg("Objavi"), icon: "plus" } as const;
-const notifications = {
-  href: accountShortcuts.notifications,
-  label: msg("Obavijesti"),
-  icon: "bell",
-} as const;
 const account = { href: "/nalog", label: msg("Moj nalog"), icon: "user" } as const;
-const destinations: NavigationDestination[] = [home, messages, publish, notifications, account];
+// Notifications open from the bell in the header; the dock carries search instead.
+const destinations: NavigationDestination[] = [home, directory, publish, messages, account];
 
 const sectionRoots = ["/pretraga", "/djelatnosti", "/ljudi", "/reels", "/blog", "/pomoc"];
 
@@ -46,17 +43,19 @@ export function MobileDock() {
       !sectionRoots.some((root) => pathname === root || pathname.startsWith(`${root}/`)))
   )
     return null;
-  const active = notificationsOpen
-    ? notifications.href
-    : current === messages.href
+  const active =
+    current === messages.href
       ? messages.href
       : accountPane ||
+          notificationsOpen ||
           pathname === accountShortcuts.savedSearches ||
           pathname === accountShortcuts.blocked
         ? account.href
         : pathname === "/"
           ? home.href
-          : null;
+          : current === directory.href
+            ? directory.href
+            : null;
   const activeIndex = destinations.findIndex(({ href }) => href === active);
   return (
     <nav className={styles.dock} aria-label={t("Glavna mobilna navigacija")} data-mobile-dock>

@@ -1,8 +1,10 @@
 "use client";
 
 import Form from "next/form";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
+import { directorySearchSuffix } from "../../lib/directory-navigation";
 import { Icon } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
 import type { CategoryOption } from "./BusinessEditor";
@@ -32,6 +34,7 @@ export function DirectorySearchForm({
   const [category, setCategory] = useState(categoryId);
   const [subcategory, setSubcategory] = useState(subcategoryId);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const cityField = useRef<HTMLInputElement>(null);
   const appliedFilters = [city, categoryId, subcategoryId, openNow].filter(Boolean).length;
   const router = useRouter();
   const refreshedMinute = useRef(0);
@@ -62,40 +65,79 @@ export function DirectorySearchForm({
     };
   }, [openNow, checkedAt, router]);
   const children = categories.filter((item) => item.parentId === category);
+  const featured =
+    featuredOnly === "all" ? "sve" : featuredOnly === "category" ? "kategorija" : "1";
+  // The chip switches the filter on its own, keeping every other filter as it is.
+  const openNowHref = `/pretraga${directorySearchSuffix({
+    q: query,
+    mjesto: city,
+    categoryId,
+    subcategoryId,
+    ...(featuredOnly ? { istaknute: featured } : {}),
+    ...(openNow ? {} : { otvoreno: "1" }),
+  })}`;
   return (
     <Form action="/pretraga" className={styles.form} data-design="search-form">
-      {featuredOnly && (
-        <input
-          type="hidden"
-          name="istaknute"
-          value={featuredOnly === "all" ? "sve" : featuredOnly === "category" ? "kategorija" : "1"}
-        />
-      )}
-      <label htmlFor={`${prefix}-query`}>
-        {t("Naziv ili usluga")}
-        <input
-          id={`${prefix}-query`}
-          name="q"
-          type="search"
-          defaultValue={query}
-          maxLength={120}
-          placeholder={t("Šta tražiš?")}
-        />
-      </label>
-      <button
-        type="button"
-        className={styles.filterToggle}
-        aria-controls={`${prefix}-filters`}
-        aria-expanded={filtersOpen}
-        onClick={() => setFiltersOpen((value) => !value)}
-      >
-        <Icon name="sliders" /> {t("Filteri")}
-        {appliedFilters > 0 && ` (${appliedFilters})`}
-      </button>
+      {featuredOnly && <input type="hidden" name="istaknute" value={featured} />}
+      {openNow && <input type="hidden" name="otvoreno" value="1" />}
+      <div className={styles.bar}>
+        <div className={styles.field}>
+          <button type="submit" aria-label={t("Pretraži")}>
+            <Icon name="search" />
+          </button>
+          <label htmlFor={`${prefix}-query`} className={styles.srOnly}>
+            {t("Naziv ili usluga")}
+          </label>
+          <input
+            id={`${prefix}-query`}
+            name="q"
+            type="search"
+            defaultValue={query}
+            maxLength={120}
+            placeholder={t("Šta tražiš?")}
+          />
+        </div>
+        <button
+          type="button"
+          className={styles.filterToggle}
+          aria-controls={`${prefix}-filters`}
+          aria-expanded={filtersOpen}
+          aria-label={`${t("Filteri")}${appliedFilters > 0 ? ` (${appliedFilters})` : ""}`}
+          onClick={() => setFiltersOpen((value) => !value)}
+        >
+          <Icon name="sliders" />
+          {appliedFilters > 0 && <span aria-hidden="true">{appliedFilters}</span>}
+        </button>
+      </div>
+      <div className={styles.chips}>
+        <button
+          type="button"
+          className={styles.chip}
+          data-active={Boolean(city) || undefined}
+          onClick={() => {
+            setFiltersOpen(true);
+            // The field is in the panel that has just been opened.
+            requestAnimationFrame(() => cityField.current?.focus());
+          }}
+        >
+          <Icon name="pin" />
+          <span dir="auto">{city || t("Grad")}</span>
+        </button>
+        <Link
+          className={styles.chip}
+          href={openNowHref}
+          prefetch={false}
+          aria-current={openNow ? "true" : undefined}
+          data-on={openNow || undefined}
+        >
+          {t("Otvoreno sada")}
+        </Link>
+      </div>
       <div className={styles.filters} id={`${prefix}-filters`} data-open={filtersOpen}>
         <label htmlFor={`${prefix}-city`}>
           {t("Grad ili mjesto")}
           <input
+            ref={cityField}
             id={`${prefix}-city`}
             name="mjesto"
             defaultValue={city}
@@ -142,15 +184,10 @@ export function DirectorySearchForm({
             </select>
           </label>
         )}
-        <label className={styles.hoursFilter}>
-          <input type="checkbox" name="otvoreno" value="1" defaultChecked={openNow} />
-          {t("Otvoreno sada")}
-        </label>
+        <button type="submit" className={styles.apply}>
+          {t("Pretraži")}
+        </button>
       </div>
-      <button type="submit">
-        <Icon name="search" />
-        {t("Pretraži")}
-      </button>
     </Form>
   );
 }

@@ -7,7 +7,14 @@ import { Icon } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
 import styles from "./business-rating.module.css";
 
-export function BusinessRating({ summary }: { summary?: ReviewSummary | null }) {
+export function BusinessRating({
+  summary,
+  inline = false,
+}: {
+  summary?: ReviewSummary | null;
+  /** One star, the value and the count on a single line, for a row of facts. */
+  inline?: boolean;
+}) {
   const { t, locale } = useI18n();
   if (
     !summary ||
@@ -29,6 +36,18 @@ export function BusinessRating({ summary }: { summary?: ReviewSummary | null }) 
     ),
     { count: summary.count },
   );
+  if (inline)
+    return (
+      <span
+        role="img"
+        className={styles.inline}
+        aria-label={`${t("{value} od 5", { value: label })} · ${count}`}
+      >
+        <Icon name="star" />
+        <strong aria-hidden="true">{label}</strong>
+        <small aria-hidden="true">{count}</small>
+      </span>
+    );
   return (
     <span
       role="img"

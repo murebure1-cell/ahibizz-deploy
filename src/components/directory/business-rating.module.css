@@ -6,43 +6,66 @@
   font-size: 14px;
   line-height: 1.4;
 }
+/* The value sits on the accent, as on the listing card. */
 .rating > strong {
   display: grid;
   place-items: center;
-  min-width: 42px;
+  min-width: 48px;
   min-height: 42px;
-  padding: 6px;
-  border-radius: var(--ui-radius-md);
+  padding: 0 8px;
+  border-radius: 13px;
   background: var(--ui-accent);
   color: var(--ui-on-accent);
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 800;
 }
 .rating small {
   display: block;
-  margin-top: 2px;
+  margin-top: 3px;
   font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+}
+.inline svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  stroke: none;
+}
+.inline strong {
+  font-weight: 700;
+}
+.inline small {
+  margin-inline-start: 4px;
+  color: var(--ui-muted);
+  font-size: inherit;
 }
 .stars {
   display: flex;
-  gap: 3px;
+  gap: 2px;
 }
 .stars > span {
   position: relative;
   display: inline-flex;
-  color: color-mix(in srgb, currentColor 35%, transparent);
 }
 .stars svg {
   display: block;
-  width: 15px;
-  height: 15px;
-  stroke-width: 1.5;
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  stroke: none;
+}
+/* Every star is drawn faint; the earned part is laid over it at full strength. */
+.stars > span > svg {
+  opacity: 0.35;
 }
 .stars > span > span {
   position: absolute;
   inset: 0;
-  color: var(--rating-star, currentColor);
-}
-.stars > span > span svg {
-  fill: currentColor;
 }

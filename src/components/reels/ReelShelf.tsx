@@ -33,6 +33,7 @@ export function ReelCards({
             )}
             className={styles.reelCard}
             prefetch={false}
+            aria-label={shelf ? `${reel.businessTitle}: ${reel.title}` : undefined}
           >
             {reel.hasPoster && (
               // biome-ignore lint/performance/noImgElement: Already normalized and served with live publication checks.
@@ -56,12 +57,16 @@ export function ReelCards({
                   sizes="30px"
                 />
               </span>
-              <span className={styles.businessName} dir="auto">
-                {reel.businessTitle}
-              </span>
+              {!shelf && (
+                <span className={styles.businessName} dir="auto">
+                  {reel.businessTitle}
+                </span>
+              )}
             </span>
             <span className={styles.cardText}>
-              <strong dir="auto">{reel.title}</strong>
+              {/* On the narrow shelf tile the business says whose reel it is; the full list
+                  and the viewer show the reel's own title. */}
+              <strong dir="auto">{shelf ? reel.businessTitle : reel.title}</strong>
               <span className={styles.duration}>
                 <Icon name="play" />
                 {reelDuration(reel.durationMs)}

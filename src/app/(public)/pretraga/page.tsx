@@ -9,7 +9,7 @@ import {
   type DirectorySearchParams,
   directorySearchSuffix,
 } from "../../../lib/directory-navigation";
-import { msg } from "../../../lib/i18n/translate";
+import { bosnianForm, msg } from "../../../lib/i18n/translate";
 import { canonicalSavedSearch } from "../../../lib/saved-search";
 import { getSearchBlockViewer } from "../../../server/account-blocks";
 import {
@@ -111,9 +111,7 @@ export default async function SearchPage({
   const filtered = Boolean(query || city || categoryId || subcategoryId || featuredOnly || openNow);
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
-      <header className={styles.intro}>
-        <h1>{t("Pretraga djelatnosti")}</h1>
-      </header>
+      <h1 className={styles.srOnly}>{t("Pretraga djelatnosti")}</h1>
       <DirectorySearchForm
         featuredOnly={featuredOnly}
         openNow={openNow}
@@ -128,30 +126,46 @@ export default async function SearchPage({
       <div>
         <section aria-label={t("Rezultati pretrage")}>
           <div className={styles.resultsHeading}>
-            <h2>
-              {filtered ? t("Rezultati pretrage") : t("Sve djelatnosti")}
-              {total !== undefined && (
-                <span className={styles.count} aria-live="polite">
-                  {" "}
-                  ({total})
-                </span>
-              )}
+            <h2 aria-live="polite">
+              {total === undefined
+                ? filtered
+                  ? t("Rezultati pretrage")
+                  : t("Sve djelatnosti")
+                : t(
+                    bosnianForm(
+                      total,
+                      msg("{count} djelatnost"),
+                      msg("{count} djelatnosti"),
+                      msg("{count} djelatnosti"),
+                    ),
+                    { count: total },
+                  )}
             </h2>
-            {filtered && !invalidFilters && <Link href="/pretraga">{t("Očisti pretragu")}</Link>}
-            {filtered && available && savedQuery && (
-              <SaveSearchButton
-                key={savedQuery}
-                filters={savedQuery}
-                label={
-                  activeFilters
-                    .map((item) => item.label)
-                    .filter(Boolean)
-                    .join(" · ")
-                    .slice(0, 100) || t(msg("Pretraga djelatnosti"))
-                }
-              />
-            )}
+            <nav className={styles.viewSwitch} aria-label={t("Prikaz rezultata")}>
+              <span aria-current="page">{t("Lista")}</span>
+              <Link href="/mapa" prefetch={false}>
+                {t("Mapa")}
+              </Link>
+            </nav>
           </div>
+          {filtered && (!invalidFilters || (available && savedQuery)) && (
+            <div className={styles.resultsActions}>
+              {!invalidFilters && <Link href="/pretraga">{t("Očisti pretragu")}</Link>}
+              {available && savedQuery && (
+                <SaveSearchButton
+                  key={savedQuery}
+                  filters={savedQuery}
+                  label={
+                    activeFilters
+                      .map((item) => item.label)
+                      .filter(Boolean)
+                      .join(" · ")
+                      .slice(0, 100) || t(msg("Pretraga djelatnosti"))
+                  }
+                />
+              )}
+            </div>
+          )}
           {filtered && available && (
             <ul className={styles.activeFilters} aria-label={t("Primijenjeni filteri")}>
               {activeFilters.map(({ key, label }) => {
