@@ -16,7 +16,7 @@ Vlasnik platforme odobrava naloge i sadržaj.
 
 | Lice | Ko ga koristi | Adresa |
 |---|---|---|
-| Javno | svako | `ahibizz.com` **[cilj]**, danas `ahibizz-deploy.octadeploy.com` |
+| Javno | svako | `ahibizz.com` **[važi od 25. 11. 2026.]** |
 | Nalog | prijavljeni član | `ahibizz.com/nalog` |
 | Administracija | vlasnik platforme | `admin.ahibizz.com` **[cilj]**, danas `/administracija` |
 | CMS | vlasnik platforme, kasnije urednik | `cms.ahibizz.com` **[cilj]**, danas dio `/administracija` |
@@ -26,7 +26,7 @@ Vlasnik platforme odobrava naloge i sadržaj.
 Jedna aplikacija, jedna baza, tri adrese. Adresa određuje koje se stranice smiju otvoriti; prijava
 je zajednička.
 
-**`ahibizz.com` — javno i nalog [važi, na staroj adresi]**
+**`ahibizz.com` — javno i nalog [važi]**
 
 - Početna `/`, pretraga `/pretraga`, djelatnost `/djelatnosti/[id]`, ljudi `/ljudi`, karta `/mapa`,
   Reels `/reels`, blog `/blog`, pomoć `/pomoc`.
@@ -154,8 +154,9 @@ zdravlja i same izmjene uživo.
 
 ## 11. Redoslijed do puštanja
 
-1. Očistiti probne podatke (jednokratna radnja vlasnika u administraciji).
-2. Prebaciti `ahibizz.com` na OctaDeploy; email ostaje na starom serveru.
+1. Očistiti probne podatke. Urađeno 25. 11. 2026.; vidi `docs/handover/OBRISANO.md`.
+2. Prebaciti `ahibizz.com` na OctaDeploy; email ostaje na starom serveru. Urađeno
+   25. 11. 2026.; vidi `docs/handover/OPERACIJE.md`.
 3. Odvojiti `admin.` i `cms.` po dijelu 2.
 4. Nova navigacija po dijelu 8.
 5. Zajedničke komponente (dugme, kartica, polje, lista) i prelazak ekrana na njih.

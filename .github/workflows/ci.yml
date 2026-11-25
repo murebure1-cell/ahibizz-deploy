@@ -132,12 +132,6 @@ jobs:
           CI: "true"
           AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
         run: node --import tsx --test tests/integration/business-favorites.test.mjs
-      - name: Test the prelaunch data reset against isolated PostgreSQL
-        timeout-minutes: 3
-        env:
-          CI: "true"
-          AHIBIZZ_TEST_DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
-        run: node --import tsx --test tests/integration/prelaunch-reset.test.mjs
       - name: Test ownership transfer and manual verification against isolated PostgreSQL
         timeout-minutes: 3
         env:

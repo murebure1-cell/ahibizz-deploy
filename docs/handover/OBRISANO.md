@@ -110,3 +110,20 @@ Po odluci vlasnika PayPal je uklonjen i iz donacija: donacije idu samo bankovnom
 Po odluci vlasnika uklonjene su sve trenutne opcije isticanja; novi model se dogovara naknadno. Obrisani su stranice `/istakni`, `/nalog/isticanja`, `/administracija/isticanja` te preusmjerenja `/oglasavanje` i `/paketi`, API `/api/promotions` i `/api/admin/promotions`, servis narudžbi i bankovnih uputa, radni ekran isticanja, red „Isticanja na čekanju” u administraciji, link „Istakni djelatnost” u Mojim djelatnostima, te sekcije „Oglasni prostor” i „Poziv na isticanje” na početnoj (u uređivaču izgleda vode se kao povučene, pa raniji objavljeni redoslijed ostaje čitljiv). Uklonjeni su i njihovi prevodi i testovi.
 
 Tabele iz migracije `0054_promotions.sql` i njihovi redovi nisu dirani. `activePromotionSql` i prikaz „Istaknuto” ostaju, pa isticanje koje je već bilo aktivno vrijedi do svog kraja; narudžbe na čekanju ostaju u bazi bez ekrana za potvrdu. Brisanje tabela traži posebnu odluku vlasnika i novu migraciju.
+
+## 25. 11. 2026. — Brisanje probnih podataka prije puštanja
+
+Po odluci vlasnika obrisane su sve djelatnosti (33) i svi nalozi osim vlasničkog (8), zajedno s
+onim što im je pripadalo: slike, Reels, poruke, recenzije, sačuvano, zahtjevi, historija odluka,
+narudžbe isticanja i oglašavanja te zahtjevi za dopunu kredita. Prije brisanja je provjereno da
+nema nijedne potvrđene uplate: dopune nisu bile odobrene, jedini paket je bio na čekanju bez
+plaćenih ciklusa, a `billing_receipt` i `billing_development_ledger` su bili prazni. Ostali su
+vlasnički nalog s prijavama, kategorije, članci, izgled početne, cjenovnici i potvrde o brisanju
+naloga. Stanje prije brisanja je u backupu `2026-11-25_08-51-27` na OctaDeployu (čuva se 30 dana).
+
+Brisanje je izvedeno jednokratnim alatom koji je iz baze čitao strane ključeve i okidače, praznio
+zavisne tabele u jednoj transakciji i tek onda uklanjao naloge, jer ih šema inače štiti. Alat je
+imao vlasničku stranicu `/administracija/ciscenje` i komandu za kontejner; oboje je uklonjeno
+istog dana, zajedno s testovima. U `platform_settings` ostaje zapis
+`maintenance.prelaunch_reset` s vremenom i brojevima. Ako takav alat ponovo zatreba, nalazi se u
+historiji repozitorija (PR #34 i #36).
