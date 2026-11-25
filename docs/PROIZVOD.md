@@ -31,12 +31,20 @@ Stare oznake `basic`, `business`, `premium` žive samo u arhivi ranijih ugovora 
 | Djelatnosti | 1 | do 3 | do 10 |
 | Cijena mjesečno | besplatno prvih 12 mjeseci, zatim 19,90 KM | 39,90 KM | 79,90 KM |
 | Analitika | osnovna | proširena | puna |
+| Reels | 1 sedmično | 3 sedmično | 1 svaki dan |
 | Oznaka na profilu | „Basic”, neutralna | „Startup” | „Business”, zlatna slova |
 
 Brojevi djelatnosti i cijene su **[odlučeno]**. Granica broja djelatnosti se provodi
 **[postoji]**; cijene se još nigdje ne naplaćuju ni prikazuju. Administratorski nalog nema paket
 ni granicu. Paket se ne može spustiti ispod broja djelatnosti koje nalog već vodi; arhivirane
 djelatnosti se ne broje.
+
+Broj Reelsa po paketu je **[odlučeno]**: Basic jedan sedmično, Startup tri sedmično, Business jedan
+svaki dan. Kod to još ne provodi po paketu **[novo]**: danas dopušta najviše 3 aktivna Reela po
+djelatnosti i 12 po nalogu, a objavljeni Reel se prikazuje 24 sata **[postoji]**. Reels se prikazuju
+na početnoj **[postoji]** i ostaju tamo i u novom izgledu **[odlučeno]**. Broj važi po nalogu, za
+sve njegove djelatnosti zajedno **[odlučeno]**. Nije rečeno kojim danom počinje sedmica ni ostaje
+li prikaz od 24 sata **[pitanje]**.
 
 Pravila koja već važe i ostaju:
 
@@ -153,7 +161,15 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
 ## 9. Izgled
 
 - **Minimalizam:** jedna mirna površina, tanke linije, mnogo prostora, malo boja.
-- **Zlato** samo za oznaku Business i za glavnu radnju na ekranu.
+- **Paleta [odlučeno 25. 11. 2026.]:** isti logo, nove boje. Grafitna osnova u dvije teme (tamna i
+  svijetla) i jedan akcenat za glavnu radnju: mint na tamnoj, tirkizna na svijetloj. Vrijednosti su
+  u `src/app/globals.css` (`--ui-*`); boja se u stilove ne upisuje direktno.
+- **Zlato** samo za riječ Business, uvijek na tamnoj podlozi. Glavna radnja je u boji akcenta.
+- **Pismo:** Manrope za cijeli interfejs, s vlastitog servera; arapski tekst koristi sistemsko pismo.
+- **Oblik:** jedna ljestvica zaobljenja (`--ui-radius-xs` do `--ui-radius-xl`): kontrole 16 px,
+  kartice 24 px, oznake potpuno zaobljene.
+- **Donja traka:** lebdi iznad sadržaja, samo ikone, tačka ispod trenutne i krug u boji akcenta za
+  objavu.
 - **Zamućenje** samo na slojevima koji leže preko sadržaja: donja traka, meni, listovi koji
   izlaze odozdo, prelaz pri zamjeni slike. Ne na karticama.
 - **Pokret:** kratak (150–250 ms) i sa svrhom. Tačkice za „učitavam” i za „novo”.
@@ -170,7 +186,7 @@ Svaka faza završava nečim što se vidi i može probati.
    Iz ove faze ostaju aktivne prijave po uređajima i zadnji razgovori na pregledu.
 2. Tok dodavanja djelatnosti s lokacijom i PIN-om; nova lista kategorija.
 3. Jelovnik i porijeklo mesa; vezivanje vozila i soba u tok.
-4. Prikupljanje analitike i prikaz po paketu.
+4. Prikupljanje analitike i prikaz po paketu; broj Reelsa po paketu.
 5. Verifikacija iz postavki i značke.
 6. Sponzorisano po novom modelu, s rezultatima.
 7. Naplata na webu.
@@ -185,3 +201,4 @@ Zajedničke komponente i izgled grade se uz prvu fazu i koriste u svim ostalim.
 4. Tačan spisak potkategorija.
 5. Primjeri animacija koje vlasnik želi poslati kao uzor.
 6. Da li vlastitu naslovnu sliku profila dobijaju svi paketi.
+7. Reels: kojim danom počinje sedmica i ostaje li prikaz od 24 sata.

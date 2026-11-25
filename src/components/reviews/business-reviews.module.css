@@ -1,7 +1,7 @@
 .section {
   padding: clamp(20px, 4vw, 32px);
   border: 1px solid var(--ui-border);
-  border-radius: 24px;
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-surface);
   color: var(--ui-text);
 }
@@ -28,7 +28,7 @@
 .refresh {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
   color: inherit;
@@ -78,13 +78,13 @@
 }
 .stars {
   margin-left: auto;
-  color: #b7882f;
+  color: var(--ui-accent-text);
   letter-spacing: 1px;
   font-size: 17px;
   white-space: nowrap;
 }
 span.stars span {
-  color: #c7ced3;
+  color: var(--ui-border-strong);
 }
 .review p {
   font-size: 15px;
@@ -142,11 +142,11 @@ span.stars span {
   width: 40px;
   height: 40px;
   border: 1px solid var(--ui-border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   display: grid;
   place-items: center;
   font-size: 24px;
-  color: #a3aeb6;
+  color: var(--ui-border-strong);
 }
 .rating label[data-selected="true"] > span:first-of-type {
   background: var(--ui-accent-soft);
@@ -167,7 +167,7 @@ span.stars span {
   resize: vertical;
   min-height: 100px;
   border: 1px solid var(--ui-border);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   padding: 13px;
   background: var(--ui-surface);
   color: inherit;
@@ -179,7 +179,7 @@ span.stars span {
 .signin {
   padding: 12px 16px;
   min-height: 44px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   font: inherit;
   font-size: 15px;
   font-weight: 650;

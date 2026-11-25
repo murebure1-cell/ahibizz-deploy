@@ -4,7 +4,7 @@ import test from "node:test";
 import { runInNewContext } from "node:vm";
 
 const origin = "https://app.example";
-const currentCache = "ahibizz-app-static-v2";
+const currentCache = "ahibizz-app-static-v3";
 const offlinePath = "/app-offline.html";
 const workerSource = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
 

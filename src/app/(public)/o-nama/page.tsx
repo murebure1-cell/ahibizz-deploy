@@ -45,7 +45,7 @@ export default async function AboutPage() {
           <h2>{t("Poslovni imenik")}</h2>
           <p>{t("Pretraži djelatnosti po nazivu, kategoriji ili mjestu.")}</p>
         </div>
-        <Link className="button button-navy" href="/pretraga">
+        <Link className="button button-primary" href="/pretraga">
           {t("Pogledaj imenik")}
           <Icon name="arrow" />
         </Link>
@@ -56,7 +56,7 @@ export default async function AboutPage() {
             <h2>{t("Podrži razvoj AhiBizza.")}</h2>
             <p>{t("Dobrovoljna podrška razvoju platforme.")}</p>
           </div>
-          <Link className="button button-navy" href="/podrzi">
+          <Link className="button button-primary" href="/podrzi">
             {t("Doniraj")}
             <Icon name="arrow" />
           </Link>

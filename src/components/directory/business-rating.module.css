@@ -12,11 +12,9 @@
   min-width: 42px;
   min-height: 42px;
   padding: 6px;
-  border: 1px solid #ffffff30;
-  border-radius: 10px;
-  background: #183349b8;
-  color: #fff;
-  backdrop-filter: blur(10px);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
   font-size: 16px;
   font-weight: 700;
 }
@@ -32,7 +30,7 @@
 .stars > span {
   position: relative;
   display: inline-flex;
-  color: #d4bd8a;
+  color: color-mix(in srgb, currentColor 35%, transparent);
 }
 .stars svg {
   display: block;
@@ -43,7 +41,7 @@
 .stars > span > span {
   position: absolute;
   inset: 0;
-  color: #e8b94f;
+  color: var(--rating-star, currentColor);
 }
 .stars > span > span svg {
   fill: currentColor;

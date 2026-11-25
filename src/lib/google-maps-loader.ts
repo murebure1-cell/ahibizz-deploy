@@ -94,9 +94,9 @@ export function loadGoogleMaps(key: string): Promise<GoogleMapsApi> {
   return loader;
 }
 
-/** AhiBizz navy with a gold rim; logos are drawn in white, initials in gold. */
-export const mapPinColour = "#173047";
-const pinGold = "#e9ca8a";
+/** Graphite with a mint rim; logos are drawn in white, initials in mint. */
+export const mapPinColour = "#14181d";
+const pinAccent = "#7be3b7";
 const pinWidth = 46;
 const pinHeight = 58;
 
@@ -116,7 +116,7 @@ function pinCanvas() {
   context.fillStyle = mapPinColour;
   context.fill();
   context.lineWidth = 2.5;
-  context.strokeStyle = pinGold;
+  context.strokeStyle = pinAccent;
   context.stroke();
   return { canvas, context, centre, cy: radius + 2, inner: radius - 7 };
 }
@@ -131,12 +131,12 @@ export function businessInitials(title: string): string {
   return letters.join("").toLocaleUpperCase("bs") || "A";
 }
 
-/** Pin with the business initials in gold, used without a logo or when the logo is unreadable. */
+/** Pin with the business initials in mint, used without a logo or when the logo is unreadable. */
 export function plainMapPin(title?: string): string {
   const { canvas, context, centre, cy } = pinCanvas();
   if (title) {
     const initials = businessInitials(title);
-    context.fillStyle = pinGold;
+    context.fillStyle = pinAccent;
     context.font = `700 ${initials.length > 1 ? 15 : 18}px system-ui, -apple-system, "Segoe UI", sans-serif`;
     context.textAlign = "center";
     context.textBaseline = "middle";

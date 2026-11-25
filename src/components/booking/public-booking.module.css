@@ -6,7 +6,7 @@
 .booking {
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
-  border-radius: 17px;
+  border-radius: var(--ui-radius-lg);
   padding: 27px;
 }
 .heading {
@@ -21,7 +21,7 @@
   width: 44px;
   height: 44px;
   background: var(--ui-surface-soft);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   color: var(--ui-accent-text);
 }
 .heading p {
@@ -50,7 +50,7 @@
   font-size: 16px;
   color: var(--ui-text);
   border: 1px solid var(--ui-border);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   background: var(--ui-surface-soft);
   width: 100%;
   min-height: 46px;
@@ -73,7 +73,7 @@
 }
 .month button {
   border: 1px solid var(--ui-border);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   background: var(--ui-surface);
   color: var(--ui-text-secondary);
   display: grid;
@@ -110,16 +110,16 @@
   padding: 5px;
   border: 1px solid transparent;
   background: transparent;
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   color: var(--ui-text-secondary);
 }
 .days button:hover {
   background: var(--ui-surface-hover);
 }
 .days button[aria-pressed="true"] {
-  background: var(--ui-primary);
-  border-color: var(--ui-primary);
-  color: var(--ui-on-primary);
+  background: var(--ui-inverse);
+  border-color: var(--ui-inverse);
+  color: var(--ui-on-inverse);
 }
 .days button:disabled {
   opacity: 0.27;
@@ -159,7 +159,7 @@
   min-height: 44px;
   padding: 8px 5px;
   border: 1px solid var(--ui-border);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   background: var(--ui-surface);
   color: var(--ui-text-secondary);
 }
@@ -204,8 +204,8 @@
   font-size: 14px;
   min-height: 46px;
   padding: 12px 17px;
-  border: 1px solid var(--ui-accent-border);
-  border-radius: 10px;
+  border: 1px solid var(--ui-accent);
+  border-radius: var(--ui-radius-sm);
   background: var(--ui-accent);
   color: var(--ui-on-accent);
   display: inline-flex;
@@ -234,7 +234,7 @@
   background: var(--ui-danger-soft);
   padding: 15px;
   border: 1px solid var(--ui-danger-border);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   margin: 16px 0;
 }
 .error > a,
@@ -263,7 +263,7 @@
   padding: 22px;
   border: 1px solid var(--ui-border);
   background: var(--ui-success-soft);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   font-size: 14px;
   line-height: 1.8;
   color: var(--ui-success);
@@ -312,7 +312,7 @@
   border: 1px solid var(--ui-border);
   background: var(--ui-surface);
   color: var(--ui-text-secondary);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
 }
 .viewSwitch {
   display: inline-flex;
@@ -321,14 +321,14 @@
   padding: 4px;
   margin: 0 0 22px;
   border: 1px solid var(--ui-border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface-soft);
 }
 .viewSwitch button {
   min-height: 44px;
   padding: 10px 20px;
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   background: transparent;
   color: var(--ui-muted);
   font: inherit;
@@ -339,7 +339,7 @@
   border-color: var(--ui-border);
   background: var(--ui-surface);
   color: var(--ui-text);
-  box-shadow: 0 2px 5px #19334708;
+  box-shadow: 0 2px 5px #0e121808;
 }
 .viewSwitch button:focus-visible {
   outline: 2px solid var(--ui-focus);
@@ -369,7 +369,7 @@
   gap: 22px;
   padding: 24px;
   border: 1px solid var(--ui-border);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface);
   min-width: 0;
 }
@@ -428,7 +428,7 @@
 .empty {
   padding: 45px 20px;
   border: 1px dashed var(--ui-border);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface);
   text-align: center;
 }
@@ -450,7 +450,7 @@
 @media (max-width: 600px) {
   .booking {
     padding: 22px 17px;
-    border-radius: 14px;
+    border-radius: var(--ui-radius-md);
   }
   .heading h2,
   .listHeading h2 {

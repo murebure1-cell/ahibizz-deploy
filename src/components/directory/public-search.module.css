@@ -18,7 +18,7 @@
   gap: 13px;
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
-  border-radius: 16px;
+  border-radius: var(--ui-radius-lg);
   padding: 22px;
   margin-bottom: 30px;
 }
@@ -46,7 +46,7 @@
   padding: 11px 12px;
   background: var(--ui-surface-soft);
   border: 1px solid var(--ui-border);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   color: var(--ui-text);
 }
 .form select:disabled {
@@ -60,8 +60,8 @@
   min-height: 46px;
   background: var(--ui-accent);
   color: var(--ui-on-accent);
-  border: 1px solid var(--ui-accent-border);
-  border-radius: 9px;
+  border: 1px solid var(--ui-accent);
+  border-radius: var(--ui-radius-xs);
   padding: 11px 17px;
   font: inherit;
   font-size: 14px;
@@ -145,7 +145,7 @@
   min-height: 44px;
   padding: 6px 12px;
   border: 1px solid var(--ui-border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface);
   font-size: 14px;
   color: var(--ui-text);
@@ -160,7 +160,7 @@
 }
 .unavailable {
   padding: 32px;
-  border-radius: 15px;
+  border-radius: var(--ui-radius-md);
   border: 1px solid var(--ui-border);
   background: var(--ui-surface);
 }
@@ -183,7 +183,7 @@
 .pagination a {
   min-height: 44px;
   padding: 12px 17px;
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   border: 1px solid var(--ui-border);
   background: var(--ui-surface);
   font-size: 14px;

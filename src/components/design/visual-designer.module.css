@@ -54,7 +54,7 @@
 .editor textarea {
   border: 1px solid var(--line);
   background: var(--panel);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
 }
 .editor button,
 .editor select {
@@ -75,7 +75,7 @@
 .editor input:focus-visible,
 .editor textarea:focus-visible,
 .editor summary:focus-visible {
-  outline: 3px solid #3286b3;
+  outline: 3px solid var(--ui-focus);
   outline-offset: 2px;
 }
 .editor select,
@@ -86,9 +86,9 @@
   font-size: 15px;
 }
 .editor .primary {
-  background: #e8bb5b;
-  color: #172b3f;
-  border-color: #d2a346;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  border-color: var(--ui-accent);
 }
 .actions {
   flex-wrap: wrap;
@@ -111,8 +111,8 @@
   padding: 12px;
   background: var(--panel);
   border: 1px solid var(--line);
-  box-shadow: 0 4px 18px #10273d1a;
-  border-radius: 14px;
+  box-shadow: 0 4px 18px #0e12181a;
+  border-radius: var(--ui-radius-md);
   margin-bottom: 10px;
 }
 .confirm p {
@@ -125,7 +125,7 @@
   padding: 12px 16px;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   margin-bottom: 14px;
 }
 .toolbar > label,
@@ -146,7 +146,7 @@
 .segment {
   margin-inline-start: auto;
   background: var(--surface);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   padding: 3px;
   gap: 2px;
 }
@@ -159,7 +159,7 @@
 .mobileNav button[aria-pressed="true"] {
   background: var(--panel);
   border-color: var(--line);
-  box-shadow: 0 2px 5px #10273d12;
+  box-shadow: 0 2px 5px #0e121812;
 }
 .workspace {
   display: grid;
@@ -170,7 +170,7 @@
 .stage,
 .inspector {
   min-width: 0;
-  border-radius: 15px;
+  border-radius: var(--ui-radius-md);
   border: 1px solid var(--line);
 }
 .stage {
@@ -198,8 +198,8 @@
   margin-inline: auto;
   border: 1px solid var(--line);
   background: var(--panel);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px #10273d0c;
+  border-radius: var(--ui-radius-md);
+  box-shadow: 0 4px 16px #0e12180c;
   overflow: hidden;
   box-sizing: content-box;
   max-width: 100%;
@@ -301,7 +301,7 @@
 .alpha input {
   width: 40%;
   flex: 1;
-  accent-color: #bc8a26;
+  accent-color: var(--ui-accent);
 }
 .orderList {
   list-style: none;
@@ -376,7 +376,7 @@
     background: var(--surface);
     border: 1px solid var(--line);
     padding: 3px;
-    border-radius: 11px;
+    border-radius: var(--ui-radius-sm);
     margin-bottom: 8px;
   }
   .mobileNav button {

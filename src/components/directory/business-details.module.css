@@ -6,18 +6,18 @@
   min-height: 32px;
   padding: 6px 11px;
   border: 1px solid #ffffff80;
-  border-radius: 20px;
-  background: #eef2f5f2;
-  color: #334758;
+  border-radius: var(--ui-radius-xl);
+  background: #f2f4f6f2;
+  color: #2a313b;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.4;
-  box-shadow: 0 3px 12px #132e3c12;
+  box-shadow: 0 3px 12px #0e121812;
   backdrop-filter: blur(10px);
 }
 .openStatus[data-open="true"] {
-  background: #def3eaf2;
-  color: #116347;
+  background: #dcf1ecf2;
+  color: #0b6459;
 }
 .openStatus svg {
   width: 15px;
@@ -126,9 +126,9 @@
   min-width: 0;
   padding: 22px;
   border: 1px solid var(--ui-border);
-  border-radius: 20px;
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-surface);
-  box-shadow: 0 8px 28px #15334706;
+  box-shadow: 0 8px 28px #0e121806;
 }
 .panel legend {
   font-weight: 700;
@@ -163,7 +163,7 @@
   min-height: 42px;
   padding: 9px 10px;
   border: 1px solid var(--ui-border);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   background: var(--ui-surface);
   color: var(--ui-text);
   font: inherit;
@@ -212,7 +212,7 @@
   width: 38px;
   padding: 8px;
   border: 1px solid var(--ui-border);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   background: var(--ui-surface-soft);
   color: var(--ui-text-secondary);
 }

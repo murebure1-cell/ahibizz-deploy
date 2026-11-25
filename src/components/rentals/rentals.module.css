@@ -15,7 +15,7 @@
   padding: clamp(16px, 3vw, 32px);
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
-  border-radius: 20px;
+  border-radius: var(--ui-radius-xl);
 }
 .panel h2,
 .panel h3,
@@ -67,7 +67,7 @@
   font: inherit;
   cursor: pointer;
   color: var(--ui-text);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
 }
 .primary,
 .secondary {
@@ -114,7 +114,7 @@
 }
 .card {
   border: 1px solid var(--ui-border);
-  border-radius: 16px;
+  border-radius: var(--ui-radius-lg);
   padding: clamp(12px, 2.5vw, 22px);
 }
 .carHeader {
@@ -141,7 +141,7 @@
   width: 88px;
   height: 64px;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
 }
 .carIcon {
   display: grid;
@@ -154,7 +154,7 @@
   height: 35px;
 }
 .badge {
-  border-radius: 18px;
+  border-radius: var(--ui-radius-lg);
   font-size: 0.8125rem;
   font-weight: 700;
   background: var(--ui-surface-soft);
@@ -214,7 +214,7 @@
   min-width: 0;
   width: 100%;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   padding: 9px 10px;
   min-height: 44px;
   background: var(--ui-input);
@@ -264,7 +264,7 @@
   min-width: 0;
 }
 .range {
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface-soft);
   padding: 14px;
 }
@@ -299,8 +299,8 @@
   font-size: 0.875rem;
 }
 .days button[aria-pressed="true"] {
-  background: var(--ui-primary);
-  color: var(--ui-on-primary);
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
 }
 .days button[data-busy]::after {
   content: "";
@@ -322,7 +322,7 @@
 }
 .entry {
   background: var(--ui-surface-soft);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   padding: 12px;
   gap: 7px;
 }

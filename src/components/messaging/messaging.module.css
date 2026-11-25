@@ -37,7 +37,7 @@
   min-height: 410px;
   height: clamp(410px, 72dvh, 760px);
   border: 1px solid var(--line);
-  border-radius: 24px;
+  border-radius: var(--ui-radius-xl);
   overflow: hidden;
   background: var(--ui-surface);
   box-shadow: 0 12px 38px var(--ui-shadow);
@@ -84,7 +84,7 @@
   min-height: 44px;
   padding: 0 9px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface);
   color: var(--ui-text-secondary);
 }
@@ -111,7 +111,7 @@
   min-width: 0;
   padding: 0 10px;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface-soft);
   color: var(--muted);
 }
@@ -150,7 +150,7 @@
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-xs);
   width: 40px;
   height: 44px;
   flex: none;
@@ -174,7 +174,7 @@
 .tabs {
   padding: 3px;
   border: 1px solid var(--line);
-  border-radius: 13px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface-soft);
 }
 .filterGroup {
@@ -186,7 +186,7 @@
   min-height: 38px;
   padding: 5px 10px;
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   background: transparent;
   color: var(--muted);
   font-size: 0.8125rem;
@@ -233,7 +233,7 @@
   padding: 11px 8px;
   border: 1px solid transparent;
   border-bottom-color: color-mix(in srgb, var(--line) 58%, transparent);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-md);
   background: transparent;
   color: var(--ink);
   text-align: start;
@@ -329,7 +329,7 @@
   min-width: 20px;
   height: 20px;
   padding: 0 5px;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-xs);
   background: var(--ui-accent);
   color: var(--ui-on-accent);
   font-size: 0.75rem;
@@ -376,7 +376,7 @@
   margin-bottom: 8px;
   place-items: center;
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-surface);
   color: var(--ui-accent-text);
 }
@@ -402,7 +402,7 @@
   min-height: 38px;
   padding: 4px 7px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-xs);
   background: transparent;
   color: var(--ink);
   font-weight: 650;
@@ -484,7 +484,7 @@
   max-width: 240px;
   padding: 5px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface);
   box-shadow: 0 10px 30px var(--ui-shadow);
 }
@@ -497,7 +497,7 @@
   min-height: 44px;
   padding: 8px 10px;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   background: transparent;
   color: var(--ink);
   text-align: start;
@@ -524,7 +524,7 @@
   margin: 13px auto 14px;
   padding: 4px 10px;
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-glass);
   color: var(--muted);
   font-size: 0.75rem;
@@ -596,7 +596,7 @@
   margin: 0 auto 13px;
   padding: 6px 12px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface);
   color: var(--ui-text-secondary);
   font-size: 0.8125rem;
@@ -626,7 +626,7 @@
   resize: vertical;
   padding: 10px 12px;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 13px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-input);
   color: var(--ink);
   font-size: 1rem;
@@ -642,8 +642,8 @@
   gap: 6px;
   min-height: 46px;
   padding: 0 12px;
-  border: 1px solid var(--ui-accent-border);
-  border-radius: 13px;
+  border: 1px solid var(--ui-accent);
+  border-radius: var(--ui-radius-md);
   background: var(--ui-accent);
   color: var(--ui-on-accent);
   font-size: 0.875rem;
@@ -679,7 +679,7 @@
   margin: 8px 10px;
   padding: 9px 12px;
   border: 1px solid var(--line);
-  border-radius: 13px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface-soft);
   color: var(--ui-text-secondary);
   font-size: 0.875rem;
@@ -721,7 +721,7 @@
   min-height: 36px;
   padding: 3px 10px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-xs);
   background: var(--ui-surface);
   color: var(--ink);
   font-weight: 650;
@@ -756,7 +756,7 @@
     display: flex;
     min-height: 305px;
     height: min(625px, 74dvh);
-    border-radius: 18px;
+    border-radius: var(--ui-radius-lg);
   }
   .sidebar,
   .conversation {

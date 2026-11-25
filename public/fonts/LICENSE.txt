@@ -1,3 +1,3 @@
-Bricolage Grotesque, copyright The Bricolage Grotesque Project Authors (https://github.com/ateliertriay/bricolage).
+Manrope, copyright 2019 The Manrope Project Authors (https://github.com/sharanda/manrope).
 Licensed under the SIL Open Font License 1.1: https://openfontlicense.org
-Files fetched from Google Fonts on 2026-11-24 (latin and latin-ext variable subsets).
+Files taken from the npm package @fontsource-variable/manrope 5.3.0 on 2026-11-25 (latin and latin-ext variable subsets).

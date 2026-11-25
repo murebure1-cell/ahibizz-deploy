@@ -26,7 +26,7 @@
 .listPanel {
   background: var(--ui-surface);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: var(--ui-radius-lg);
 }
 .option {
   display: flex;
@@ -37,7 +37,7 @@
 }
 .option input {
   appearance: auto;
-  accent-color: var(--gold);
+  accent-color: var(--ui-accent);
   margin: 4px 0 0;
   width: 18px;
   height: 18px;
@@ -73,7 +73,7 @@
   height: 38px;
   place-items: center;
   background: var(--ui-surface-soft);
-  border-radius: 11px;
+  border-radius: var(--ui-radius-sm);
 }
 .personIcon svg,
 .backLink svg {
@@ -100,7 +100,7 @@
   color: var(--ink);
   padding: 6px 10px;
   min-height: 40px;
-  border-radius: 9px;
+  border-radius: var(--ui-radius-xs);
   cursor: pointer;
 }
 .workspace button:disabled {
@@ -109,7 +109,7 @@
 }
 .workspace button:hover:enabled,
 .backLink:hover {
-  border-color: var(--gold);
+  border-color: var(--ui-accent);
 }
 .workspace button.quiet {
   border-color: transparent;

@@ -1,5 +1,5 @@
 // Public assets only. Never store API responses, account pages, messages or user media.
-const CACHE = "ahibizz-app-static-v2";
+const CACHE = "ahibizz-app-static-v3";
 const OFFLINE = "/app-offline.html";
 const SHELL = [OFFLINE, "/app-icons/icon-192.png", "/app-icons/icon-512.png", "/app-icons/maskable-512.png", "/app-icons/apple-touch-icon.png"];
 

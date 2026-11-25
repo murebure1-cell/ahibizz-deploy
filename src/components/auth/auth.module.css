@@ -6,9 +6,9 @@
   overflow: hidden;
   min-height: 610px;
   border: 1px solid var(--ui-border);
-  border-radius: 24px;
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-surface);
-  box-shadow: 0 20px 65px #17304706;
+  box-shadow: 0 20px 65px #0e121806;
 }
 .card {
   padding: 35px 48px 42px;
@@ -51,7 +51,7 @@
 .card input:not([type="checkbox"]) {
   width: 100%;
   border: 1px solid var(--ui-border);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   background: var(--ui-input);
   color: var(--ui-text);
   min-height: 48px;
@@ -150,7 +150,7 @@
   width: 100%;
   min-height: 47px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   background: var(--ui-accent);
   color: var(--ui-on-accent);
   font: inherit;
@@ -174,7 +174,7 @@
   background: var(--ui-success-soft);
   color: var(--ui-accent-text);
   border: 1px solid var(--ui-accent-border);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   font-size: 14px;
   line-height: 1.6;
 }
@@ -205,13 +205,13 @@
   margin-top: 12px;
 }
 .story {
-  background: linear-gradient(155deg, #17354b, #102437);
+  background: linear-gradient(155deg, var(--ui-ink-raised), var(--ui-ink));
   position: relative;
   padding: 70px 40px;
   display: flex;
   justify-content: center;
   flex-direction: column;
-  color: #fff;
+  color: var(--ui-on-ink);
   overflow: hidden;
 }
 .story::after {
@@ -219,7 +219,7 @@
   position: absolute;
   width: 310px;
   height: 310px;
-  border: 1px solid #d9b5613d;
+  border: 1px solid var(--ui-ink-line);
   transform: rotate(24deg);
   border-radius: 55px;
   right: -175px;
@@ -237,7 +237,7 @@
   position: absolute;
   bottom: 39px;
   left: 40px;
-  color: #dfbc70;
+  color: var(--ui-ink-accent);
   font-weight: 700;
   font-style: normal;
 }
@@ -248,7 +248,7 @@
     margin: 24px auto 40px;
     width: calc(100% - 32px);
     min-height: 0;
-    border-radius: 18px;
+    border-radius: var(--ui-radius-lg);
   }
   .card {
     padding: 23px 24px 30px;
@@ -310,7 +310,7 @@
   min-height: 47px;
   padding: 12px;
   border: 1px solid #dadce0;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-sm);
   background: #ffffff;
   color: #1f1f1f;
   font: inherit;

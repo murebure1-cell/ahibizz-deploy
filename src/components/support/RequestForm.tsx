@@ -35,7 +35,7 @@ export function RequestForm({ actor, target }: { actor: string; target: SupportT
         </label>
       )}
       {result.message && <p role="alert">{t(result.message)}</p>}
-      <button disabled={pending} className="button button-navy" type="submit">
+      <button disabled={pending} className="button button-primary" type="submit">
         {pending ? t("Šaljem…") : deletion ? t("Zatraži brisanje") : t("Pošalji prijavu")}
       </button>
     </form>
