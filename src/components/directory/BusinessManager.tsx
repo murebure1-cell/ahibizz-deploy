@@ -69,6 +69,7 @@ import {
 import { BusinessLogo } from "./BusinessLogo";
 import { BusinessMediaManager } from "./BusinessMediaManager";
 import { BusinessOwnershipManager } from "./BusinessOwnershipManager";
+import hub from "./business-hub.module.css";
 import { DirectoryResultCard } from "./DirectoryResultCard";
 import styles from "./directory.module.css";
 import { PublishBar, PublishHead, PublishIntro, publishStyles } from "./PublishSteps";
@@ -224,6 +225,8 @@ export function BusinessManager({
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [editing, setEditing] = useState<DirectoryBusiness | null | undefined>(undefined);
   const [detailsBusiness, setDetailsBusiness] = useState<DirectoryBusiness | null>(null);
+  // Hours opened from the list go back to the list, not to the business's form.
+  const detailsFromList = useRef(false);
   const [stayBusiness, setStayBusiness] = useState<DirectoryBusiness | null>(null);
   const [rentalBusiness, setRentalBusiness] = useState<DirectoryBusiness | null>(null);
   const [ownershipBusiness, setOwnershipBusiness] = useState<DirectoryBusiness | null>(null);
@@ -1122,6 +1125,8 @@ export function BusinessManager({
         }}
         onBack={() => {
           setDetailsBusiness(null);
+          if (detailsFromList.current) setEditing(undefined);
+          detailsFromList.current = false;
           setRefresh((value) => value + 1);
         }}
       />
@@ -1669,73 +1674,55 @@ export function BusinessManager({
                 item.hasRentalVehicles ||
                 hasRentalCategory(categories, item.categoryId, item.subcategoryId);
               return (
-                <article key={item.id} className={styles.business}>
-                  <span className={styles.monogram} aria-hidden="true">
-                    {item.media?.logo && mediaImageUrl(item.id, item.media.logo, "mine") ? (
-                      <BusinessLogo
-                        src={mediaImageUrl(item.id, item.media.logo, "mine") as string}
-                        alt=""
-                        monogram={item.title.slice(0, 1).toLocaleUpperCase("bs")}
-                        sizes="50px"
-                      />
-                    ) : (
-                      item.title.slice(0, 1).toLocaleUpperCase("bs")
-                    )}
-                  </span>
-                  <div className={styles.businessInfo}>
-                    <h2 dir="auto">{item.title}</h2>
-                    {item.city && <p dir="auto">{item.city}</p>}
-                    <span className={styles.status} data-status={item.status}>
+                <article key={item.id} className={hub.hub} data-design="business-hub">
+                  <div className={hub.top}>
+                    <span className={hub.logo} aria-hidden="true">
+                      {item.media?.logo && mediaImageUrl(item.id, item.media.logo, "mine") ? (
+                        <BusinessLogo
+                          src={mediaImageUrl(item.id, item.media.logo, "mine") as string}
+                          alt=""
+                          monogram={item.title.slice(0, 1).toLocaleUpperCase("bs")}
+                          sizes="52px"
+                        />
+                      ) : (
+                        item.title.slice(0, 1).toLocaleUpperCase("bs")
+                      )}
+                    </span>
+                    <div className={hub.who}>
+                      <h2 dir="auto">{item.title}</h2>
+                      {item.city && <p dir="auto">{item.city}</p>}
+                      {item.status === "published" && (
+                        <Link className={hub.profile} href={`/djelatnosti/${item.id}`}>
+                          {t("Javni profil")}
+                          <Icon name="external" aria-hidden="true" />
+                        </Link>
+                      )}
+                    </div>
+                    <span className={hub.state} data-status={item.status}>
                       {t(statuses[item.status])}
                     </span>
-                    <ReturnedBusinessNote business={item} />
-                    {item.revisionRejection && (
-                      <p>Razlog odbijanja izmjena: {item.revisionRejection}</p>
-                    )}
-                    {(item.editorialRevision || item.pendingMedia) && (
-                      <BusinessChanges business={item} categories={categories} />
-                    )}
                   </div>
-                  <div className={styles.businessActions}>
-                    {(item.status === "archived" ? item.hasStayUnits : stays) && (
-                      <button
-                        type="button"
-                        className={styles.secondary}
-                        disabled={locked || loading}
-                        onClick={() => setStayBusiness(item)}
-                      >
-                        <Icon name="bed" />
-                        {item.status === "archived" ? t("Kalendar smještaja") : t("Smještaj")}
-                      </button>
-                    )}
-                    {item.status === "archived" && item.hasRentalVehicles && (
-                      <button
-                        type="button"
-                        className={styles.secondary}
-                        disabled={locked || loading}
-                        onClick={() => setRentalBusiness(item)}
-                      >
-                        <Icon name="calendar" /> Kalendar automobila
-                      </button>
-                    )}
-                    {item.status === "published" && (
-                      <Link className={styles.secondary} href={`/djelatnosti/${item.id}`}>
-                        {t("Javni profil")}
-                      </Link>
-                    )}
-                    {item.status === "published" && item.ownerId === expectedAccountId && (
-                      <Link
-                        className={styles.secondary}
-                        href={`/nalog/reels?djelatnost=${item.id}`}
-                      >
-                        <Icon name="play" /> Reels
-                      </Link>
-                    )}
-                    {item.status !== "archived" ? (
-                      <>
+                  {(item.moderationReturn ||
+                    item.revisionRejection ||
+                    item.editorialRevision ||
+                    item.pendingMedia) && (
+                    <div className={hub.notes}>
+                      <ReturnedBusinessNote business={item} />
+                      {item.revisionRejection && (
+                        <p>Razlog odbijanja izmjena: {item.revisionRejection}</p>
+                      )}
+                      {(item.editorialRevision || item.pendingMedia) && (
+                        <BusinessChanges business={item} categories={categories} />
+                      )}
+                    </div>
+                  )}
+                  {item.status !== "archived" && (
+                    <section className={hub.group} aria-label={t("Podaci")}>
+                      <h3>{t("Podaci")}</h3>
+                      <div className={hub.rows}>
                         <button
                           type="button"
-                          className={styles.secondary}
+                          className={hub.row}
                           disabled={locked || loading}
                           onClick={() => {
                             setEditing(item);
@@ -1744,11 +1731,16 @@ export function BusinessManager({
                             setBookingNote("");
                           }}
                         >
-                          {t("Uredi")}
+                          <Icon name="doc" aria-hidden="true" />
+                          <span>
+                            {t("Osnovni podaci")}
+                            <small>{t("Naziv, opis, kontakt i lokacija")}</small>
+                          </span>
+                          <Icon name="chevron" aria-hidden="true" />
                         </button>
                         <button
                           type="button"
-                          className={styles.secondary}
+                          className={hub.row}
                           disabled={locked || loading}
                           onClick={() => {
                             setMediaBusiness(item);
@@ -1757,108 +1749,207 @@ export function BusinessManager({
                             setBookingNote("");
                           }}
                         >
-                          {t("Fotografije")}
+                          <Icon name="layers" aria-hidden="true" />
+                          <span>{t("Slike")}</span>
+                          <Icon name="chevron" aria-hidden="true" />
                         </button>
-                        {(!stays || cars) && (
+                        <button
+                          type="button"
+                          className={hub.row}
+                          disabled={locked || loading}
+                          onClick={() => {
+                            detailsFromList.current = true;
+                            setDetailsBusiness(item);
+                            setError("");
+                            setNotice("");
+                          }}
+                        >
+                          <Icon name="clock" aria-hidden="true" />
+                          <span>
+                            {t("Radno vrijeme")}
+                            <small>{t("Dani, sati i pogodnosti")}</small>
+                          </span>
+                          <Icon name="chevron" aria-hidden="true" />
+                        </button>
+                      </div>
+                    </section>
+                  )}
+                  {((item.status === "archived" ? item.hasStayUnits : stays) ||
+                    (item.status === "archived" ? item.hasRentalVehicles : cars) ||
+                    (item.status !== "archived" && !stays && !cars)) && (
+                    <section className={hub.group} aria-label="Booking">
+                      <h3>Booking</h3>
+                      <div className={hub.rows}>
+                        {(item.status === "archived" ? item.hasStayUnits : stays) && (
                           <button
                             type="button"
-                            className={styles.secondary}
+                            className={hub.row}
+                            disabled={locked || loading}
+                            onClick={() => setStayBusiness(item)}
+                          >
+                            <Icon name="bed" aria-hidden="true" />
+                            <span>
+                              {t("Sobe i apartmani")}
+                              <small>{t("Jedinice, zahtjevi i zauzetost")}</small>
+                            </span>
+                            <Icon name="chevron" aria-hidden="true" />
+                          </button>
+                        )}
+                        {(item.status === "archived" ? item.hasRentalVehicles : cars) && (
+                          <button
+                            type="button"
+                            className={hub.row}
                             disabled={locked || loading}
                             onClick={() => {
-                              if (cars) setRentalBusiness(item);
-                              else setBookingBusiness(item);
+                              setRentalBusiness(item);
                               setError("");
                               setNotice("");
                               setBookingNote("");
                             }}
                           >
-                            <Icon name={cars ? "car" : "calendar"} />
-                            {cars ? t("Automobili") : "Booking"}
+                            <Icon name="car" aria-hidden="true" />
+                            <span>
+                              {t("Automobili")}
+                              <small>{t("Vozila, zahtjevi i zauzetost")}</small>
+                            </span>
+                            <Icon name="chevron" aria-hidden="true" />
                           </button>
                         )}
-                        {["draft", "pending"].includes(item.status) && (
+                        {item.status !== "archived" && !stays && !cars && (
                           <button
                             type="button"
-                            className={styles.primary}
-                            disabled={locked || loading || (!isOwner && item.status === "pending")}
-                            onClick={() => move(item, "publish")}
-                          >
-                            {isOwner ? t("Objavi") : t("Pošalji na pregled")}
-                          </button>
-                        )}
-                        {isOwner && (item.editorialRevision || item.pendingMedia) && (
-                          <>
-                            <button
-                              type="button"
-                              className={styles.primary}
-                              disabled={locked || loading}
-                              onClick={() => void move(item, "approve-changes")}
-                            >
-                              {t("Odobri izmjene")}
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.secondary}
-                              disabled={locked || loading}
-                              onClick={() => {
-                                setRejectRevision(true);
-                                setReturning(item);
-                                setReturnReason("");
-                                setError("");
-                                setNotice("");
-                              }}
-                            >
-                              {t("Odbij izmjene")}
-                            </button>
-                          </>
-                        )}
-                        {isOwner && ["pending", "published"].includes(item.status) && (
-                          <button
-                            type="button"
-                            className={styles.secondary}
+                            className={hub.row}
                             disabled={locked || loading}
                             onClick={() => {
-                              setRejectRevision(false);
+                              setBookingBusiness(item);
+                              setError("");
+                              setNotice("");
+                              setBookingNote("");
+                            }}
+                          >
+                            <Icon name="calendar" aria-hidden="true" />
+                            <span>
+                              {t("Zahtjevi i termini")}
+                              <small>{t("Usluge, termini i zahtjevi")}</small>
+                            </span>
+                            <Icon name="chevron" aria-hidden="true" />
+                          </button>
+                        )}
+                      </div>
+                    </section>
+                  )}
+                  {item.status === "published" && item.ownerId === expectedAccountId && (
+                    <section className={hub.group} aria-label={t("Vidljivost")}>
+                      <h3>{t("Vidljivost")}</h3>
+                      <div className={hub.rows}>
+                        <Link className={hub.row} href={`/nalog/reels?djelatnost=${item.id}`}>
+                          <Icon name="play" aria-hidden="true" />
+                          <span>Reels</span>
+                          <Icon name="chevron" aria-hidden="true" />
+                        </Link>
+                      </div>
+                    </section>
+                  )}
+                  <section className={hub.group} aria-label={t("Stanje")}>
+                    <h3>{t("Stanje")}</h3>
+                    <div className={hub.rows}>
+                      {["draft", "pending"].includes(item.status) && (
+                        <button
+                          type="button"
+                          className={hub.row}
+                          data-main
+                          disabled={locked || loading || (!isOwner && item.status === "pending")}
+                          onClick={() => move(item, "publish")}
+                        >
+                          <Icon name="check" aria-hidden="true" />
+                          <span>{isOwner ? t("Objavi") : t("Pošalji na pregled")}</span>
+                        </button>
+                      )}
+                      {isOwner && (item.editorialRevision || item.pendingMedia) && (
+                        <>
+                          <button
+                            type="button"
+                            className={hub.row}
+                            data-main
+                            disabled={locked || loading}
+                            onClick={() => void move(item, "approve-changes")}
+                          >
+                            <Icon name="check" aria-hidden="true" />
+                            <span>{t("Odobri izmjene")}</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={hub.row}
+                            disabled={locked || loading}
+                            onClick={() => {
+                              setRejectRevision(true);
                               setReturning(item);
                               setReturnReason("");
                               setError("");
                               setNotice("");
                             }}
                           >
-                            {t("Vrati u nacrt")}
+                            <Icon name="close" aria-hidden="true" />
+                            <span>{t("Odbij izmjene")}</span>
                           </button>
-                        )}
+                        </>
+                      )}
+                      {isOwner && ["pending", "published"].includes(item.status) && (
                         <button
                           type="button"
-                          className={styles.cancel}
+                          className={hub.row}
+                          disabled={locked || loading}
+                          onClick={() => {
+                            setRejectRevision(false);
+                            setReturning(item);
+                            setReturnReason("");
+                            setError("");
+                            setNotice("");
+                          }}
+                        >
+                          <Icon name="refresh" aria-hidden="true" />
+                          <span>{t("Vrati u nacrt")}</span>
+                        </button>
+                      )}
+                      {item.status !== "archived" ? (
+                        <button
+                          type="button"
+                          className={hub.row}
                           disabled={locked || loading}
                           onClick={() => move(item, "archive")}
                         >
-                          {t("Arhiviraj")}
+                          <Icon name="block" aria-hidden="true" />
+                          <span>
+                            {t("Arhiviraj")}
+                            <small>{t("Sakriva djelatnost; može se vratiti")}</small>
+                          </span>
                         </button>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        className={styles.secondary}
-                        disabled={locked || loading}
-                        onClick={() => move(item, "recover")}
-                      >
-                        {t("Vrati u nacrte")}
-                      </button>
-                    )}
+                      ) : (
+                        <button
+                          type="button"
+                          className={hub.row}
+                          disabled={locked || loading}
+                          onClick={() => move(item, "recover")}
+                        >
+                          <Icon name="refresh" aria-hidden="true" />
+                          <span>{t("Vrati u nacrte")}</span>
+                        </button>
+                      )}
+                    </div>
                     {expectedAccountId && (isOwner || expectedAccountId === item.ownerId) && (
-                      <BusinessDeleteAction
-                        business={item}
-                        accountId={expectedAccountId}
-                        disabled={locked || loading}
-                        onDeleted={() => {
-                          setItems((current) => current?.filter((b) => b.id !== item.id) ?? null);
-                          setRefresh((value) => value + 1);
-                        }}
-                      />
+                      <div className={hub.delete}>
+                        <BusinessDeleteAction
+                          business={item}
+                          accountId={expectedAccountId}
+                          disabled={locked || loading}
+                          onDeleted={() => {
+                            setItems((current) => current?.filter((b) => b.id !== item.id) ?? null);
+                            setRefresh((value) => value + 1);
+                          }}
+                        />
+                      </div>
                     )}
-                  </div>
+                  </section>
                 </article>
               );
             })}

@@ -857,4 +857,24 @@ export const booking: Messages = {
     "الطلب يحجز ذلك الوقت بالفعل. الرفض يحرره فورًا.",
     "İstek o zamanı zaten tutuyor. Reddetmek onu hemen serbest bırakır.",
   ],
+  "Sobe i apartmani": [
+    "Rooms and apartments",
+    "Zimmer und Apartments",
+    "الغرف والشقق",
+    "Odalar ve daireler",
+  ],
+  "Online booking za {name}": [
+    "Online booking for {name}",
+    "Online-Buchung für {name}",
+    "الحجز عبر الإنترنت لـ {name}",
+    "{name} için çevrimiçi rezervasyon",
+  ],
+  "Dosegnut je broj jedinica za ovu djelatnost.": [
+    "This business has reached its number of units.",
+    "Dieser Betrieb hat seine Anzahl an Einheiten erreicht.",
+    "وصل هذا النشاط إلى الحد الأقصى من الوحدات.",
+    "Bu işletme birim sınırına ulaştı.",
+  ],
+  Zauzetost: ["Occupancy", "Belegung", "الإشغال", "Doluluk"],
+  "Arhiviraj {name}": ["Archive {name}", "{name} archivieren", "أرشفة {name}", "{name} arşivle"],
 };

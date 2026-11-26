@@ -293,6 +293,16 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   „Odobri", „Odbij" ili „Otkaži" (dva pritiska). Dvije grupe: „Čeka odgovor" i „Potvrđeno
   uskoro". S crteža nema: „Poruka" gostu (rezervacija ne nosi osobu kojoj bi se pisalo) i
   kartice „Potvrđeno" i „Historija" (vlasnik vidi samo ono što dolazi) **[novo]**.
+- **Sobe i apartmani, vlasnik [urađeno 26. 11. 2026.]:** po crtežu. Jedinica je red sa slikom,
+  vrstom, krevetima i cijenom, prekidačem za online booking i „Uredi"; ispod je zauzetost jedne
+  jedinice (bira se imenom) s kalendarom za zatvaranje noći. S crteža nema: jedan prekidač za
+  cijelu djelatnost (postavka ne postoji; svaka jedinica ima svoj) i „Ručni unos" gosta **[novo]**.
+- **Moja djelatnost [urađeno 26. 11. 2026.]:** po crtežu, za svaku djelatnost u listi vlasnika:
+  logo, naziv, grad, stanje i „Javni profil", pa grupe redova Podaci (osnovni podaci, slike, radno
+  vrijeme), Booking (smještaj, automobili ili termini), Vidljivost (Reels) i Stanje (objava,
+  izmjene, vraćanje u nacrt, arhiviranje, brisanje). Redovi otvaraju iste ekrane kao prije. S
+  crteža nema: brojke pregleda, poruka i ocjene, Analitika i Sponzorisano (ne postoje), stanje
+  lokacije i broj slika u redu i prekidač „Sakrij djelatnost" (sakrivanje je arhiviranje) **[novo]**.
 - **Stranica „u izradi” [urađeno 26. 11. 2026., uključeno do otvaranja]:** po crtežu „U izradi”.
   Odluka vlasnika od 26. 11. 2026.: prikazuje se posjetiocima bez prijave, a otvaranje je u petak
   4. 12. 2026. nakon džume; upisano je 13:00 po sarajevskom vremenu. Dok dan otvaranja ne prođe, posjetilac koji nije prijavljen umjesto javnih
