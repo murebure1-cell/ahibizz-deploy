@@ -37,8 +37,11 @@ function readAccounts(value: unknown): DeviceAccount[] | null {
 export function AccountSwitch({
   currentId,
   circleClassName,
+  buttonClassName,
 }: {
   currentId: string;
+  /** Open from a plain labelled button, for example in the administration's sidebar. */
+  buttonClassName?: string;
   /** Open from a round icon button (the administration's header) instead of a menu row. */
   circleClassName?: string;
 }) {
@@ -88,7 +91,13 @@ export function AccountSwitch({
   }
   return (
     <>
-      {circleClassName ? (
+      {buttonClassName ? (
+        <button type="button" className={buttonClassName} onClick={() => void show()}>
+          <Icon name="swap" />
+          {t("Prebaci nalog")}
+          <Icon name="arrow" />
+        </button>
+      ) : circleClassName ? (
         <button
           type="button"
           className={circleClassName}
