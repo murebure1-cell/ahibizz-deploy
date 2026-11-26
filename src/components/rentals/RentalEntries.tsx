@@ -8,12 +8,13 @@ import type { RentalBooking } from "../../lib/rentals";
 import {
   AppointmentCard,
   type AppointmentTone,
+  appointmentAction,
   BusinessActions,
   CancelAppointment,
+  OwnerCard,
 } from "../booking/AppointmentCard";
 import { useI18n } from "../i18n/LocaleProvider";
 import { rentalError, writeRental } from "./rental-client";
-import styles from "./rentals.module.css";
 
 const statuses = {
   requested: msg("Čeka potvrdu"),
@@ -45,8 +46,6 @@ export function RentalEntry({
   const { t, locale } = useI18n();
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
-  const starts = bookingDate(entry.startsAt, entry.timezone, { time: true, locale });
-  const ends = bookingDate(entry.endsAt, entry.timezone, { time: true, locale });
   const isBlock = entry.kind === "block";
   const beforePickup = Date.parse(entry.startsAt) > Date.now();
   const canDecline = owner && entry.status === "requested";
@@ -105,72 +104,58 @@ export function RentalEntry({
         )}
       </AppointmentCard>
     );
+  // The owner's view, as drawn on the board "Zahtjevi i termini".
   return (
-    <article className={styles.entry}>
-      <div className={styles.topline}>
-        <strong>
-          {owner
-            ? isBlock
-              ? t("Ručna blokada")
-              : entry.customerName || t("Zahtjev za najam")
-            : entry.vehicleName}
-        </strong>
-        <span className={styles.badge} data-state={entry.status}>
-          {isBlock && entry.status === "confirmed" ? t("Zauzeto") : t(statuses[entry.status])}
-        </span>
-      </div>
-      {owner ? (
-        <span>{entry.vehicleName}</span>
-      ) : (
-        <Link href={`/djelatnosti/${entry.businessId}`} dir="auto">
-          {entry.businessTitle}
-        </Link>
-      )}
-      <p>
-        {starts} — {ends}
-      </p>
-      {!isBlock && <strong>{bookingMoney(entry.totalMinor)}</strong>}
+    <OwnerCard
+      who={isBlock ? null : entry.customerName || t("Gost")}
+      detail={`${entry.vehicleName} · ${rentalSpan(
+        entry,
+        appointmentDay(new Date().toISOString(), entry.timezone),
+        locale,
+      )}`}
+      amount={isBlock ? undefined : bookingMoney(entry.totalMinor)}
+      state={
+        isBlock
+          ? t("Blokada")
+          : entry.status === "requested"
+            ? undefined
+            : t(statuses[entry.status])
+      }
+      tone={isBlock ? "over" : tones[entry.status]}
+      problem={error || undefined}
+    >
       {(canDecline || canCancel) && (
-        <div className={styles.actions}>
-          {canDecline && (
-            <>
-              {beforePickup && (
-                <button
-                  type="button"
-                  disabled={working}
-                  className={styles.primary}
-                  onClick={() => void decide("approve")}
-                >
-                  {t("Odobri")}
-                </button>
-              )}
-              <button
-                type="button"
-                disabled={working}
-                className={styles.secondary}
-                onClick={() => void decide("decline")}
-              >
-                {t("Odbij")}
-              </button>
-            </>
-          )}
-          {canCancel && (
+        <>
+          {canDecline && beforePickup && (
             <button
               type="button"
+              className={appointmentAction}
+              data-main
               disabled={working}
-              className={styles.secondary}
-              onClick={() => void decide("cancel")}
+              onClick={() => void decide("approve")}
             >
-              {isBlock ? t("Ukloni blokadu") : t("Otkaži najam")}
+              {t("Odobri")}
             </button>
           )}
-        </div>
+          {canDecline && (
+            <button
+              type="button"
+              className={appointmentAction}
+              disabled={working}
+              onClick={() => void decide("decline")}
+            >
+              {t("Odbij")}
+            </button>
+          )}
+          {canCancel && (
+            <CancelAppointment
+              label={isBlock ? t("Ukloni blokadu") : t("Otkaži")}
+              disabled={working}
+              onConfirm={() => void decide("cancel")}
+            />
+          )}
+        </>
       )}
-      {error && (
-        <p role="alert" className={styles.error}>
-          {error}
-        </p>
-      )}
-    </article>
+    </OwnerCard>
   );
 }

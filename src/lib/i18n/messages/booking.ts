@@ -835,4 +835,26 @@ export const booking: Messages = {
     "الطلب يحجز الوحدة فورًا. المالك يؤكده أو يرفضه.",
     "İstek birimi hemen ayırır. Sahibi onaylar veya reddeder.",
   ],
+  "Ručni unos": ["Entered by hand", "Manuell eingetragen", "إدخال يدوي", "Elle girildi"],
+  Blokada: ["Blocked", "Gesperrt", "محجوب", "Kapalı"],
+  Gost: ["Guest", "Gast", "ضيف", "Misafir"],
+  "Čeka odgovor": ["Awaiting reply", "Wartet auf Antwort", "بانتظار الرد", "Yanıt bekliyor"],
+  "Potvrđeno uskoro": [
+    "Confirmed, coming up",
+    "Bestätigt, demnächst",
+    "مؤكد قريبًا",
+    "Onaylı, yaklaşan",
+  ],
+  "Zahtjev već drži te noći. Odbijanje ih odmah oslobađa.": [
+    "A request already holds those nights. Declining frees them at once.",
+    "Eine Anfrage hält diese Nächte bereits. Eine Ablehnung gibt sie sofort frei.",
+    "الطلب يحجز تلك الليالي بالفعل. الرفض يحررها فورًا.",
+    "İstek o geceleri zaten tutuyor. Reddetmek onları hemen serbest bırakır.",
+  ],
+  "Zahtjev već drži to vrijeme. Odbijanje ga odmah oslobađa.": [
+    "A request already holds that time. Declining frees it at once.",
+    "Eine Anfrage hält diese Zeit bereits. Eine Ablehnung gibt sie sofort frei.",
+    "الطلب يحجز ذلك الوقت بالفعل. الرفض يحرره فورًا.",
+    "İstek o zamanı zaten tutuyor. Reddetmek onu hemen serbest bırakır.",
+  ],
 };

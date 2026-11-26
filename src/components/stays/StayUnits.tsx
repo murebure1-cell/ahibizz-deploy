@@ -9,6 +9,7 @@ import {
   inventoryMedia,
 } from "../../lib/business-media";
 import type { StayCatalog, StayUnit, StayUnitInput } from "../../lib/stays";
+import { OwnerAgenda } from "../booking/AppointmentCard";
 import { BusinessMediaManager } from "../directory/BusinessMediaManager";
 import { Icon } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
@@ -320,12 +321,14 @@ export function StayUnits({
         {actor && <span className={common.badge}>{data.units.length} / 2 jedinice</span>}
       </div>
       {actor && Boolean(data.upcoming?.length) && editor === undefined && (
-        <div className={common.agenda}>
-          <h3>{t("Zahtjevi za smještaj")}</h3>
-          {data.upcoming?.map((entry) => (
+        <OwnerAgenda
+          entries={data.upcoming ?? []}
+          holds={t("Zahtjev već drži te noći. Odbijanje ih odmah oslobađa.")}
+        >
+          {(entry) => (
             <StayEntry key={entry.id} owner actor={actor} entry={entry} changed={refresh} />
-          ))}
-        </div>
+          )}
+        </OwnerAgenda>
       )}
       {actor && data.eligible && editor === undefined && data.units.length < 2 && (
         <div className={common.actions}>
