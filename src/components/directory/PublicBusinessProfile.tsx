@@ -35,7 +35,7 @@ export function PublicBusinessProfile({
   children,
   actions,
   messageHref,
-  offerLinks,
+  offerLinks: _offerLinks,
   offerSections,
   sponsor,
 }: {
@@ -64,9 +64,11 @@ export function PublicBusinessProfile({
     : point
       ? t("Lokacija je označena na karti.")
       : businessLocationLabel(business, locale);
-  const taxonomy = [business.categoryName, business.subcategoryName]
-    .flatMap((name) => (name ? [t(name)] : []))
-    .join(" · ");
+  // As drawn: the main category, then the street and the city ("Ugostiteljstvo · Ferhadija 12,
+  // Sarajevo"); the full address with the country stays in the location section.
+  const taxonomy = business.categoryName ? t(business.categoryName) : "";
+  const shortLocation =
+    [business.addressLine?.trim(), business.city?.trim()].filter(Boolean).join(", ") || location;
   const photo = safeBusinessImage(business.image, preview);
   const logo = safeBusinessImage(business.logo, preview);
   const cover = photo && photo.src !== logo?.src ? photo : undefined;
@@ -164,7 +166,7 @@ export function PublicBusinessProfile({
               <p className={styles.summary}>
                 {taxonomy}
                 {taxonomy && hasLocation && " · "}
-                {hasLocation && <bdi>{location}</bdi>}
+                {hasLocation && <bdi>{shortLocation}</bdi>}
               </p>
             )}
           </div>
@@ -239,20 +241,6 @@ export function PublicBusinessProfile({
         {actions && <div className={styles.extraActions}>{actions}</div>}
       </header>
       {sponsor}
-
-      <nav className={styles.sectionNavigation} aria-label={t("Na ovoj stranici")}>
-        {hasAbout && <a href="#business-about">{t("O djelatnosti")}</a>}
-        {offerLinks}
-        {hasAppointments && (
-          <a className={styles.appointmentsLink} href="#business-appointments">
-            {t("Termini")}
-          </a>
-        )}
-        {gallery.length > 0 && <a href="#business-gallery">{t("Galerija")}</a>}
-        {hasLocation && <a href="#business-location">{t("Lokacija")}</a>}
-        {!preview && <a href="#recenzije">{t("Recenzije")}</a>}
-        {hasContact && <a href="#business-contact">{t("Kontakt")}</a>}
-      </nav>
 
       <div className={styles.layout}>
         <div className={styles.details}>
