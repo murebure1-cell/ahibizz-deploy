@@ -70,12 +70,6 @@ export const booking: Messages = {
     "Randevuların kontrol ediliyor…",
   ],
   Usluge: ["Services", "Leistungen", "الخدمات", "Hizmetler"],
-  "Otkaži termin": [
-    "Cancel appointment",
-    "Termin stornieren",
-    "إلغاء الموعد",
-    "Randevuyu iptal et",
-  ],
   "Stranice termina": ["Appointment pages", "Terminseiten", "صفحات المواعيد", "Randevu sayfaları"],
   "Još nema ranijih termina.": [
     "No earlier appointments yet.",
@@ -436,8 +430,8 @@ export const booking: Messages = {
   ],
   "Najam isključen": ["Rental off", "Vermietung aus", "الإيجار متوقف", "Kiralama kapalı"],
   "{count} sjedišta": [
-    "{count|seat|seats}",
-    "{count|Sitz|Sitze}",
+    "{count} {count|seat|seats}",
+    "{count} {count|Sitz|Sitze}",
     "{count} مقاعد",
     "{count} koltuk",
   ],
@@ -756,4 +750,18 @@ export const booking: Messages = {
   Otkazan: ["Cancelled", "Storniert", "ملغى", "İptal edildi"],
   Održan: ["Completed", "Stattgefunden", "تم", "Gerçekleşti"],
   Odbijen: ["Declined", "Abgelehnt", "مرفوض", "Reddedildi"],
+  "Sigurno?": ["Sure?", "Sicher?", "متأكد؟", "Emin misin?"],
+  "do {when}": ["until {when}", "bis {when}", "حتى {when}", "{when} tarihine kadar"],
+  "{count} noćenje": [
+    "{count} {count|night|nights}",
+    "{count} {count|Nacht|Nächte}",
+    "{count} {count|ليلة|ليالٍ}",
+    "{count} gece",
+  ],
+  "{count} noćenja": [
+    "{count} {count|night|nights}",
+    "{count} {count|Nacht|Nächte}",
+    "{count} {count|ليلة|ليالٍ}",
+    "{count} gece",
+  ],
 };

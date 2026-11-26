@@ -1,10 +1,17 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { appointmentDate, appointmentTile, outsideThisMonth } from "../../lib/appointment-display";
 import { bookingDate, bookingMoney } from "../../lib/booking";
 import { dateKey } from "../../lib/booking-time";
-import { msg } from "../../lib/i18n/translate";
-import type { StayBooking } from "../../lib/stays";
+import { bosnianForm, msg } from "../../lib/i18n/translate";
+import { type StayBooking, stayNights } from "../../lib/stays";
+import {
+  AppointmentCard,
+  type AppointmentTone,
+  BusinessActions,
+  CancelAppointment,
+} from "../booking/AppointmentCard";
 import { useI18n } from "../i18n/LocaleProvider";
 import styles from "../rentals/rentals.module.css";
 import { stayError, writeStay } from "./stay-client";
@@ -15,16 +22,30 @@ const statuses = {
   declined: msg("Odbijeno"),
   cancelled: msg("Otkazano"),
 };
+const tones: Record<StayBooking["status"], AppointmentTone> = {
+  requested: "waiting",
+  confirmed: "confirmed",
+  declined: "refused",
+  cancelled: "refused",
+};
+
+/** "2 noćenja": Bosnian counts in three forms, each translation in its own. */
+function nightsText(count: number) {
+  return bosnianForm(count, msg("{count} noćenje"), msg("{count} noćenja"), msg("{count} noćenja"));
+}
 
 export function StayEntry({
   entry,
   actor,
   owner = false,
+  past = false,
   changed,
 }: {
   entry: StayBooking;
   actor: string;
   owner?: boolean;
+  /** In the customer's history: the card without the tile's colour. */
+  past?: boolean;
   changed: () => void;
 }) {
   const { t, locale } = useI18n();
@@ -53,6 +74,52 @@ export function StayEntry({
     } finally {
       setWorking(false);
     }
+  }
+  // The person who asked for the stay sees it as one of their appointments, as drawn.
+  if (!owner) {
+    const today = dateKey(new Date(), entry.timezone);
+    const year = today.slice(0, 4);
+    const nights = stayNights(entry.checkIn, entry.checkOut);
+    const until = appointmentDate(entry.checkOut, locale, year);
+    return (
+      <AppointmentCard
+        tile={appointmentTile(entry.checkIn, locale)}
+        spoken={starts}
+        title={
+          Number.isInteger(nights) && nights > 0
+            ? `${entry.unitName} · ${t(nightsText(nights), { count: nights })}`
+            : entry.unitName
+        }
+        detail={
+          <>
+            <Link href={`/djelatnosti/${entry.businessId}`} dir="auto">
+              {entry.businessTitle}
+            </Link>
+            {` · ${
+              outsideThisMonth(entry.checkIn, today)
+                ? `${appointmentDate(entry.checkIn, locale, year)} – ${until}`
+                : t("do {when}", { when: until })
+            } · ${bookingMoney(entry.totalMinor)}`}
+          </>
+        }
+        state={t(statuses[entry.status])}
+        tone={tones[entry.status]}
+        past={past}
+        problem={error || undefined}
+      >
+        <BusinessActions
+          businessId={entry.businessId}
+          directions={entry.status === "confirmed" && canChangeArrival}
+        />
+        {canCancel && (
+          <CancelAppointment
+            label={t("Otkaži")}
+            disabled={working}
+            onConfirm={() => void decide("cancel")}
+          />
+        )}
+      </AppointmentCard>
+    );
   }
   return (
     <article className={styles.entry}>

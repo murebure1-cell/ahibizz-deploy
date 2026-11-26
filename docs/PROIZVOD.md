@@ -262,6 +262,16 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   ponovni pokušaj, prijava) je isto kao prije. S crteža nema: poseban ekran sa zaglavljem
   djelatnosti (zakazivanje ostaje dio stranice djelatnosti), precrtani zauzeti termini i dani
   označeni kao zatvoreni, jer javni odgovor nosi samo slobodne termine **[novo]**.
+- **Moji termini [urađeno 26. 11. 2026.]:** po crtežu Moji termini. Termin je kartica: pločica s
+  danom (dan u sedmici i broj), šta je i gdje, stanje u oznaci (potvrđen, čeka, otkazan ili
+  odbijen, održan) i ispod radnje „Uputstva” (za potvrđene koji tek dolaze), „Poruka” i „Otkaži”.
+  Iste kartice služe za usluge, najam vozila i smještaj: za najam stoji od kada do kada, za
+  smještaj broj noćenja i do kada. Termin van tekućeg mjeseca u redu nosi i datum, jer pločica
+  kaže samo dan. Otkazivanje traži dva pritiska („Otkaži”, pa „Sigurno?”), jer tri dugmeta stoje
+  jedno do drugog. „Aktuelni” i „Historija” su dvije oznake; u historiji kartica gubi boju
+  pločice. „Uputstva” djelatnosti bez upisane lokacije vode na njenu stranicu. S crteža nema:
+  prekidač „Moji termini / Kod mene” (dolazi s vlasnikovom stranom), jedna lista za sve vrste
+  (ostaju tri grupe, svaka sa svojim stranicama) i Ahi Credits u historiji **[novo]**.
 - **Stranica „u izradi” [urađeno 26. 11. 2026., uključeno do otvaranja]:** po crtežu „U izradi”.
   Odluka vlasnika od 26. 11. 2026.: prikazuje se posjetiocima bez prijave, a otvaranje je u petak
   4. 12. 2026. nakon džume; upisano je 13:00 po sarajevskom vremenu. Dok dan otvaranja ne prođe, posjetilac koji nije prijavljen umjesto javnih

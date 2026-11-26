@@ -1,9 +1,16 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { appointmentDay, appointmentTile, rentalSpan } from "../../lib/appointment-display";
 import { bookingDate, bookingMoney } from "../../lib/booking";
 import { msg } from "../../lib/i18n/translate";
 import type { RentalBooking } from "../../lib/rentals";
+import {
+  AppointmentCard,
+  type AppointmentTone,
+  BusinessActions,
+  CancelAppointment,
+} from "../booking/AppointmentCard";
 import { useI18n } from "../i18n/LocaleProvider";
 import { rentalError, writeRental } from "./rental-client";
 import styles from "./rentals.module.css";
@@ -14,16 +21,25 @@ const statuses = {
   declined: msg("Odbijeno"),
   cancelled: msg("Otkazano"),
 };
+const tones: Record<RentalBooking["status"], AppointmentTone> = {
+  requested: "waiting",
+  confirmed: "confirmed",
+  declined: "refused",
+  cancelled: "refused",
+};
 
 export function RentalEntry({
   entry,
   actor,
   owner = false,
+  past = false,
   changed,
 }: {
   entry: RentalBooking;
   actor: string;
   owner?: boolean;
+  /** In the customer's history: the card without the tile's colour. */
+  past?: boolean;
   changed: () => void;
 }) {
   const { t, locale } = useI18n();
@@ -52,6 +68,43 @@ export function RentalEntry({
       setWorking(false);
     }
   }
+  // The person who asked for the vehicle sees it as one of their appointments, as drawn.
+  if (!owner)
+    return (
+      <AppointmentCard
+        tile={appointmentTile(appointmentDay(entry.startsAt, entry.timezone), locale)}
+        spoken={bookingDate(entry.startsAt, entry.timezone, { locale })}
+        title={entry.vehicleName}
+        detail={
+          <>
+            <Link href={`/djelatnosti/${entry.businessId}`} dir="auto">
+              {entry.businessTitle}
+            </Link>
+            {` · ${rentalSpan(
+              entry,
+              appointmentDay(new Date().toISOString(), entry.timezone),
+              locale,
+            )} · ${bookingMoney(entry.totalMinor)}`}
+          </>
+        }
+        state={t(statuses[entry.status])}
+        tone={tones[entry.status]}
+        past={past}
+        problem={error || undefined}
+      >
+        <BusinessActions
+          businessId={entry.businessId}
+          directions={entry.status === "confirmed" && beforePickup}
+        />
+        {canCancel && (
+          <CancelAppointment
+            label={t("Otkaži")}
+            disabled={working}
+            onConfirm={() => void decide("cancel")}
+          />
+        )}
+      </AppointmentCard>
+    );
   return (
     <article className={styles.entry}>
       <div className={styles.topline}>

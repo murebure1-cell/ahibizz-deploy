@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import styles from "../../../../../components/directory/public-search.module.css";
 import { Directions } from "../../../../../components/map/Directions";
 import { initialLocationPoint } from "../../../../../lib/business-location";
@@ -40,8 +40,9 @@ export default async function DirectionsPage({ params }: { params: Promise<{ id:
         service.categories().catch(() => ({ categories: [] })),
       ]);
       const point = initialLocationPoint(business.latitude, business.longitude);
-      // A business without a place on the map has no way to be shown.
-      if (!point) notFound();
+      // A business without a place on the map has no way to be shown; its own page says how to
+      // reach it. An appointment's card links here without knowing whether a place is set.
+      if (!point) redirect(`/djelatnosti/${id}`);
       return (
         <main id="glavni-sadrzaj" data-fullscreen="true">
           <Directions

@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { appointmentDay, appointmentHours, appointmentTile } from "../../lib/appointment-display";
 import {
   type BookingEntry,
   type BookingListView,
+  type BookingStatus,
   bookingDate,
   bookingMoney,
   bookingStatusLabels,
@@ -22,10 +24,26 @@ import {
   readCustomerCancellation,
   reconcileCustomerCancellations,
 } from "../../lib/customer-appointments-state";
+import { Icon } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
+import {
+  AppointmentCard,
+  type AppointmentTone,
+  appointmentAction,
+  BusinessActions,
+  CancelAppointment,
+} from "./AppointmentCard";
+import styles from "./appointments.module.css";
 import { listenForBookingResume } from "./booking-resume";
 import { InventoryAppointments } from "./InventoryAppointments";
-import styles from "./public-booking.module.css";
+
+const tones: Record<BookingStatus, AppointmentTone> = {
+  requested: "waiting",
+  confirmed: "confirmed",
+  cancelled: "refused",
+  declined: "refused",
+  completed: "over",
+};
 
 type Props = {
   active?: boolean;
@@ -231,18 +249,21 @@ function AppointmentsWorkspace({
     }
   }
   return (
-    <section className={styles.appointments} aria-label="Moji termini" data-design="booking-panel">
-      <div className={styles.listHeading}>
+    <section className={styles.list} aria-label={t("Moji termini")} data-design="appointments">
+      <div className={styles.head}>
         {heading && <h2>{t("Moji termini")}</h2>}
         <button
           type="button"
+          className={styles.refresh}
+          aria-label={t("Osvježi")}
+          title={t("Osvježi")}
           disabled={busy || loading}
           onClick={() => setRefresh((value) => value + 1)}
         >
-          {t("Osvježi")}
+          <Icon name="refresh" aria-hidden="true" />
         </button>
       </div>
-      <fieldset className={styles.viewSwitch} aria-label={t("Prikaz termina")}>
+      <fieldset className={styles.views} aria-label={t("Prikaz termina")}>
         {(
           [
             ["upcoming", t("Aktuelni")],
@@ -266,22 +287,20 @@ function AppointmentsWorkspace({
         ))}
       </fieldset>
       {error && (
-        <div role="alert" className={styles.error}>
+        <div role="alert" className={styles.problem}>
           <p>{error}</p>
           {requiresLogin && (
-            <div className={styles.actions}>
-              <Link
-                className={styles.secondary}
-                href="/prijava?nastavi=%2Fnalog%3Fodjeljak%3Dtermini"
-              >
-                {t("Prijavi se")}
-              </Link>
-            </div>
+            <Link
+              className={appointmentAction}
+              href="/prijava?nastavi=%2Fnalog%3Fodjeljak%3Dtermini"
+            >
+              {t("Prijavi se")}
+            </Link>
           )}
         </div>
       )}
       {notice && (
-        <p role="status" className={styles.success}>
+        <p role="status" className={styles.done}>
           {notice}
         </p>
       )}
@@ -290,39 +309,53 @@ function AppointmentsWorkspace({
           {t("Provjeravam tvoje termine…")}
         </p>
       )}
-      {entries.length > 0 && <h3>{t("Usluge")}</h3>}
-      <div className={styles.entryList} aria-busy={loading}>
-        {entries.map((entry) => (
-          <article key={entry.id} className={styles.entry}>
-            <div>
-              <span className={styles.status} data-status={entry.status}>
-                {t(bookingStatusLabels[entry.status])}
-              </span>
-              <h3 dir="auto">{entry.serviceName}</h3>
-              <Link href={`/djelatnosti/${entry.businessId}`} dir="auto">
-                {entry.businessTitle}
-              </Link>
-              <p>{bookingDate(entry.startsAt, entry.timezone, { time: true, locale })}</p>
-              <span className={styles.note}>
-                {entry.durationMinutes} min · {bookingMoney(entry.priceMinor)}
-              </span>
-            </div>
-            {["requested", "confirmed"].includes(entry.status) &&
-              new Date(entry.startsAt) > new Date() && (
-                <button
-                  type="button"
-                  className={styles.secondary}
-                  disabled={busy || loading}
-                  onClick={() => void cancel(entry)}
+      {entries.length > 0 && (
+        <section className={styles.group} aria-label={t("Usluge")}>
+          <h3>{t("Usluge")}</h3>
+          <div className={styles.cards} aria-busy={loading}>
+            {entries.map((entry) => {
+              const ahead = new Date(entry.startsAt) > new Date();
+              return (
+                <AppointmentCard
+                  key={entry.id}
+                  tile={appointmentTile(appointmentDay(entry.startsAt, entry.timezone), locale)}
+                  spoken={bookingDate(entry.startsAt, entry.timezone, { locale })}
+                  title={entry.serviceName ?? t("Termin")}
+                  detail={
+                    <>
+                      <Link href={`/djelatnosti/${entry.businessId}`} dir="auto">
+                        {entry.businessTitle}
+                      </Link>
+                      {` · ${appointmentHours(
+                        entry,
+                        appointmentDay(new Date().toISOString(), entry.timezone),
+                        locale,
+                      )} · ${bookingMoney(entry.priceMinor)}`}
+                    </>
+                  }
+                  state={t(bookingStatusLabels[entry.status])}
+                  tone={tones[entry.status]}
+                  past={view === "history"}
                 >
-                  {t("Otkaži termin")}
-                </button>
-              )}
-          </article>
-        ))}
-      </div>
+                  <BusinessActions
+                    businessId={entry.businessId}
+                    directions={entry.status === "confirmed" && ahead}
+                  />
+                  {["requested", "confirmed"].includes(entry.status) && ahead && (
+                    <CancelAppointment
+                      label={t("Otkaži")}
+                      disabled={busy || loading}
+                      onConfirm={() => void cancel(entry)}
+                    />
+                  )}
+                </AppointmentCard>
+              );
+            })}
+          </div>
+        </section>
+      )}
       {ready && (page > 1 || more) && (
-        <nav className={styles.pagination} aria-label={t("Stranice termina")}>
+        <nav className={styles.pages} aria-label={t("Stranice termina")}>
           <button type="button" disabled={busy || page === 1} onClick={() => setPage(page - 1)}>
             {t("Prethodna")}
           </button>

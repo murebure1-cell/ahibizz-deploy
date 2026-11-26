@@ -1,0 +1,411 @@
+/*
+ * "Moji termini" as drawn: two pills for what is ahead and what is behind, and one card for each
+ * appointment, whether it is a service, a rented vehicle or a stay. A card is the day in a tile,
+ * what it is and where, its state, and under them what can be done with it.
+ */
+.list {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--ui-text);
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 36px;
+}
+.head h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.refresh {
+  display: grid;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  margin-inline-start: auto;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--ui-border);
+  border-radius: 50%;
+  background: var(--ui-glass);
+  color: var(--ui-text);
+  cursor: pointer;
+  transition:
+    transform 160ms var(--ease-out),
+    opacity 150ms ease;
+}
+.refresh svg {
+  width: 16px;
+  height: 16px;
+}
+.refresh:active {
+  transform: scale(0.97);
+}
+.refresh:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.views {
+  display: flex;
+  min-width: 0;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.views button {
+  flex: none;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  background: var(--ui-glass);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+.views button[aria-pressed="true"] {
+  padding: 0 16px;
+  border-color: transparent;
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
+  font-weight: 800;
+}
+.views button:active {
+  transform: scale(0.97);
+}
+.views button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.group,
+.cards {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+.group > h3 {
+  margin: 4px 4px 0;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: var(--ui-glass);
+}
+.top {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+.tile {
+  display: flex;
+  flex: none;
+  width: 52px;
+  height: 56px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+}
+.tile span {
+  font-size: 12px;
+  line-height: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.tile strong {
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+/* What is behind keeps its shape and gives up its colour. */
+.card[data-past] .tile {
+  background: color-mix(in srgb, var(--ui-text) 8%, transparent);
+  color: var(--ui-muted);
+}
+.what {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+.what h3 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.what p {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.what a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+.what a:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+.state {
+  flex: none;
+  align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-text) 8%, transparent);
+  color: var(--ui-muted);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.state[data-tone="confirmed"] {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+}
+.state[data-tone="waiting"] {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+.state[data-tone="refused"] {
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+}
+
+.actions {
+  display: flex;
+  min-width: 0;
+  gap: 8px;
+}
+.action {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+.action svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.action:active {
+  transform: scale(0.97);
+}
+.action:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.action:focus-visible,
+.views button:focus-visible,
+.refresh:focus-visible,
+.pages button:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+.action[data-danger] {
+  color: var(--ui-danger);
+}
+/* Asked once more before something is given up. */
+.action[data-asking] {
+  border-color: var(--ui-danger-border);
+  background: var(--ui-danger-soft);
+}
+.action[data-main] {
+  border-color: transparent;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+}
+
+.note,
+.problem,
+.done {
+  margin: 0;
+  padding: 0 4px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.problem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-danger-border);
+  border-radius: 16px;
+  background: var(--ui-danger-soft);
+  color: var(--ui-text);
+}
+.problem p {
+  flex: 1 1 200px;
+  margin: 0;
+}
+.card > .problem {
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+.problem .action {
+  flex: none;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+}
+.done {
+  padding: 12px 14px;
+  border: 1px solid var(--ui-accent-border);
+  border-radius: 16px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-text);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 36px 20px;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: var(--ui-glass);
+  text-align: center;
+}
+.empty > svg {
+  width: 28px;
+  height: 28px;
+  color: var(--ui-muted);
+}
+.empty h3 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 700;
+}
+.empty .action {
+  flex: none;
+  padding: 0 18px;
+}
+
+.pages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.pages button {
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  background: var(--ui-glass);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out);
+}
+.pages button:active {
+  transform: scale(0.97);
+}
+.pages button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+/* What is behind has little left to do: its action stays small. */
+.card[data-past] .action {
+  flex: none;
+  padding: 0 16px;
+}
+
+/* Read aloud, not shown: the tile is a picture of the day, so the day is also said in words. */
+.spoken {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .what a:hover {
+    text-decoration: underline;
+  }
+  .action:not(:disabled, [data-main], [data-asking]):hover,
+  .views button:not(:disabled, [aria-pressed="true"]):hover,
+  .pages button:not(:disabled):hover {
+    background: var(--ui-surface-hover);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .action,
+  .views button,
+  .refresh,
+  .pages button {
+    transition: none;
+  }
+}
