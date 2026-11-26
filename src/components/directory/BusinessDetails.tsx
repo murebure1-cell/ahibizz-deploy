@@ -4,26 +4,17 @@ import { useEffect, useState } from "react";
 import {
   type BusinessDetails,
   businessAmenities,
-  businessClosingMinute,
-  businessOpenState,
   businessTimeLabel,
   businessWeekdays,
 } from "../../lib/business-details";
+import { hoursNow, spanLabel, weekSpans } from "../../lib/business-hours";
 import { Icon } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
+import { Sheet } from "../ui/Sheet";
 import styles from "./business-details.module.css";
 
-export function BusinessOpenStatus({
-  details,
-  checkedAt,
-  inline = false,
-}: {
-  details?: BusinessDetails | null;
-  checkedAt?: string;
-  /** Plain text in a line of facts instead of the pill that sits over a photo. */
-  inline?: boolean;
-}) {
-  const t = useT();
+/** The present moment, kept fresh while a business with hours is on the screen. */
+function useNow(details: BusinessDetails | null | undefined, checkedAt?: string) {
   const [now, setNow] = useState<Date | null>(() => (checkedAt ? new Date(checkedAt) : null));
   useEffect(() => {
     if (!details?.hours) return;
@@ -36,30 +27,46 @@ export function BusinessOpenStatus({
       document.removeEventListener("visibilitychange", update);
     };
   }, [details]);
-  const state = now ? businessOpenState(details, now) : null;
-  if (state === null) return null;
-  const closing = now ? businessClosingMinute(details, now) : null;
+  return now;
+}
+
+export function BusinessOpenStatus({
+  details,
+  checkedAt,
+  inline = false,
+  unknown,
+}: {
+  details?: BusinessDetails | null;
+  checkedAt?: string;
+  /** Plain text in a line of facts instead of the pill that sits over a photo. */
+  inline?: boolean;
+  /** What to say while the moment is not known yet; nothing when left out. */
+  unknown?: string;
+}) {
+  const t = useT();
+  const now = useNow(details, checkedAt);
+  const state = now ? hoursNow(details, now) : null;
+  if (!state)
+    return unknown ? (
+      <span className={inline ? styles.openInline : undefined}>{unknown}</span>
+    ) : null;
   return (
     <span
       className={inline ? styles.openInline : styles.openStatus}
-      data-open={state === "open"}
+      data-open={state.open}
       title={details?.timezone ?? undefined}
     >
-      {state === "open" ? (
-        <span className={styles.openDot} aria-hidden="true" />
-      ) : (
-        <Icon name="lock" />
-      )}
-      {state !== "open"
+      {state.open ? <span className={styles.openDot} aria-hidden="true" /> : <Icon name="lock" />}
+      {!state.open
         ? t("Zatvoreno")
-        : closing === null
+        : state.closesAt === null
           ? t("Otvoreno")
-          : t("Otvoreno do {time}", { time: businessTimeLabel(closing) })}
+          : t("Otvoreno do {time}", { time: businessTimeLabel(state.closesAt) })}
     </span>
   );
 }
 
-function AmenityIcon({ id }: { id: string }) {
+export function AmenityIcon({ id }: { id: string }) {
   const path: Record<string, React.ReactNode> = {
     wifi: (
       <>
@@ -143,32 +150,100 @@ export function BusinessAmenities({
     </ul>
   );
 }
+/** The week as drawn: whether it is open now and until when, then the seven days with today marked. */
 export function BusinessHours({ details }: { details?: BusinessDetails | null }) {
   const t = useT();
-  if (!details?.hours || !details.timezone) return null;
+  const now = useNow(details);
+  // The zone is named only to a viewer whose own clock shows another time. Devices name the
+  // same clock differently (Sarajevo, Belgrade, Zagreb), so the clocks are compared, not the names.
+  const [elsewhere, setElsewhere] = useState(false);
+  const zone = details?.timezone;
+  useEffect(() => {
+    if (!zone) return;
+    const clock = (timeZone?: string) =>
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone,
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).format(new Date());
+    try {
+      setElsewhere(clock(zone) !== clock());
+    } catch {
+      setElsewhere(false);
+    }
+  }, [zone]);
+  if (details?.hours?.length !== 7 || !details.timezone) return null;
+  const state = now ? hoursNow(details, now) : null;
+  const week = weekSpans(details.hours);
   return (
     <div className={styles.hours}>
-      <div className={styles.hoursHeader}>
-        <BusinessOpenStatus details={details} />
-        <small>{details.timezone}</small>
-      </div>
-      <dl>
-        {details.hours.map((day) => (
-          <div key={day.weekday}>
-            <dt>{t(businessWeekdays[day.weekday - 1] ?? "")}</dt>
-            <dd>
-              {day.windows.length
-                ? day.windows
-                    .map(
-                      (window) =>
-                        `${businessTimeLabel(window.startMinute)}–${businessTimeLabel(window.endMinute)}`,
-                    )
-                    .join(" · ")
-                : t("Zatvoreno")}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      {state && (
+        <p className={styles.hoursNow} data-open={state.open}>
+          <strong>
+            {state.open ? (
+              <span className={styles.openDot} aria-hidden="true" />
+            ) : (
+              <Icon name="lock" className={styles.hoursLock} />
+            )}
+            {state.open ? t("Otvoreno") : t("Zatvoreno")}
+          </strong>
+          {state.open && state.closesAt !== null && (
+            <span>{t("zatvara se u {time}", { time: businessTimeLabel(state.closesAt) })}</span>
+          )}
+          {!state.open && state.opensAt !== null && (
+            <span>{t("otvara se u {time}", { time: businessTimeLabel(state.opensAt) })}</span>
+          )}
+        </p>
+      )}
+      <ul className={styles.hoursWeek}>
+        {week.map((spans, index) => {
+          const today = state?.weekday === index + 1;
+          return (
+            <li
+              key={businessWeekdays[index]}
+              className={styles.hoursDay}
+              data-today={today || undefined}
+            >
+              <span className={styles.hoursDayName}>{t(businessWeekdays[index] ?? "")}</span>
+              {today && <em className={styles.hoursToday}>{t("Danas")}</em>}
+              <span className={styles.hoursDayTimes}>
+                {spans.length ? spans.map(spanLabel).join(" · ") : t("Zatvoreno")}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      {elsewhere && <p className={styles.hoursZone}>{details.timezone}</p>}
     </div>
+  );
+}
+
+/** The open status in a line of facts; a press opens the week in a sheet. */
+export function BusinessHoursSheet({ details }: { details: BusinessDetails }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        className={styles.hoursButton}
+        aria-haspopup="dialog"
+        onClick={() => setOpen(true)}
+      >
+        <span className={styles.srOnly}>{t("Radno vrijeme")}: </span>
+        <BusinessOpenStatus details={details} inline unknown={t("Radno vrijeme")} />
+        <Icon name="chevron" />
+      </button>
+      <Sheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title={t("Radno vrijeme")}
+        closeLabel={t("Zatvori")}
+      >
+        <BusinessHours details={details} />
+      </Sheet>
+    </>
   );
 }
