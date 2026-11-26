@@ -15,6 +15,7 @@ import { useT } from "../i18n/LocaleProvider";
 import common from "../rentals/rentals.module.css";
 import { StayCalendar } from "./StayCalendar";
 import { StayEntry } from "./StayEntries";
+import { StayRequest } from "./StayRequest";
 import { stayError, useStayRead, writeStay } from "./stay-client";
 import styles from "./stays.module.css";
 
@@ -301,6 +302,17 @@ export function StayUnits({
     );
   if (!data) return actor ? <p role="status">{t("Dohvaćanje smještaja…")}</p> : null;
   if (!data.units.length && (!actor || !data.eligible)) return null;
+  // A visitor books on the screen drawn for that; what follows is the owner's side.
+  if (!actor)
+    return (
+      <StayRequest
+        businessId={businessId}
+        catalog={data}
+        photos={assets}
+        catalogRevision={revision}
+        onChangedOffer={refresh}
+      />
+    );
   return (
     <section className={common.panel} aria-label={t("Smještajne jedinice")}>
       <div className={common.topline}>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { appointmentDate, appointmentTile, outsideThisMonth } from "../../lib/appointment-display";
 import { bookingDate, bookingMoney } from "../../lib/booking";
 import { dateKey } from "../../lib/booking-time";
-import { bosnianForm, msg } from "../../lib/i18n/translate";
+import { msg } from "../../lib/i18n/translate";
 import { type StayBooking, stayNights } from "../../lib/stays";
 import {
   AppointmentCard,
@@ -15,6 +15,7 @@ import {
 import { useI18n } from "../i18n/LocaleProvider";
 import styles from "../rentals/rentals.module.css";
 import { stayError, writeStay } from "./stay-client";
+import { nightsText } from "./stay-labels";
 
 const statuses = {
   requested: msg("Čeka potvrdu"),
@@ -28,11 +29,6 @@ const tones: Record<StayBooking["status"], AppointmentTone> = {
   declined: "refused",
   cancelled: "refused",
 };
-
-/** "2 noćenja": Bosnian counts in three forms, each translation in its own. */
-function nightsText(count: number) {
-  return bosnianForm(count, msg("{count} noćenje"), msg("{count} noćenja"), msg("{count} noćenja"));
-}
 
 export function StayEntry({
   entry,
