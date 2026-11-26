@@ -1375,7 +1375,9 @@ export function BusinessManager({
       {editing !== undefined ? (
         <>
           <ReturnedBusinessNote business={editing} />
-          {editing && (
+          {/* Members reach hours, units and vehicles from the business hub; the old row of
+              buttons above the form stays only for the administration. */}
+          {editing && isOwner && (
             <div className={styles.businessActions}>
               {(editing.hasStayUnits ||
                 hasStayCategory(categories, editing.categoryId, editing.subcategoryId)) && (
