@@ -8,6 +8,7 @@ import {
   businessWeekdays,
 } from "../../lib/business-details";
 import { hoursNow, spanLabel, weekSpans } from "../../lib/business-hours";
+import { useOtherClock } from "../../lib/viewer-clock";
 import { Icon } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
 import { Sheet } from "../ui/Sheet";
@@ -154,26 +155,7 @@ export function BusinessAmenities({
 export function BusinessHours({ details }: { details?: BusinessDetails | null }) {
   const t = useT();
   const now = useNow(details);
-  // The zone is named only to a viewer whose own clock shows another time. Devices name the
-  // same clock differently (Sarajevo, Belgrade, Zagreb), so the clocks are compared, not the names.
-  const [elsewhere, setElsewhere] = useState(false);
-  const zone = details?.timezone;
-  useEffect(() => {
-    if (!zone) return;
-    const clock = (timeZone?: string) =>
-      new Intl.DateTimeFormat("en-GB", {
-        timeZone,
-        weekday: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23",
-      }).format(new Date());
-    try {
-      setElsewhere(clock(zone) !== clock());
-    } catch {
-      setElsewhere(false);
-    }
-  }, [zone]);
+  const elsewhere = useOtherClock(details?.timezone);
   if (details?.hours?.length !== 7 || !details.timezone) return null;
   const state = now ? hoursNow(details, now) : null;
   const week = weekSpans(details.hours);

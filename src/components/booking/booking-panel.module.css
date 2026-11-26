@@ -1,0 +1,435 @@
+/*
+ * Booking an appointment as drawn: the service as a card of rows with one of them chosen, a week
+ * of days, the free times of the chosen day, what is being asked for with its price, and the
+ * button that sends the request. The same parts serve the other ways of booking.
+ */
+.panel {
+  --hairline: color-mix(in srgb, var(--ui-text) 16%, transparent);
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 18px;
+  color: var(--ui-text);
+}
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 4px 0;
+}
+.head h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.head p {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+.groupHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 4px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.groupHead h3 {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+.groupHead > span {
+  flex: 1;
+  min-width: 0;
+  text-align: end;
+}
+.groupHead > span:first-letter {
+  text-transform: uppercase;
+}
+.weekStep {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  background: none;
+  color: var(--ui-text);
+  cursor: pointer;
+  transition: scale 160ms var(--ease-out);
+}
+.weekStep:active {
+  scale: 0.94;
+}
+.weekStep:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.weekStep svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The services: one card, a row for each, the chosen one marked at its end. */
+.choices {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+}
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 8px 14px;
+  border: 0;
+  background: none;
+  color: var(--ui-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+.choice + .choice {
+  border-top: 1px solid var(--ui-border);
+}
+.choice:active {
+  background: var(--ui-surface-hover);
+}
+.choice:disabled {
+  cursor: default;
+}
+.choiceText {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.choiceName {
+  color: var(--ui-text);
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.choiceMark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+  border: 2px solid var(--hairline);
+  border-radius: 50%;
+  color: transparent;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+.choice[aria-checked="true"] .choiceMark {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+}
+.choiceMark svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.6;
+}
+
+/* A week of days. */
+.days {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.day {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 64px;
+  padding: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--hairline);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    scale 160ms var(--ease-out);
+}
+.day span {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
+.day strong {
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 800;
+}
+.day:active,
+.time:active {
+  scale: 0.96;
+}
+.day[aria-pressed="true"],
+.time[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+}
+.day:disabled,
+.time:disabled {
+  background: none;
+  color: var(--ui-muted);
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* The free times of the chosen day, four in a row. */
+.times {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.time {
+  height: 44px;
+  padding: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    scale 160ms var(--ease-out);
+}
+.note {
+  margin: 0;
+  padding: 0 4px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* What is being asked for, and what it costs. */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+}
+.summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.summary dt {
+  min-width: 0;
+  color: var(--ui-muted);
+  overflow-wrap: anywhere;
+}
+.summary dd {
+  flex: none;
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.summary > .total {
+  padding-top: 8px;
+  border-top: 1px solid var(--ui-border);
+  font-size: 16px;
+  line-height: 22px;
+}
+.total dt,
+.total dd {
+  color: var(--ui-text);
+  font-weight: 800;
+}
+
+.send,
+.minor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  font: inherit;
+  cursor: pointer;
+  transition: scale 160ms var(--ease-out);
+}
+.send {
+  height: 54px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font-size: 16px;
+  font-weight: 800;
+}
+.minor {
+  min-height: 46px;
+  padding: 0 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--ui-radius-md);
+  background: none;
+  color: var(--ui-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+.send:active,
+.minor:active {
+  scale: 0.98;
+}
+.send:disabled,
+.minor:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.foot .note {
+  text-align: center;
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-danger-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+  font-size: 14px;
+  line-height: 20px;
+}
+.error p {
+  margin: 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.actions > * {
+  flex: 1 1 140px;
+}
+.error .minor {
+  background: var(--ui-surface);
+}
+
+/* The request is on its way: a mark, what was asked for, and where to follow it. It rises in
+   by the app's own rule for notices. */
+.done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 22px 18px 18px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+  text-align: center;
+}
+.doneMark {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+}
+.doneMark svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2.4;
+}
+.done h3 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 800;
+}
+.done p {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+.doneWhat {
+  color: var(--ui-text);
+  font-weight: 700;
+}
+.done .actions {
+  align-self: stretch;
+  flex-direction: column;
+  margin-top: 12px;
+}
+.done .actions > * {
+  flex: none;
+}
+
+/* The chevron points onward; the week before is the same sign turned round. */
+.weekStep svg[data-back] {
+  rotate: 180deg;
+}
+:global([dir="rtl"]) .weekStep svg {
+  rotate: 180deg;
+}
+:global([dir="rtl"]) .weekStep svg[data-back] {
+  rotate: none;
+}

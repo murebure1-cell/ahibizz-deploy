@@ -253,6 +253,15 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   upisuje se kao jedno vrijeme (18:00–02:00) i tako se i prikazuje; u bazi ostaje podijeljen po
   danima kao i dosad, pa migracije nema. S crteža još nema: neradni dani (praznici), jer taj
   podatak ne postoji, a tiče se i termina **[novo]**.
+- **Zakazivanje termina [urađeno 26. 11. 2026.]:** po crtežu Termin. Na stranici djelatnosti
+  usluga se bira u kartici s redovima (naziv, trajanje, cijena), dan u traci od sedam dana koja
+  se strelicama pomjera po sedmicu do 90 dana unaprijed, a vrijeme u mreži slobodnih termina.
+  Ispod je sažetak (usluga, dan i vrijeme, ukupno) i „Pošalji zahtjev”, uz napomene da se plaća
+  kod djelatnosti i da zahtjev odmah zauzima termin dok ga vlasnik ne potvrdi ili odbije. Poslan
+  zahtjev pokaže šta je traženo i vodi u „Moji termini”. Ponašanje (provjera slobodnih termina,
+  ponovni pokušaj, prijava) je isto kao prije. S crteža nema: poseban ekran sa zaglavljem
+  djelatnosti (zakazivanje ostaje dio stranice djelatnosti), precrtani zauzeti termini i dani
+  označeni kao zatvoreni, jer javni odgovor nosi samo slobodne termine **[novo]**.
 - **Poruke [urađeno 25. 11. 2026.]:** po crtežima Poruke i Razgovor. Lista: naslov s brojem
   nepročitanih razgovora, pretraga, tri oznake (Lično, Moje djelatnosti, Nepročitani) i razgovori
   u jednoj kartici; vrijeme je sat za danas, zatim „jučer”, dan u sedmici, pa datum. Razgovor:
