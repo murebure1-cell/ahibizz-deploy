@@ -1,0 +1,124 @@
+/* "Nalozi" as drawn (AdminNalozi): chips, one search field, a card per account. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border: 0;
+}
+.chips button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+.chips button[aria-pressed="true"] {
+  border-color: var(--ui-inverse);
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
+}
+.search input {
+  min-height: 48px;
+  border-radius: 16px;
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: var(--ui-glass);
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
+  font-size: 14px;
+  font-weight: 800;
+}
+.whoText {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+.whoText strong {
+  font-size: 15px;
+  line-height: 20px;
+}
+.whoText span {
+  overflow: hidden;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pills span {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--ui-surface-soft);
+  color: var(--ui-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.pills span[data-kind="ok"] {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+.pills span[data-kind="wait"] {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+.pills span[data-kind="bad"] {
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.note svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+}
