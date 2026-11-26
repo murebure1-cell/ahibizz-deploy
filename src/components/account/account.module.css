@@ -363,13 +363,19 @@
   }
 }
 
+.phoneBar {
+  display: none;
+}
 /* On a phone "Moj profil" and the settings are screens of their own, as drawn: no sidebar tabs
    and no site header. The profile leads to the menu, the settings lead back to it. */
 @media (max-width: 700px) {
-  .layout:is([data-account-pane="overview"], [data-account-pane="settings"]) > .sidebar,
-  :global(body):has(.layout:is([data-account-pane="overview"], [data-account-pane="settings"]))
-    :global(.site-header) {
+  .layout > .sidebar,
+  :global(body):has(.layout) :global(.site-header) {
     display: none;
+  }
+  .phoneBar {
+    display: block;
+    margin: -8px -16px 4px;
   }
   .layout[data-account-pane="overview"] {
     width: calc(100% - 40px);
