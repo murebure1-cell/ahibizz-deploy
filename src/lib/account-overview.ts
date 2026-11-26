@@ -21,6 +21,9 @@ export type AccountOverviewFacts = {
   promotedBusinesses: number;
   /** Accepted friends, shown on the drawn profile. Older responses may lack it. */
   friends?: number;
+  /** Opens of the public profile and of the account's businesses in the last 30 days. */
+  profileViews?: number;
+  businessViews?: number;
   nextAppointment?: NextAppointment | null;
 };
 
@@ -59,8 +62,9 @@ export function readOverview(value: unknown, expectedId: string): AccountOvervie
         (overview.businessLimit === null
           ? overview.package !== "business"
           : overview.businessLimit !== packageBusinessLimit(overview.package))) ||
-    (overview.friends !== undefined &&
-      (!Number.isSafeInteger(overview.friends) || overview.friends < 0)) ||
+    [overview.friends, overview.profileViews, overview.businessViews].some(
+      (value) => value !== undefined && (!Number.isSafeInteger(value) || (value as number) < 0),
+    ) ||
     [overview.businesses, overview.unreadThreads, overview.promotedBusinesses].some(
       (value) => typeof value !== "number" || !Number.isSafeInteger(value) || value < 0,
     )

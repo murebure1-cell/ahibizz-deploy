@@ -9,6 +9,7 @@ import styles from "../../../../components/directory/public-search.module.css";
 import { BusinessReels } from "../../../../components/reels/ReelShelf";
 import { RentalFleet } from "../../../../components/rentals/RentalFleet";
 import { StayUnits } from "../../../../components/stays/StayUnits";
+import { ViewBeacon } from "../../../../components/ViewBeacon";
 import {
   type DirectorySearchParams,
   directorySearchSuffix,
@@ -156,6 +157,7 @@ export default async function PublicBusinessPage({
       ];
       return (
         <main id="glavni-sadrzaj">
+          <ViewBeacon kind="business" id={business.id} />
           <PublicBusinessProfile
             backHref={`/pretraga${directorySearchSuffix(search)}`}
             business={publicBusinessView(business, categories)}

@@ -718,6 +718,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0057_drop_paypal_archive.sql",
           "0058_account_packages.sql",
           "0059_administration_account.sql",
+          "0060_view_counts.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -1205,6 +1206,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             businessLimit: 1,
             promotedBusinesses: 0,
             friends: 0,
+            profileViews: 0,
+            businessViews: 0,
             nextAppointment: null,
             unreadThreads: 0,
           });
