@@ -9,16 +9,18 @@ import {
   inventoryMedia,
 } from "../../lib/business-media";
 import type { StayCatalog, StayUnit, StayUnitInput } from "../../lib/stays";
-import { OwnerAgenda } from "../booking/AppointmentCard";
+import { appointmentAction, CancelAppointment, OwnerAgenda } from "../booking/AppointmentCard";
 import { BusinessMediaManager } from "../directory/BusinessMediaManager";
 import { Icon } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
 import common from "../rentals/rentals.module.css";
+import { Switch } from "../ui/Switch";
 import { StayCalendar } from "./StayCalendar";
 import { StayEntry } from "./StayEntries";
 import { StayRequest } from "./StayRequest";
 import { stayError, useStayRead, writeStay } from "./stay-client";
-import styles from "./stays.module.css";
+import { bedsText, unitKinds } from "./stay-labels";
+import owner from "./stay-owner.module.css";
 
 function UnitForm({
   unit,
@@ -192,51 +194,6 @@ function UnitForm({
   );
 }
 
-function UnitPhotos({
-  unit,
-  photos,
-  owner,
-}: {
-  unit: StayUnit;
-  photos: BusinessMediaAsset[];
-  owner: boolean;
-}) {
-  const t = useT();
-  const available = unit.photoSlots.flatMap((slot) => photos.filter((p) => p.slot === slot));
-  const [selected, setSelected] = useState<number | null>(null);
-  const main = available.find((p) => p.slot === selected) ?? available[0];
-  if (!main) return null;
-  const url = (photo: BusinessMediaAsset) =>
-    businessMediaUrl(unit.businessId, photo, owner ? "mine" : "public");
-  return (
-    <section className={styles.gallery} aria-label={`Fotografije: ${unit.name}`}>
-      <Image
-        className={styles.cover}
-        width={560}
-        height={300}
-        src={url(main)}
-        alt={`${unit.name} · fotografija ${available.indexOf(main) + 1}`}
-        unoptimized
-      />
-      {available.length > 1 && (
-        <div className={styles.thumbnails}>
-          {available.map((photo, index) => (
-            <button
-              type="button"
-              key={photo.slot}
-              aria-label={t("Prikaži fotografiju {number}", { number: index + 1 })}
-              aria-pressed={photo.slot === main.slot}
-              onClick={() => setSelected(photo.slot)}
-            >
-              <Image width={72} height={48} alt="" src={url(photo)} unoptimized />
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
 export function StayUnits({
   businessId,
   actor,
@@ -291,6 +248,30 @@ export function StayUnits({
       setBusy(false);
     }
   }
+  /** Online booking of one unit on or off; the rest of the unit stays as it is. */
+  async function toggle(unit: StayUnit, enabled: boolean) {
+    if (!actor || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const input: StayUnitInput = {
+        id: unit.id,
+        expectedVersion: unit.version,
+        name: unit.name,
+        type: unit.type,
+        beds: unit.beds,
+        priceMinor: unit.priceMinor,
+        description: unit.description,
+        enabled,
+      };
+      await writeStay(`owner/${businessId}`, actor, input);
+      refresh();
+    } catch (e) {
+      setError(t(stayError(e)));
+    } finally {
+      setBusy(false);
+    }
+  }
   const assets = currentPhotos ?? photos;
   if (cat?.error)
     return (
@@ -314,11 +295,14 @@ export function StayUnits({
         onChangedOffer={refresh}
       />
     );
+  const shown = data.units.find((unit) => unit.id === selected) ?? data.units[0];
   return (
-    <section className={common.panel} aria-label={t("Smještajne jedinice")}>
-      <div className={common.topline}>
-        <h2>{t("Smještaj")}</h2>
-        {actor && <span className={common.badge}>{data.units.length} / 2 jedinice</span>}
+    <section className={common.panel} aria-label={t("Sobe i apartmani")} data-design="stay-units">
+      <div className={owner.head}>
+        <h2>{t("Sobe i apartmani")}</h2>
+        <span className={owner.count}>
+          {t("{count} od {limit}", { count: data.units.length, limit: 2 })}
+        </span>
       </div>
       {actor && Boolean(data.upcoming?.length) && editor === undefined && (
         <OwnerAgenda
@@ -365,107 +349,122 @@ export function StayUnits({
           onPhotos={() => setGallery((v) => !v)}
         />
       ) : (
-        data.units.map((unit) => {
-          const open = selected === unit.id;
-          return (
-            <article key={unit.id} className={common.card} aria-label={unit.name}>
-              <UnitPhotos unit={unit} photos={assets} owner={!!actor} />
-              <div className={common.topline}>
-                <div className={common.carTitle}>
-                  <h3 dir="auto">{unit.name}</h3>
-                  <p>
-                    {unit.type === "room" ? t("Soba") : t("Apartman")} · {unit.beds}{" "}
-                    {unit.beds === 1 ? "krevet" : "kreveta"}
-                  </p>
-                </div>
-                {actor && !unit.enabled && (
-                  <span className={common.badge}>{t("Booking isključen")}</span>
-                )}
-              </div>
-              {unit.description && <p dir="auto">{unit.description}</p>}
-              <div className={common.topline}>
-                <span className={common.rate}>
-                  <strong>{bookingMoney(unit.priceMinor)}</strong> / noć
-                </span>
-                <button
-                  type="button"
-                  className={common.secondary}
-                  aria-expanded={open}
-                  onClick={() => {
-                    setSelected(open ? null : unit.id);
-                    setArchiving(null);
-                    setError("");
-                  }}
-                >
-                  <Icon name="calendar" />
-                  {actor ? t("Kalendar") : t("Provjeri dostupnost")}
-                </button>
-              </div>
-              {actor && (
-                <div className={common.actions}>
-                  {data.eligible && (
-                    <button
-                      type="button"
-                      className={common.smallAction}
-                      onClick={() => {
-                        setEditor(unit);
-                        setGallery(false);
-                        setArchiving(null);
-                      }}
-                    >
-                      {t("Uredi jedinicu")}
-                    </button>
-                  )}
-                  {archiving !== unit.id ? (
-                    <button
-                      className={common.smallAction}
-                      type="button"
-                      onClick={() => {
-                        setArchiving(unit.id);
-                        setError("");
-                      }}
-                    >
-                      {t("Arhiviraj")}
-                    </button>
-                  ) : (
-                    <>
+        <>
+          <div className={owner.units}>
+            {data.units.map((unit) => {
+              const cover = unit.photoSlots
+                .map((slot) => assets.find((photo) => photo.slot === slot))
+                .find(Boolean);
+              return (
+                <article key={unit.id} className={owner.unit} aria-label={unit.name}>
+                  <div className={owner.row}>
+                    <span className={owner.picture} aria-hidden="true">
+                      {cover ? (
+                        <Image
+                          src={businessMediaUrl(unit.businessId, cover, "mine")}
+                          width={104}
+                          height={104}
+                          alt=""
+                          unoptimized
+                        />
+                      ) : (
+                        <Icon name="bed" />
+                      )}
+                    </span>
+                    <span className={owner.name}>
+                      <strong dir="auto">{unit.name}</strong>
+                      {t(unitKinds[unit.type])} · {t(bedsText(unit.beds), { count: unit.beds })}
+                      <span className={owner.price}>
+                        {bookingMoney(unit.priceMinor)} / {t("noć")}
+                      </span>
+                    </span>
+                    <span className={owner.controls}>
+                      <Switch
+                        checked={unit.enabled}
+                        disabled={busy || !data.eligible}
+                        label={t("Online booking za {name}", { name: unit.name })}
+                        onChange={(next) => void toggle(unit, next)}
+                      />
+                      {data.eligible && (
+                        <button
+                          type="button"
+                          className={owner.edit}
+                          onClick={() => {
+                            setEditor(unit);
+                            setGallery(false);
+                            setArchiving(null);
+                          }}
+                        >
+                          {t("Uredi")}
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                  {archiving === unit.id ? (
+                    <div className={owner.archive}>
+                      <CancelAppointment
+                        label={t("Arhiviraj")}
+                        disabled={busy}
+                        onConfirm={() => void archive(unit)}
+                      />
                       <button
                         type="button"
+                        className={appointmentAction}
                         disabled={busy}
-                        className={common.secondary}
-                        onClick={() => void archive(unit)}
-                      >
-                        {t("Potvrdi arhiviranje")}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        className={common.smallAction}
                         onClick={() => setArchiving(null)}
                       >
                         {t("Odustani")}
                       </button>
-                    </>
-                  )}
-                </div>
-              )}
-              {open && (
-                <StayCalendar
-                  key={[unit.id, unit.version, actor ?? "public"].join(":")}
-                  unit={unit}
-                  catalogRevision={revision}
-                  zone={data.timezone}
-                  actor={actor}
-                  allowNew={data.eligible && (!!actor || unit.enabled)}
-                  changedOffer={refresh}
-                  changedBookings={() => {
-                    if (actor) refresh();
-                  }}
-                />
-              )}
-            </article>
-          );
-        })
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+          {data.eligible && data.units.length >= 2 && (
+            <p className={owner.limit}>{t("Dosegnut je broj jedinica za ovu djelatnost.")}</p>
+          )}
+          {shown && (
+            <section className={owner.occupancy} aria-label={t("Zauzetost")}>
+              <div className={owner.head}>
+                <h3>{t("Zauzetost")}</h3>
+                {data.units.length > 1 ? (
+                  <span className={owner.pills}>
+                    {data.units.map((unit) => (
+                      <button
+                        key={unit.id}
+                        type="button"
+                        aria-pressed={unit.id === shown.id}
+                        onClick={() => setSelected(unit.id)}
+                      >
+                        {unit.name}
+                      </button>
+                    ))}
+                  </span>
+                ) : (
+                  <span className={owner.count}>{shown.name}</span>
+                )}
+              </div>
+              <StayCalendar
+                key={[shown.id, shown.version, actor].join(":")}
+                unit={shown}
+                catalogRevision={revision}
+                zone={data.timezone}
+                actor={actor}
+                allowNew={data.eligible}
+                changedOffer={refresh}
+                changedBookings={refresh}
+              />
+              <button
+                type="button"
+                className={owner.quiet}
+                onClick={() => setArchiving(archiving === shown.id ? null : shown.id)}
+              >
+                {t("Arhiviraj {name}", { name: shown.name })}
+              </button>
+            </section>
+          )}
+        </>
       )}
       {gallery && actor && editor !== undefined && (
         <BusinessMediaManager
