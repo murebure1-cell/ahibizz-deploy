@@ -22,7 +22,9 @@ export async function readOwnerOverview(
   >(
     `SELECT u.id AS "accountId", to_char(u."createdAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "joinedAt",
        u.role, u.founder, COALESCE((SELECT package FROM account_package p WHERE p.user_id=u.id),'basic') AS held,
-       stats.businesses, stats."promotedBusinesses", 
+       stats.businesses, stats."promotedBusinesses",
+       (SELECT count(*)::integer FROM people_connection c
+          WHERE c.status='accepted' AND u.id IN (c.left_user_id,c.right_user_id)) AS friends,
        (SELECT count(*)::integer FROM message_thread t
           JOIN message_thread_member own ON own.thread_id=t.id AND own.user_id=u.id
           LEFT JOIN directory_business mb ON mb.id=t.business_id

@@ -418,3 +418,57 @@
   border-radius: 7px;
   background: var(--ui-surface-soft);
 }
+
+/* "Moj profil" as drawn (ProfilOsnivac): the person-profile look from connections, inside the
+   account area. The cover is a rounded band here, under the screen's own top bar. */
+.own {
+  width: 100%;
+  max-width: none;
+  padding-bottom: 0;
+}
+.ownCover {
+  height: 168px;
+  border-radius: 24px;
+}
+.own .avatar {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  border: 4px solid var(--ui-page);
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
+  font-size: 32px;
+}
+.own .tags {
+  margin-top: 8px;
+}
+.outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--ui-border-strong);
+  background: transparent;
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.outline svg {
+  width: 18px;
+  height: 18px;
+}
+.own > dl,
+.own > section,
+.own > div:not(:first-child) {
+  margin-inline: 0;
+}
+/* On a phone the cover runs from edge to edge, past the account area's 16px gutter. */
+@media (max-width: 700px) {
+  .ownCover {
+    margin-inline: -16px;
+    border-radius: 0;
+  }
+}
