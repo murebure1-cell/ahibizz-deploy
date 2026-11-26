@@ -161,6 +161,7 @@ export function AccountSummary({
   children?: ReactNode;
 }) {
   const { t, locale } = useI18n();
+  const numbers = new Intl.NumberFormat("de-DE");
   const businessesHeading = useId();
   const displayName = profile?.name ?? name;
   const photo = profile ? personalProfileImage(profileImageUrl(profile, "photo")) : null;
@@ -222,12 +223,12 @@ export function AccountSummary({
       {facts && (
         <div className={styles.stats}>
           <div>
-            <strong>{facts.friends ?? 0}</strong>
-            <span>{t("Prijatelji")}</span>
+            <strong>{numbers.format(facts.profileViews ?? 0)}</strong>
+            <span>{t("Pregledi profila · 30 dana")}</span>
           </div>
           <div>
-            <strong>{facts.promotedBusinesses}</strong>
-            <span>{t("Sponzorisane djelatnosti")}</span>
+            <strong>{numbers.format(facts.businessViews ?? 0)}</strong>
+            <span>{t("Pregledi djelatnosti · 30 dana")}</span>
           </div>
         </div>
       )}
