@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   cityPins,
+  countryFrameMargin,
   countryKey,
   countryPins,
   distanceLabel,
@@ -280,6 +281,22 @@ test("a frame around points always has a size, and the nearest city must be near
       { latitude: 44.6, longitude: 17.2 },
     ]),
     { south: 43.8, west: 17.2, north: 44.6, east: 18.4 },
+  );
+  // A country with one business is framed with the land round it.
+  const country = pointBounds([{ latitude: 44.54, longitude: 18.68 }], countryFrameMargin);
+  assert.ok(country);
+  assert.ok(Math.abs(country.north - country.south - 2.4) < 1e-9);
+  assert.ok(Math.abs(country.east - country.west - 2.4) < 1e-9);
+  // Businesses spread wider than that keep their own frame.
+  assert.deepEqual(
+    pointBounds(
+      [
+        { latitude: 43.3, longitude: 17.8 },
+        { latitude: 44.9, longitude: 19.2 },
+      ],
+      countryFrameMargin,
+    ),
+    { south: 43.3, west: 17.8, north: 44.9, east: 19.2 },
   );
   const cities = mapCities([
     pin("1", "Sarajevo", 43.8563, 18.4131),
