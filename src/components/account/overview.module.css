@@ -419,56 +419,42 @@
   background: var(--ui-surface-soft);
 }
 
-/* "Moj profil" as drawn (ProfilOsnivac): the person-profile look from connections, inside the
-   account area. The cover is a rounded band here, under the screen's own top bar. */
-.own {
-  width: 100%;
-  max-width: none;
-  padding-bottom: 0;
-}
-.ownCover {
-  height: 168px;
-  border-radius: 24px;
-}
-.own .avatar {
-  position: relative;
-  width: 112px;
-  height: 112px;
-  border: 4px solid var(--ui-page);
-  background: var(--ui-inverse);
-  color: var(--ui-on-inverse);
-  font-size: 32px;
-}
-.own .tags {
-  margin-top: 8px;
-}
-.outline {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+/* The top bar's two round buttons: edit the profile, open the menu. */
+.topActions {
+  display: flex;
   gap: 8px;
-  border: 1px solid var(--ui-border-strong);
-  background: transparent;
-  color: var(--ui-text);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: none;
-  cursor: pointer;
 }
-.outline svg {
-  width: 18px;
-  height: 18px;
+/* The founder's photo carries the accent ring of the founder mark. */
+.avatar[data-founder] {
+  border-width: 3px;
+  box-shadow: 0 0 0 4px var(--ui-accent-soft);
 }
-.own > dl,
-.own > section,
-.own > div:not(:first-child) {
-  margin-inline: 0;
+.head :global(ul) {
+  margin-top: 0;
 }
-/* On a phone the cover runs from edge to edge, past the account area's 16px gutter. */
-@media (max-width: 700px) {
-  .ownCover {
-    margin-inline: -16px;
-    border-radius: 0;
-  }
+/* Two counts as drawn on the Profil board. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: var(--ui-surface);
+}
+.stats strong {
+  font-size: 24px;
+  line-height: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.stats span {
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
 }
