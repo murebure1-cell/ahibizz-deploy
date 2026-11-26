@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import Link from "next/link";
 import { ArticleCard, FeaturedArticle } from "../../../components/content-hub/ArticleCard";
-import styles from "../../../components/content-hub/content-hub.module.css";
+import styles from "../../../components/content-hub/blog.module.css";
 import { Icon } from "../../../components/Icon";
 import { type ArticleCategory, articleCategories, blogPath } from "../../../lib/content-hub";
 import { msg } from "../../../lib/i18n/translate";
@@ -14,6 +14,7 @@ export const generateMetadata = titled("AhiBizz blog", {
   description: msg("Vodiči, poslovni savjeti i novosti za AhiBizz zajednicu."),
 });
 
+/** The blog as drawn: topics as pills, the featured article as a large card, the rest as rows. */
 export default async function BlogPage({
   searchParams,
 }: {
@@ -33,39 +34,34 @@ export default async function BlogPage({
   const visibleArticles =
     data?.articles.filter((article) => article.slug !== data.featured?.slug) ?? [];
   const onlyFeatured = data?.featured && !visibleArticles.length && !data.more;
+  const searching = Boolean(filters.q);
 
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
-      <header className={styles.hero}>
-        <div>
-          <h1>{t("AhiBizz blog")}</h1>
-          <p className={styles.heroLead}>
-            {t("Vodiči za lakše korištenje, savjeti za tvoj posao i novosti iz zajednice.")}
-          </p>
+      <header className={styles.head}>
+        <h1>{t("AhiBizz blog")}</h1>
+        <details className={styles.searchBox} open={searching || undefined}>
+          <summary className={styles.round} aria-label={t("Pretraži članke")}>
+            <Icon name="search" aria-hidden="true" />
+          </summary>
           <search>
             <form action="/blog" className={styles.search}>
-              <label className={styles.searchLabel} htmlFor="blog-search">
-                {t("Pretraži članke")}
-              </label>
               <input
-                id="blog-search"
                 type="search"
                 name="q"
                 maxLength={100}
+                aria-label={t("Pretraži članke")}
                 placeholder={t("Npr. termin ili oglas")}
                 defaultValue={filters.q}
               />
               {filters.category && <input type="hidden" name="tema" value={filters.category} />}
               {filters.saved && <input type="hidden" name="sacuvano" value="1" />}
-              <button type="submit">
-                <Icon name="search" /> Traži
-              </button>
+              <button type="submit">{t("Traži")}</button>
             </form>
           </search>
-        </div>
-        <div aria-hidden="true" className={styles.heroImage} />
+        </details>
       </header>
-      <nav className={styles.categories} aria-label={t("Teme bloga")}>
+      <nav className={styles.pills} aria-label={t("Teme bloga")}>
         <Link
           href={blogPath()}
           aria-current={!filters.category && !filters.saved && !filters.q ? "page" : undefined}
@@ -81,15 +77,11 @@ export default async function BlogPage({
             {t(label)}
           </Link>
         ))}
-        <Link
-          href={blogPath({ saved: true })}
-          className={styles.saved}
-          aria-current={filters.saved ? "page" : undefined}
-        >
-          <Icon name="heart" /> Sačuvani članci
+        <Link href={blogPath({ saved: true })} aria-current={filters.saved ? "page" : undefined}>
+          <Icon name="heart" aria-hidden="true" /> {t("Sačuvani članci")}
         </Link>
       </nav>
-      {data?.featured && <FeaturedArticle article={data.featured} />}
+      {data?.featured && !searching && <FeaturedArticle article={data.featured} />}
       {!onlyFeatured && (
         <section aria-labelledby="blog-results" className={styles.section}>
           <h2 id="blog-results">
@@ -102,45 +94,37 @@ export default async function BlogPage({
                   : t("Najnoviji članci")}
           </h2>
           {signIn ? (
-            <p>
+            <p className={styles.note}>
               {t("Sačuvani članci pripadaju tvom nalogu.")}{" "}
-              <Link className={styles.inlineLink} href="/prijava?nastavi=%2Fblog%3Fsacuvano%3D1">
-                {t("Prijavi se")}
-              </Link>
+              <Link href="/prijava?nastavi=%2Fblog%3Fsacuvano%3D1">{t("Prijavi se")}</Link>
             </p>
           ) : !data ? (
-            <p role="status">{t("Članci trenutno nisu dostupni. Pokušaj ponovo kasnije.")}</p>
+            <p role="status" className={styles.note}>
+              {t("Članci trenutno nisu dostupni. Pokušaj ponovo kasnije.")}
+            </p>
           ) : !visibleArticles.length ? (
-            <p>
+            <p className={styles.note}>
               {filters.saved && !filters.q
                 ? t("Još nema sačuvanih članaka.")
                 : t("Nema članaka za ovaj izbor.")}
             </p>
           ) : (
-            <div className={styles.cards}>
+            <div className={styles.rows}>
               {visibleArticles.map((article) => (
                 <ArticleCard key={article.slug} article={article} />
               ))}
             </div>
           )}
           {data && (filters.page > 1 || data.more) && (
-            <nav className={styles.pageFooter} aria-label={t("Stranice članaka")}>
+            <nav className={styles.pager} aria-label={t("Stranice članaka")}>
               {filters.page > 1 && (
-                <Link
-                  className={styles.secondary}
-                  href={blogPath({ ...filters, page: filters.page - 1 })}
-                >
+                <Link href={blogPath({ ...filters, page: filters.page - 1 })}>
                   {t("Prethodna")}
                 </Link>
               )}
-              <span>Stranica {filters.page}</span>
+              <span>{filters.page}</span>
               {data.more && (
-                <Link
-                  className={styles.secondary}
-                  href={blogPath({ ...filters, page: filters.page + 1 })}
-                >
-                  {t("Sljedeća")}
-                </Link>
+                <Link href={blogPath({ ...filters, page: filters.page + 1 })}>{t("Sljedeća")}</Link>
               )}
             </nav>
           )}

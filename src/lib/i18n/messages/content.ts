@@ -1417,4 +1417,5 @@ export const content: Messages = {
     "{count} {count|رسالة جديدة|رسائل جديدة}",
     "{count} yeni mesaj",
   ],
+  "Pročitaj još": ["Read more", "Weiterlesen", "اقرأ المزيد", "Daha fazla oku"],
 };
