@@ -138,6 +138,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0056_business_content_erasure.sql",
           "0057_drop_paypal_archive.sql",
           "0058_account_packages.sql",
+          "0059_administration_account.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -1135,7 +1136,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
       await t.test(
-        "founder insignia belong only to the verified initial owner, on their public and private profile",
+        "founder insignia belong only to the initial owner or the marked founder, verified or not",
         async () => {
           const founderId = owner.user.id;
           const badges = ({ verified, platformFounder, platformAdministrator }) => ({
@@ -1146,8 +1147,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           const none = { verified: false, platformFounder: false, platformAdministrator: false };
           const founder = { verified: true, platformFounder: true, platformAdministrator: true };
           const verifiedOnly = { ...none, verified: true };
+          // The founder mark is a role, not identity: it shows before verification too.
+          const unverifiedFounder = { ...founder, verified: false };
           await show(owner, true);
-          assert.deepEqual(badges(await people.read(owner.headers)), none);
+          assert.deepEqual(badges(await people.read(owner.headers)), unverifiedFounder);
           await pool.query("UPDATE auth_user SET name=$2 WHERE id=$1", [
             businessPerson,
             owner.user.name,
@@ -1181,8 +1184,16 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           });
           assert.deepEqual(badges(await connections.readPublic(businessPerson)), verifiedOnly);
           await pool.query("UPDATE auth_user SET profile_verified=false WHERE id=$1", [founderId]);
-          assert.deepEqual(badges(await people.read(owner.headers)), none);
-          assert.deepEqual(badges(await connections.readPublic(founderId)), none);
+          const formerOwner = { ...unverifiedFounder, platformAdministrator: false };
+          assert.deepEqual(badges(await people.read(owner.headers)), formerOwner);
+          assert.deepEqual(badges(await connections.readPublic(founderId)), formerOwner);
+          // The founder column (migration 0059) marks a person the same way, never as administrator.
+          await pool.query("UPDATE auth_user SET founder=true WHERE id=$1", [businessPerson]);
+          assert.deepEqual(badges(await connections.readPublic(businessPerson)), {
+            ...verifiedOnly,
+            platformFounder: true,
+          });
+          await pool.query("UPDATE auth_user SET founder=false WHERE id=$1", [businessPerson]);
           await show(owner, false);
           await denied(() => connections.readPublic(founderId), 404);
         },

@@ -27,10 +27,16 @@
   stroke-width: 1.8;
 }
 
+/* Only one person carries this: the accent itself, with a crown (canvas ProfilOsnivac). */
 .badges .founder {
-  color: var(--ui-accent-text);
-  background: var(--ui-accent-soft);
-  border-color: var(--ui-accent-border);
+  padding: 5px 12px 5px 10px;
+  color: var(--ui-on-accent);
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+  font-weight: 800;
+}
+.badges .founder svg {
+  stroke-width: 2.2;
 }
 
 .badges .administrator {

@@ -471,9 +471,12 @@ export function AuthForm({
                   {mode !== "reset-password" && (
                     <label>
                       {t("Email")}
+                      {/* Signing in also takes the administration's name ("administrator"). */}
                       <input
                         name="email"
-                        type="email"
+                        type={mode === "sign-in" ? "text" : "email"}
+                        autoCapitalize="none"
+                        spellCheck={false}
                         inputMode="email"
                         autoComplete="username"
                         enterKeyHint={mode === "reset-request" ? "send" : "next"}

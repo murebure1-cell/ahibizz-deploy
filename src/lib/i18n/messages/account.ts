@@ -1796,4 +1796,133 @@ export const account: Messages = {
       "تبقى الحسابات مسجلة على هذا الجهاز. يرى كل حساب ما يخصه فقط: لا تختلط الرسائل والإشعارات والمنشورات والإعدادات. تسجيل الخروج يُخرج جميع الحسابات على الجهاز.",
       "Hesaplar bu cihazda oturum açık kalır. Her biri yalnızca kendisininkini görür: mesajlar, bildirimler, yayınlar ve ayarlar karışmaz. Çıkış yapmak cihazdaki tüm hesapların oturumunu kapatır.",
     ],
+  "Adresa administracija@ahibizz.com već pripada drugom nalogu.": [
+    "The address administracija@ahibizz.com already belongs to another account.",
+    "Die Adresse administracija@ahibizz.com gehört bereits zu einem anderen Konto.",
+    "العنوان administracija@ahibizz.com يخص حسابًا آخر بالفعل.",
+    "administracija@ahibizz.com adresi zaten başka bir hesaba ait.",
+  ],
+  "Nije uspjelo. Pokušaj ponovo.": [
+    "That did not work. Try again.",
+    "Das hat nicht geklappt. Versuche es erneut.",
+    "لم ينجح ذلك. حاول مرة أخرى.",
+    "Olmadı. Tekrar dene.",
+  ],
+  "Odvojena administracija": [
+    "Separate administration",
+    "Getrennte Verwaltung",
+    "إدارة منفصلة",
+    "Ayrı yönetim",
+  ],
+  "Ovo trenutno nije dostupno. Pokušaj kasnije.": [
+    "This is not available right now. Try later.",
+    "Das ist gerade nicht verfügbar. Versuche es später.",
+    "هذا غير متاح الآن. حاول لاحقًا.",
+    "Bu şu anda kullanılamıyor. Daha sonra dene.",
+  ],
+  "Administracija dobija svoj nalog. Tvoj lični nalog postaje običan nalog s oznakom osnivača, bez ograničenja za djelatnosti i reelse.":
+    [
+      "The administration gets its own account. Your personal account becomes an ordinary account with the founder mark, with no limits on businesses and reels.",
+      "Die Verwaltung bekommt ein eigenes Konto. Dein persönliches Konto wird ein normales Konto mit dem Gründerzeichen, ohne Grenzen für Betriebe und Reels.",
+      "تحصل الإدارة على حسابها الخاص. يصبح حسابك الشخصي حسابًا عاديًا بعلامة المؤسس، بلا حدود للأعمال والريلز.",
+      "Yönetim kendi hesabını alır. Kişisel hesabın kurucu işaretli sıradan bir hesap olur; işletme ve reels sınırı olmaz.",
+    ],
+  "AhiBizz administracija": [
+    "AhiBizz administration",
+    "AhiBizz-Verwaltung",
+    "إدارة AhiBizz",
+    "AhiBizz yönetimi",
+  ],
+  "Prijava: administrator ili administracija@ahibizz.com. Lozinku biraš ti, na jednokratnom linku koji vrijedi sat vremena.":
+    [
+      "Sign in: administrator or administracija@ahibizz.com. You choose the password yourself, on a one-time link valid for one hour.",
+      "Anmeldung: administrator oder administracija@ahibizz.com. Das Passwort wählst du selbst, über einen Einmal-Link, der eine Stunde gilt.",
+      "تسجيل الدخول: administrator أو administracija@ahibizz.com. تختار كلمة المرور بنفسك عبر رابط لمرة واحدة صالح لمدة ساعة.",
+      "Giriş: administrator veya administracija@ahibizz.com. Şifreyi bir saat geçerli tek kullanımlık bir bağlantıda kendin seçersin.",
+    ],
+  "Napravi administratorski nalog": [
+    "Create the administration account",
+    "Verwaltungskonto erstellen",
+    "إنشاء حساب الإدارة",
+    "Yönetim hesabını oluştur",
+  ],
+  "Lozinka postavljena": [
+    "Password set",
+    "Passwort gesetzt",
+    "تم تعيين كلمة المرور",
+    "Şifre belirlendi",
+  ],
+  "Bez lozinke": ["No password yet", "Noch kein Passwort", "بلا كلمة مرور بعد", "Henüz şifre yok"],
+  "Jednokratni link": [
+    "One-time link",
+    "Einmal-Link",
+    "رابط لمرة واحدة",
+    "Tek kullanımlık bağlantı",
+  ],
+  "Vrijedi sat vremena i samo jednom. Ne šalji ga nikome. Na njemu izaberi lozinku administracije.":
+    [
+      "Valid for one hour and only once. Do not send it to anyone. Choose the administration's password on it.",
+      "Gilt eine Stunde und nur einmal. Schicke ihn niemandem. Wähle darauf das Passwort der Verwaltung.",
+      "صالح لمدة ساعة ولمرة واحدة فقط. لا ترسله لأحد. اختر عليه كلمة مرور الإدارة.",
+      "Bir saat ve yalnızca bir kez geçerli. Kimseye gönderme. Yönetimin şifresini orada seç.",
+    ],
+  "Otvori link": ["Open link", "Link öffnen", "افتح الرابط", "Bağlantıyı aç"],
+  Kopiraj: ["Copy", "Kopieren", "نسخ", "Kopyala"],
+  "Postavi lozinku na jednokratnom linku.": [
+    "Set the password on the one-time link.",
+    "Setze das Passwort über den Einmal-Link.",
+    "عيّن كلمة المرور عبر الرابط لمرة واحدة.",
+    "Şifreyi tek kullanımlık bağlantıda belirle.",
+  ],
+  "Novi link za lozinku": [
+    "New password link",
+    "Neuer Passwort-Link",
+    "رابط جديد لكلمة المرور",
+    "Yeni şifre bağlantısı",
+  ],
+  "Napravi link": ["Create link", "Link erstellen", "إنشاء رابط", "Bağlantı oluştur"],
+  "Dodaj nalog i prijavi se kao administrator. Tvoj ostaje prijavljen.": [
+    "Add an account and sign in as administrator. Yours stays signed in.",
+    "Füge ein Konto hinzu und melde dich als administrator an. Deines bleibt angemeldet.",
+    "أضف حسابًا وسجّل الدخول باسم administrator. يبقى حسابك مسجلًا.",
+    "Hesap ekle ve administrator olarak giriş yap. Seninki açık kalır.",
+  ],
+  "Kao administracija otvori ovu stranicu i pritisni „Završi odvajanje“.": [
+    "As the administration, open this page and press “Finish separating”.",
+    "Öffne diese Seite als Verwaltung und tippe auf „Trennung abschließen“.",
+    "بصفتك الإدارة، افتح هذه الصفحة واضغط «إنهاء الفصل».",
+    "Yönetim olarak bu sayfayı aç ve “Ayırmayı bitir”e bas.",
+  ],
+  "Završi odvajanje": [
+    "Finish separating",
+    "Trennung abschließen",
+    "إنهاء الفصل",
+    "Ayırmayı bitir",
+  ],
+  "Odobravanje, objave i odluke od sada idu samo s ovog naloga. Tvoj lični nalog postaje običan nalog s oznakom „Osnivač AhiBizza“ i bez ograničenja za djelatnosti i reelse.":
+    [
+      "From now on approvals, posts and decisions come only from this account. Your personal account becomes an ordinary account with the “AhiBizz founder” mark and no limits on businesses and reels.",
+      "Freigaben, Beiträge und Entscheidungen kommen ab jetzt nur von diesem Konto. Dein persönliches Konto wird ein normales Konto mit dem Zeichen „Gründer von AhiBizz“ und ohne Grenzen für Betriebe und Reels.",
+      "من الآن تأتي الموافقات والمنشورات والقرارات من هذا الحساب فقط. يصبح حسابك الشخصي حسابًا عاديًا بعلامة «مؤسس AhiBizz» وبلا حدود للأعمال والريلز.",
+      "Bundan sonra onaylar, yayınlar ve kararlar yalnızca bu hesaptan gelir. Kişisel hesabın “AhiBizz kurucusu” işaretli, işletme ve reels sınırı olmayan sıradan bir hesap olur.",
+    ],
+  "Sigurno? Pritisni ponovo": [
+    "Sure? Press again",
+    "Sicher? Nochmal tippen",
+    "متأكد؟ اضغط مرة أخرى",
+    "Emin misin? Tekrar bas",
+  ],
+  "Administracija je odvojena.": [
+    "The administration is separate.",
+    "Die Verwaltung ist getrennt.",
+    "الإدارة منفصلة الآن.",
+    "Yönetim ayrıldı.",
+  ],
+  "Ovaj nalog radi administraciju. Na svoj lični profil prelaziš preko Menija → Prebaci nalog.": [
+    "This account does the administration. To reach your personal profile, use Menu → Switch account.",
+    "Dieses Konto erledigt die Verwaltung. Zu deinem persönlichen Profil gelangst du über Menü → Konto wechseln.",
+    "هذا الحساب يقوم بالإدارة. للانتقال إلى ملفك الشخصي استخدم القائمة ← تبديل الحساب.",
+    "Bu hesap yönetimi yapar. Kişisel profiline Menü → Hesap değiştir ile geçersin.",
+  ],
+  "Na administraciju": ["To the administration", "Zur Verwaltung", "إلى الإدارة", "Yönetime git"],
 };

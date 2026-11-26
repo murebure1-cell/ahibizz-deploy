@@ -1,0 +1,200 @@
+/* "Odvojena administracija": one card per step, in the menu's rows look. */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 20px 32px;
+}
+.lead {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 15px;
+  line-height: 22px;
+}
+.card,
+.link {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--ui-border);
+  border-radius: 22px;
+  background: var(--ui-surface);
+}
+.card h2,
+.link h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 800;
+}
+.card p,
+.link p {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+.mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 15px;
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
+}
+.mark[data-ok] {
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+}
+.mark svg {
+  width: 22px;
+  height: 22px;
+}
+.account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  background: var(--ui-glass);
+}
+.who {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+.who strong {
+  font-size: 15px;
+  line-height: 20px;
+}
+.who span {
+  overflow-wrap: anywhere;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.status {
+  flex: none;
+  padding: 4px 10px;
+  border: 1px solid var(--ui-warning-border);
+  border-radius: 999px;
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+  font-size: 12px;
+  font-weight: 700;
+}
+.status[data-ok] {
+  border-color: var(--ui-success-border);
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+.link code {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  background: var(--ui-surface-soft);
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+.steps li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  counter-increment: step;
+}
+.steps li::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+.steps li[data-done]::before {
+  content: "✓";
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+}
+.steps li > span {
+  flex: 1;
+  min-width: 180px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out);
+}
+.primary {
+  border: 0;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+}
+.secondary {
+  border: 1px solid var(--ui-border-strong);
+  background: transparent;
+  color: var(--ui-text);
+}
+.primary:active:not(:disabled),
+.secondary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.error {
+  margin: 0;
+  color: var(--ui-danger);
+  font-size: 14px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .primary,
+  .secondary {
+    transition: none;
+  }
+}
