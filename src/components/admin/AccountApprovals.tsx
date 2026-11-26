@@ -12,7 +12,9 @@ import {
 } from "../../lib/admin-accounts";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { Icon } from "../Icon";
+import { profileInitials } from "../people/PersonalProfileCard";
 import { AccountPackage } from "./AccountPackage";
+import look from "./account-approvals.module.css";
 import styles from "./admin.module.css";
 import { ProfileVerification } from "./ProfileVerification";
 import {
@@ -363,7 +365,7 @@ function ApprovalWorkspace({
         </button>
       </div>
       {!readyOnly && (
-        <fieldset className={styles.accountFilters}>
+        <fieldset className={`${styles.accountFilters} ${look.chips}`}>
           <legend>Status naloga</legend>
           {filters.map((item) => (
             <button
@@ -378,7 +380,7 @@ function ApprovalWorkspace({
           ))}
         </fieldset>
       )}
-      <form className={styles.accountSearch} onSubmit={searchAccounts}>
+      <form className={`${styles.accountSearch} ${look.search}`} onSubmit={searchAccounts}>
         <label htmlFor={searchId}>Pretraži naloge</label>
         <div>
           <input
@@ -434,15 +436,41 @@ function ApprovalWorkspace({
           emaila za potvrdu.
         </p>
       )}
-      <div className={styles.queue} aria-busy={loading}>
+      <div className={`${styles.queue} ${look.list}`} aria-busy={loading}>
         {data?.accounts.map((account) => (
-          <article key={account.id}>
-            <div className={styles.person}>
-              <strong>{account.name}</strong>
-              <span>{account.email}</span>
-              <small>{account.emailVerified ? "Email je potvrđen" : "Čeka potvrdu emaila"}</small>
+          <article key={account.id} className={look.item}>
+            <div className={look.who}>
+              <span className={look.avatar} aria-hidden="true">
+                {profileInitials(account.name)}
+              </span>
+              <span className={look.whoText}>
+                <strong>{account.name}</strong>
+                <span>{account.email}</span>
+              </span>
             </div>
-            <div className={styles.actions}>
+            <div className={look.pills}>
+              <span data-kind={account.emailVerified ? "ok" : "wait"}>
+                {account.emailVerified ? "Email potvrđen" : "Email nije potvrđen"}
+              </span>
+              <span
+                data-kind={
+                  account.approval === "approved"
+                    ? "ok"
+                    : account.approval === "suspended"
+                      ? "bad"
+                      : "off"
+                }
+              >
+                {account.role === "owner"
+                  ? "Administracija"
+                  : account.approval === "approved"
+                    ? "Odobren"
+                    : account.approval === "suspended"
+                      ? "Odbijen ili suspendovan"
+                      : "Čeka odobrenje"}
+              </span>
+            </div>
+            <div className={`${styles.actions} ${look.actions}`}>
               {expectedAccountId && active && (
                 <ProfileVerification
                   kind="person"
@@ -501,6 +529,10 @@ function ApprovalWorkspace({
           </article>
         ))}
       </div>
+      <p className={look.note}>
+        <Icon name="info" aria-hidden="true" />
+        Svaki nalog odobrava se ručno, i onaj s Google prijavom.
+      </p>
       {data && (view.page > 1 || data.hasMore) && (
         <nav className={styles.accountPagination} aria-label="Stranice naloga">
           <button
