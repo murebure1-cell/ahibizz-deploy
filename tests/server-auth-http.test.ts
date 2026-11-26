@@ -222,3 +222,30 @@ test("Google routes open only when configured and only lead to Google or back to
     ),
   );
 });
+
+test("device-account routes carry session tokens, so the browser never reaches them", async () => {
+  let called = 0;
+  const http = handler(() => {
+    called++;
+    return Response.json([{ session: { token: "must-not-be-exposed" } }]);
+  });
+  for (const path of ["/multi-session/list-device-sessions", "/device-session/remember"]) {
+    const response = await http(new Request(`${baseURL}/api/auth${path}`));
+    assert.equal(response.status, 404, path);
+  }
+  for (const path of [
+    "/multi-session/set-active",
+    "/multi-session/revoke",
+    "/device-session/remember",
+  ]) {
+    const response = await http(
+      new Request(`${baseURL}/api/auth${path}`, {
+        method: "POST",
+        headers: { Origin: baseURL, "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionToken: "fixture" }),
+      }),
+    );
+    assert.equal(response.status, 404, path);
+  }
+  assert.equal(called, 0);
+});

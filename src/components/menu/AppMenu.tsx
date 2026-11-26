@@ -8,6 +8,7 @@ import { localeNames } from "../../lib/i18n/locales";
 import { forgetRememberedArea } from "../../lib/location-area-storage";
 import { clearBrowserMessagingRecovery } from "../../lib/messaging-recovery-storage";
 import { type PackageId, packageName } from "../../lib/packages";
+import { AccountSwitch } from "../account/AccountSwitch";
 import { useAppAppearance } from "../appearance/AppAppearance";
 import { Icon } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
@@ -93,6 +94,11 @@ export function AppMenu({
               {t("Registruj se")}
             </Link>
           </div>
+        </div>
+      )}
+      {account && (
+        <div className={styles.switch}>
+          <AccountSwitch currentId={account.id} />
         </div>
       )}
       {groups.map((group) => (

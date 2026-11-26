@@ -1762,4 +1762,38 @@ export const account: Messages = {
     "لم يتم تأكيد التغيير. تحقق من الملف المحفوظ.",
     "Değişiklik onaylanmadı. Kaydedilen profili kontrol et.",
   ],
+  "Prebaci nalog": ["Switch account", "Konto wechseln", "تبديل الحساب", "Hesap değiştir"],
+  "Dodaj nalog": ["Add account", "Konto hinzufügen", "إضافة حساب", "Hesap ekle"],
+  "Prijavi se drugim nalogom. Ostaješ prijavljen i na sadašnjem.": [
+    "Sign in with another account. You stay signed in to the current one.",
+    "Melde dich mit einem anderen Konto an. Du bleibst im aktuellen angemeldet.",
+    "سجّل الدخول بحساب آخر. تبقى مسجلًا في الحساب الحالي.",
+    "Başka bir hesapla giriş yap. Mevcut hesapta da oturumun açık kalır.",
+  ],
+  "Naloge na ovom uređaju trenutno nije moguće učitati.": [
+    "The accounts on this device cannot be loaded right now.",
+    "Die Konten auf diesem Gerät können gerade nicht geladen werden.",
+    "لا يمكن تحميل الحسابات على هذا الجهاز الآن.",
+    "Bu cihazdaki hesaplar şu anda yüklenemiyor.",
+  ],
+  "Prebacivanje nije uspjelo. Prijavi se ponovo na taj nalog.": [
+    "Switching did not work. Sign in to that account again.",
+    "Der Wechsel hat nicht geklappt. Melde dich erneut bei diesem Konto an.",
+    "لم ينجح التبديل. سجّل الدخول إلى ذلك الحساب مرة أخرى.",
+    "Geçiş olmadı. O hesaba yeniden giriş yap.",
+  ],
+  "Administracija: odobravanje, objave i odluke": [
+    "Administration: approvals, posts and decisions",
+    "Verwaltung: Freigaben, Beiträge und Entscheidungen",
+    "الإدارة: الموافقات والمنشورات والقرارات",
+    "Yönetim: onaylar, yayınlar ve kararlar",
+  ],
+  Aktivan: ["Active", "Aktiv", "نشط", "Etkin"],
+  "Nalozi ostaju prijavljeni na ovom uređaju. Svaki vidi samo svoje: poruke, obavijesti, objave i postavke se ne miješaju. Odjava odjavljuje sve naloge na uređaju.":
+    [
+      "The accounts stay signed in on this device. Each sees only its own: messages, notifications, posts and settings do not mix. Signing out signs out every account on the device.",
+      "Die Konten bleiben auf diesem Gerät angemeldet. Jedes sieht nur das Eigene: Nachrichten, Mitteilungen, Beiträge und Einstellungen vermischen sich nicht. Abmelden meldet alle Konten auf dem Gerät ab.",
+      "تبقى الحسابات مسجلة على هذا الجهاز. يرى كل حساب ما يخصه فقط: لا تختلط الرسائل والإشعارات والمنشورات والإعدادات. تسجيل الخروج يُخرج جميع الحسابات على الجهاز.",
+      "Hesaplar bu cihazda oturum açık kalır. Her biri yalnızca kendisininkini görür: mesajlar, bildirimler, yayınlar ve ayarlar karışmaz. Çıkış yapmak cihazdaki tüm hesapların oturumunu kapatır.",
+    ],
 };

@@ -34,6 +34,12 @@ const text = {
     action: msg("Sačuvaj lozinku"),
   },
 };
+/** Signing in a second account on a device that already has one ("Dodaj nalog"). */
+const adding = {
+  title: msg("Dodaj nalog"),
+  intro: msg("Prijavi se drugim nalogom. Ostaješ prijavljen i na sadašnjem."),
+  action: msg("Prijava"),
+};
 const endpoints = {
   "sign-in": "/api/auth/sign-in/email",
   "sign-up": "/api/auth/sign-up/email",
@@ -112,6 +118,7 @@ export function AuthForm({
   returnTo,
   google = false,
   googleError,
+  addAccount = false,
 }: {
   mode: AuthMode;
   available: boolean;
@@ -123,6 +130,8 @@ export function AuthForm({
   google?: boolean;
   /** Error code from a failed Google return, shown when the page opens. */
   googleError?: string;
+  /** The device already has a signed-in account; this sign-in adds another beside it. */
+  addAccount?: boolean;
 }) {
   const t = useT();
   const googlePending = googleError?.toUpperCase() === "ACCOUNT_PENDING_APPROVAL";
@@ -145,7 +154,7 @@ export function AuthForm({
   );
   const hasPassword =
     mode === "sign-in" || mode === "sign-up" || (mode === "reset-password" && Boolean(token));
-  const copy = text[mode];
+  const copy = addAccount && mode === "sign-in" ? adding : text[mode];
   const links = authReturnLinks(returnTo);
   const photo = waiting ? undefined : covers[mode];
   const sign = signs[mode];
