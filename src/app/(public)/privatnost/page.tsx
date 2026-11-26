@@ -107,6 +107,11 @@ export default async function PrivacyPage() {
             "Kad uređuješ lokaciju djelatnosti, tvoj preglednik šalje upisanu adresu ili odabranu tačku na karti direktno servisu Photon (komoot), koji pronalazi adresu. Ako tu odabereš „moja lokacija“, šalju se koordinate tvog uređaja. Karte učitava preglednik direktno od Google Maps; Google prima područje karte koje gledaš i tvoju IP adresu.",
           )}
         </p>
+        <p>
+          {t(
+            "Kad otvoriš uputstva do djelatnosti, preglednik šalje Googleu tvoju lokaciju i lokaciju djelatnosti da bi izračunao putanju. Dok ideš po putanji, tvoje kretanje ostaje na uređaju; lokacija se Googleu šalje ponovo samo ako skreneš s putanje, da bi se ona izračunala iznova.",
+          )}
+        </p>
       </section>
 
       <section className={styles.section}>

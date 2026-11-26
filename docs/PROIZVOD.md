@@ -227,10 +227,22 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   Gdje se čovjek nalazi stoji u adresi (`?drzava=BA&grad=Sarajevo`, `?djelatnost=…`), pa Nazad i
   podijeljeni link rade očekivano. **Sve karte su Google mape** u bojama aplikacije, svijetle i
   tamne (`src/lib/google-maps.ts`); OpenStreetMap se više ne koristi, a kad Google nije dostupan
-  piše „Mapa trenutno nije dostupna.”. Isti globus je na baneru Početne. S crteža još nema: dugme
-  Filteri na mapi, marker „Sponzorisano” i uputstva unutar aplikacije s animiranom putanjom, koja
-  čekaju da se za ključ mape uključi Googleov Routes API (do tada „Uputstva” otvaraju Google
-  Maps) **[novo]**.
+  piše „Mapa trenutno nije dostupna.”. Isti globus je na baneru Početne. Dodir na grupu približi
+  kartu dok se njene djelatnosti ne razdvoje, a odabrani pin se pomjeri ispod traka i iznad
+  kartice. S crteža još nema: dugme Filteri na mapi i marker „Sponzorisano” **[novo]**.
+- **Uputstva do djelatnosti [urađeno 26. 11. 2026.]:** po crtežima Uputstva i „Animacija:
+  putanja”. „Uputstva” na stranici djelatnosti i na kartici na mapi otvaraju
+  `/djelatnosti/{id}/uputstva`: Google mapa u bojama aplikacije i putanja od mjesta gdje čovjek
+  stoji do djelatnosti, koja se iscrta za pola sekunde; zatim list s vremenom, dužinom, satom
+  dolaska i prvim koracima, pješice ili automobilom. „Kreni” približi kartu čovjeku: tačka klizi
+  po putanji ravnomjerno između dva očitanja lokacije, gore stoji sljedeće skretanje i koliko je
+  do njega, a ekran se ne gasi. Kartu je moguće pomjeriti rukom, pa „Moja lokacija” vraća na
+  čovjeka. Ko skrene s putanje više od 60 m dobije novu, bez prekida prikaza; na 25 m od cilja
+  piše „Na odredištu si” s „Otvori profil” i „Završi”. Putanju računa Googleov Routes API preko
+  ključa mape (naplaćuje se po upitu, Google daje besplatnu mjesečnu količinu), a tekst koraka
+  je Googleov. Bez dozvole za lokaciju, ili kad Google ne vrati putanju, ostaju poruka, zračna
+  udaljenost i „Otvori u Google Maps”. Pregled djelatnosti koja još nije javna i dalje vodi u
+  Google Maps. Šta se pritom šalje Googleu piše u Privatnosti **[novo]**.
 - **Poruke [urađeno 25. 11. 2026.]:** po crtežima Poruke i Razgovor. Lista: naslov s brojem
   nepročitanih razgovora, pretraga, tri oznake (Lično, Moje djelatnosti, Nepročitani) i razgovori
   u jednoj kartici; vrijeme je sat za danas, zatim „jučer”, dan u sedmici, pa datum. Razgovor:

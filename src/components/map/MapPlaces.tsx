@@ -8,13 +8,16 @@ import {
   countryKey,
   countryPins,
   distanceLabel,
+  groupSplitZoom,
   type MapBounds,
   type MapCity,
   type MapCountry,
   type MapPin,
   mapMarkers,
+  moveIntoRoom,
   pinMatches,
   pointBounds,
+  worldPixel,
 } from "../../lib/business-map";
 import { distanceMetres } from "../../lib/device-location";
 import { streetsFromZoom } from "../../lib/google-maps";
@@ -50,6 +53,17 @@ function room(kind: "country" | "streets") {
   return window.matchMedia("(min-width: 900px)").matches
     ? { top: 84, right: 56, bottom: 56, left: 440 }
     : base;
+}
+
+/** The chosen pin also keeps its head, its name under it and the card at the foot in view. */
+function chosenRoom() {
+  const base = room("streets");
+  return {
+    top: base.top + 60,
+    right: base.right + 48,
+    bottom: base.bottom + 44,
+    left: base.left + 48,
+  };
 }
 
 function photo(src: string | null) {
@@ -175,12 +189,15 @@ export function MapPlaces({
   useEffect(() => {
     if (!map || !country) return;
     if (!streets) {
-      map.setOptions({ minZoom: 3, maxZoom: streetsFromZoom - 1 });
+      // Google refuses a lower limit above the upper one, even for a moment: widen first, then narrow.
+      map.setOptions({ minZoom: 3 });
+      map.setOptions({ maxZoom: streetsFromZoom - 1 });
       const bounds = pointBounds(inCountry);
       if (bounds) map.fitBounds(bounds, room("country"));
       return;
     }
-    map.setOptions({ minZoom: streetsFromZoom, maxZoom: 21 });
+    map.setOptions({ maxZoom: 21 });
+    map.setOptions({ minZoom: streetsFromZoom });
     const one = linked ? pins.find((pin) => pin.id === linked) : null;
     const frame = one ? [one] : inCity.length ? inCity : inCountry;
     if (frame.length === 1 && frame[0]) {
@@ -202,6 +219,11 @@ export function MapPlaces({
     () => pins.filter((pin) => (!category || pin.category === category) && pinMatches(pin, query)),
     [pins, category, query],
   );
+  // A business the search or a filter has hidden cannot stay chosen: its card would name a
+  // pin that is not on the map.
+  useEffect(() => {
+    if (selected && !filtered.some((pin) => pin.id === selected)) setSelected(null);
+  }, [filtered, selected]);
   const markers = useMemo(() => {
     if (!streets || !box) return [];
     const inView = filtered.filter((pin) => pin.id === selected || within(pin, box));
@@ -238,16 +260,25 @@ export function MapPlaces({
   const select = (id: string) => {
     pressed.current = performance.now();
     setSelected(id);
+    // The chosen pin comes out from under the bars and the card, with its name whole.
+    const pin = pins.find((item) => item.id === id);
+    const centre = map?.getCenter();
+    const view = target.current;
+    if (!map || !pin || !centre || !view) return;
+    const level = map.getZoom() ?? zoom;
+    const at = worldPixel(pin.latitude, pin.longitude, level);
+    const middle = worldPixel(centre.lat(), centre.lng(), level);
+    const size = { width: view.clientWidth, height: view.clientHeight };
+    const move = moveIntoRoom(
+      { x: size.width / 2 + at.x - middle.x, y: size.height / 2 + at.y - middle.y },
+      size,
+      chosenRoom(),
+    );
+    if (move.x || move.y) map.panBy(move.x, move.y);
   };
   const rating = (value: number) =>
     localNumber(locale, value, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const chosenPhoto = photo(chosen?.image ?? null);
-  const directions = chosen
-    ? `https://www.google.com/maps/dir/?${new URLSearchParams({
-        api: "1",
-        destination: `${chosen.latitude},${chosen.longitude}`,
-      })}`
-    : "";
 
   return (
     <div className={styles.places} data-stage={stage} inert={!country}>
@@ -343,9 +374,10 @@ export function MapPlaces({
               order={1}
               onPress={() => {
                 pressed.current = performance.now();
+                // A press opens the group: closer, to where its businesses stand apart.
                 const members = pins.filter((pin) => marker.ids.includes(pin.id));
-                const bounds = pointBounds(members);
-                if (bounds) map.fitBounds(bounds, room("streets"));
+                map.setZoom(groupSplitZoom(members, map.getZoom() ?? zoom));
+                map.panTo({ lat: marker.latitude, lng: marker.longitude });
               }}
             >
               <button
@@ -484,10 +516,10 @@ export function MapPlaces({
                 </div>
               </div>
               <div className={styles.cardActions}>
-                <a href={directions} target="_blank" rel="noreferrer" data-kind="main">
+                <Link href={`/djelatnosti/${chosen.id}/uputstva`} data-kind="main">
                   <Icon name="route" />
                   {t("Uputstva")}
-                </a>
+                </Link>
                 <Link href={`/djelatnosti/${chosen.id}`}>{t("Otvori profil")}</Link>
               </div>
             </section>

@@ -257,6 +257,9 @@ export function worldPixel(latitude: number, longitude: number, zoom: number) {
   };
 }
 
+/** From this zoom and closer nothing is grouped, so two businesses at one address can be told apart. */
+export const ungroupedFromZoom = 19;
+
 export type MapMarker =
   | { type: "pin"; pin: MapPin }
   | {
@@ -271,7 +274,7 @@ export type MapMarker =
 /**
  * What the map draws at a zoom: businesses closer together on the screen than `reach` pixels
  * become one group with their number. The chosen business always stays a pin of its own, and at
- * `splitFromZoom` and closer nothing is grouped, so two businesses at one address can be told apart.
+ * `splitFromZoom` and closer nothing is grouped.
  */
 export function mapMarkers(
   pins: readonly MapPin[],
@@ -279,7 +282,7 @@ export function mapMarkers(
   {
     keep,
     reach = 56,
-    splitFromZoom = 19,
+    splitFromZoom = ungroupedFromZoom,
   }: { keep?: string; reach?: number; splitFromZoom?: number } = {},
 ): MapMarker[] {
   const level = Math.round(zoom);
@@ -330,6 +333,33 @@ export function mapMarkers(
       });
   }
   return markers;
+}
+
+/**
+ * The zoom a press on a group leads to: the nearest one, closer than `from`, at which its
+ * businesses are no longer one mark.
+ */
+export function groupSplitZoom(members: readonly MapPin[], from: number): number {
+  for (let level = Math.round(from) + 1; level < ungroupedFromZoom; level++)
+    if (mapMarkers(members, level).length > 1) return level;
+  return Math.max(ungroupedFromZoom, Math.round(from));
+}
+
+/**
+ * How far a view has to move, in pixels, for a point in it to come inside the room its bars
+ * leave clear. Nothing when the point is already there.
+ */
+export function moveIntoRoom(
+  point: { x: number; y: number },
+  size: { width: number; height: number },
+  room: { top: number; right: number; bottom: number; left: number },
+): { x: number; y: number } {
+  const over = (value: number, low: number, high: number) =>
+    value < low ? value - low : value > high ? value - high : 0;
+  return {
+    x: over(point.x, room.left, Math.max(room.left, size.width - room.right)),
+    y: over(point.y, room.top, Math.max(room.top, size.height - room.bottom)),
+  };
 }
 
 /** Whether a pin answers to what was typed in the map's search field. */

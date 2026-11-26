@@ -7,6 +7,7 @@ import {
   maneuverSign,
   metresBetween,
   pathLengths,
+  pathPoint,
   pathProgress,
   pathUntil,
   readRoute,
@@ -40,6 +41,24 @@ test("the drawn part of a line grows smoothly to the whole line", () => {
   assert.ok(near(turned[2]?.lng ?? 0, 18.4135, 2e-5));
   assert.deepEqual(pathUntil(path, lengths, 10_000), path);
   assert.deepEqual(pathUntil([], [], 5), []);
+});
+
+test("a distance along the line names one point of it", () => {
+  const lengths = pathLengths(path);
+  const total = lengths[lengths.length - 1] ?? 0;
+  assert.deepEqual(pathPoint(path, lengths, -5), path[0]);
+  assert.deepEqual(pathPoint(path, lengths, 0), path[0]);
+  assert.deepEqual(pathPoint(path, lengths, total + 50), path[path.length - 1]);
+  // Half way along the first stretch lies half way between its ends.
+  const half = pathPoint(path, lengths, (lengths[1] ?? 0) / 2);
+  const [a, b] = path;
+  assert.ok(half && a && b);
+  assert.ok(Math.abs(half.lat - (a.lat + b.lat) / 2) < 1e-9);
+  assert.ok(Math.abs(half.lng - (a.lng + b.lng) / 2) < 1e-9);
+  // It is the same point at which the drawn part of the line ends.
+  const part = pathUntil(path, lengths, total * 0.7);
+  assert.deepEqual(pathPoint(path, lengths, total * 0.7), part[part.length - 1]);
+  assert.equal(pathPoint([], [], 10), null);
 });
 
 test("a person beside the route is put on its nearest point", () => {
@@ -115,6 +134,27 @@ test("Google's answer becomes a route only when it has a line", () => {
   assert.ok(measured && near(measured.metres, 191.4, 1.5) && measured.seconds === 0);
   for (const bad of [null, "x", {}, { path: [] }, { path: [{ lat: 1, lng: 1 }] }])
     assert.equal(readRoute(bad), null);
+});
+
+test("an instruction Google broke into lines reads as sentences on one", () => {
+  const route = readRoute({
+    path,
+    legs: [
+      {
+        steps: [
+          {
+            instructions: "Blago nadesno na Ferhadija\nOdredište će biti s desne strane.\n",
+            maneuver: "TURN_SLIGHT_RIGHT",
+            distanceMeters: 306,
+          },
+        ],
+      },
+    ],
+  });
+  assert.equal(
+    route?.steps[0]?.instruction,
+    "Blago nadesno na Ferhadija. Odredište će biti s desne strane",
+  );
 });
 
 test("times read as minutes, then hours, and the arrival as a clock time", () => {

@@ -77,6 +77,31 @@ export function pathUntil(
   return part;
 }
 
+/** The point `metres` along a path; its ends for a distance before or past them. */
+export function pathPoint(
+  path: readonly RoutePoint[],
+  lengths: readonly number[],
+  metres: number,
+): RoutePoint | null {
+  const [first] = path;
+  if (!first) return null;
+  if (metres <= 0) return first;
+  for (let index = 1; index < path.length; index++) {
+    const reached = lengths[index] ?? 0;
+    if (reached < metres) continue;
+    const before = path[index - 1];
+    const point = path[index];
+    if (!before || !point) break;
+    const start = lengths[index - 1] ?? 0;
+    const share = reached > start ? (metres - start) / (reached - start) : 1;
+    return {
+      lat: before.lat + (point.lat - before.lat) * share,
+      lng: before.lng + (point.lng - before.lng) * share,
+    };
+  }
+  return path[path.length - 1] ?? first;
+}
+
 /**
  * Where a person is on a path: the point of the path nearest to them, how far along the path that
  * point is and how far from it they stand. Distances this short are flat enough to measure on a
@@ -150,6 +175,15 @@ export const arrivedWithin = 25;
 /** Further than this from the line, a person has left the route and it is worked out again. */
 export const offRouteBeyond = 60;
 
+/** Google breaks an instruction into lines; on one line they read as sentences. */
+function oneLine(value: string): string {
+  return value
+    .split(/\n+/)
+    .map((line) => line.trim().replace(/[.\s]+$/, ""))
+    .filter(Boolean)
+    .join(". ");
+}
+
 function number(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -193,7 +227,7 @@ export function readRoute(value: unknown): AppRoute | null {
         maneuver?: unknown;
         distanceMeters?: unknown;
       };
-      const instruction = typeof step.instructions === "string" ? step.instructions.trim() : "";
+      const instruction = typeof step.instructions === "string" ? oneLine(step.instructions) : "";
       const metres = number(step.distanceMeters);
       if (!instruction || metres === null || metres < 0) continue;
       steps.push({
@@ -227,6 +261,22 @@ export function arrivalLabel(now: Date, seconds: number, locale = "bs"): string 
     minute: "2-digit",
     hourCycle: "h23",
   }).format(new Date(now.getTime() + seconds * 1000));
+}
+
+/** The box around a line, for framing it on the map; null for an empty line. */
+export function routeBounds(path: readonly RoutePoint[]) {
+  if (!path.length) return null;
+  let south = 90;
+  let north = -90;
+  let west = 180;
+  let east = -180;
+  for (const point of path) {
+    south = Math.min(south, point.lat);
+    north = Math.max(north, point.lat);
+    west = Math.min(west, point.lng);
+    east = Math.max(east, point.lng);
+  }
+  return { south, west, north, east };
 }
 
 /** Slow at both ends, for the half second in which the line draws itself. */
