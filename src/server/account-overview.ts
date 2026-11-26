@@ -53,7 +53,8 @@ export async function readOwnerOverview(
   return {
     ...facts,
     businessList: list.rows,
-    package: limited,
+    // The founder shows Business (his wish, 2026-11-26) and keeps no business limit.
+    package: founder ? "business" : limited,
     businessLimit: limited ? packageBusinessLimit(limited) : null,
     nextAppointment: await readNextAppointment(client, accountId),
   };
