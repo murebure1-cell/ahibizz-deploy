@@ -16,16 +16,11 @@ import { useT } from "../i18n/LocaleProvider";
 import { RentalCalendar } from "./RentalCalendar";
 import { RentalEntry } from "./RentalEntries";
 import { RentalRecovery } from "./RentalRecovery";
+import { RentalRequest } from "./RentalRequest";
 import { rentalError, useRentalRead, writeRental } from "./rental-client";
+import { rentalFuels as fuels, rentalGears as gears } from "./rental-labels";
 import styles from "./rentals.module.css";
 
-const fuels = {
-  petrol: msg("Benzin"),
-  diesel: msg("Dizel"),
-  hybrid: msg("Hibrid"),
-  electric: msg("Električni"),
-};
-const gears = { manual: msg("Manuelni"), automatic: msg("Automatski") };
 const units = { hour: "započeti sat", day: "započeta 24 sata" };
 const paymentLabels = { hour: msg("Po započetom satu"), day: msg("Po započeta 24 sata") };
 type Photo = Pick<BusinessMediaAsset, "slot" | "kind" | "version" | "width" | "height">;
@@ -352,6 +347,18 @@ function FleetContent({
     );
   if (!actor && !data.vehicles.length) return null;
   if (actor && !data.eligible && !data.vehicles.length) return null;
+  // A visitor asks for a vehicle on the screen drawn for that; what follows is the owner's side.
+  if (!actor)
+    return (
+      <RentalRequest
+        businessId={businessId}
+        catalog={data}
+        photos={photos}
+        catalogRevision={revision}
+        onChangedOffer={refresh}
+        onUncertain={onUncertain}
+      />
+    );
   return (
     <section className={styles.panel} aria-label={t("Automobili za najam")}>
       <div className={styles.topline}>

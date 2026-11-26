@@ -764,4 +764,33 @@ export const booking: Messages = {
     "{count} {count|ليلة|ليالٍ}",
     "{count} gece",
   ],
+  Vozilo: ["Vehicle", "Fahrzeug", "المركبة", "Araç"],
+  Kada: ["When", "Wann", "متى", "Ne zaman"],
+  Cijena: ["Price", "Preis", "السعر", "Fiyat"],
+  "u {time}": ["at {time}", "um {time}", "الساعة {time}", "saat {time}"],
+  "Zauzeto: {periods}": [
+    "Taken: {periods}",
+    "Belegt: {periods}",
+    "محجوز: {periods}",
+    "Dolu: {periods}",
+  ],
+  "Obračun po započeta 24 sata.": [
+    "Charged per started 24 hours.",
+    "Abrechnung je angefangene 24 Stunden.",
+    "يُحتسب السعر لكل 24 ساعة تبدأ.",
+    "Başlanan her 24 saat için ücretlendirilir.",
+  ],
+  "Obračun po započetom satu.": [
+    "Charged per started hour.",
+    "Abrechnung je angefangene Stunde.",
+    "يُحتسب السعر لكل ساعة تبدأ.",
+    "Başlanan her saat için ücretlendirilir.",
+  ],
+  "Zahtjev odmah zauzima vozilo. Vlasnik ga potvrđuje ili odbija.": [
+    "The request holds the vehicle at once. The owner confirms or declines it.",
+    "Die Anfrage reserviert das Fahrzeug sofort. Der Inhaber bestätigt sie oder lehnt sie ab.",
+    "الطلب يحجز المركبة فورًا. المالك يؤكده أو يرفضه.",
+    "İstek aracı hemen ayırır. Sahibi onaylar veya reddeder.",
+  ],
+  "Novi zahtjev": ["New request", "Neue Anfrage", "طلب جديد", "Yeni istek"],
 };
