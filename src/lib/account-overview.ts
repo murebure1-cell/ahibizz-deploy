@@ -19,6 +19,8 @@ export type AccountOverviewFacts = {
   businessLimit: number | null;
   unreadThreads: number;
   promotedBusinesses: number;
+  /** Accepted friends, shown on the drawn profile. Older responses may lack it. */
+  friends?: number;
   nextAppointment?: NextAppointment | null;
 };
 
@@ -54,6 +56,8 @@ export function readOverview(value: unknown, expectedId: string): AccountOvervie
       ? overview.businessLimit !== null
       : !isPackageId(overview.package) ||
         overview.businessLimit !== packageBusinessLimit(overview.package)) ||
+    (overview.friends !== undefined &&
+      (!Number.isSafeInteger(overview.friends) || overview.friends < 0)) ||
     [overview.businesses, overview.unreadThreads, overview.promotedBusinesses].some(
       (value) => typeof value !== "number" || !Number.isSafeInteger(value) || value < 0,
     )

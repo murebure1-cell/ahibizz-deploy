@@ -2025,4 +2025,10 @@ export const account: Messages = {
     "دخول الإدارة",
     "Yönetim girişi",
   ],
+  "Kako me drugi vide": [
+    "How others see me",
+    "Wie andere mich sehen",
+    "كيف يراني الآخرون",
+    "Başkaları beni nasıl görüyor",
+  ],
 };
