@@ -9,6 +9,7 @@ import {
 } from "../../src/server/auth/administration.ts";
 import { readCurrentAuthUser } from "../../src/server/auth/index.ts";
 import { createAuthHttpHandler } from "../../src/server/auth-http.ts";
+import { recordView, viewTarget } from "../../src/server/views.ts";
 
 /**
  * Runs last in the directory suite: it separates the administration, so the bootstrapped owner
@@ -216,5 +217,26 @@ export async function testAdministration(t, { auth, pool, owner, member, create,
     const extra = Math.max(0, 2 - held);
     for (let index = 0; index <= extra; index++)
       await create(owner, `Founder business ${randomUUID().slice(0, 8)}`);
+  });
+
+  await t.test("views are counted per day, never the owner's own", async () => {
+    const business = (
+      await pool.query(
+        "SELECT b.id, b.owner_user_id FROM directory_business b JOIN auth_user u ON u.id=b.owner_user_id WHERE b.status='published' AND b.deleted_at IS NULL AND u.approval='approved' LIMIT 1",
+      )
+    ).rows[0];
+    assert.equal(viewTarget("business", "not-a-uuid"), null);
+    assert.equal(viewTarget("other", "x"), null);
+    if (!business) return;
+    const target = viewTarget("business", business.id);
+    assert.equal(await recordView(pool, target, null), true);
+    assert.equal(await recordView(pool, target, member.user.id), true);
+    assert.equal(await recordView(pool, target, business.owner_user_id), false);
+    const row = (
+      await pool.query("SELECT sum(views)::int AS n FROM business_view_day WHERE business_id=$1", [
+        business.id,
+      ])
+    ).rows[0];
+    assert.equal(row.n, 2);
   });
 }

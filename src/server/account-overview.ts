@@ -7,6 +7,7 @@ import {
 import { isPackageId, packageBusinessLimit } from "../lib/packages";
 import { readNextAppointment } from "./customer-next-appointment";
 import { activePromotionSql } from "./promotions/read";
+import { businessViews30, profileViews30 } from "./views";
 
 /** The caller has verified and locked this signed-in actor in the same transaction. */
 export async function readOwnerOverview(
@@ -23,6 +24,8 @@ export async function readOwnerOverview(
     `SELECT u.id AS "accountId", to_char(u."createdAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "joinedAt",
        u.role, u.founder, COALESCE((SELECT package FROM account_package p WHERE p.user_id=u.id),'basic') AS held,
        stats.businesses, stats."promotedBusinesses",
+       ${profileViews30("u.id")} AS "profileViews",
+       ${businessViews30("u.id")} AS "businessViews",
        (SELECT count(*)::integer FROM people_connection c
           WHERE c.status='accepted' AND u.id IN (c.left_user_id,c.right_user_id)) AS friends,
        (SELECT count(*)::integer FROM message_thread t

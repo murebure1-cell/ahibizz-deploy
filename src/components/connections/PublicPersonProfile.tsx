@@ -30,6 +30,7 @@ import { useI18n } from "../i18n/LocaleProvider";
 import { personalProfileImage } from "../people/PersonalProfileCard";
 import { PlatformBadges } from "../people/PlatformBadges";
 import { VerificationBadge } from "../VerificationBadge";
+import { ViewBeacon } from "../ViewBeacon";
 import styles from "./connections.module.css";
 import { PersonAvatar, type PersonMediaUrl, personLocation } from "./PeopleSearch";
 import { ProfileBlockAction } from "./ProfileBlockAction";
@@ -315,6 +316,7 @@ function PersonProfile({
           className={`${styles.profile} ${look.page}`}
           data-founder={person.platformFounder ? "" : undefined}
         >
+          {!preview && viewerId !== person.id && <ViewBeacon kind="person" id={person.id} />}
           <div className={look.cover}>
             {cover && (
               <Image
