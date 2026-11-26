@@ -11,6 +11,7 @@ import {
   type RentalVehicle,
   type RentalVehicleInput,
 } from "../../lib/rentals";
+import { OwnerAgenda } from "../booking/AppointmentCard";
 import { Icon } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
 import { RentalCalendar } from "./RentalCalendar";
@@ -366,12 +367,14 @@ function FleetContent({
         {actor && <span className={styles.badge}>{data.vehicles.length} / 2 automobila</span>}
       </div>
       {actor && editor === undefined && Boolean(data.upcoming?.length) && (
-        <div className={styles.agenda}>
-          <h3>{t("Zahtjevi za najam")}</h3>
-          {data.upcoming?.map((entry) => (
+        <OwnerAgenda
+          entries={data.upcoming ?? []}
+          holds={t("Zahtjev već drži to vrijeme. Odbijanje ga odmah oslobađa.")}
+        >
+          {(entry) => (
             <RentalEntry key={entry.id} entry={entry} owner actor={actor} changed={refresh} />
-          ))}
-        </div>
+          )}
+        </OwnerAgenda>
       )}
       {actor && editor === undefined && data.eligible && (
         <div className={styles.actions}>

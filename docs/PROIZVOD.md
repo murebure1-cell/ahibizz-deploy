@@ -282,6 +282,17 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   traženo i vodi u „Moji termini”. Pravila (obračun, provjera dostupnosti, zahtjev s nepoznatim
   ishodom, prijava) su ista kao prije. Vlasnik i dalje koristi stari kalendar vozila. S crteža
   nema: poseban ekran sa zaglavljem djelatnosti i ikone u oznakama vozila **[novo]**.
+- **Rezerviši boravak [urađeno 26. 11. 2026.]:** po crtežu. Posjetilac bira jedinicu među
+  karticama (slika, vrsta, kreveti, cijena po noći; izabrana pokaže opis i ostale slike), pa
+  dolazak i odlazak u mjesecu: prvi dodir je dolazak, drugi odlazak. Zauzete noći su precrtane;
+  dan kad zauzeta noć počinje može biti dan odlaska. Ispod su dvije pločice (koju stranu sljedeći
+  dodir mijenja), sažetak (noćenja, cijena, ukupno) i „Pošalji zahtjev". Pravila su ista kao
+  prije, uključujući provjeru zahtjeva s nepoznatim ishodom **[novo]**.
+- **Zahtjevi i termini, vlasnik [urađeno 26. 11. 2026.]:** po crtežu, za smještaj i najam. Zahtjev
+  je kartica s inicijalima gosta (lokot za ručnu blokadu), šta i kada, iznosom i radnjama
+  „Odobri", „Odbij" ili „Otkaži" (dva pritiska). Dvije grupe: „Čeka odgovor" i „Potvrđeno
+  uskoro". S crteža nema: „Poruka" gostu (rezervacija ne nosi osobu kojoj bi se pisalo) i
+  kartice „Potvrđeno" i „Historija" (vlasnik vidi samo ono što dolazi) **[novo]**.
 - **Stranica „u izradi” [urađeno 26. 11. 2026., uključeno do otvaranja]:** po crtežu „U izradi”.
   Odluka vlasnika od 26. 11. 2026.: prikazuje se posjetiocima bez prijave, a otvaranje je u petak
   4. 12. 2026. nakon džume; upisano je 13:00 po sarajevskom vremenu. Dok dan otvaranja ne prođe, posjetilac koji nije prijavljen umjesto javnih
