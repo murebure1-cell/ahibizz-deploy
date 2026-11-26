@@ -314,6 +314,20 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   uvod, tekst, čuvanje i „Pročitaj još" iz iste teme. Članci nemaju slike, pa svaka tema ima svoju
   boju i znak umjesto fotografije. S crteža nema: autor („Redakcija AhiBizza"), podnaslovi u
   tekstu, kartica s djelatnostima u blizini i „Najčitanije" (nema brojanja čitanja) **[novo]**.
+- **Pomoć i tekstovi [urađeno 26. 11. 2026.]:** po crtežima Centar za pomoć, Česta pitanja,
+  Kontakt, O nama i Pravilnik. Pomoć: oznake (Pomoć, Česta pitanja, Kontakt), pitanje s kratkim
+  odgovorom, teme, česta pitanja koja se otvaraju jedno po jedno, kontakt sa zahtjevom podršci i
+  emailom, pa redovi prema blogu, pravilima, privatnosti i prijavi sadržaja. Pravila zajednice su
+  numerisana, privatnost je isti tekst s „Nazad" i „Piši podršci". Tekstovi su isti kao prije. S
+  crteža nema: brojevi odgovora po temi, uputstvo korak po korak i asistent (čeka odluku o Ahi
+  botu), slika uz poruku podršci, datum zadnje izmjene pravila, te ekrani brisanja (brisanje
+  naloga ostaje zahtjev podršci, brisanje djelatnosti je u „Moja djelatnost") **[novo]**.
+- **Landing stranica i plaćanje na webu [zadatak vlasnika od 26. 11. 2026., čeka crtež]:** kad
+  nacrtani ekrani budu urađeni, prvo se crta pa gradi web landing stranica: šta je AhiBizz, šta sve
+  nudi, opisi, i jedan ulaz u AhiBizz za korištenje preko weba. Biće i native aplikacija. Plaćanje
+  je na početku samo na webu, ne u native aplikaciji; kupljen paket se automatski vidi u
+  aplikaciji. Stvarno naplaćivanje se ne uključuje bez posebne odluke vlasnika i izbora načina
+  plaćanja **[novo]**.
 - **Stranica „u izradi” [urađeno 26. 11. 2026., uključeno do otvaranja]:** po crtežu „U izradi”.
   Odluka vlasnika od 26. 11. 2026.: prikazuje se posjetiocima bez prijave, a otvaranje je u petak
   4. 12. 2026. nakon džume; upisano je 13:00 po sarajevskom vremenu. Dok dan otvaranja ne prođe, posjetilac koji nije prijavljen umjesto javnih

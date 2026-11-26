@@ -16,9 +16,13 @@ import { supportEmail } from "../../lib/support-requests";
 import { Icon } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
 import { submitSupportRequest } from "../support/request-actions";
-import resources from "../support/resources.module.css";
-import styles from "./content-hub.module.css";
+import styles from "./help.module.css";
 
+/**
+ * The help centre as drawn ("Centar za pomoć", "Česta pitanja", "Kontakt"): a question with its
+ * short answer, the topics, the common questions opening one by one, and a way to write to
+ * support. What it finds and what it sends are as before.
+ */
 export function HelpDesk({
   actor,
   requestId,
@@ -52,96 +56,118 @@ export function HelpDesk({
   }
 
   return (
-    <div className={styles.helpGrid}>
-      <section className={styles.chat} aria-labelledby="help-guide">
-        <h2 id="help-guide">{t("Pitaj AhiBizz vodič")}</h2>
+    <>
+      <section className={styles.hero} aria-labelledby="help-title">
+        <h1 id="help-title">{t("Kako ti možemo pomoći?")}</h1>
+        <p>{t("Kratak odgovor ili uputstvo korak po korak, na jednom mjestu.")}</p>
         <search>
           <form className={styles.search} onSubmit={ask}>
-            <label htmlFor="help-question" className={styles.searchLabel}>
-              {t("Šta želiš saznati?")}
-            </label>
             <input
-              id="help-question"
               type="search"
+              aria-label={t("Šta želiš saznati?")}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
               required
               maxLength={100}
-              placeholder={t("Npr. Kako da promijenim termin?")}
+              placeholder={t("Npr. lozinka, termin, paket")}
             />
-            <button type="submit">
-              <Icon name="search" /> {t("Traži")}
-            </button>
+            <button type="submit">{t("Traži")}</button>
           </form>
         </search>
-        <fieldset className={styles.quick}>
-          <legend>{t("Brza pitanja")}</legend>
-          {helpTopicIds.map((id) => (
+      </section>
+
+      {previous && (
+        <div className={styles.answer} aria-live="polite">
+          <span>{previous}</span>
+          {answer ? (
+            <>
+              <strong>{t(answer.label)}</strong>
+              <p>{t(answer.answer)}</p>
+              <ul className={styles.links}>
+                {answer.links.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href}>{t(link.label)}</Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p>{t("Probaj kraće pitanje, odaberi temu iznad ili piši podršci.")}</p>
+          )}
+          {actor && !result.sent && (
             <button
-              key={id}
+              className={styles.quiet}
               type="button"
-              aria-pressed={matched === id}
               onClick={() => {
-                setPrevious(t(helpTopicContent(id, IS_PLAY_EDITION).question));
-                setMatched(id);
+                setDetail(previous);
+                setTopic(matched ?? "ostalo");
+                detailsField.current?.focus();
               }}
             >
-              <Icon name={helpTopicContent(id, IS_PLAY_EDITION).icon} />
-              {t(helpTopicContent(id, IS_PLAY_EDITION).label)}
+              {t("Prenesi pitanje u zahtjev")}
             </button>
-          ))}
-        </fieldset>
-        <div aria-live="polite">
-          {previous && (
-            <>
-              <p className={styles.submitted}>{previous}</p>
-              <div className={styles.reply}>
-                {answer ? (
-                  <>
-                    <strong>{t(answer.label)}</strong>
-                    <p>{t(answer.answer)}</p>
-                    <ul>
-                      {answer.links.map((link) => (
-                        <li key={link.href}>
-                          <Link href={link.href} className={styles.inlineLink}>
-                            {t(link.label)}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : (
-                  <p>{t("Probaj kraće pitanje, odaberi temu iznad ili piši podršci.")}</p>
-                )}
-              </div>
-              {actor && !result.sent && (
-                <button
-                  className={styles.secondary}
-                  style={{ marginTop: "0.9rem" }}
-                  type="button"
-                  onClick={() => {
-                    setDetail(previous);
-                    setTopic(matched ?? "ostalo");
-                    detailsField.current?.focus();
-                  }}
-                >
-                  {t("Prenesi pitanje u zahtjev")}
-                </button>
-              )}
-            </>
           )}
         </div>
+      )}
+
+      <section className={styles.group} aria-labelledby="help-topics">
+        <h2 id="help-topics">{t("Teme")}</h2>
+        <fieldset className={styles.topics} aria-labelledby="help-topics">
+          {helpTopicIds.map((id) => {
+            const content = helpTopicContent(id, IS_PLAY_EDITION);
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={matched === id}
+                onClick={() => {
+                  setPrevious(t(content.question));
+                  setMatched(id);
+                }}
+              >
+                <Icon name={content.icon} aria-hidden="true" />
+                {t(content.label)}
+              </button>
+            );
+          })}
+        </fieldset>
       </section>
-      <section className={styles.ticket} id="kontakt" aria-labelledby="help-contact">
-        <h2 id="help-contact">{t("Kontaktiraj podršku")}</h2>
-        <p className={styles.caption}>{t("Opiši problem. Odgovor dobivaš emailom.")}</p>
+
+      <section className={styles.group} id="pitanja" aria-labelledby="help-faq">
+        <h2 id="help-faq">{t("Česta pitanja")}</h2>
+        <div className={styles.faq}>
+          {helpTopicIds.map((id) => {
+            const content = helpTopicContent(id, IS_PLAY_EDITION);
+            return (
+              <details key={id}>
+                <summary>
+                  <span>{t(content.question)}</span>
+                  <Icon name="chevron" aria-hidden="true" />
+                </summary>
+                <div>
+                  <p>{t(content.answer)}</p>
+                  <ul className={styles.links}>
+                    {content.links.map((link) => (
+                      <li key={link.href}>
+                        <Link href={link.href}>{t(link.label)}</Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className={styles.card} id="kontakt" aria-labelledby="help-contact">
+        <h2 id="help-contact">{t("Kontakt")}</h2>
+        <p>{t("Piši nam. Odgovor stiže na email naloga.")}</p>
         {actor && requestId ? (
           result.sent ? (
-            <p className={styles.reply} role="status">
-              {t(result.message)}
-            </p>
+            <p role="status">{t(result.message)}</p>
           ) : (
-            <form action={action} className={resources.form}>
+            <form action={action} className={styles.form}>
               <input type="hidden" name="actor" value={actor} />
               <input type="hidden" name="subject" value="help" />
               <input type="hidden" name="reference" value={`${topic}--${requestId}`} />
@@ -160,7 +186,7 @@ export function HelpDesk({
                 </select>
               </label>
               <label htmlFor="support-details">
-                {t("Opis problema")}
+                {t("Poruka")}
                 <textarea
                   ref={detailsField}
                   id="support-details"
@@ -173,31 +199,26 @@ export function HelpDesk({
                   placeholder={t("Kada se desilo i na kojoj stranici?")}
                 />
               </label>
-              <p className={styles.caption}>
-                {t("Izostavi lozinke, kodove za prijavu i podatke kartice.")}
-              </p>
+              <p>{t("Izostavi lozinke, kodove za prijavu i podatke kartice.")}</p>
               {result.message && <p role="alert">{t(result.message)}</p>}
-              <button className={styles.accent} type="submit" disabled={pending}>
-                {pending ? t("Šaljem…") : t("Pošalji zahtjev")}
+              <button className={styles.main} type="submit" disabled={pending}>
+                {pending ? t("Šaljem…") : t("Pošalji")}
               </button>
             </form>
           )
         ) : (
-          <p className={styles.contact}>
-            <Link href="/prijava?nastavi=%2Fpomoc" className={styles.secondary}>
-              {t("Prijavi se za slanje zahtjeva")}
-            </Link>
-          </p>
+          <Link href="/prijava?nastavi=%2Fpomoc" className={styles.main}>
+            {t("Prijavi se za slanje zahtjeva")}
+          </Link>
         )}
-        <p className={styles.contact}>
-          <a
-            href={`mailto:${supportEmail}?subject=AhiBizz%20podr%C5%A1ka`}
-            className={styles.inlineLink}
-          >
+        <a className={styles.email} href={`mailto:${supportEmail}?subject=AhiBizz%20podr%C5%A1ka`}>
+          <Icon name="mail" aria-hidden="true" />
+          <span>
             {supportEmail}
-          </a>
-        </p>
+            <small>{t("Email podrške")}</small>
+          </span>
+        </a>
       </section>
-    </div>
+    </>
   );
 }

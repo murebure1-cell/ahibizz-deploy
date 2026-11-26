@@ -1,0 +1,496 @@
+/*
+ * Help and the texts around it, as drawn on the page "Pomoć, pravila i brisanje": the help centre
+ * (a question, topics, the common questions and a way to write to support), and the pages that
+ * hold a text (about, community rules, privacy), each ending with a way to ask about it.
+ */
+.page {
+  display: flex;
+  width: min(100%, 720px);
+  min-width: 0;
+  flex-direction: column;
+  gap: 22px;
+  margin: 0 auto;
+  padding: 18px 20px 120px;
+  color: var(--ui-text);
+}
+.tabs {
+  display: flex;
+  overflow-x: auto;
+  gap: 8px;
+  margin: 0 -20px;
+  padding: 0 20px;
+  scrollbar-width: none;
+}
+.tabs a {
+  display: inline-flex;
+  flex: none;
+  height: 36px;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  background: var(--ui-glass);
+  color: var(--ui-text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.tabs a[aria-current] {
+  border-color: transparent;
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
+  font-weight: 800;
+}
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hero h1,
+.doc h1 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.hero p,
+.lead {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 15px;
+  line-height: 22px;
+}
+.search {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 16px;
+  background: var(--ui-input);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 15px;
+}
+.main,
+.search button {
+  display: inline-flex;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out);
+}
+.main:active,
+.search button:active {
+  transform: scale(0.97);
+}
+.main:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.main svg,
+.search button svg {
+  width: 16px;
+  height: 16px;
+}
+.group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+.group > h2 {
+  margin: 0 4px;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 800;
+}
+.topics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.topics button {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  background: var(--ui-glass);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    transform 160ms var(--ease-out),
+    border-color 150ms ease;
+}
+.topics button[aria-pressed="true"] {
+  border-color: var(--ui-accent-border);
+}
+.topics button:active {
+  transform: scale(0.98);
+}
+.topics svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--ui-accent-text);
+}
+.answer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--ui-accent-border);
+  border-radius: 20px;
+  background: var(--ui-accent-soft);
+}
+.answer > span {
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.answer strong {
+  font-size: 15px;
+  line-height: 20px;
+}
+.answer p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+}
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.links a,
+.inline {
+  color: var(--ui-accent-text);
+  font-weight: 700;
+  text-decoration: none;
+}
+.quiet {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* The common questions, each opening its answer. */
+.faq {
+  display: flex;
+  overflow: hidden;
+  flex-direction: column;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: var(--ui-surface);
+}
+.faq details + details {
+  border-top: 1px solid var(--ui-border);
+}
+.faq summary {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+.faq summary span {
+  flex: 1;
+}
+.faq summary svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ui-muted);
+  transform: rotate(90deg);
+  transition: transform 200ms var(--ease-out);
+}
+.faq details[open] summary svg {
+  transform: rotate(-90deg);
+}
+.faq details > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px 14px;
+  color: var(--ui-muted);
+  font-size: 14px;
+  line-height: 21px;
+}
+.faq details > div p {
+  margin: 0;
+}
+
+/* Writing to support. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 22px;
+  background: var(--ui-glass);
+}
+.card h2 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 800;
+}
+.card p {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.form :is(select, textarea) {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 14px;
+  background: var(--ui-input);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+}
+.form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+.email {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+}
+.email svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--ui-muted);
+}
+.email span {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.email small {
+  color: var(--ui-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.rows {
+  display: flex;
+  overflow: hidden;
+  flex-direction: column;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: var(--ui-surface);
+}
+.rows a {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  color: var(--ui-text);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.rows a + a {
+  border-top: 1px solid var(--ui-border);
+}
+.rows a span {
+  flex: 1;
+}
+.rows a svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--ui-muted);
+}
+
+/* A page that holds a text. */
+.doc {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.back {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--ui-border);
+  border-radius: 50%;
+  background: var(--ui-glass);
+  color: var(--ui-text);
+}
+.back svg {
+  width: 18px;
+  height: 18px;
+  transform: scaleX(-1);
+}
+.numbered {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.numbered li {
+  display: flex;
+  gap: 14px;
+  font-size: 15px;
+  line-height: 23px;
+}
+.numbered li > span {
+  display: grid;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+.features {
+  display: grid;
+  gap: 10px;
+}
+.feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: var(--ui-glass);
+}
+.feature > span {
+  display: grid;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+}
+.feature > span svg {
+  width: 20px;
+  height: 20px;
+}
+.feature h2 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 800;
+}
+.feature p {
+  margin: 2px 0 0;
+  color: var(--ui-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+.tabs a:focus-visible,
+.topics button:focus-visible,
+.faq summary:focus-visible,
+.rows a:focus-visible,
+.main:focus-visible,
+.back:focus-visible,
+.quiet:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+@media (min-width: 640px) {
+  .topics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .features {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .feature {
+    flex-direction: column;
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .faq summary:hover,
+  .rows a:hover {
+    background: var(--ui-surface-hover);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .main,
+  .search button,
+  .topics button,
+  .faq summary svg {
+    transition: none;
+  }
+}
