@@ -11,7 +11,8 @@ import { RentalRecovery } from "../rentals/RentalRecovery";
 import { useRentalRead } from "../rentals/rental-client";
 import { StayEntry } from "../stays/StayEntries";
 import { useStayRead } from "../stays/stay-client";
-import styles from "./public-booking.module.css";
+import { appointmentAction } from "./AppointmentCard";
+import styles from "./appointments.module.css";
 
 type Page<T> = { entries: T[]; hasMore: boolean };
 type Read<T> = { data?: Page<T>; error?: string } | null;
@@ -20,9 +21,13 @@ function AppointmentsEmpty({ view }: { view: BookingListView }) {
   const t = useT();
   return (
     <div className={styles.empty}>
-      <Icon name="calendar" />
+      <Icon name="calendar" aria-hidden="true" />
       <h3>{view === "history" ? t("Još nema ranijih termina.") : t("Nema aktuelnih termina.")}</h3>
-      {view === "upcoming" && <Link href="/pretraga">{t("Pronađi djelatnost")}</Link>}
+      {view === "upcoming" && (
+        <Link className={appointmentAction} data-main href="/pretraga">
+          {t("Pronađi djelatnost")}
+        </Link>
+      )}
     </div>
   );
 }
@@ -49,19 +54,19 @@ function InventoryGroup<T>({
   }, [data, page, setPage]);
   if (!state || (data && !data.entries.length)) return null;
   return (
-    <section aria-label={title} className={styles.inventoryGroup}>
+    <section aria-label={title} className={styles.group}>
       <h3>{title}</h3>
       {state.error && (
-        <p role="alert" className={styles.error}>
-          {state.error}{" "}
-          <button type="button" className={styles.secondary} onClick={retry}>
+        <div role="alert" className={styles.problem}>
+          <p>{state.error}</p>
+          <button type="button" className={appointmentAction} onClick={retry}>
             {t("Pokušaj ponovo")}
           </button>
-        </p>
+        </div>
       )}
-      {data && <div className={styles.entryList}>{data.entries.map(children)}</div>}
+      {data && <div className={styles.cards}>{data.entries.map(children)}</div>}
       {data && (data.hasMore || page > 1) && (
-        <nav className={styles.pagination} aria-label={`Stranice: ${title}`}>
+        <nav className={styles.pages} aria-label={`${t("Stranice termina")}: ${title}`}>
           <button type="button" disabled={page === 1} onClick={() => setPage(page - 1)}>
             {t("Prethodna")}
           </button>
@@ -75,6 +80,7 @@ function InventoryGroup<T>({
   );
 }
 
+/** The rented vehicles and the stays of the signed-in person, under their service appointments. */
 export function InventoryAppointments({
   actor,
   view,
@@ -124,7 +130,13 @@ export function InventoryAppointments({
         retry={refreshRentals}
       >
         {(entry) => (
-          <RentalEntry key={entry.id} entry={entry} actor={actor} changed={refreshRentals} />
+          <RentalEntry
+            key={entry.id}
+            entry={entry}
+            actor={actor}
+            past={view === "history"}
+            changed={refreshRentals}
+          />
         )}
       </InventoryGroup>
       <InventoryGroup
@@ -134,7 +146,15 @@ export function InventoryAppointments({
         setPage={setStayPage}
         retry={refreshStays}
       >
-        {(entry) => <StayEntry key={entry.id} entry={entry} actor={actor} changed={refreshStays} />}
+        {(entry) => (
+          <StayEntry
+            key={entry.id}
+            entry={entry}
+            actor={actor}
+            past={view === "history"}
+            changed={refreshStays}
+          />
+        )}
       </InventoryGroup>
     </>
   );
