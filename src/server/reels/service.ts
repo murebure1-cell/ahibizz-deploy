@@ -1,5 +1,7 @@
 import type { PoolClient } from "pg";
 import { businessUuid } from "../../lib/business-today";
+import { isPackageId } from "../../lib/packages";
+import { packageReels, type ReelAllowance, type ReelDay } from "../../lib/reel-allowance";
 import {
   type ManagedReel,
   type PublicReel,
@@ -160,6 +162,63 @@ export async function readReelFeed(
 }
 
 type BusinessChoice = { id: string; title: string };
+/**
+ * The account's reels in the current package period. Every reel started counts except one the
+ * moderators returned and an upload abandoned for a day; deleting a reel does not give the slot
+ * back. The week runs Monday to Sunday on the clock of Sarajevo, as drawn.
+ */
+export async function readReelAllowance(
+  client: Pick<PoolClient, "query">,
+  actorId: string,
+): Promise<ReelAllowance> {
+  const row = (
+    await client.query<{ package: string; free: boolean; today: number; days: number[] }>(
+      `WITH here AS (SELECT (clock_timestamp() AT TIME ZONE 'Europe/Sarajevo') AS now),
+            mine AS (
+              SELECT (r.created_at AT TIME ZONE 'Europe/Sarajevo') AS at FROM business_reel r
+              WHERE r.submitted_by=$1 AND r.status<>'rejected'
+                AND (r.status<>'uploading' OR r.created_at>clock_timestamp()-interval '24 hours')
+                AND (r.created_at AT TIME ZONE 'Europe/Sarajevo') >= (SELECT date_trunc('week', now) FROM here))
+       SELECT COALESCE((SELECT package FROM account_package WHERE user_id=$1),'basic') AS package,
+         COALESCE((SELECT u.role='owner' OR u.founder FROM auth_user u WHERE u.id=$1),false) AS free,
+         (extract(isodow FROM (SELECT now FROM here))::int - 1) AS today,
+         COALESCE((SELECT array_agg(DISTINCT extract(isodow FROM at)::int - 1) FROM mine), '{}') AS days,
+         (SELECT count(*)::int FROM mine) AS week_count,
+         (SELECT count(*)::int FROM mine WHERE at >= (SELECT date_trunc('day', now) FROM here)) AS day_count`,
+      [actorId],
+    )
+  ).rows[0] as
+    | {
+        package: string;
+        free: boolean;
+        today: number;
+        days: number[];
+        week_count: number;
+        day_count: number;
+      }
+    | undefined;
+  if (!row || !isPackageId(row.package)) throw new AccountAccessError(503, "REEL_UNAVAILABLE");
+  const rule = packageReels[row.package];
+  const week = Array.from(
+    { length: 7 },
+    (_, day): ReelDay =>
+      row.days.includes(day)
+        ? "done"
+        : day === row.today
+          ? "today"
+          : day < row.today
+            ? "past"
+            : "next",
+  );
+  return {
+    package: row.package,
+    period: rule.period,
+    limit: row.free ? null : rule.limit,
+    used: rule.period === "day" ? row.day_count : row.week_count,
+    week,
+  };
+}
+
 export async function manageReels(headers: Headers, admin: boolean, offset = 0) {
   const { access, pool } = context();
   const session = await access.session(headers);
@@ -196,6 +255,7 @@ export async function manageReels(headers: Headers, admin: boolean, offset = 0) 
         ).rows;
     return {
       accountId: actor.id,
+      allowance: admin ? null : await readReelAllowance(client, actor.id),
       reels: reels.slice(0, 30),
       hasMore: reels.length > 30,
       live: liveReels,
@@ -351,6 +411,10 @@ async function beginUpload(
     )
   ).rows[0];
   if (!limits) throw new AccountAccessError(409, "REEL_LIMIT");
+  // The package decides how many reels an account publishes in a week or a day.
+  const allowance = await readReelAllowance(client, actorId);
+  if (allowance.limit !== null && allowance.used >= allowance.limit)
+    throw new AccountAccessError(409, "REEL_PACKAGE_LIMIT");
   // The founder and the administration publish as many reels as they want, any day.
   if (!limits.free) {
     if (limits.overall >= reelAccountLimit || limits.listing >= reelBusinessLimit)

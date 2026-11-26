@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { msg } from "../../lib/i18n/translate";
+import { packageName } from "../../lib/packages";
+import { packageReels, type ReelAllowance, reelsLeft } from "../../lib/reel-allowance";
 import {
   type ManagedReel,
   type ReelStatus,
@@ -45,6 +47,7 @@ const problems: Record<string, string> = {
   REEL_CHANGED: msg("Stanje reela se promijenilo. Osvježi stranicu."),
   REEL_LIMIT: `Jedna djelatnost može imati najviše ${reelBusinessLimit} aktivna reela ili reela na pregledu.`,
   REEL_DAILY_LIMIT: msg("Dostignut je dnevni limit objava. Pokušaj ponovo sutra."),
+  REEL_PACKAGE_LIMIT: msg("Iskoristio si reelse svog paketa za ovaj period."),
   REEL_POSTER_INVALID: msg("Odaberi statičnu JPG, PNG ili WebP naslovnicu do 768 KB."),
   REEL_VIDEO_INVALID: `Odaberi MP4 (H.264) snimak od 1 do ${reelMaxDuration} sekundi, do 1920 piksela po stranici.`,
   REEL_INCOMPLETE: msg("Nedostaje dio snimka. Pokušaj poslati ponovo."),
@@ -67,7 +70,10 @@ export function ReelManager({
   businessId,
   admin,
   live = [],
+  allowance = null,
 }: {
+  /** Where the account stands with its package's reels; the founder and admin have no limit. */
+  allowance?: ReelAllowance | null;
   accountId: string;
   reels: ManagedReel[];
   businesses: { id: string; title: string }[];
@@ -238,58 +244,63 @@ export function ReelManager({
   const visible = reels.filter((reel) => !removed.includes(reel.id));
   return (
     <>
+      {!admin && allowance && <AllowanceCard allowance={allowance} />}
       {!admin &&
         (businesses.length ? (
-          <form
-            className={styles.form}
-            onSubmit={(event) => {
-              event.preventDefault();
-              void upload(event.currentTarget);
-            }}
-          >
-            <fieldset disabled={busy}>
-              <legend>{t("Novi reel")}</legend>
-              <label>
-                {t("Djelatnost")}
-                <select name="business" defaultValue={selected} required>
-                  {businesses.map((business) => (
-                    <option value={business.id} key={business.id}>
-                      <bdi>{business.title}</bdi>
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                {t("Naziv snimka")}
-                <input name="title" maxLength={100} required />
-              </label>
-              <label>
-                {t("Opis")} <span>(opcionalno)</span>
-                <textarea name="caption" maxLength={600} rows={3} />
-              </label>
-              <label>
-                {t("Video")}
-                <input name="video" type="file" accept="video/mp4,.mp4" required />
-                <small>{t("MP4 (H.264), 1–90 sekundi, do 24 MB.")}</small>
-              </label>
-              <label>
-                {t("Naslovnica")} <span>(opcionalno)</span>
-                <input name="poster" type="file" accept="image/png,image/jpeg,image/webp" />
-                <small>
-                  {t("JPG, PNG ili WebP do 768 KB. Može se izdvojiti i kadar iz snimka.")}
-                </small>
-              </label>
-              <button type="submit" className={styles.primary}>
-                {busy ? t("Obrađuje se…") : t("Pošalji na pregled")}
-              </button>
-            </fieldset>
-          </form>
+          <details className={styles.publishBox}>
+            <summary className={styles.publishButton}>{t("Objavi reel")}</summary>
+            <form
+              className={styles.form}
+              onSubmit={(event) => {
+                event.preventDefault();
+                void upload(event.currentTarget);
+              }}
+            >
+              <fieldset disabled={busy}>
+                <legend>{t("Novi reel")}</legend>
+                <label>
+                  {t("Djelatnost")}
+                  <select name="business" defaultValue={selected} required>
+                    {businesses.map((business) => (
+                      <option value={business.id} key={business.id}>
+                        <bdi>{business.title}</bdi>
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  {t("Naziv snimka")}
+                  <input name="title" maxLength={100} required />
+                </label>
+                <label>
+                  {t("Opis")} <span>(opcionalno)</span>
+                  <textarea name="caption" maxLength={600} rows={3} />
+                </label>
+                <label>
+                  {t("Video")}
+                  <input name="video" type="file" accept="video/mp4,.mp4" required />
+                  <small>{t("MP4 (H.264), 1–90 sekundi, do 24 MB.")}</small>
+                </label>
+                <label>
+                  {t("Naslovnica")} <span>(opcionalno)</span>
+                  <input name="poster" type="file" accept="image/png,image/jpeg,image/webp" />
+                  <small>
+                    {t("JPG, PNG ili WebP do 768 KB. Može se izdvojiti i kadar iz snimka.")}
+                  </small>
+                </label>
+                <button type="submit" className={styles.primary}>
+                  {busy ? t("Obrađuje se…") : t("Pošalji na pregled")}
+                </button>
+              </fieldset>
+            </form>
+          </details>
         ) : (
           <p className={styles.empty}>
             {t("Objavi djelatnost prije dodavanja reela.")}{" "}
             <Link href="/nalog?odjeljak=djelatnosti">{t("Moje djelatnosti")}</Link>
           </p>
         ))}
+      {!admin && allowance && <PackageReels current={allowance.package} />}
       {progress !== null && (
         <progress value={progress} max={100} aria-label={t("Napredak prijenosa")}>
           {progress}%
@@ -459,5 +470,68 @@ export function ReelManager({
         </section>
       )}
     </>
+  );
+}
+
+const dayNames = ["P", "U", "S", "Č", "P", "S", "N"];
+
+/** "Danas možeš objaviti …" with this week's days, as drawn (MojiReels). */
+function AllowanceCard({ allowance }: { allowance: ReelAllowance }) {
+  const t = useT();
+  const left = reelsLeft(allowance);
+  const heading =
+    left === null
+      ? t("Reelse objavljuješ bez ograničenja.")
+      : left === 0
+        ? allowance.period === "day"
+          ? t("Danas si objavio svoj reel. Sljedeći sutra.")
+          : t("Ove sedmice si objavio sve svoje reelse.")
+        : allowance.period === "day"
+          ? t("Danas možeš objaviti {count} reel", { count: left })
+          : t("Ove sedmice možeš objaviti još {count}", { count: left });
+  return (
+    <section className={styles.allowance} aria-label={t("Reels ove sedmice")}>
+      <div className={styles.allowanceHead}>
+        <strong>{heading}</strong>
+        {allowance.limit !== null && (
+          <span>{t("{count} od {limit}", { count: allowance.used, limit: allowance.limit })}</span>
+        )}
+      </div>
+      <ol className={styles.week}>
+        {allowance.week.map((state, day) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: the seven days of the week never move.
+          <li key={day} data-state={state}>
+            {dayNames[day]}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/** How many reels each package gives, with the account's own package marked. */
+function PackageReels({ current }: { current: ReelAllowance["package"] }) {
+  const t = useT();
+  const text = {
+    week: (count: number) => t("{count} sedmično", { count }),
+    day: (count: number) => (count === 1 ? t("1 svaki dan") : t("{count} dnevno", { count })),
+  };
+  return (
+    <section className={styles.packages}>
+      <h2>{t("Koliko reelsa po paketu")}</h2>
+      <ul>
+        {(Object.keys(packageReels) as (keyof typeof packageReels)[]).map((id) => {
+          const rule = packageReels[id];
+          return (
+            <li key={id} data-current={id === current ? "" : undefined}>
+              <span>{packageName(id)}</span>
+              {id === current && <em>{t("Tvoj paket")}</em>}
+              <span>{text[rule.period](rule.limit)}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <p>{t("Sedmica počinje u ponedjeljak. Neiskorišteni reels se ne prenose.")}</p>
+    </section>
   );
 }

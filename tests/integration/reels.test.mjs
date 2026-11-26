@@ -11,6 +11,7 @@ import {
   expireReels,
   listPublicReels,
   readPublicReel,
+  readReelAllowance,
   readReelFeed,
   reelMediaAccess,
   removePublishedReel,
@@ -424,6 +425,35 @@ test("isolated Reel feed and engagement stay bounded, authorized, and idempotent
             status: 404,
           });
         assert.equal((await readPublicReel(fresh, null, pool)).id, fresh);
+
+        // Package allowance (MojiReels): Basic counts this week's reels except returned ones.
+        const allowance = await readReelAllowance(pool, accounts[0]);
+        assert.equal(allowance.package, "basic");
+        assert.equal(allowance.period, "week");
+        assert.equal(allowance.limit, 1);
+        assert.equal(allowance.week.length, 7);
+        assert.equal(
+          allowance.week.filter((day) => day === "today" || day === "done").length >= 1,
+          true,
+        );
+        const counted = Number(
+          (
+            await pool.query(
+              `SELECT count(*)::int AS n FROM business_reel WHERE submitted_by=$1 AND status<>'rejected'
+                 AND (status<>'uploading' OR created_at>clock_timestamp()-interval '24 hours')
+                 AND (created_at AT TIME ZONE 'Europe/Sarajevo') >= date_trunc('week', clock_timestamp() AT TIME ZONE 'Europe/Sarajevo')`,
+              [accounts[0]],
+            )
+          ).rows[0].n,
+        );
+        assert.equal(allowance.used, counted);
+        await pool.query(
+          "INSERT INTO account_package(user_id,package,version) VALUES($1,'business',1)",
+          [accounts[0]],
+        );
+        const daily = await readReelAllowance(pool, accounts[0]);
+        assert.deepEqual([daily.package, daily.period, daily.limit], ["business", "day", 1]);
+        await pool.query("DELETE FROM account_package WHERE user_id=$1", [accounts[0]]);
 
         const abandoned = randomUUID();
         await pool.query(
