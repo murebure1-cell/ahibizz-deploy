@@ -1379,4 +1379,43 @@ export const content: Messages = {
   ],
   min: ["min", "Min", "د", "dk"],
   sek: ["sec", "Sek", "ث", "sn"],
+  "Brzi odgovori": ["Quick replies", "Schnellantworten", "ردود سريعة", "Hızlı yanıtlar"],
+  Hvala: ["Thanks", "Danke", "شكرًا", "Teşekkürler"],
+  "Hvala na poruci, javljamo se uskoro.": [
+    "Thank you for your message, we will reply soon.",
+    "Danke für Ihre Nachricht, wir melden uns bald.",
+    "شكرًا على رسالتك، سنرد قريبًا.",
+    "Mesajınız için teşekkürler, yakında dönüş yapacağız.",
+  ],
+  "Radno vrijeme je na našem profilu: {link}": [
+    "Our working hours are on our profile: {link}",
+    "Unsere Öffnungszeiten stehen in unserem Profil: {link}",
+    "ساعات العمل موجودة في ملفنا: {link}",
+    "Çalışma saatlerimiz profilimizde: {link}",
+  ],
+  "Do nas vode uputstva: {link}": [
+    "Directions to us: {link}",
+    "Der Weg zu uns: {link}",
+    "الاتجاهات إلينا: {link}",
+    "Bize yol tarifi: {link}",
+  ],
+  "{count} nova poruka": [
+    "{count} new {count|message|messages}",
+    "{count} neue {count|Nachricht|Nachrichten}",
+    "{count} {count|رسالة جديدة|رسائل جديدة}",
+    "{count} yeni mesaj",
+  ],
+  "{count} nove poruke": [
+    "{count} new {count|message|messages}",
+    "{count} neue {count|Nachricht|Nachrichten}",
+    "{count} {count|رسالة جديدة|رسائل جديدة}",
+    "{count} yeni mesaj",
+  ],
+  "{count} novih poruka": [
+    "{count} new {count|message|messages}",
+    "{count} neue {count|Nachricht|Nachrichten}",
+    "{count} {count|رسالة جديدة|رسائل جديدة}",
+    "{count} yeni mesaj",
+  ],
+  "Pročitaj još": ["Read more", "Weiterlesen", "اقرأ المزيد", "Daha fazla oku"],
 };

@@ -840,3 +840,72 @@
     scroll-behavior: auto;
   }
 }
+
+/* Where the messages that were new when the conversation was opened begin. */
+.newLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  color: var(--ui-accent-text);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+}
+.newLine::before,
+.newLine::after {
+  flex: 1;
+  height: 1px;
+  background: var(--ui-accent-border);
+  content: "";
+}
+/* Quick replies for a business answering in its own inbox. */
+.quick {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 12px 0;
+  border: 0;
+}
+.quick legend {
+  float: left;
+  padding: 0;
+  color: var(--ui-muted);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+}
+.quick > div {
+  display: flex;
+  overflow-x: auto;
+  gap: 6px;
+  clear: both;
+  scrollbar-width: none;
+}
+.quick button {
+  flex: none;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  background: var(--ui-glass);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out);
+}
+.quick button:active {
+  transform: scale(0.97);
+}
+.quick button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.quick button:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
