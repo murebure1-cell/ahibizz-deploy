@@ -238,7 +238,7 @@ jobs:
           echo "Production entrypoint did not become ready within 60 seconds."
           exit 1
       - name: Smoke test key pages render on the production image
-        timeout-minutes: 3
+        timeout-minutes: 5
         env:
           DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
         run: |
@@ -259,25 +259,35 @@ jobs:
             exit "$code"
           }
           trap cleanup EXIT
-          container_id=$(docker run --detach --name "$name" --network host \
-            --env PORT=3099 --env DATABASE_URL \
-            --env BETTER_AUTH_URL=https://route-smoke.ahibizz-ci.invalid \
-            --env BETTER_AUTH_SECRET=isolated-ci-only-secret-over-thirty-two-characters \
-            --env SMTP_HOST=fixture.invalid --env SMTP_PORT=465 --env SMTP_USER=fixture \
-            --env SMTP_PASSWORD=fixture-only --env SMTP_FROM=no-reply@fixture.invalid \
-            ahibizz:ci)
-          deadline=$((SECONDS + 60))
-          until curl --fail --silent --max-time 2 http://127.0.0.1:3099/api/health/ready >/dev/null; do
-            if (( SECONDS >= deadline )); then
-              echo "Route smoke server did not become ready within 60 seconds."
-              exit 1
-            fi
-            sleep 2
-          done
-          node scripts/smoke-routes.mjs http://127.0.0.1:3099
-          docker stop --time 15 "$container_id" >/dev/null
+          # The pages are opened twice: as an open app, and with an opening day ahead, when a
+          # guest must be sent to "Uskoro otvaramo" from the public pages. Both runs set the day
+          # themselves, so the day kept in the code never decides what is tested here.
+          smoke() {
+            container_id=$(docker run --detach --name "$name" --network host \
+              --env PORT=3099 --env DATABASE_URL \
+              --env "AHIBIZZ_OPENING_AT=$1" \
+              --env BETTER_AUTH_URL=https://route-smoke.ahibizz-ci.invalid \
+              --env BETTER_AUTH_SECRET=isolated-ci-only-secret-over-thirty-two-characters \
+              --env SMTP_HOST=fixture.invalid --env SMTP_PORT=465 --env SMTP_USER=fixture \
+              --env SMTP_PASSWORD=fixture-only --env SMTP_FROM=no-reply@fixture.invalid \
+              ahibizz:ci)
+            deadline=$((SECONDS + 60))
+            until curl --fail --silent --max-time 2 http://127.0.0.1:3099/api/health/ready >/dev/null; do
+              if (( SECONDS >= deadline )); then
+                echo "Route smoke server did not become ready within 60 seconds."
+                exit 1
+              fi
+              sleep 2
+            done
+            node scripts/smoke-routes.mjs http://127.0.0.1:3099 "$2"
+            docker stop --time 15 "$container_id" >/dev/null
+            docker rm --force "$container_id" >/dev/null
+            container_id=
+          }
+          smoke off open
+          smoke 2099-01-01T00:00:00Z before-opening
       - name: Smoke test guarded ingress with client-IP trust disabled
-        timeout-minutes: 3
+        timeout-minutes: 6
         env:
           DATABASE_URL: postgresql://ahibizz_ci:ci_fixture_only@127.0.0.1:5432/ahibizz_ci?sslmode=disable
         run: |
@@ -315,23 +325,35 @@ jobs:
             exit "$code"
           }
           trap cleanup EXIT
-          container_id=$(docker run --detach --name "$name" --network host \
-            --env-file "$RUNNER_TEMP/ingress-smoke.env" ahibizz:ci)
-          deadline=$((SECONDS + 60))
-          ready=false
-          while (( SECONDS < deadline )); do
-            if [[ "$(docker inspect --format '{{.State.Running}}' "$container_id")" != true ]]; then
-              echo "Guarded production entrypoint stopped before becoming ready."
-              exit 1
-            fi
-            if curl --fail --silent --max-time 2 http://127.0.0.1:3099/api/health/live >/dev/null \
-              && curl --fail --silent --max-time 2 http://127.0.0.1:3099/api/health/ready >/dev/null; then
-              ready=true
-              break
-            fi
-            sleep 2
-          done
-          [[ "$ready" == true ]]
+          # The live app stands behind this guard, which hands the app a different address of
+          # itself than a bare server sees. The key pages are therefore opened here as well, as
+          # an open app and with an opening day ahead: on 2026-11-26 a page that passed on the
+          # bare server answered every guest with an error behind the guard.
+          guarded() {
+            container_id=$(docker run --detach --name "$name" --network host \
+              --env-file "$RUNNER_TEMP/ingress-smoke.env" --env "AHIBIZZ_OPENING_AT=$1" ahibizz:ci)
+            deadline=$((SECONDS + 60))
+            ready=false
+            while (( SECONDS < deadline )); do
+              if [[ "$(docker inspect --format '{{.State.Running}}' "$container_id")" != true ]]; then
+                echo "Guarded production entrypoint stopped before becoming ready."
+                exit 1
+              fi
+              if curl --fail --silent --max-time 2 http://127.0.0.1:3099/api/health/live >/dev/null \
+                && curl --fail --silent --max-time 2 http://127.0.0.1:3099/api/health/ready >/dev/null; then
+                ready=true
+                break
+              fi
+              sleep 2
+            done
+            [[ "$ready" == true ]]
+          }
+          released() {
+            docker stop --time 15 "$container_id" >/dev/null
+            docker rm --force "$container_id" >/dev/null
+            container_id=
+          }
+          guarded off
           canonical=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 5 \
             -H 'Host: 127.0.0.1:3099' -H 'X-Real-IP: 203.0.113.9' \
             http://127.0.0.1:3099/api/account)
@@ -345,5 +367,9 @@ jobs:
             --data '{"email":"missing@fixture.invalid","password":"isolated-fixture-only-password"}' \
             http://127.0.0.1:3099/api/auth/sign-in/email)
           [[ "$canonical" == 401 && "$untrusted" == 403 && "$foreign_origin" == 403 ]]
-          docker stop --time 15 "$container_id" >/dev/null
-          echo "Guarded production entrypoint: loopback health, canonical auth boundary and denied peer passed; client-IP trust stayed disabled."
+          node scripts/smoke-routes.mjs http://127.0.0.1:3099 open behind-guard
+          released
+          guarded 2099-01-01T00:00:00Z
+          node scripts/smoke-routes.mjs http://127.0.0.1:3099 before-opening behind-guard
+          released
+          echo "Guarded production entrypoint: loopback health, canonical auth boundary, denied peer and the key pages before and after the opening passed; client-IP trust stayed disabled."
