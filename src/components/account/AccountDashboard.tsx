@@ -299,15 +299,16 @@ function AccountWorkspace({
           >
             {/* On a phone every part of the account is a screen of its own with a way back to
                 "Moj profil"; the old card with tabs is gone (see account.module.css). */}
-            {current && !["overview", "settings", "messages"].includes(section) && (
-              <div className={styles.phoneBar}>
-                <ScreenBar
-                  title={section === "profile" ? t("Uredi profil") : t(current.label)}
-                  backHref="/nalog"
-                  backLabel={t("Moj profil")}
-                />
-              </div>
-            )}
+            {current &&
+              !["overview", "settings", "messages", "businesses", "saved"].includes(section) && (
+                <div className={styles.phoneBar}>
+                  <ScreenBar
+                    title={section === "profile" ? t("Uredi profil") : t(current.label)}
+                    backHref="/nalog"
+                    backLabel={t("Moj profil")}
+                  />
+                </div>
+              )}
             {IS_PLAY_EDITION &&
               hasAccess &&
               ["profile", "businesses", "messages"].includes(section) && (

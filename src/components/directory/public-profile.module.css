@@ -760,3 +760,15 @@ a.coverControl > svg[data-icon="arrow"] {
 .details {
   gap: 30px;
 }
+
+/* The map card is exactly the map: no grey strip under Google's footer. */
+.map {
+  min-height: 0;
+  background: transparent;
+}
+/* On a phone the last card ends above the floating dock. */
+@media (max-width: 760px) {
+  .profile {
+    padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+  }
+}
