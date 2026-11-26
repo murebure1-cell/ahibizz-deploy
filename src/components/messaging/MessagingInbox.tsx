@@ -91,6 +91,38 @@ function previewDate(value: Date, today: Date, locale: Locale) {
     ? messageTime.format(value)
     : recentDay(value, today, locale, { timeZone: messageZone });
 }
+/** "2 nove poruke": Bosnian counts in three forms. */
+function newMessagesText(count: number) {
+  return bosnianForm(
+    count,
+    msg("{count} nova poruka"),
+    msg("{count} nove poruke"),
+    msg("{count} novih poruka"),
+  );
+}
+
+/** What an owner can send with one press: thanks, and the ways to the business's own page. */
+function quickReplies(businessId: string) {
+  const page = `${typeof window === "undefined" ? "" : window.location.origin}/djelatnosti/${businessId}`;
+  return [
+    {
+      label: msg("Hvala"),
+      text: msg("Hvala na poruci, javljamo se uskoro."),
+      vars: { link: page },
+    },
+    {
+      label: msg("Radno vrijeme"),
+      text: msg("Radno vrijeme je na našem profilu: {link}"),
+      vars: { link: page },
+    },
+    {
+      label: msg("Lokacija"),
+      text: msg("Do nas vode uputstva: {link}"),
+      vars: { link: `${page}/uputstva` },
+    },
+  ];
+}
+
 function threadContext(thread: ChatThread) {
   if (thread.kind === "person") return msg("Lični razgovor");
   return thread.inbox === "business" ? msg("Upit za djelatnost") : msg("Djelatnost");
@@ -159,6 +191,7 @@ export function MessagingInbox({
   const [reading, setReading] = useState(false);
   const [older, setOlder] = useState(false);
   const [draft, setDraft] = useState("");
+  const newFrom = useRef<{ id: string; after: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<Intent | null>(null);
   const [error, setError] = useState("");
@@ -933,6 +966,24 @@ export function MessagingInbox({
     setHasMore(cached?.hasMore ?? false);
     setListReady(Boolean(cached));
   }
+  /** The draft of the open conversation, kept in memory and in this device's storage. */
+  function changeDraft(value: string) {
+    if (selected) {
+      const selectedInbox = conversation?.thread.inbox ?? inbox;
+      draftCache.current.set(`${selectedInbox}:${selected}`, value);
+      try {
+        const revision = store?.saveDraft(selected, selectedInbox, value);
+        draftRevisions.current.set(`${selectedInbox}:${selected}`, revision ?? null);
+        store?.saveSelection(selected, selectedInbox);
+        unpersistedDrafts.current.delete(`${selectedInbox}:${selected}`);
+        setStorageWarning("");
+      } catch {
+        unpersistedDrafts.current.add(`${selectedInbox}:${selected}`);
+        setStorageWarning(t("Nacrt se trenutno čuva samo dok je aplikacija otvorena."));
+      }
+    }
+    setDraft(value);
+  }
   function filterUnread(unreadOnly: boolean) {
     if (busy || pending || filters.unreadOnly === unreadOnly) return;
     setPage(1);
@@ -996,6 +1047,18 @@ export function MessagingInbox({
     }
   }
   const thread = conversation?.thread;
+  // The first message that was new when this conversation was opened; it keeps its line while
+  // the conversation stays open, though opening it marks everything read.
+  if (thread && newFrom.current?.id !== thread.id)
+    newFrom.current = { id: thread.id, after: thread.readSequence };
+  const firstNew =
+    conversation?.items.findIndex(
+      (item) => item.from !== "me" && item.sequence > (newFrom.current?.after ?? Infinity),
+    ) ?? -1;
+  const newCount =
+    firstNew >= 0
+      ? (conversation?.items.slice(firstNew).filter((item) => item.from !== "me").length ?? 0)
+      : 0;
   const shownThread = thread ?? threads.find((item) => item.id === selected);
   const interactionLocked = busy || Boolean(pending);
   const today = new Date();
@@ -1329,6 +1392,11 @@ export function MessagingInbox({
                   return (
                     <div key={item.id} className={styles.bubbleStack}>
                       {isDayStart && <div className={styles.day}>{day}</div>}
+                      {index === firstNew && newCount > 0 && (
+                        <div className={styles.newLine}>
+                          <span>{t(newMessagesText(newCount), { count: newCount })}</span>
+                        </div>
+                      )}
                       <div
                         className={`${styles.messageRow} ${item.from === "me" ? styles.fromMe : ""} ${startsGroup ? styles.groupStart : ""} ${endsGroup ? styles.groupEnd : ""}`}
                       >
@@ -1374,6 +1442,29 @@ export function MessagingInbox({
                   {t("Isprobaj odgovor")}
                 </button>
               )}
+              {thread?.canSend && thread.inbox === "business" && thread.kind === "business" && (
+                <fieldset className={styles.quick}>
+                  <legend>{t("Brzi odgovori")}</legend>
+                  <div>
+                    {quickReplies(thread.targetId).map((reply) => (
+                      <button
+                        key={reply.label}
+                        type="button"
+                        disabled={busy || Boolean(pending)}
+                        onClick={() =>
+                          changeDraft(
+                            draft.trim()
+                              ? `${draft.trimEnd()} ${t(reply.text, reply.vars)}`
+                              : t(reply.text, reply.vars),
+                          )
+                        }
+                      >
+                        {t(reply.label)}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
               {thread?.canSend && (
                 <form
                   className={styles.composer}
@@ -1393,29 +1484,7 @@ export function MessagingInbox({
                     value={draft}
                     placeholder={t("Napiši poruku…")}
                     disabled={!thread?.canSend || busy || Boolean(pending)}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      if (selected) {
-                        const selectedInbox = conversation?.thread.inbox ?? inbox;
-                        draftCache.current.set(`${selectedInbox}:${selected}`, value);
-                        try {
-                          const revision = store?.saveDraft(selected, selectedInbox, value);
-                          draftRevisions.current.set(
-                            `${selectedInbox}:${selected}`,
-                            revision ?? null,
-                          );
-                          store?.saveSelection(selected, selectedInbox);
-                          unpersistedDrafts.current.delete(`${selectedInbox}:${selected}`);
-                          setStorageWarning("");
-                        } catch {
-                          unpersistedDrafts.current.add(`${selectedInbox}:${selected}`);
-                          setStorageWarning(
-                            t("Nacrt se trenutno čuva samo dok je aplikacija otvorena."),
-                          );
-                        }
-                      }
-                      setDraft(value);
-                    }}
+                    onChange={(event) => changeDraft(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
                         event.preventDefault();

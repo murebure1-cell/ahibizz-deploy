@@ -303,6 +303,17 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   izmjene, vraćanje u nacrt, arhiviranje, brisanje). Redovi otvaraju iste ekrane kao prije. S
   crteža nema: brojke pregleda, poruka i ocjene, Analitika i Sponzorisano (ne postoje), stanje
   lokacije i broj slika u redu i prekidač „Sakrij djelatnost" (sakrivanje je arhiviranje) **[novo]**.
+- **Razgovor, vlasnik [urađeno 26. 11. 2026.]:** linija „N nove poruke" označava gdje počinju
+  poruke koje su bile nove kad je razgovor otvoren (u svim razgovorima). Djelatnost u svom
+  sandučiću ima „Brze odgovore" (zahvala, radno vrijeme, lokacija): rečenica s linkom na profil ili
+  uputstva ide u nacrt, vlasnik je može promijeniti prije slanja. S crteža nema: „za <djelatnost>"
+  ispod imena, poziv, „Jelovnik" i uređivanje brzih odgovora **[novo]**.
+- **Blog i članak [urađeno 26. 11. 2026.]:** po crtežima. Lista: naslov s dugmetom pretrage,
+  teme kao oznake (i „Sačuvani članci"), izdvojeni članak kao velika kartica, ostali kao redovi.
+  Članak: obojena traka teme s „Nazad" i „Podijeli", tema, naslov, datum i trajanje čitanja,
+  uvod, tekst, čuvanje i „Pročitaj još" iz iste teme. Članci nemaju slike, pa svaka tema ima svoju
+  boju i znak umjesto fotografije. S crteža nema: autor („Redakcija AhiBizza"), podnaslovi u
+  tekstu, kartica s djelatnostima u blizini i „Najčitanije" (nema brojanja čitanja) **[novo]**.
 - **Stranica „u izradi” [urađeno 26. 11. 2026., uključeno do otvaranja]:** po crtežu „U izradi”.
   Odluka vlasnika od 26. 11. 2026.: prikazuje se posjetiocima bez prijave, a otvaranje je u petak
   4. 12. 2026. nakon džume; upisano je 13:00 po sarajevskom vremenu. Dok dan otvaranja ne prođe, posjetilac koji nije prijavljen umjesto javnih
