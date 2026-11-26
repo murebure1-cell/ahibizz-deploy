@@ -1,5 +1,11 @@
 import { betterAuth } from "better-auth";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import {
+  APIError,
+  createAuthEndpoint,
+  createAuthMiddleware,
+  sessionMiddleware,
+} from "better-auth/api";
+import { multiSession } from "better-auth/plugins";
 import { Pool } from "pg";
 import { authOrigin, authSecret, type GoogleConfiguration, readAuthConfiguration } from "./config";
 import { type AuthIngressConfiguration, authIpAddressHeaders } from "./ingress";
@@ -45,6 +51,35 @@ export function oauthCallbackProvider(
   const id = context?.params?.id ?? path.slice("/callback/".length);
   return typeof id === "string" && id !== ":id" ? id : null;
 }
+
+/**
+ * How many accounts one device may keep signed in at once: a person's own account and the
+ * "AhiBizz administracija" account, with room for one more.
+ */
+export const deviceAccountLimit = 3;
+
+/**
+ * Keeps the current session among the device's accounts. A session that began before switching
+ * existed has no device-account cookie, so it would be lost when a second account signs in.
+ * Called by the server only; the HTTP surface (auth-http.ts) never routes to it.
+ */
+const rememberDeviceSession = {
+  id: "ahibizz-device-session",
+  endpoints: {
+    rememberDeviceSession: createAuthEndpoint(
+      "/device-session/remember",
+      { method: "POST", requireHeaders: true, use: [sessionMiddleware] },
+      async (context) => {
+        const token = context.context.session.session.token;
+        const cookie = context.context.authCookies.sessionToken;
+        const name = `${cookie.name}_multi-${token.toLowerCase()}`;
+        if (!(await context.getSignedCookie(name, context.context.secret)))
+          await context.setSignedCookie(name, token, context.context.secret, cookie.attributes);
+        return context.json({ ok: true });
+      },
+    ),
+  },
+};
 
 export function createAuthService(options: {
   pool: Pool;
@@ -160,6 +195,9 @@ export function createAuthService(options: {
       trustedProxyHeaders: false,
       ipAddress: { ipAddressHeaders, disableIpTracking: false },
     },
+    // Several accounts signed in on one device, one of them active. Session tokens stay in
+    // signed, httpOnly cookies; only server code lists or switches them (device-accounts.ts).
+    plugins: [multiSession({ maximumSessions: deviceAccountLimit }), rememberDeviceSession],
     hooks: {
       before: createAuthMiddleware(async (context) => {
         if (

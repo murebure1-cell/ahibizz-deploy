@@ -34,6 +34,7 @@ export type IconName =
   | "plus"
   | "more"
   | "refresh"
+  | "swap"
   | "volume"
   | "mute"
   | "share"
@@ -86,6 +87,7 @@ const paths: Record<IconName, ReactNode> = {
     <path d="M20.8 4.9a5.4 5.4 0 0 0-7.6 0L12 6.1l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6L12 21l8.8-8.5a5.4 5.4 0 0 0 0-7.6Z" />
   ),
   check: <path d="m5 12 4 4L19 6" />,
+  swap: <path d="M7 4 3 8l4 4M3 8h14m0 4 4 4-4 4m4-4H7" />,
   lock: (
     <>
       <rect x="5" y="11" width="14" height="9" rx="2.5" />

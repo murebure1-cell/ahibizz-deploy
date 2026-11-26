@@ -16,6 +16,7 @@ export default async function LoginPage({
     error?: string;
     google?: string;
     nastavi?: string | string[];
+    dodaj?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -27,7 +28,9 @@ export default async function LoginPage({
   } catch {
     // An absent, denied or unavailable session leaves the ordinary sign-in form available.
   }
-  if (destination) redirect(destination);
+  // "Dodaj nalog": a signed-in person signs in a second account beside the first.
+  const addAccount = params.dodaj === "1" && destination !== null;
+  if (destination && !addAccount) redirect(destination);
   // Google returns here with ?google=1&error=CODE; the plain error is a failed email link.
   const fromGoogle = params.google === "1";
   return (
@@ -39,6 +42,7 @@ export default async function LoginPage({
       google={googleSignInAvailable()}
       googleError={fromGoogle ? (params.error ?? "UNKNOWN") : undefined}
       returnTo={accountReturnPath(params.nastavi)}
+      addAccount={addAccount}
     />
   );
 }

@@ -1,0 +1,174 @@
+/* "Prebaci nalog": the accounts on this device as drawn (NalogPrebaci), inside ui/Sheet. */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 20px 28px;
+}
+.account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 68px;
+  padding: 10px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  background: var(--ui-glass);
+  color: var(--ui-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.account[aria-current="true"] {
+  border-color: var(--ui-accent-border);
+}
+.account:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.account:disabled {
+  cursor: default;
+}
+.account:focus-visible,
+.add:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .account:hover:not(:disabled) {
+    background: var(--ui-surface-hover);
+  }
+}
+.avatar,
+.admin {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
+}
+.avatar {
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 800;
+}
+.admin {
+  border-radius: 15px;
+}
+.admin svg {
+  width: 22px;
+  height: 22px;
+}
+.text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+.text strong {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.text span {
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.on {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+}
+.on svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.6;
+}
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.wait {
+  flex: none;
+  color: var(--ui-muted);
+  font-size: 13px;
+}
+.add {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 14px;
+  border: 1px dashed var(--ui-border-strong);
+  border-radius: 18px;
+  color: var(--ui-accent-text);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.add span {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ui-accent-soft);
+}
+.add svg {
+  width: 20px;
+  height: 20px;
+}
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.note svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+}
+.loading,
+.error {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+.loading {
+  color: var(--ui-muted);
+}
+.error {
+  color: var(--ui-danger);
+}
+@media (prefers-reduced-motion: reduce) {
+  .account {
+    transition: background-color 150ms ease;
+  }
+  .account:active:not(:disabled) {
+    transform: none;
+  }
+}
