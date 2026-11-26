@@ -6,6 +6,7 @@ import { PublicBooking } from "../../../../components/booking/PublicBooking";
 import { PublicBusinessProfile } from "../../../../components/directory/PublicBusinessProfile";
 import profileStyles from "../../../../components/directory/public-profile.module.css";
 import styles from "../../../../components/directory/public-search.module.css";
+import { BusinessMenuBlock } from "../../../../components/menu-offer/BusinessMenuSections";
 import { BusinessReels } from "../../../../components/reels/ReelShelf";
 import { RentalFleet } from "../../../../components/rentals/RentalFleet";
 import { StayUnits } from "../../../../components/stays/StayUnits";
@@ -166,18 +167,23 @@ export default async function PublicBusinessPage({
                 <ListingOffer offer={offer} link />
               </Suspense>
             ))}
-            offerSections={offers.map((offer) => (
-              <Fragment key={offer.id}>
-                {offer.id === "business-appointments" && (
+            offerSections={[
+              <Suspense key="business-menu" fallback={null}>
+                <BusinessMenuBlock businessId={id} />
+              </Suspense>,
+              ...offers.map((offer) => (
+                <Fragment key={offer.id}>
+                  {offer.id === "business-appointments" && (
+                    <Suspense fallback={null}>
+                      <BusinessReels businessId={id} />
+                    </Suspense>
+                  )}
                   <Suspense fallback={null}>
-                    <BusinessReels businessId={id} />
+                    <ListingOffer offer={offer} />
                   </Suspense>
-                )}
-                <Suspense fallback={null}>
-                  <ListingOffer offer={offer} />
-                </Suspense>
-              </Fragment>
-            ))}
+                </Fragment>
+              )),
+            ]}
           />
         </main>
       );

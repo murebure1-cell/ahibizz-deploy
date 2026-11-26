@@ -1771,6 +1771,14 @@ export function BusinessManager({
                           </span>
                           <Icon name="chevron" aria-hidden="true" />
                         </button>
+                        <Link className={hub.row} href={`/nalog/jelovnik?djelatnost=${item.id}`}>
+                          <Icon name="coffee" aria-hidden="true" />
+                          <span>
+                            {t("Jelovnik i meso")}
+                            <small>{t("Jela, cijene i porijeklo mesa")}</small>
+                          </span>
+                          <Icon name="chevron" aria-hidden="true" />
+                        </Link>
                       </div>
                     </section>
                   )}
