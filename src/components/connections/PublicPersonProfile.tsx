@@ -2,21 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import {
-  type KeyboardEvent,
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { BlockState } from "../../lib/account-blocks";
 import {
   type PublicPerson,
+  type PublicPersonStats,
   publicPersonImageUrl,
   type Relationship,
   readPublicPerson,
+  readPublicPersonStats,
   readRelationship,
 } from "../../lib/connections";
 import {
@@ -30,7 +24,8 @@ import { messageLink } from "../../lib/messaging";
 import { workStatusLabels } from "../../lib/people";
 import type { PersonBusinessesRequest } from "../../lib/person-businesses";
 import { reportUrl } from "../../lib/support-requests";
-import { Icon } from "../Icon";
+import { ShareButton } from "../directory/ShareButton";
+import { Icon, type IconName } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
 import { personalProfileImage } from "../people/PersonalProfileCard";
 import { PlatformBadges } from "../people/PlatformBadges";
@@ -39,6 +34,7 @@ import styles from "./connections.module.css";
 import { PersonAvatar, type PersonMediaUrl, personLocation } from "./PeopleSearch";
 import { ProfileBlockAction } from "./ProfileBlockAction";
 import { PublicPersonBusinesses } from "./PublicPersonBusinesses";
+import look from "./person-profile.module.css";
 
 type Action = "request" | "accept" | "decline" | "cancel" | "remove";
 type PendingWrite = {
@@ -94,28 +90,9 @@ function PersonProfile({
   businessRequest,
 }: ProfileProps) {
   const { t, locale } = useI18n();
-  const [tab, setTab] = useState<"about" | "skills" | "businesses">("about");
   const [contact, setContact] = useState<BlockState | null>(null);
-  const tabId = useId(),
-    tabButtons = useRef<(HTMLButtonElement | null)[]>([]);
-  function tabKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    const tabs = ["about", "skills", "businesses"] as const;
-    const next =
-      event.key === "ArrowRight"
-        ? (index + 1) % 3
-        : event.key === "ArrowLeft"
-          ? (index + 2) % 3
-          : event.key === "Home"
-            ? 0
-            : event.key === "End"
-              ? 2
-              : -1;
-    if (next < 0) return;
-    event.preventDefault();
-    const item = tabs[next];
-    if (item) setTab(item);
-    tabButtons.current[next]?.focus();
-  }
+  const [stats, setStats] = useState<PublicPersonStats | null>(null);
+  const tabId = useId();
   const [person, setPerson] = useState<PublicPerson | null>(null),
     [relationship, setRelationship] = useState<Relationship | null>(null),
     [viewerId, setViewerId] = useState<string | null>(null),
@@ -174,6 +151,7 @@ function PersonProfile({
         throw new ConnectionRequestError(401, "ACCOUNT_IDENTITY_CHANGED");
       capturedActor.current = result.viewerId;
       setPerson(next);
+      setStats(readPublicPersonStats(result.stats));
       setRelationship(relation);
       setViewerId(result.viewerId);
       return relation;
@@ -199,7 +177,7 @@ function PersonProfile({
   }, [personId, preview, t]);
 
   useEffect(() => {
-    setTab("about");
+    setStats(null);
     setPerson(null);
     setRelationship(null);
     setViewerId(null);
@@ -297,6 +275,15 @@ function PersonProfile({
 
   const cover = person ? personalProfileImage(imageUrl(person, "cover")) : null;
   const currentPerson = person?.id === personId;
+  // Earned marks, as drawn: the founder's two, then verification and keeping a business.
+  const medals: { icon: IconName; label: string }[] = [];
+  if (person?.platformFounder)
+    medals.push(
+      { icon: "crown", label: msg("Osnivač") },
+      { icon: "star", label: msg("Prvi član") },
+    );
+  if (person?.verified) medals.push({ icon: "shield", label: msg("Verifikovan") });
+  if (stats && stats.businesses > 0) medals.push({ icon: "shop", label: msg("Vlasnik") });
   const disabled = busy || loading || pending !== null;
   const signIn =
     loginHref ?? `/prijava?nastavi=${encodeURIComponent(`/ljudi/${encodeURIComponent(personId)}`)}`;
@@ -324,33 +311,41 @@ function PersonProfile({
         </section>
       )}
       {person && currentPerson && (
-        <article className={styles.profile} data-founder={person.platformFounder ? "" : undefined}>
-          <div className={styles.cover}>
-            {cover ? (
+        <article
+          className={`${styles.profile} ${look.page}`}
+          data-founder={person.platformFounder ? "" : undefined}
+        >
+          <div className={look.cover}>
+            {cover && (
               <Image
-                className={styles.coverPhoto}
+                className={look.coverPhoto}
                 src={cover}
                 alt={t("Naslovna fotografija profila")}
                 width={1600}
                 height={600}
                 unoptimized
               />
-            ) : (
-              <Image
-                className={styles.brand}
-                src="/brand/ahi-logo-white.svg"
-                alt="AhiBizz"
-                width={160}
-                height={43}
-                unoptimized
-              />
             )}
-          </div>
-          <div className={styles.identity}>
-            <div className={styles.identityTop}>
-              <PersonAvatar person={person} imageUrl={imageUrl} large />
+            <div className={look.coverBar}>
+              <Link href="/ljudi" className={look.circle} aria-label={t("Nazad")}>
+                <Icon name="arrow" />
+              </Link>
+              {!preview && (
+                <ShareButton
+                  title={person.name}
+                  path={`/ljudi/${encodeURIComponent(person.id)}`}
+                  className={look.circle}
+                  statusClassName={look.shareStatus}
+                />
+              )}
             </div>
-            <h1>
+          </div>
+          <div className={look.identity}>
+            <span className={look.portrait}>
+              {person.platformFounder && <span className={look.ring} aria-hidden="true" />}
+              <PersonAvatar person={person} imageUrl={imageUrl} large />
+            </span>
+            <h1 className={look.name}>
               <bdi>{person.name}</bdi>
               {person.verified && <VerificationBadge kind="person" />}
             </h1>
@@ -359,112 +354,130 @@ function PersonProfile({
               platformAdministrator={person.platformAdministrator}
             />
             {person.bio && (
-              <p className={styles.intro} dir="auto">
+              <p className={look.bio} dir="auto">
                 {person.bio}
               </p>
             )}
-            {personLocation(person, locale) && (
-              <p className={styles.location}>
-                <Icon name="pin" />
-                {personLocation(person, locale)}
-              </p>
-            )}
-            {person.workStatus !== "not_specified" && (
-              <p className={styles.work}>
-                <span aria-hidden="true" />
-                {t(workStatusLabels[person.workStatus])}
-              </p>
-            )}
-            <div className={styles.actions}>
-              {viewerId !== person.id &&
-                contact?.canContact !== false &&
-                (!preview || messageHref) && (
-                  <Link
-                    className={styles.secondary}
-                    href={messageHref ?? messageLink({ kind: "person", targetId: person.id })}
-                  >
-                    <Icon name="message" /> Pošalji poruku
-                  </Link>
-                )}
-              {viewerId === person.id ? (
-                <Link className={styles.secondary} href={ownProfileHref}>
-                  <Icon name="sliders" /> Moj profil
-                </Link>
-              ) : viewerId === null ? (
-                <Link className={styles.primary} href={signIn}>
-                  {t("Prijavi se za povezivanje")}
-                </Link>
-              ) : contact?.canContact === false ? (
-                <span className={styles.relationship}>
-                  {contact.blockedByMe
-                    ? t("Blokiran korisnik")
-                    : t("Kontakt trenutno nije dostupan")}
-                </span>
-              ) : relationship?.status === "accepted" ? (
-                <>
-                  <span className={styles.relationship}>
-                    <Icon name="check" /> Prijatelji
+            {(personLocation(person, locale) || person.workStatus !== "not_specified") && (
+              <p className={look.facts}>
+                {personLocation(person, locale) && (
+                  <span>
+                    <Icon name="pin" />
+                    {personLocation(person, locale)}
                   </span>
-                  <button
-                    type="button"
-                    className={confirmRemove ? styles.dangerButton : styles.quietButton}
-                    disabled={disabled}
-                    onClick={() => act("remove")}
-                  >
-                    {confirmRemove ? t("Potvrdi uklanjanje") : t("Ukloni prijatelja")}
-                  </button>
-                  {confirmRemove && (
-                    <button
-                      type="button"
-                      className={styles.secondary}
-                      disabled={disabled}
-                      onClick={() => setConfirmRemove(false)}
-                    >
-                      {t("Odustani")}
-                    </button>
-                  )}
-                </>
-              ) : relationship?.status === "pending" ? (
-                relationship.direction === "incoming" ? (
-                  <>
-                    <button
-                      type="button"
-                      className={styles.primary}
-                      disabled={disabled}
-                      onClick={() => act("accept")}
-                    >
-                      <Icon name="check" /> Prihvati prijateljstvo
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.secondary}
-                      disabled={disabled}
-                      onClick={() => act("decline")}
-                    >
-                      {t("Odbij")}
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.secondary}
-                    disabled={disabled}
-                    onClick={() => act("cancel")}
-                  >
-                    {t("Povuci zahtjev")}
-                  </button>
-                )
-              ) : relationship ? (
+                )}
+                {person.workStatus !== "not_specified" && (
+                  <span>
+                    <Icon name="shop" />
+                    {t(workStatusLabels[person.workStatus])}
+                  </span>
+                )}
+              </p>
+            )}
+          </div>
+          {stats && (
+            <dl className={look.stats}>
+              <div>
+                <dt>{t("djelatnosti")}</dt>
+                <dd>{stats.businesses}</dd>
+              </div>
+              <div>
+                <dt>{t("prijatelja")}</dt>
+                <dd>{stats.friends}</dd>
+              </div>
+              <div>
+                <dt>{t("član od")}</dt>
+                <dd>{stats.joinedYear}.</dd>
+              </div>
+            </dl>
+          )}
+          <div className={look.actions}>
+            {viewerId !== person.id &&
+              contact?.canContact !== false &&
+              (!preview || messageHref) && (
+                <Link
+                  className={styles.secondary}
+                  href={messageHref ?? messageLink({ kind: "person", targetId: person.id })}
+                >
+                  <Icon name="message" /> {t("Poruka")}
+                </Link>
+              )}
+            {viewerId === person.id ? (
+              <Link className={styles.secondary} href={ownProfileHref}>
+                <Icon name="sliders" /> Moj profil
+              </Link>
+            ) : viewerId === null ? (
+              <Link className={styles.primary} href={signIn}>
+                {t("Prijavi se za povezivanje")}
+              </Link>
+            ) : contact?.canContact === false ? (
+              <span className={styles.relationship}>
+                {contact.blockedByMe ? t("Blokiran korisnik") : t("Kontakt trenutno nije dostupan")}
+              </span>
+            ) : relationship?.status === "accepted" ? (
+              <>
+                <span className={styles.relationship}>
+                  <Icon name="check" /> Prijatelji
+                </span>
                 <button
                   type="button"
-                  className={styles.primary}
+                  className={confirmRemove ? styles.dangerButton : styles.quietButton}
                   disabled={disabled}
-                  onClick={() => act("request")}
+                  onClick={() => act("remove")}
                 >
-                  <Icon name="user" /> Dodaj prijatelja
+                  {confirmRemove ? t("Potvrdi uklanjanje") : t("Ukloni prijatelja")}
                 </button>
-              ) : null}
-            </div>
+                {confirmRemove && (
+                  <button
+                    type="button"
+                    className={styles.secondary}
+                    disabled={disabled}
+                    onClick={() => setConfirmRemove(false)}
+                  >
+                    {t("Odustani")}
+                  </button>
+                )}
+              </>
+            ) : relationship?.status === "pending" ? (
+              relationship.direction === "incoming" ? (
+                <>
+                  <button
+                    type="button"
+                    className={styles.primary}
+                    disabled={disabled}
+                    onClick={() => act("accept")}
+                  >
+                    <Icon name="check" /> Prihvati prijateljstvo
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondary}
+                    disabled={disabled}
+                    onClick={() => act("decline")}
+                  >
+                    {t("Odbij")}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.secondary}
+                  disabled={disabled}
+                  onClick={() => act("cancel")}
+                >
+                  {t("Povuci zahtjev")}
+                </button>
+              )
+            ) : relationship ? (
+              <button
+                type="button"
+                className={styles.primary}
+                disabled={disabled}
+                onClick={() => act("request")}
+              >
+                <Icon name="user" /> Dodaj prijatelja
+              </button>
+            ) : null}
           </div>
           {(error || notice) && (
             <div className={styles.profileStatus}>
@@ -488,90 +501,40 @@ function PersonProfile({
               )}
             </div>
           )}
-          <div className={styles.profileTabs} role="tablist" aria-label={t("Sadržaj profila")}>
-            {(
-              [
-                ["about", t("O meni")],
-                ["skills", t("Vještine")],
-                ["businesses", t("Moje djelatnosti")],
-              ] as const
-            ).map(([id, label], index) => (
-              <button
-                key={id}
-                ref={(element) => {
-                  tabButtons.current[index] = element;
-                }}
-                type="button"
-                role="tab"
-                id={`${tabId}-${id}-tab`}
-                aria-controls={`${tabId}-${id}-panel`}
-                aria-selected={tab === id}
-                tabIndex={tab === id ? 0 : -1}
-                onKeyDown={(event) => tabKey(event, index)}
-                onClick={() => setTab(id)}
-              >
-                {label}
-              </button>
-            ))}
+          {medals.length > 0 && (
+            <section className={look.section} aria-labelledby={`${tabId}-medals`}>
+              <h2 id={`${tabId}-medals`}>{t("Značke")}</h2>
+              <ul className={look.medals}>
+                {medals.map((medal) => (
+                  <li key={medal.label}>
+                    <span aria-hidden="true">
+                      <Icon name={medal.icon} />
+                    </span>
+                    {t(medal.label)}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          <div className={look.section}>
+            <PublicPersonBusinesses
+              key={person.id}
+              personId={person.id}
+              request={businessRequest}
+              preview={preview}
+              title={msg("Djelatnosti")}
+            />
           </div>
-          <div className={styles.profileContent}>
-            {tab === "about" && (
-              <section
-                role="tabpanel"
-                id={`${tabId}-about-panel`}
-                aria-labelledby={`${tabId}-about-tab`}
-              >
-                <h2>{t("Osnovni podaci")}</h2>
-                {personLocation(person, locale) && (
-                  <p className={styles.detailRow}>
-                    <Icon name="pin" />
-                    {personLocation(person, locale)}
-                  </p>
-                )}
-                {person.workStatus !== "not_specified" && (
-                  <p className={styles.detailRow}>
-                    <Icon name="shop" />
-                    {t(workStatusLabels[person.workStatus])}
-                  </p>
-                )}
-                {!personLocation(person, locale) && person.workStatus === "not_specified" && (
-                  <p className={styles.bio}>{t("Podaci još nisu dodani.")}</p>
-                )}
-              </section>
-            )}
-            {tab === "skills" && (
-              <section
-                role="tabpanel"
-                id={`${tabId}-skills-panel`}
-                aria-labelledby={`${tabId}-skills-tab`}
-              >
-                <h2>{t("Vještine")}</h2>
-                {person.skills.length ? (
-                  <ul className={styles.skills}>
-                    {person.skills.map((skill) => (
-                      <li key={skill}>{skill}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className={styles.bio}>{t("Vještine još nisu dodane.")}</p>
-                )}
-              </section>
-            )}
-            {tab === "businesses" && (
-              <section
-                role="tabpanel"
-                id={`${tabId}-businesses-panel`}
-                aria-labelledby={`${tabId}-businesses-tab`}
-              >
-                <PublicPersonBusinesses
-                  key={person.id}
-                  personId={person.id}
-                  request={businessRequest}
-                  preview={preview}
-                />
-              </section>
-            )}
-          </div>
+          {person.skills.length > 0 && (
+            <section className={look.section} aria-labelledby={`${tabId}-skills`}>
+              <h2 id={`${tabId}-skills`}>{t("Vještine")}</h2>
+              <ul className={styles.skills}>
+                {person.skills.map((skill) => (
+                  <li key={skill}>{skill}</li>
+                ))}
+              </ul>
+            </section>
+          )}
           {!preview && viewerId !== person.id && (
             <div className={styles.profileSafety}>
               {viewerId && request === connectionRequest && (

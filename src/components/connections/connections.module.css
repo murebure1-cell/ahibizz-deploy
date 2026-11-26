@@ -825,19 +825,3 @@
     transition: none;
   }
 }
-
-/* The founder's profile as drawn (ProfilOsnivac): an accent wash with dots over the cover and
-   an accent ring around the photo. Nobody else's profile carries it. */
-.profile[data-founder] .cover::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background:
-    radial-gradient(var(--ui-accent-border) 1.2px, transparent 1.4px) 0 0 / 18px 18px,
-    linear-gradient(160deg, var(--ui-accent-soft), transparent 70%);
-  pointer-events: none;
-}
-.profile[data-founder] .largeAvatar {
-  box-shadow: 0 0 0 4px var(--ui-accent);
-}
