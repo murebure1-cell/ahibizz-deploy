@@ -28,6 +28,9 @@ test("private account reads reject foreign and malformed account facts", () => {
   assert.deepEqual(readOverview({ overview: facts }, "member-1"), facts);
   const administrator = { ...facts, package: null, businessLimit: null };
   assert.deepEqual(readOverview({ overview: administrator }, "member-1"), administrator);
+  // The founder shows Business and keeps no limit.
+  const founder = { ...facts, package: "business", businessLimit: null };
+  assert.deepEqual(readOverview({ overview: founder }, "member-1"), founder);
   for (const wrong of [
     { package: "basic", businessLimit: 3 },
     { package: "premium", businessLimit: 1 },

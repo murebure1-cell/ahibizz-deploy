@@ -2091,4 +2091,11 @@ export const account: Messages = {
     "يبدأ الأسبوع يوم الاثنين. الريلز غير المستخدمة لا تُرحّل.",
     "Hafta pazartesi başlar. Kullanılmayan reels devretmez.",
   ],
+  "Sponzorisane djelatnosti": [
+    "Sponsored businesses",
+    "Gesponserte Betriebe",
+    "أعمال ممولة",
+    "Sponsorlu işletmeler",
+  ],
+  od: ["since", "seit", "منذ", "itibaren"],
 };

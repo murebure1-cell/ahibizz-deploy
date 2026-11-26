@@ -55,7 +55,10 @@ export function readOverview(value: unknown, expectedId: string): AccountOvervie
     (overview.package === null
       ? overview.businessLimit !== null
       : !isPackageId(overview.package) ||
-        overview.businessLimit !== packageBusinessLimit(overview.package)) ||
+        // No limit with a package is the founder's Business.
+        (overview.businessLimit === null
+          ? overview.package !== "business"
+          : overview.businessLimit !== packageBusinessLimit(overview.package))) ||
     (overview.friends !== undefined &&
       (!Number.isSafeInteger(overview.friends) || overview.friends < 0)) ||
     [overview.businesses, overview.unreadThreads, overview.promotedBusinesses].some(
