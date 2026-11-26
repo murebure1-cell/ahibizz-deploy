@@ -1,0 +1,207 @@
+/* The administration's home as drawn (AdminPocetna). Rows come from ui/rows. */
+.home {
+  max-width: 640px;
+  margin-inline: auto;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px 0;
+}
+.mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 15px;
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
+}
+.mark svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2;
+}
+.who {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+.who h1 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 800;
+}
+.who span {
+  color: var(--ui-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+.circle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 50%;
+  background: var(--ui-glass);
+  color: var(--ui-text);
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out);
+}
+.circle:active {
+  transform: scale(0.95);
+}
+.circle svg {
+  width: 20px;
+  height: 20px;
+}
+.block {
+  padding: 18px 20px 0;
+}
+.block h2 {
+  margin: 0 0 10px;
+  color: var(--ui-muted);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: var(--ui-glass);
+  color: var(--ui-text);
+  text-decoration: none;
+  transition: transform 160ms var(--ease-out);
+}
+.tile:active {
+  transform: scale(0.98);
+}
+.tileTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tileTop b {
+  font-size: 24px;
+  line-height: 28px;
+  font-weight: 800;
+}
+.tileTop b svg {
+  width: 20px;
+  height: 20px;
+  color: var(--ui-muted);
+}
+.tileIcon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+.tileIcon[data-kind="bad"] {
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+}
+.tileIcon[data-kind="ok"] {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+}
+.tileIcon svg {
+  width: 18px;
+  height: 18px;
+}
+.tileName {
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 700;
+}
+.publish {
+  display: flex;
+  gap: 10px;
+}
+.outline {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 16px;
+  color: var(--ui-text);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.outline svg {
+  width: 18px;
+  height: 18px;
+}
+.outline[aria-disabled="true"] {
+  color: var(--ui-muted);
+}
+.outline small {
+  font-size: 11px;
+  font-weight: 700;
+}
+.rows {
+  padding-top: 4px;
+}
+.note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 20px 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  color: var(--ui-muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+.note > svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+}
+.note span {
+  flex: 1;
+}
+.note button {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-accent-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .circle,
+  .tile {
+    transition: none;
+  }
+}

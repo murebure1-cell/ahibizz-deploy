@@ -17,11 +17,11 @@ import { BusinessManager } from "../directory/BusinessManager";
 import { Icon, type IconName } from "../Icon";
 import { ReviewsAdmin } from "../reviews/ReviewsAdmin";
 import { AccountApprovals } from "./AccountApprovals";
-import { AdminToday } from "./AdminToday";
+import { AdminHome } from "./AdminHome";
 import styles from "./admin.module.css";
 
 const sections = [
-  { id: "today", label: "Danas", icon: "calendar", title: "Danas" },
+  { id: "today", label: "Početna", icon: "home", title: "Početna" },
   {
     id: "accounts",
     label: "Nalozi",
@@ -107,6 +107,8 @@ export function AdminDashboard({
   } as const;
   const queue = Object.hasOwn(queues, section) ? queues[section as keyof typeof queues] : null;
   const current = sections.find((item) => item.id === (queue?.parent ?? section)) ?? sections[0];
+  // The start is the drawn home (AdminPocetna); every other part keeps the working layout.
+  if (section === "today") return <AdminHome accountId={initial.id} name={initial.name} />;
   return (
     <main id="glavni-sadrzaj" className={styles.layout}>
       <aside className={styles.sidebar}>
@@ -182,7 +184,6 @@ export function AdminDashboard({
             </div>
           )}
         </header>
-        {section === "today" && <AdminToday key={initial.id} accountId={initial.id} />}
         <div hidden={!accountsActive}>
           {(visited.accounts || visited.approvalQueue || accountsActive) && (
             <AccountApprovals

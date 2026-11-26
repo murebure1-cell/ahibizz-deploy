@@ -108,6 +108,13 @@ export function AppMenu({
       {account && (
         <div className={styles.switch}>
           <AccountSwitch currentId={account.id} />
+          {account.founder && !account.owner && (
+            <Row
+              icon="shield"
+              title={t("Ulaz u administraciju")}
+              href="/prijava?administracija=1"
+            />
+          )}
         </div>
       )}
       {groups.map((group) => (

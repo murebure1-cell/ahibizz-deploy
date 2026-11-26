@@ -8,6 +8,7 @@ import type {
   ProfileVisibility,
   PublicPeoplePage,
   PublicPerson,
+  PublicPersonStats,
 } from "../../lib/connections";
 import type { ProfileImageKind } from "../../lib/people";
 import { contactBlocked } from "../account-blocks";
@@ -142,6 +143,23 @@ async function readPublic(query: Query, id: string): Promise<PublicPerson> {
   ).rows[0];
   if (!row) fail(404, "PERSON_NOT_FOUND");
   return publicPerson(row);
+}
+/** What the drawn profile counts: published businesses, friends and the year of joining. */
+async function readPublicStats(query: Query, id: string): Promise<PublicPersonStats> {
+  const row = (
+    await query.query<PublicPersonStats>(
+      `SELECT
+         (SELECT count(*)::int FROM directory_business b
+           WHERE b.owner_user_id=u.id AND b.deleted_at IS NULL AND b.status='published') AS businesses,
+         (SELECT count(*)::int FROM people_connection c
+           WHERE c.status='accepted' AND u.id IN (c.left_user_id,c.right_user_id)) AS friends,
+         extract(year FROM u."createdAt" AT TIME ZONE 'Europe/Sarajevo')::int AS "joinedYear"
+       FROM auth_user u ${publicJoins} WHERE u.id=$1 AND ${publicEligibility}`,
+      [id],
+    )
+  ).rows[0];
+  if (!row) fail(404, "PERSON_NOT_FOUND");
+  return row;
 }
 async function requirePublicActor(query: Query, id: string) {
   if (
@@ -358,6 +376,10 @@ export function createConnectionsService({
     async readPublic(inputId: string): Promise<PublicPerson> {
       const id = personId(inputId);
       return transaction(pool, (client) => readPublic(client, id));
+    },
+    async readPublicStats(inputId: string): Promise<PublicPersonStats> {
+      const id = personId(inputId);
+      return transaction(pool, (client) => readPublicStats(client, id));
     },
     async readPublicMedia(
       inputId: string,
