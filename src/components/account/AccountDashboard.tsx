@@ -23,6 +23,7 @@ import { Icon, type IconName } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
 import { PersonalProfileWorkspace } from "../people/PersonalProfileWorkspace";
 import { CommunityRulesPrompt } from "../support/CommunityRulesPrompt";
+import { ScreenBar } from "../ui/Rows";
 import { AccountAuthorityBoundary } from "./AccountAuthorityBoundary";
 import { AccountOverview } from "./AccountOverview";
 import { AccountSettings } from "./AccountSettings";
@@ -296,6 +297,17 @@ function AccountWorkspace({
             data-section={section}
             data-design="account-panel"
           >
+            {/* On a phone every part of the account is a screen of its own with a way back to
+                "Moj profil"; the old card with tabs is gone (see account.module.css). */}
+            {current && !["overview", "settings", "messages"].includes(section) && (
+              <div className={styles.phoneBar}>
+                <ScreenBar
+                  title={section === "profile" ? t("Uredi profil") : t(current.label)}
+                  backHref="/nalog"
+                  backLabel={t("Moj profil")}
+                />
+              </div>
+            )}
             {IS_PLAY_EDITION &&
               hasAccess &&
               ["profile", "businesses", "messages"].includes(section) && (
@@ -328,6 +340,8 @@ function AccountWorkspace({
                   setProfile((current) => ({ ...current, name: next.name }));
                 }}
                 onBusinesses={() => changeSection("businesses")}
+                editOnly
+                onDone={() => changeSection("overview")}
               />
             </AccountPane>
             <AccountPane selected={section === "businesses"}>
