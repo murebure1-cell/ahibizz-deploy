@@ -54,7 +54,8 @@ export function rentalWhen(
   return next;
 }
 
-function shortRange(first: string, last: string, locale: Locale): string {
+/** "12.–14. 12.": a stretch of calendar days, short. */
+export function dayRange(first: string, last: string, locale: Locale): string {
   const day = (value: string) => Number(value.slice(8));
   const month = (value: string) => Number(value.slice(5, 7));
   if (locale === "bs") {
@@ -109,7 +110,7 @@ export function takenDays(
     } else joined.push({ ...span });
   }
   return {
-    periods: joined.slice(0, limit).map((span) => shortRange(span.first, span.last, locale)),
+    periods: joined.slice(0, limit).map((span) => dayRange(span.first, span.last, locale)),
     more: joined.length > limit,
   };
 }

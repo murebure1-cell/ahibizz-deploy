@@ -150,6 +150,41 @@
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
+/* The owner's cards: the guest's initials, or a lock for a period closed by hand. */
+.avatar {
+  display: grid;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+  font-size: 14px;
+  font-weight: 800;
+}
+.avatar[data-block] {
+  background: color-mix(in srgb, var(--ui-text) 8%, transparent);
+  color: var(--ui-muted);
+}
+.avatar svg {
+  width: 18px;
+  height: 18px;
+}
+.amount {
+  flex: none;
+  align-self: flex-start;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.lead {
+  margin: 0 4px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
 /* What is behind keeps its shape and gives up its colour. */
 .card[data-past] .tile {
   background: color-mix(in srgb, var(--ui-text) 8%, transparent);
