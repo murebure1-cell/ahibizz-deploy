@@ -410,6 +410,13 @@ export const content: Messages = {
       "عند تعديل موقع النشاط التجاري، يرسل متصفحك العنوان المدخل أو النقطة المختارة على الخريطة مباشرة إلى خدمة Photon (komoot) التي تعثر على العنوان. إذا اخترت «موقعي» هناك، تُرسل إحداثيات جهازك. يحمّل المتصفح الخرائط مباشرة من Google Maps، وتتلقى Google منطقة الخريطة التي تشاهدها وعنوان IP الخاص بك.",
       "İşletme konumunu düzenlerken tarayıcın girilen adresi ya da haritada seçilen noktayı adresi bulan Photon (komoot) hizmetine doğrudan gönderir. Orada “konumum”u seçersen cihazının koordinatları gönderilir. Tarayıcı haritaları doğrudan Google Maps'ten yükler; Google baktığın harita alanını ve IP adresini alır.",
     ],
+  "Kad otvoriš uputstva do djelatnosti, preglednik šalje Googleu tvoju lokaciju i lokaciju djelatnosti da bi izračunao putanju. Dok ideš po putanji, tvoje kretanje ostaje na uređaju; lokacija se Googleu šalje ponovo samo ako skreneš s putanje, da bi se ona izračunala iznova.":
+    [
+      "When you open directions to a business, your browser sends your location and the location of the business to Google so that it can work out the route. While you follow the route, your movement stays on your device; your location is sent to Google again only if you leave the route, so that it can be worked out anew.",
+      "Wenn du die Route zu einem Betrieb öffnest, sendet dein Browser deinen Standort und den Standort des Betriebs an Google, damit die Route berechnet wird. Während du der Route folgst, bleibt deine Bewegung auf deinem Gerät; dein Standort wird nur dann erneut an Google gesendet, wenn du die Route verlässt, damit sie neu berechnet werden kann.",
+      "عند فتح الاتجاهات إلى نشاط تجاري، يرسل متصفحك موقعك وموقع النشاط إلى Google لحساب المسار. أثناء اتباعك للمسار تبقى حركتك على جهازك؛ ولا يُرسل موقعك إلى Google مجددًا إلا إذا خرجت عن المسار، لكي يُحسب من جديد.",
+      "Bir işletmeye yol tarifini açtığında tarayıcın, rotanın hesaplanması için konumunu ve işletmenin konumunu Google'a gönderir. Rotayı izlerken hareketin cihazında kalır; konumun yalnızca rotadan çıkarsan, rotanın yeniden hesaplanması için Google'a tekrar gönderilir.",
+    ],
   "Obavijesti i email": [
     "Notifications and email",
     "Mitteilungen und E-Mail",

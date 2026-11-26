@@ -5,6 +5,7 @@ import {
   countryKey,
   countryPins,
   distanceLabel,
+  groupSplitZoom,
   type MapPin,
   mapCities,
   mapCountries,
@@ -12,6 +13,7 @@ import {
   mapPins,
   mapPlaces,
   mapTotals,
+  moveIntoRoom,
   nearestCity,
   pinMatches,
   pointBounds,
@@ -206,6 +208,43 @@ test("businesses close together on the screen become one group until the map is 
     true,
   );
   assert.deepEqual(mapMarkers([], 12), []);
+});
+
+test("a press on a group leads to the zoom where its businesses stand apart", () => {
+  // Two doors a street apart and a third a few hundred metres away.
+  const members = [
+    pin("a", "Sarajevo", 43.8589, 18.425),
+    pin("b", "Sarajevo", 43.8591, 18.4252),
+    pin("c", "Sarajevo", 43.8592, 18.4215),
+  ];
+  assert.equal(mapMarkers(members, 14).length, 1);
+  const first = groupSplitZoom(members, 14);
+  assert.equal(first, 15);
+  assert.equal(mapMarkers(members, first).length, 2);
+  // The two neighbours part only much closer.
+  const pair = members.slice(0, 2);
+  assert.equal(groupSplitZoom(pair, first), 18);
+  assert.equal(mapMarkers(pair, 18).length, 2);
+  // Two businesses at one address part where nothing is grouped any more.
+  const address = [pin("d", "Sarajevo", 43.86, 18.43), pin("e", "Sarajevo", 43.86, 18.43)];
+  assert.equal(groupSplitZoom(address, 12), 19);
+  assert.equal(mapMarkers(address, 19).length, 2);
+  // A map already closer than that is never led back out.
+  assert.equal(groupSplitZoom(address, 20), 20);
+});
+
+test("a chosen point is brought inside the room the bars leave clear", () => {
+  const size = { width: 375, height: 812 };
+  const room = { top: 210, right: 104, bottom: 294, left: 104 };
+  assert.deepEqual(moveIntoRoom({ x: 200, y: 400 }, size, room), { x: 0, y: 0 });
+  assert.deepEqual(moveIntoRoom({ x: 58, y: 372 }, size, room), { x: -46, y: 0 });
+  assert.deepEqual(moveIntoRoom({ x: 330, y: 700 }, size, room), { x: 59, y: 182 });
+  assert.deepEqual(moveIntoRoom({ x: 200, y: 120 }, size, room), { x: 0, y: -90 });
+  // A view too small for its bars keeps the point at the first of them.
+  assert.deepEqual(moveIntoRoom({ x: 150, y: 10 }, { width: 180, height: 300 }, room), {
+    x: 46,
+    y: -200,
+  });
 });
 
 test("the flat world doubles with every zoom and puts Greenwich in the middle", () => {

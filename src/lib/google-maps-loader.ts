@@ -15,6 +15,7 @@ export type GoogleMap = {
   getCenter(): LatLng | undefined;
   getBounds(): { getNorthEast(): LatLng; getSouthWest(): LatLng } | undefined;
   panTo(point: LatLngLiteral): void;
+  panBy(x: number, y: number): void;
   getZoom(): number | undefined;
   setZoom(zoom: number): void;
   fitBounds(bounds: BoundsLiteral, padding?: number | MapPadding): void;

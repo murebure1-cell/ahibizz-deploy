@@ -216,7 +216,12 @@ export function PublicBusinessProfile({
               <Icon name="message" /> {t("Poruka")}
             </Link>
           )}
-          {driving ? (
+          {driving && !preview ? (
+            <Link className={styles.secondary} href={`/djelatnosti/${business.id}/uputstva`}>
+              <Icon name="route" />
+              {t("Uputstva")}
+            </Link>
+          ) : driving ? (
             <a
               className={styles.secondary}
               href={driving}
