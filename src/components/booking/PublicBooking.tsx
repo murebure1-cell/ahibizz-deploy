@@ -4,8 +4,8 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   type BookingEntry,
   type BookingSlot,
-  bookingDate,
   bookingMoney,
+  bookingShortDate,
   bookingStatusLabels,
   type PublicBookingConfiguration,
 } from "../../lib/booking";
@@ -19,10 +19,11 @@ import {
 import { type BookingQuote, createBookingSubmission } from "../../lib/booking-submission";
 import { addDays, dateKey } from "../../lib/booking-time";
 import { createPublicBookingOffer } from "../../lib/public-booking-offer";
+import { useOtherClock } from "../../lib/viewer-clock";
 import { Icon } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
-import { CalendarDays } from "./CalendarDays";
-import styles from "./public-booking.module.css";
+import styles from "./booking-panel.module.css";
+import { DayStrip } from "./DayStrip";
 
 type Props = {
   businessId: string;
@@ -79,6 +80,7 @@ function BookingWorkspace({
   api.current = request;
   receipt.current = done;
   const service = configuration?.services.find((item) => item.id === serviceId);
+  const elsewhere = useOtherClock(configuration?.timezone);
   const today = dateKey(new Date(), configuration?.timezone ?? "UTC");
   const canBook = offer.available && configuration?.enabled && Boolean(service);
   useEffect(() => {
@@ -327,49 +329,59 @@ function BookingWorkspace({
     }
   }
   if (!done && !busy && !uncertain && !canBook) return null;
-  const moment = (value: string, timezone = configuration?.timezone ?? "UTC") =>
-    bookingDate(value, timezone, { time: true, locale });
+  const zone = configuration?.timezone ?? "UTC";
+  const clock = (value: string, timezone = zone) =>
+    new Intl.DateTimeFormat("en-GB-u-nu-latn", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+      timeZone: timezone,
+    }).format(new Date(value));
+  const mine = preview ? "/pregled/prostor/nalog?odjeljak=termini" : "/nalog?odjeljak=termini";
   return (
     <section
-      className={styles.booking}
+      className={styles.panel}
       aria-label={t("Zakazivanje termina")}
       data-design="booking-panel"
     >
-      <header className={styles.heading}>
-        <span>
-          <Icon name="calendar" />
-        </span>
-        <div>
-          <p>{preview ? t("Proba bez stvarnog zakazivanja") : "Booking"}</p>
-          <h2>{t("Zakaži termin")}</h2>
-        </div>
+      <header className={styles.head}>
+        <h2>{t("Zakaži termin")}</h2>
+        {preview && <p>{t("Proba bez stvarnog zakazivanja")}</p>}
       </header>
       {done ? (
-        <div role="status" className={styles.success}>
-          <Icon name="check" />
+        <div role="status" className={styles.done}>
+          <span className={styles.doneMark} aria-hidden="true">
+            <Icon name="check" />
+          </span>
           <h3>{preview ? t("Zahtjev je sačuvan u pregledu.") : t("Zahtjev je poslan.")}</h3>
-          <strong>{done.serviceName}</strong>
-          <p>{moment(done.startsAt, done.timezone)}</p>
-          <p>
-            {done.durationMinutes} min · {bookingMoney(done.priceMinor)}
+          <p className={styles.doneWhat} dir="auto">
+            {done.serviceName}
           </p>
-          <p>{t(bookingStatusLabels[done.status])}</p>
-          <Link
-            href={preview ? "/pregled/prostor/nalog?odjeljak=termini" : "/nalog?odjeljak=termini"}
-          >
-            {t("Moji termini")}
-          </Link>
-          <button
-            type="button"
-            onClick={() => {
-              setDone(null);
-              receipt.current = null;
-              applyLatest();
-              setRefresh((value) => value + 1);
-            }}
-          >
-            {t("Izaberi drugi termin")}
-          </button>
+          <p>
+            {bookingShortDate(dateKey(new Date(done.startsAt), done.timezone), locale)} ·{" "}
+            {clock(done.startsAt, done.timezone)}–{clock(done.endsAt, done.timezone)}
+          </p>
+          <p>
+            {done.durationMinutes} min · {bookingMoney(done.priceMinor)} ·{" "}
+            {t(bookingStatusLabels[done.status])}
+          </p>
+          <div className={styles.actions}>
+            <Link className={styles.send} href={mine}>
+              {t("Moji termini")}
+            </Link>
+            <button
+              type="button"
+              className={styles.minor}
+              onClick={() => {
+                setDone(null);
+                receipt.current = null;
+                applyLatest();
+                setRefresh((value) => value + 1);
+              }}
+            >
+              {t("Izaberi drugi termin")}
+            </button>
+          </div>
         </div>
       ) : configuration && service ? (
         <>
@@ -378,26 +390,42 @@ function BookingWorkspace({
               {changeNotice}
             </p>
           )}
-          <label className={styles.label} htmlFor={`${prefix}-service`}>
-            {t("Usluga")}
-            <select
-              id={`${prefix}-service`}
-              value={serviceId}
-              disabled={busy || uncertain}
-              onChange={(event) => {
-                setService(event.target.value);
-                setLogin(false);
-                setChangeNotice("");
-              }}
-            >
+          <div className={styles.group}>
+            <div className={styles.groupHead}>
+              <h3 id={`${prefix}-service`}>{t("Usluga")}</h3>
+            </div>
+            <div className={styles.choices} role="radiogroup" aria-labelledby={`${prefix}-service`}>
               {configuration.services.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name} · {item.durationMinutes} min · {bookingMoney(item.priceMinor)}
-                </option>
+                // biome-ignore lint/a11y/useSemanticElements: a row of a card with a name and a price is more than a radio input's label can hold.
+                <button
+                  key={item.id}
+                  type="button"
+                  role="radio"
+                  className={styles.choice}
+                  aria-checked={item.id === serviceId}
+                  disabled={busy || uncertain}
+                  onClick={() => {
+                    setService(item.id);
+                    setLogin(false);
+                    setChangeNotice("");
+                  }}
+                >
+                  <span className={styles.choiceText}>
+                    <span className={styles.choiceName} dir="auto">
+                      {item.name}
+                    </span>
+                    <span>
+                      {item.durationMinutes} min · {bookingMoney(item.priceMinor)}
+                    </span>
+                  </span>
+                  <span className={styles.choiceMark} aria-hidden="true">
+                    <Icon name="check" />
+                  </span>
+                </button>
               ))}
-            </select>
-          </label>
-          <CalendarDays
+            </div>
+          </div>
+          <DayStrip
             date={date}
             onChange={(next) => {
               setDate(next);
@@ -407,40 +435,38 @@ function BookingWorkspace({
             maxDate={addDays(today, 90)}
             disabled={busy || uncertain}
           />
-          <div className={styles.timeHeading}>
-            <h3>{t("Slobodni termini")}</h3>
-            <span>{configuration.timezone}</span>
+          <div className={styles.group}>
+            <div className={styles.groupHead}>
+              <h3>{t("Vrijeme")}</h3>
+              {elsewhere && <span>{configuration.timezone}</span>}
+            </div>
+            {loading ? (
+              <p role="status" className={styles.note}>
+                {t("Provjeravam termine…")}
+              </p>
+            ) : !error && slots.length === 0 ? (
+              <p className={styles.note}>{t("Za ovaj dan nema slobodnih termina.")}</p>
+            ) : (
+              <fieldset className={styles.times} aria-label={t("Odaberi slobodan termin")}>
+                {slots.map((slot) => (
+                  <button
+                    key={slot.startsAt}
+                    type="button"
+                    className={styles.time}
+                    aria-pressed={selection === slot.startsAt}
+                    data-design="booking-time"
+                    disabled={busy || uncertain}
+                    onClick={() => {
+                      setSelection(slot.startsAt);
+                      setError("");
+                    }}
+                  >
+                    {clock(slot.startsAt)}
+                  </button>
+                ))}
+              </fieldset>
+            )}
           </div>
-          {loading ? (
-            <p role="status" className={styles.note}>
-              {t("Provjeravam termine…")}
-            </p>
-          ) : !error && slots.length === 0 ? (
-            <p className={styles.note}>{t("Za ovaj dan nema slobodnih termina.")}</p>
-          ) : (
-            <fieldset className={styles.times} aria-label={t("Odaberi slobodan termin")}>
-              {slots.map((slot) => (
-                <button
-                  key={slot.startsAt}
-                  type="button"
-                  aria-pressed={selection === slot.startsAt}
-                  data-design="booking-time"
-                  disabled={busy || uncertain}
-                  onClick={() => {
-                    setSelection(slot.startsAt);
-                    setError("");
-                  }}
-                >
-                  {new Intl.DateTimeFormat("en-GB-u-nu-latn", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hourCycle: "h23",
-                    timeZone: configuration.timezone,
-                  }).format(new Date(slot.startsAt))}
-                </button>
-              ))}
-            </fieldset>
-          )}
           {error && (
             <div role="alert" className={styles.error}>
               <p>{error}</p>
@@ -448,7 +474,7 @@ function BookingWorkspace({
                 {uncertain && (
                   <button
                     type="button"
-                    className={styles.primary}
+                    className={styles.minor}
                     disabled={busy}
                     onClick={() => void submit(true)}
                   >
@@ -457,7 +483,7 @@ function BookingWorkspace({
                 )}
                 {login ? (
                   <Link
-                    className={styles.secondary}
+                    className={styles.minor}
                     href={`/prijava?nastavi=${encodeURIComponent(`/djelatnosti/${businessId}#business-appointments`)}`}
                     target={uncertain ? "_blank" : undefined}
                     rel={uncertain ? "noopener" : undefined}
@@ -467,7 +493,7 @@ function BookingWorkspace({
                 ) : (
                   <button
                     type="button"
-                    className={styles.secondary}
+                    className={styles.minor}
                     disabled={busy || uncertain}
                     onClick={() => setRefresh((value) => value + 1)}
                   >
@@ -475,42 +501,60 @@ function BookingWorkspace({
                   </button>
                 )}
                 <Link
-                  className={styles.secondary}
+                  className={styles.minor}
                   target={uncertain ? "_blank" : undefined}
                   rel={uncertain ? "noopener" : undefined}
-                  href={
-                    preview ? "/pregled/prostor/nalog?odjeljak=termini" : "/nalog?odjeljak=termini"
-                  }
+                  href={mine}
                 >
                   {t("Moji termini")}
                 </Link>
               </div>
             </div>
           )}
-          <div className={styles.total}>
-            <span>{service.durationMinutes} min</span>
-            <strong>{bookingMoney(service.priceMinor)}</strong>
-          </div>
-          {selected && <p className={styles.summary}>{moment(selected.startsAt)}</p>}
+          <dl className={styles.summary}>
+            <div>
+              <dt dir="auto">{service.name}</dt>
+              <dd>{service.durationMinutes} min</dd>
+            </div>
+            {selected && (
+              <div>
+                <dt>{bookingShortDate(dateKey(new Date(selected.startsAt), zone), locale)}</dt>
+                <dd>
+                  {clock(selected.startsAt)}–{clock(selected.endsAt)}
+                </dd>
+              </div>
+            )}
+            <div className={styles.total}>
+              <dt>{t("Ukupno")}</dt>
+              <dd>{bookingMoney(service.priceMinor)}</dd>
+            </div>
+          </dl>
           <p className={styles.note}>
             {preview
               ? t("Sve ostaje u ovom probnom pregledu.")
-              : t("Tvoje ime i email dijele se s vlasnikom radi dogovora.")}
+              : `${t("Plaćaš kod djelatnosti. U aplikaciji nema plaćanja.")} ${t("Tvoje ime i email dijele se s vlasnikom radi dogovora.")}`}
           </p>
-          <button
-            type="button"
-            className={styles.primary}
-            disabled={busy || uncertain || loading || !selected}
-            onClick={() => void submit()}
-          >
-            {busy
-              ? uncertain
-                ? t("Provjera…")
-                : t("Slanje…")
-              : preview
-                ? t("Pošalji zahtjev u pregledu")
-                : t("Pošalji zahtjev za termin")}
-          </button>
+          <div className={styles.foot}>
+            <button
+              type="button"
+              className={styles.send}
+              disabled={busy || uncertain || loading || !selected}
+              onClick={() => void submit()}
+            >
+              {busy
+                ? uncertain
+                  ? t("Provjera…")
+                  : t("Slanje…")
+                : preview
+                  ? t("Pošalji zahtjev u pregledu")
+                  : t("Pošalji zahtjev")}
+            </button>
+            {!preview && (
+              <p className={styles.note}>
+                {t("Zahtjev odmah zauzima termin. Vlasnik ga potvrđuje ili odbija.")}
+              </p>
+            )}
+          </div>
         </>
       ) : null}
     </section>
