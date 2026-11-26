@@ -1,4 +1,5 @@
 import { type AuthService, getAuthService, readAuthConfiguration } from "./auth";
+import { administrationSignInEmail } from "./auth/administration";
 import { createEmailRateLimiter, type EmailRateLimiter } from "./auth/email-rate-limit";
 import { getDatabase } from "./db";
 
@@ -76,6 +77,8 @@ export function createAuthHttpHandler(options: {
   limitEmail?: EmailRateLimiter;
   /** Social providers configured on the server; their start and callback routes open only then. */
   socialProviders?: readonly string[];
+  /** The address behind a sign-in name such as "administrator"; null when there is none. */
+  signInName?: (name: string) => Promise<string | null>;
 }) {
   const social = new Set(
     (options.socialProviders ?? []).filter((id) => Object.hasOwn(providerAuthorizeOrigins, id)),
@@ -112,6 +115,16 @@ export function createAuthHttpHandler(options: {
           if (typeof body.provider !== "string" || !social.has(body.provider))
             return reply({ code: "PROVIDER_NOT_FOUND" }, 404);
           provider = body.provider;
+        }
+        // A sign-in name instead of an address: only the administration has one.
+        if (
+          path === "/sign-in/email" &&
+          options.signInName &&
+          typeof body.email === "string" &&
+          !body.email.includes("@")
+        ) {
+          const address = await options.signInName(body.email);
+          if (address) body.email = address;
         }
         for (const name of redirectFields) {
           const value = body[name];
@@ -224,6 +237,7 @@ export async function handleAuthRequest(request: Request) {
       baseURL: configuration.baseURL,
       limitEmail: createEmailRateLimiter(getDatabase(), configuration.secret),
       socialProviders: configuration.google ? ["google"] : [],
+      signInName: (name) => administrationSignInEmail(getDatabase(), name),
       readUser: async (id) => {
         const result = await getDatabase().query(
           'SELECT id, name, email, "emailVerified", role, approval FROM auth_user WHERE id = $1 LIMIT 1',

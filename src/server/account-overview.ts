@@ -16,11 +16,12 @@ export async function readOwnerOverview(
   const result = await client.query<
     Omit<AccountOverviewFacts, "package" | "businessLimit" | "businessList" | "nextAppointment"> & {
       role: string;
+      founder: boolean;
       held: string;
     }
   >(
     `SELECT u.id AS "accountId", to_char(u."createdAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "joinedAt",
-       u.role, COALESCE((SELECT package FROM account_package p WHERE p.user_id=u.id),'basic') AS held,
+       u.role, u.founder, COALESCE((SELECT package FROM account_package p WHERE p.user_id=u.id),'basic') AS held,
        stats.businesses, stats."promotedBusinesses", 
        (SELECT count(*)::integer FROM message_thread t
           JOIN message_thread_member own ON own.thread_id=t.id AND own.user_id=u.id
@@ -39,14 +40,14 @@ export async function readOwnerOverview(
     [accountId],
   );
   if (!result.rows[0]) throw new Error("Account overview unavailable");
-  const { role, held, ...facts } = result.rows[0];
+  const { role, founder, held, ...facts } = result.rows[0];
   const list = await client.query<OverviewBusiness>(
     `SELECT id,title,status FROM directory_business
       WHERE owner_user_id=$1 AND deleted_at IS NULL AND status<>'archived'
       ORDER BY (status='published') DESC, updated_at DESC, id LIMIT $2`,
     [accountId, overviewBusinessLimit],
   );
-  const limited = role === "member" && isPackageId(held) ? held : null;
+  const limited = role === "member" && !founder && isPackageId(held) ? held : null;
   return {
     ...facts,
     businessList: list.rows,

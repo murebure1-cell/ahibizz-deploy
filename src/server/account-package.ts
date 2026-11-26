@@ -25,15 +25,18 @@ export async function readBusinessAllowance(
   accountId: string,
 ): Promise<BusinessAllowance> {
   const row = (
-    await client.query<{ package: string; used: number }>(
+    await client.query<{ package: string; used: number; founder: boolean }>(
       `SELECT COALESCE((SELECT package FROM account_package WHERE user_id=$1),'basic') AS package,
+         COALESCE((SELECT founder FROM auth_user WHERE id=$1),false) AS founder,
          (SELECT count(*)::integer FROM directory_business
            WHERE owner_user_id=$1 AND status<>'archived') AS used`,
       [accountId],
     )
   ).rows[0];
   if (!row || !isPackageId(row.package)) throw new Error("Account package unavailable");
-  return { package: row.package, limit: packageBusinessLimit(row.package), used: row.used };
+  // The founder keeps as many businesses as he wants (owner's decision of 2026-11-26).
+  const limit = row.founder ? Number.MAX_SAFE_INTEGER : packageBusinessLimit(row.package);
+  return { package: row.package, limit, used: row.used };
 }
 
 export function packageInput(value: unknown): AccountPackageInput {

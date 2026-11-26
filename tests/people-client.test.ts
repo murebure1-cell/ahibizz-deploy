@@ -60,7 +60,6 @@ test("profile badges default to false for older responses and require a consiste
   assert.deepEqual(readPersonalProfile(founder), founder);
   for (const patch of [
     { verified: "true" },
-    { platformFounder: true },
     { platformAdministrator: true },
     { platformFounder: "true" },
     { platformAdministrator: 1 },

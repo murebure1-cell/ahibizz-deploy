@@ -17,7 +17,7 @@ import { useOptionalAppPwa } from "../pwa/AppPwa";
 import { Row, RowGroup, RowPill, rowStyles, ScreenBar } from "../ui/Rows";
 import styles from "./app-menu.module.css";
 
-export type MenuAccount = { id: string; name: string; owner: boolean };
+export type MenuAccount = { id: string; name: string; owner: boolean; founder?: boolean };
 
 /**
  * The menu screen: who is signed in, then every place that is not in the dock, in groups. A
@@ -68,12 +68,21 @@ export function AppMenu({
       <ScreenBar title={t("Meni")} backHref={account ? "/nalog" : "/"} backLabel={t("Nazad")} />
       {account ? (
         <Link href="/nalog" className={styles.who} prefetch={false}>
-          <span className={styles.avatar} aria-hidden="true">
+          <span
+            className={styles.avatar}
+            data-founder={account.founder ? "" : undefined}
+            aria-hidden="true"
+          >
             {profileInitials(account.name)}
           </span>
           <span className={styles.whoText}>
             <strong dir="auto">{account.name}</strong>
-            {packageId ? (
+            {account.founder ? (
+              <span className={styles.founder}>
+                <Icon name="crown" />
+                {t("Osnivač AhiBizza")}
+              </span>
+            ) : packageId ? (
               <span className={styles.package} data-package={packageId}>
                 {t("Paket")} <b>{packageName(packageId)}</b>
               </span>

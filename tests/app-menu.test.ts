@@ -39,7 +39,7 @@ test("a member gets the account rows and the two ways to delete", () => {
 
 test("only the owner sees the way into administration", () => {
   const groups = appMenuGroups("owner", browser);
-  assert.deepEqual(labels(groups, "admin"), ["Upravljanje platformom"]);
+  assert.deepEqual(labels(groups, "admin"), ["Upravljanje platformom", "Odvojena administracija"]);
   assert.ok(hrefs(groups).includes("/administracija"));
 });
 

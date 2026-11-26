@@ -324,7 +324,7 @@ function PersonProfile({
         </section>
       )}
       {person && currentPerson && (
-        <article className={styles.profile}>
+        <article className={styles.profile} data-founder={person.platformFounder ? "" : undefined}>
           <div className={styles.cover}>
             {cover ? (
               <Image
