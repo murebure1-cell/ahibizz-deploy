@@ -98,6 +98,32 @@ export function bookingMonth(value: string, locale: Locale = "bs"): string {
   return `${bookingMonths[Number(value.slice(5)) - 1]} ${value.slice(0, 4)}`;
 }
 
+const bookingShortDays = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"] as const;
+
+/** "Čet" for a calendar day written as YYYY-MM-DD. */
+export function bookingShortDay(day: string, locale: Locale = "bs"): string {
+  const date = new Date(`${day}T12:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(date.getTime())) return "—";
+  if (locale === "bs") return bookingShortDays[(date.getUTCDay() + 6) % 7] ?? "—";
+  return new Intl.DateTimeFormat(intlLocale[locale], { weekday: "short", timeZone: "UTC" }).format(
+    date,
+  );
+}
+
+/** "Čet 26. 11." for a calendar day written as YYYY-MM-DD. */
+export function bookingShortDate(day: string, locale: Locale = "bs"): string {
+  const date = new Date(`${day}T12:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(date.getTime())) return "—";
+  if (locale === "bs")
+    return `${bookingShortDay(day)} ${Number(day.slice(8))}. ${Number(day.slice(5, 7))}.`;
+  return new Intl.DateTimeFormat(`${intlLocale[locale]}-u-ca-gregory-nu-latn`, {
+    weekday: "short",
+    day: "numeric",
+    month: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 /** One-letter weekday names from Monday, as calendars show them. */
 export function bookingWeekdays(locale: Locale = "bs"): string[] {
   if (locale === "bs") return ["P", "U", "S", "Č", "P", "S", "N"];

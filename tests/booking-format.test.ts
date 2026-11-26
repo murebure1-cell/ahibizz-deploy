@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bookingDate, bookingMoney, bookingMonth } from "../src/lib/booking";
+import {
+  bookingDate,
+  bookingMoney,
+  bookingMonth,
+  bookingShortDate,
+  bookingShortDay,
+} from "../src/lib/booking";
 
 test("booking prices render integer cents in Bosnian KM notation without locale fallback", () => {
   for (const [minor, label] of [
@@ -27,6 +33,30 @@ test("month titles have explicit Bosnian names even if the runtime lacks bs-BA d
   assert.equal(bookingMonth("2026-12"), "Decembar 2026");
   for (const invalid of ["2026-00", "2026-13", "2026-1", "2026-11-01", "0000-01"])
     assert.equal(bookingMonth(invalid), "—");
+});
+
+test("short day names are Bosnian by hand and follow the calendar day itself", () => {
+  // 2026-11-26 is a Thursday; the week of days starts wherever the first bookable day falls.
+  const week = [
+    "2026-11-26",
+    "2026-11-27",
+    "2026-11-28",
+    "2026-11-29",
+    "2026-11-30",
+    "2026-12-01",
+    "2026-12-02",
+  ];
+  assert.deepEqual(
+    week.map((day) => bookingShortDay(day)),
+    ["Čet", "Pet", "Sub", "Ned", "Pon", "Uto", "Sri"],
+  );
+  assert.equal(bookingShortDate("2026-11-26"), "Čet 26. 11.");
+  assert.equal(bookingShortDate("2026-12-01"), "Uto 1. 12.");
+  assert.match(bookingShortDay("2026-11-26", "en"), /^Thu/);
+  for (const invalid of ["", "2026-11", "26.11.2026", "2026-13-40"]) {
+    assert.equal(bookingShortDay(invalid), "—");
+    assert.equal(bookingShortDate(invalid), "—");
+  }
 });
 
 test("date labels retain the business timezone at midnight/year boundaries and use h23 time", () => {

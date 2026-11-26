@@ -136,7 +136,6 @@ export const booking: Messages = {
     "Başka bir saat seç",
   ],
   Usluga: ["Service", "Leistung", "الخدمة", "Hizmet"],
-  "Slobodni termini": ["Available times", "Freie Termine", "المواعيد المتاحة", "Uygun saatler"],
   "Provjeravam termine…": [
     "Checking times…",
     "Termine werden geprüft…",
@@ -186,12 +185,6 @@ export const booking: Messages = {
     "Anfrage in der Vorschau senden",
     "إرسال الطلب في المعاينة",
     "İsteği önizlemede gönder",
-  ],
-  "Pošalji zahtjev za termin": [
-    "Send appointment request",
-    "Terminanfrage senden",
-    "إرسال طلب الموعد",
-    "Randevu isteği gönder",
   ],
   "Automobil ima predstojeći najam ili blokadu. Provjeri njegov kalendar.": [
     "The car has an upcoming rental or block. Check its calendar.",
@@ -320,6 +313,22 @@ export const booking: Messages = {
     "Araç o dönemde dolu.",
   ],
   Ukupno: ["Total", "Gesamt", "المجموع", "Toplam"],
+  Dan: ["Day", "Tag", "اليوم", "Gün"],
+  Vrijeme: ["Time", "Uhrzeit", "الوقت", "Saat"],
+  "Prethodna sedmica": ["Previous week", "Vorherige Woche", "الأسبوع السابق", "Önceki hafta"],
+  "Sljedeća sedmica": ["Next week", "Nächste Woche", "الأسبوع التالي", "Sonraki hafta"],
+  "Plaćaš kod djelatnosti. U aplikaciji nema plaćanja.": [
+    "You pay at the business. There is no payment in the app.",
+    "Du zahlst beim Betrieb. In der App gibt es keine Zahlung.",
+    "تدفع لدى النشاط التجاري. لا يوجد دفع داخل التطبيق.",
+    "Ödemeyi işletmede yaparsın. Uygulamada ödeme yoktur.",
+  ],
+  "Zahtjev odmah zauzima termin. Vlasnik ga potvrđuje ili odbija.": [
+    "The request holds the time at once. The owner confirms or declines it.",
+    "Die Anfrage belegt den Termin sofort. Der Inhaber bestätigt sie oder lehnt sie ab.",
+    "الطلب يحجز الموعد فورًا. المالك يؤكده أو يرفضه.",
+    "Talep saati hemen ayırır. İşletme sahibi onaylar ya da reddeder.",
+  ],
   "Označi zauzeto": [
     "Mark as taken",
     "Als belegt markieren",
