@@ -65,8 +65,12 @@ function Moment({
   return (
     <div className={styles.when}>
       <label className={styles.day}>
-        <span aria-hidden="true">{label}</span>
-        <strong aria-hidden="true">{day ? bookingShortDate(day, locale) : "—"}</strong>
+        <span className={styles.dayLabel} aria-hidden="true">
+          {label}
+        </span>
+        <strong className={styles.dayName} aria-hidden="true">
+          {day ? bookingShortDate(day, locale) : "—"}
+        </strong>
         <input
           type="date"
           aria-label={`${label}: ${t("Datum")}`}
@@ -93,6 +97,8 @@ function Moment({
           value={hour}
           onChange={(event) => onChange(`${day}T${event.target.value}`)}
         >
+          {/* Before the first offer is ready the tile shows a dash, not the first hour. */}
+          {!hour && <option value="">—</option>}
           {rentalTimes(hour).map((time) => (
             <option key={time} value={time}>
               {t("u {time}", { time })}
