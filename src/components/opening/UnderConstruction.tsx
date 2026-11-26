@@ -85,7 +85,7 @@ export function UnderConstruction({
       const seconds = Math.ceil((opensAt - (Date.now() + ahead)) / 1000);
       setLeft(Math.max(0, seconds));
       if (seconds > 0) return;
-      // The day has come: the same address now shows the real page.
+      // The day has come: this address now leads on to where the visitor was going.
       window.clearInterval(timer);
       window.location.reload();
     };
