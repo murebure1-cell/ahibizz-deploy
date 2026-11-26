@@ -1418,4 +1418,33 @@ export const content: Messages = {
     "{count} yeni mesaj",
   ],
   "Pročitaj još": ["Read more", "Weiterlesen", "اقرأ المزيد", "Daha fazla oku"],
+  "Kratak odgovor ili uputstvo korak po korak, na jednom mjestu.": [
+    "A short answer or step-by-step guidance, in one place.",
+    "Eine kurze Antwort oder eine Schritt-für-Schritt-Anleitung an einem Ort.",
+    "إجابة قصيرة أو إرشاد خطوة بخطوة في مكان واحد.",
+    "Kısa bir yanıt ya da adım adım rehber, tek bir yerde.",
+  ],
+  "Npr. lozinka, termin, paket": [
+    "E.g. password, appointment, package",
+    "Z. B. Passwort, Termin, Paket",
+    "مثلًا: كلمة المرور، موعد، باقة",
+    "Örn. şifre, randevu, paket",
+  ],
+  Teme: ["Topics", "Themen", "المواضيع", "Konular"],
+  "Česta pitanja": ["Common questions", "Häufige Fragen", "الأسئلة الشائعة", "Sık sorulan sorular"],
+  "Piši nam. Odgovor stiže na email naloga.": [
+    "Write to us. The reply comes to your account's email.",
+    "Schreib uns. Die Antwort kommt an die E-Mail deines Kontos.",
+    "راسلنا. يصل الرد إلى بريد حسابك.",
+    "Bize yaz. Yanıt hesabının e-postasına gelir.",
+  ],
+  "Email podrške": ["Support email", "Support-E-Mail", "بريد الدعم", "Destek e-postası"],
+  "Dijelovi pomoći": ["Parts of help", "Bereiche der Hilfe", "أقسام المساعدة", "Yardım bölümleri"],
+  "Nazad na pomoć": ["Back to help", "Zurück zur Hilfe", "العودة إلى المساعدة", "Yardıma dön"],
+  "Pitanja o ovom tekstu": [
+    "Questions about this text",
+    "Fragen zu diesem Text",
+    "أسئلة حول هذا النص",
+    "Bu metinle ilgili sorular",
+  ],
 };
