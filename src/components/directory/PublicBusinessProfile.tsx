@@ -378,13 +378,6 @@ export function PublicBusinessProfile({
                 <Icon name="chevron" />
               </Link>
             )}
-            {point && (
-              <a className={styles.contactLocation} href="#business-location">
-                <Icon name="pin" />
-                <span>{t("Pogledaj lokaciju na karti")}</span>
-                <Icon name="arrow" />
-              </a>
-            )}
           </aside>
         )}
       </div>
