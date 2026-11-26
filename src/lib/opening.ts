@@ -10,8 +10,11 @@ import { bosnianForm, msg } from "./i18n/translate";
  *
  * The server setting AHIBIZZ_OPENING_AT, when it holds such an instant, takes the place of this
  * value without a new build; "off" there switches the page off.
+ *
+ * The owner's decision of 2026-11-26: Friday 4 December 2026, after the Friday prayer. The hour
+ * is ours: 13:00 in Sarajevo, when the prayer is over everywhere in Bosnia and Herzegovina.
  */
-export const openingAt: string | null = null;
+export const openingAt: string | null = "2026-12-04T13:00:00+01:00";
 
 const instant = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})$/;
 

@@ -262,8 +262,9 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   ponovni pokušaj, prijava) je isto kao prije. S crteža nema: poseban ekran sa zaglavljem
   djelatnosti (zakazivanje ostaje dio stranice djelatnosti), precrtani zauzeti termini i dani
   označeni kao zatvoreni, jer javni odgovor nosi samo slobodne termine **[novo]**.
-- **Stranica „u izradi” [ugrađeno 26. 11. 2026., isključeno dok se ne upiše dan otvaranja]:** po
-  crtežu „U izradi”. Dok dan otvaranja ne prođe, posjetilac koji nije prijavljen umjesto javnih
+- **Stranica „u izradi” [urađeno 26. 11. 2026., uključeno do otvaranja]:** po crtežu „U izradi”.
+  Odluka vlasnika od 26. 11. 2026.: prikazuje se posjetiocima bez prijave, a otvaranje je u petak
+  4. 12. 2026. nakon džume; upisano je 13:00 po sarajevskom vremenu. Dok dan otvaranja ne prođe, posjetilac koji nije prijavljen umjesto javnih
   stranica (početna, pretraga, mapa, djelatnosti, reels, blog i ostalo) vidi „Uskoro otvaramo”:
   logo, znak sa svjetlom po rubu i zlatnikom koji skače prema svom mjestu, odbrojavanje u danima,
   satima, minutama i sekundama i dan otvaranja po sarajevskom vremenu. Adresa u pregledniku
@@ -272,7 +273,7 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   privatnost, pravila zajednice, uputstvo za brisanje naloga i izbor jezika; `/nalog`,
   `/administracija` i `/sadrzaj` i dalje sami šalju gosta na prijavu. Prijavljeni koriste
   aplikaciju kao i inače. Dan otvaranja je `openingAt` u `src/lib/opening.ts` (prazno znači da
-  stranice nema); postavka servera `AHIBIZZ_OPENING_AT` ga zamjenjuje bez nove verzije, a `off`
+  stranice nema, a nakon tog časa je nema ni bez izmjene koda); postavka servera `AHIBIZZ_OPENING_AT` ga zamjenjuje bez nove verzije, a `off`
   isključuje stranicu. To je zavjesa, a ne zaštita: gleda samo postoji li kolačić sesije, a
   interfejsi pod `/api` nisu obuhvaćeni **[novo]**.
 - **Poruke [urađeno 25. 11. 2026.]:** po crtežima Poruke i Razgovor. Lista: naslov s brojem

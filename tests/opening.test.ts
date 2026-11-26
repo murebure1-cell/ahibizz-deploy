@@ -186,15 +186,17 @@ test("before the opening a visitor without a session is shown the page, at the s
       assert.equal(passing.headers.get("x-middleware-next"), "1");
     }
 
-    // The day has come, or none is set: nothing is shown in place of anything.
+    // The day has come, or the page is switched off: nothing is shown in place of anything.
     process.env.AHIBIZZ_OPENING_AT = new Date(Date.now() - 1000)
       .toISOString()
       .replace(/\.\d+Z$/, "Z");
     assert.equal(shown(proxy(request("/pretraga"))), null);
     process.env.AHIBIZZ_OPENING_AT = "off";
     assert.equal(shown(proxy(request("/pretraga"))), null);
+    // Without the setting, the day kept in the code decides.
     delete process.env.AHIBIZZ_OPENING_AT;
-    assert.equal(shown(proxy(request("/pretraga"))), openingAt ? shown(proxy(request("/"))) : null);
+    const kept = readOpening(openingAt);
+    assert.equal(shown(proxy(request("/pretraga"))) !== null, kept !== null && Date.now() < kept);
   } finally {
     if (setting === undefined) delete process.env.AHIBIZZ_OPENING_AT;
     else process.env.AHIBIZZ_OPENING_AT = setting;
