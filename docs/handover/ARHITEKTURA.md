@@ -8,8 +8,7 @@ Stanje je opisano iz koda grane `codex/handover-cleanup`. Ovo je mapa za održav
 2. `src/components` sadrži korisničke tokove po oblastima. Klijentske komponente koriste transport i provjeru odgovora iz `src/lib`, a server stranice čitaju servise direktno.
 3. `src/lib` sadrži tipove, formatiranje, parsiranje odgovora, izračune i klijentske modele za ponavljanje zahtjeva. Ovdje nema autoritativnog odobravanja radnje.
 4. `src/server/*-http.ts` i `src/app/api/**/route.ts` provjeravaju metod, putanju, ulaz, veličinu tijela i porijeklo mutacije. Servisi u `src/server` provjeravaju svježu sesiju, pravo pristupa i poslovna pravila unutar transakcije.
-5. `src/proxy.ts` stoji ispred stranica (ne ispred `/api`, fajlova Next.js-a ni fajlova s ekstenzijom) i ima jedan posao: dok dan otvaranja iz `src/lib/opening.ts` nije prošao, gostu bez kolačića sesije umjesto javne stranice prikaže `/uskoro`, bez promjene adrese. Bez upisanog dana propušta sve. Nije pravilo pristupa: zaštićene stranice i servisi i dalje sami provjeravaju sesiju.
-6. PostgreSQL čuva naloge, sadržaj, komande, historiju. `db/migrations` sadrži primijenjeni redoslijed sheme, ograničenja, trigere i SQL funkcije. Ne mijenjati stare migracije niti ponovo kreirati produkcijsku bazu.
+5. PostgreSQL čuva naloge, sadržaj, komande, historiju. `db/migrations` sadrži primijenjeni redoslijed sheme, ograničenja, trigere i SQL funkcije. Ne mijenjati stare migracije niti ponovo kreirati produkcijsku bazu.
 
 Uobičajena promjena: forma → klijentski transport → HTTP handler/server action → provjera identiteta i uloge → validacija i zaključavanje redova → promjena i potvrda iste transakcije → provjeren odgovor → osvježavanje UI-ja.
 
