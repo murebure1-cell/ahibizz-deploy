@@ -267,9 +267,12 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   4. 12. 2026. nakon džume; upisano je 13:00 po sarajevskom vremenu. Dok dan otvaranja ne prođe, posjetilac koji nije prijavljen umjesto javnih
   stranica (početna, pretraga, mapa, djelatnosti, reels, blog i ostalo) vidi „Uskoro otvaramo”:
   logo, znak sa svjetlom po rubu i zlatnikom koji skače prema svom mjestu, odbrojavanje u danima,
-  satima, minutama i sekundama i dan otvaranja po sarajevskom vremenu. Adresa u pregledniku
-  ostaje ista, pa isti link pokaže pravu stranicu čim dan dođe (stranica se tada sama osvježi)
-  ili se čovjek prijavi. Dostupni ostaju prijava, registracija, zaboravljena i nova lozinka,
+  satima, minutama i sekundama i dan otvaranja po sarajevskom vremenu. S javne stranice ga
+  aplikacija preusmjeri na `/uskoro` i pamti kuda je krenuo: tamo ga odvede čim dan dođe
+  (stranica se tada sama osvježi), a isto odredište nosi i link za prijavu. Prva objava je
+  stranicu prikazivala na istoj adresi i na živom serveru je gostima vratila grešku, pa je
+  povučena istog jutra; zato je sada obično preusmjerenje, koje CI provjerava i iza ulazne
+  zaštite. Dostupni ostaju prijava, registracija, zaboravljena i nova lozinka,
   privatnost, pravila zajednice, uputstvo za brisanje naloga i izbor jezika; `/nalog`,
   `/administracija` i `/sadrzaj` i dalje sami šalju gosta na prijavu. Prijavljeni koriste
   aplikaciju kao i inače. Dan otvaranja je `openingAt` u `src/lib/opening.ts` (prazno znači da

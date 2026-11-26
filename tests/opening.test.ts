@@ -87,18 +87,25 @@ test("signing in, joining and the texts they link to stay reachable before the o
     assert.equal(openBeforeOpening(path), false, path);
 });
 
-test("the way back after signing in is a path on this site and never the page itself", () => {
+test("the way on from the page is a path on this site and never the page itself", () => {
   assert.equal(returnPath("/pretraga?q=burek"), "/pretraga?q=burek");
   assert.equal(returnPath("/djelatnosti/abc"), "/djelatnosti/abc");
+  // A letter outside plain ASCII arrives the way a browser writes it in an address.
+  assert.equal(returnPath("/pretraga?q=%C4%87evapi"), "/pretraga?q=%C4%87evapi");
   for (const bad of [
     "/",
     "/uskoro",
     "/uskoro?od=%2F",
     "//drugi.example/put",
     "/\\drugi.example",
+    "/put\\drugi.example",
     "https://drugi.example/",
     "pretraga",
     "/put s razmakom",
+    // It goes into a redirect: nothing a header cannot carry, and no new line.
+    "/pretraga?q=ćevapi",
+    "/pretraga\r\nSet-Cookie: a=b",
+    "/pretraga\u0000",
     ["/pretraga"],
     undefined,
     `/${"a".repeat(600)}`,
@@ -157,23 +164,41 @@ test("the day of opening is told on Sarajevo's clock, in Bosnian by hand", () =>
   assert.equal(openingWhen(Number.NaN), "—");
 });
 
-test("before the opening a visitor without a session is shown the page, at the same address", () => {
+test("before the opening a visitor without a session is sent to the page", () => {
   const setting = process.env.AHIBIZZ_OPENING_AT;
   const request = (path: string, cookie?: string) =>
     new NextRequest(`http://127.0.0.1:3000${path}`, cookie ? { headers: { cookie } } : undefined);
-  const shown = (response: Response) => response.headers.get("x-middleware-rewrite");
+  /**
+   * Where a response sends the visitor, or null when it lets the request through. Here the
+   * address is still a full one; that it leaves a running server as a path, also behind the
+   * ingress guard, is what scripts/smoke-routes.mjs checks.
+   */
+  const sent = (response: Response) => {
+    // Never a page shown in place of another: see the note in src/proxy.ts.
+    assert.equal(response.headers.get("x-middleware-rewrite"), null);
+    const location = response.headers.get("location");
+    if (location === null) return null;
+    assert.equal(response.status, 307);
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
+    const target = new URL(location);
+    assert.equal(target.pathname, "/uskoro");
+    return target.searchParams;
+  };
   try {
     // Ten minutes from now.
     process.env.AHIBIZZ_OPENING_AT = new Date(Date.now() + 600_000)
       .toISOString()
       .replace(/\.\d+Z$/, "Z");
-    const veiled = proxy(request("/pretraga?q=burek"));
-    const target = new URL(shown(veiled) ?? "http://missing");
-    assert.equal(target.pathname, "/uskoro");
-    assert.equal(target.searchParams.get("od"), "/pretraga?q=burek");
-    assert.equal(veiled.headers.get("cache-control"), "private, no-store");
-    assert.equal(new URL(shown(proxy(request("/"))) ?? "http://missing").pathname, "/uskoro");
-    // A session, in either of the cookie's names, and the open pages pass untouched.
+    const veiled = sent(proxy(request("/pretraga?q=burek")));
+    assert.equal(veiled?.get("od"), "/pretraga?q=burek");
+    assert.equal(veiled?.toString(), "od=%2Fpretraga%3Fq%3Dburek");
+    assert.equal(sent(proxy(request("/djelatnosti/abc")))?.get("od"), "/djelatnosti/abc");
+    assert.equal(sent(proxy(request("/pretraga?q=ćevapi")))?.get("od"), "/pretraga?q=%C4%87evapi");
+    // The front page, and an address too long to carry, need no way on.
+    assert.equal(sent(proxy(request("/")))?.toString(), "");
+    assert.equal(sent(proxy(request(`/${"a".repeat(600)}`)))?.toString(), "");
+    // A session, in either of the cookie's names, the open pages and the page itself pass
+    // untouched.
     for (const passing of [
       proxy(request("/pretraga", "better-auth.session_token=abc")),
       proxy(request("/pretraga", "__Secure-better-auth.session_token=abc")),
@@ -181,22 +206,24 @@ test("before the opening a visitor without a session is shown the page, at the s
       proxy(request("/registracija")),
       proxy(request("/nalog")),
       proxy(request("/privatnost")),
+      proxy(request("/uskoro")),
+      proxy(request("/uskoro?od=%2Fpretraga")),
     ]) {
-      assert.equal(shown(passing), null);
+      assert.equal(sent(passing), null);
       assert.equal(passing.headers.get("x-middleware-next"), "1");
     }
 
-    // The day has come, or the page is switched off: nothing is shown in place of anything.
+    // The day has come, or the page is switched off: nobody is sent anywhere.
     process.env.AHIBIZZ_OPENING_AT = new Date(Date.now() - 1000)
       .toISOString()
       .replace(/\.\d+Z$/, "Z");
-    assert.equal(shown(proxy(request("/pretraga"))), null);
+    assert.equal(sent(proxy(request("/pretraga"))), null);
     process.env.AHIBIZZ_OPENING_AT = "off";
-    assert.equal(shown(proxy(request("/pretraga"))), null);
+    assert.equal(sent(proxy(request("/pretraga"))), null);
     // Without the setting, the day kept in the code decides.
     delete process.env.AHIBIZZ_OPENING_AT;
     const kept = readOpening(openingAt);
-    assert.equal(shown(proxy(request("/pretraga"))) !== null, kept !== null && Date.now() < kept);
+    assert.equal(sent(proxy(request("/pretraga"))) !== null, kept !== null && Date.now() < kept);
   } finally {
     if (setting === undefined) delete process.env.AHIBIZZ_OPENING_AT;
     else process.env.AHIBIZZ_OPENING_AT = setting;

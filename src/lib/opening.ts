@@ -4,9 +4,9 @@ import { bosnianForm, msg } from "./i18n/translate";
 
 /**
  * The moment the app opens to everyone, as a full instant with its offset, for example
- * "2026-12-02T12:00:00+01:00". Until then a visitor who is not signed in sees the page
- * "Uskoro otvaramo" in place of the public pages; people with an account sign in and use the
- * app as usual. `null` means there is no such page: the app is open.
+ * "2026-12-02T12:00:00+01:00". Until then a visitor who is not signed in is sent from the public
+ * pages to the page "Uskoro otvaramo"; people with an account sign in and use the app as usual.
+ * `null` means there is no such page: the app is open.
  *
  * The server setting AHIBIZZ_OPENING_AT, when it holds such an instant, takes the place of this
  * value without a new build; "off" there switches the page off.
@@ -40,7 +40,7 @@ export function beforeOpening(moment: number | null, now: number): moment is num
   return moment !== null && now < moment;
 }
 
-/** The address of the page itself. Any other address shows it without changing in the bar. */
+/** The address of the page. It carries where the visitor was going as "od". */
 export const openingPath = "/uskoro";
 
 /**
@@ -68,10 +68,14 @@ export function openBeforeOpening(pathname: string): boolean {
   return openPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
-/** A path on this site to come back to, or null: never another site, never the page itself. */
+/**
+ * A path on this site to go on to, or null: never another site, never the page itself. Only as a
+ * browser writes an address, in plain printable characters, because the server puts it in a
+ * redirect once the day has come.
+ */
 export function returnPath(value: unknown): string | null {
   if (typeof value !== "string" || value.length > 512) return null;
-  if (!/^\/(?![/\\])[^\s\\]*$/.test(value)) return null;
+  if (!/^\/(?![/\\])[\x21-\x5b\x5d-\x7e]*$/.test(value)) return null;
   const path = value.split(/[?#]/)[0] ?? "";
   return path === "/" || path === openingPath || path.startsWith(`${openingPath}/`) ? null : value;
 }
