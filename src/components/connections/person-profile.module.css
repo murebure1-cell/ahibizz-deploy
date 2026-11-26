@@ -1,0 +1,249 @@
+/*
+ * A person's public profile as drawn (canvas ProfilOsnivac): a cover band, the photo centred
+ * over its edge, name, marks and a short bio, three counts, the two actions, earned badges and
+ * the businesses. The founder alone gets the accent wash with dots and a turning accent ring.
+ */
+.page {
+  max-width: 640px;
+  margin-inline: auto;
+  padding-bottom: 8px;
+}
+.cover {
+  position: relative;
+  height: 196px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 75% 5%, var(--ui-ink-raised) 0, transparent 58%),
+    linear-gradient(120deg, var(--ui-ink), var(--ui-ink-raised));
+}
+.page[data-founder] .cover {
+  background: linear-gradient(160deg, var(--ui-accent-soft) 0%, var(--ui-page) 92%);
+}
+.page[data-founder] .cover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+  background-image: radial-gradient(var(--ui-accent-border) 1.2px, transparent 1.4px);
+  background-size: 18px 18px;
+  pointer-events: none;
+}
+.coverPhoto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.coverBar {
+  position: absolute;
+  inset: 18px 20px auto;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+}
+.circle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--ui-over-line);
+  border-radius: 50%;
+  background: var(--ui-over);
+  color: var(--ui-text);
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: transform 160ms var(--ease-out);
+}
+.circle:active {
+  transform: scale(0.95);
+}
+.circle svg {
+  width: 20px;
+  height: 20px;
+}
+.coverBar > a.circle svg {
+  transform: scaleX(-1);
+}
+.shareStatus {
+  position: absolute;
+  top: 52px;
+  right: 0;
+  font-size: 12px;
+  color: var(--ui-text);
+}
+.identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: -64px;
+  padding: 0 20px;
+  text-align: center;
+}
+.portrait {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 124px;
+  height: 124px;
+}
+.portrait > :last-child {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  border: 4px solid var(--ui-surface);
+  box-shadow: none;
+}
+.ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 210deg,
+    var(--ui-accent),
+    transparent 35%,
+    var(--ui-accent) 60%,
+    transparent 85%,
+    var(--ui-accent)
+  );
+  animation: ring-turn 9s linear infinite;
+}
+@keyframes ring-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 12px 0 0;
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.bio {
+  max-width: 340px;
+  margin: 10px 0 0;
+  color: var(--ui-muted);
+  font-size: 14px;
+  line-height: 20px;
+  white-space: pre-line;
+}
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 14px;
+  margin: 8px 0 0;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.facts span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.facts svg {
+  width: 15px;
+  height: 15px;
+}
+.stats {
+  display: flex;
+  margin: 16px 20px 0;
+  padding: 12px 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: var(--ui-glass);
+}
+.stats div {
+  display: flex;
+  flex: 1;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 2px;
+}
+.stats dt {
+  color: var(--ui-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+.stats dd {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 800;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 20px 0;
+}
+.actions > * {
+  flex: 1 1 140px;
+  justify-content: center;
+  min-height: 48px;
+  border-radius: 16px;
+}
+.section {
+  margin: 18px 20px 0;
+}
+.section h2 {
+  margin: 0 0 10px;
+  color: var(--ui-muted);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.medals {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.medals li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 72px;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+.medals li span {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  background: var(--ui-accent-soft);
+  box-shadow: inset 0 0 0 2px var(--ui-accent);
+  color: var(--ui-accent-text);
+}
+.medals svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.9;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ring {
+    animation: none;
+  }
+  .circle {
+    transition: none;
+  }
+}

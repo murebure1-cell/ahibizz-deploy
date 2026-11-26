@@ -18,6 +18,26 @@ export type PublicPerson = ProfileBadges & {
   photoVersion: number | null;
   coverVersion: number | null;
 };
+/** The counts on a public profile, as drawn: published businesses, friends, year of joining. */
+export type PublicPersonStats = { businesses: number; friends: number; joinedYear: number };
+export function readPublicPersonStats(value: unknown): PublicPersonStats | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const count = (item: unknown) => Number.isSafeInteger(item) && (item as number) >= 0;
+  if (
+    !count(row.businesses) ||
+    !count(row.friends) ||
+    !Number.isSafeInteger(row.joinedYear) ||
+    (row.joinedYear as number) < 2000 ||
+    (row.joinedYear as number) > 3000
+  )
+    return null;
+  return {
+    businesses: row.businesses as number,
+    friends: row.friends as number,
+    joinedYear: row.joinedYear as number,
+  };
+}
 export type ProfileVisibility = { isPublic: boolean; profileVersion: number };
 export type ConnectionStatus = "pending" | "accepted" | "declined" | "cancelled" | "removed";
 export type ConnectionRelationship = {

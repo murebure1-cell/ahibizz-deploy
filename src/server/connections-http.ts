@@ -2,6 +2,7 @@ import {
   readConnectionItem,
   readProfileVisibility,
   readPublicPerson,
+  readPublicPersonStats,
   readRelationship,
 } from "../lib/connections";
 import { readAuthConfiguration } from "./auth";
@@ -169,7 +170,11 @@ export function createConnectionsHttpHandler({
             viewer && viewer.id !== record.id
               ? readRelationship(await service.relationship(request.headers, record.id))
               : { id: null, status: "none", direction: null, version: 0, personId: record.id };
-          return reply({ person: record, viewerId: viewer?.id ?? null, relationship });
+          // The counts are a detail of the page: the profile still opens when they cannot be read.
+          const stats = await Promise.resolve()
+            .then(async () => readPublicPersonStats(await service.readPublicStats(record.id)))
+            .catch(() => null);
+          return reply({ person: record, viewerId: viewer?.id ?? null, relationship, stats });
         }
         if (media) {
           const options = query(url, ["v"]);

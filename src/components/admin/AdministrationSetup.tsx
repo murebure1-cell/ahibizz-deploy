@@ -13,7 +13,7 @@ type State = {
   handOverPending: boolean;
 };
 
-const addAccount = "/prijava?dodaj=1&nastavi=%2Fadministracija%2Fodvojena";
+const addAccount = "/prijava?administracija=1";
 
 function readState(value: unknown): State | null {
   const v = value as Partial<State> | null;

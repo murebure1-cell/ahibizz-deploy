@@ -61,6 +61,7 @@ function fixture(
         "setVisibility",
         "searchPublic",
         "readPublic",
+        "readPublicStats",
         "readPublicMedia",
         "readViewer",
         "relationship",
@@ -79,6 +80,8 @@ function fixture(
           return options.viewer === undefined ? { id: "fixture-viewer" } : options.viewer;
         if (method === "searchPublic") return { items: [leakedPerson], page: 1, hasMore: false };
         if (method === "readPublic") return leakedPerson;
+        if (method === "readPublicStats")
+          return { businesses: 2, friends: 5, joinedYear: 2026, email: "must-not-leak" };
         if (method === "readPublicMedia") return options.missingImage ? null : image;
         if (method === "list")
           return {
@@ -136,6 +139,7 @@ test("public people endpoints whitelist person data and distinguish anonymous, o
     person,
     viewerId: "fixture-viewer",
     relationship,
+    stats: { businesses: 2, friends: 5, joinedYear: 2026 },
   });
   const headers = f.calls.find((call) => call.method === "relationship")?.args[0];
   assert.ok(headers instanceof Headers);
@@ -146,6 +150,7 @@ test("public people endpoints whitelist person data and distinguish anonymous, o
       person,
       viewerId: viewer?.id ?? null,
       relationship: { id: null, personId: person.id, status: "none", direction: null, version: 0 },
+      stats: { businesses: 2, friends: 5, joinedYear: 2026 },
     });
     assert.equal(
       special.calls.some((call) => call.method === "relationship"),

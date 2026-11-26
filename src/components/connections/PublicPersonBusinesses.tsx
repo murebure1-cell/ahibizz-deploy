@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { msg } from "../../lib/i18n/translate";
 import {
   PersonBusinessesError,
   type PersonBusinessesPage,
@@ -16,10 +17,13 @@ export function PublicPersonBusinesses({
   personId,
   request = personBusinessesRequest,
   preview = false,
+  title = msg("Moje djelatnosti"),
 }: {
   personId: string;
   request?: PersonBusinessesRequest;
   preview?: boolean;
+  /** The heading; the profile owner's own page says "Moje djelatnosti". */
+  title?: string;
 }) {
   const t = useT();
   const [page, setPage] = useState(1);
@@ -63,8 +67,8 @@ export function PublicPersonBusinesses({
   }, [personId, page, request, preview, refresh]);
   const hasMore = data?.page === page && data.hasMore;
   return (
-    <section className={styles.workspace} aria-label={t("Moje djelatnosti")} aria-busy={loading}>
-      <h2>{t("Moje djelatnosti")}</h2>
+    <section className={styles.workspace} aria-label={t(title)} aria-busy={loading}>
+      <h2>{t(title)}</h2>
       {loading && <p role="status">{t("Dohvaćanje djelatnosti…")}</p>}
       {error && (
         <div role="alert">

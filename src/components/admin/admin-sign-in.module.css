@@ -1,0 +1,178 @@
+/* The administration's sign-in as drawn (AdminUlaz). */
+.page {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 480px);
+  min-height: calc(100dvh - 80px);
+  margin-inline: auto;
+  padding: 28px 20px 24px;
+  box-sizing: border-box;
+  color: var(--ui-text);
+}
+.title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+.title > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+.title small {
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+.title h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 19px;
+  background: var(--ui-inverse);
+  color: var(--ui-on-inverse);
+}
+.mark svg {
+  width: 28px;
+  height: 28px;
+  stroke-width: 2;
+}
+.lead {
+  margin: 14px 0 0;
+  color: var(--ui-muted);
+  font-size: 15px;
+  line-height: 22px;
+}
+.form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 26px;
+}
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.form input {
+  height: 54px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 16px;
+  background: var(--ui-glass);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 400;
+}
+.form input:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 1px;
+}
+.password {
+  position: relative;
+  display: flex;
+}
+.password input {
+  flex: 1;
+  min-width: 0;
+  padding-right: 92px;
+}
+.password button {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  height: 44px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--ui-accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.note svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.error {
+  margin: 0;
+  color: var(--ui-danger);
+  font-size: 14px;
+}
+.spacer {
+  flex: 1;
+  min-height: 12px;
+}
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 54px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out);
+}
+.primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.primary svg,
+.personal svg {
+  width: 18px;
+  height: 18px;
+}
+.personal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  color: var(--ui-accent-text);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .primary {
+    transition: none;
+  }
+}

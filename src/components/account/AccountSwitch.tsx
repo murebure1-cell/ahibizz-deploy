@@ -34,7 +34,14 @@ function readAccounts(value: unknown): DeviceAccount[] | null {
  * another makes it active and opens its own start (administration for the owner account), so
  * each account shows only what is its own. "Dodaj nalog" signs another in beside these.
  */
-export function AccountSwitch({ currentId }: { currentId: string }) {
+export function AccountSwitch({
+  currentId,
+  circleClassName,
+}: {
+  currentId: string;
+  /** Open from a round icon button (the administration's header) instead of a menu row. */
+  circleClassName?: string;
+}) {
   const { t } = useI18n();
   const { resetAppearance } = useAppAppearance();
   const [open, setOpen] = useState(false);
@@ -81,7 +88,18 @@ export function AccountSwitch({ currentId }: { currentId: string }) {
   }
   return (
     <>
-      <Row icon="swap" title={t("Prebaci nalog")} onClick={() => void show()} />
+      {circleClassName ? (
+        <button
+          type="button"
+          className={circleClassName}
+          aria-label={t("Prebaci nalog")}
+          onClick={() => void show()}
+        >
+          <Icon name="swap" />
+        </button>
+      ) : (
+        <Row icon="swap" title={t("Prebaci nalog")} onClick={() => void show()} />
+      )}
       <Sheet
         open={open}
         onClose={() => setOpen(false)}

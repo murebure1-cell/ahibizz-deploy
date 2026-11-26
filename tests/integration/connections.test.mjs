@@ -1194,6 +1194,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             platformFounder: true,
           });
           await pool.query("UPDATE auth_user SET founder=false WHERE id=$1", [businessPerson]);
+          // The drawn profile counts: published businesses, accepted friends, year of joining.
+          const stats = await connections.readPublicStats(founderId);
+          assert.deepEqual(Object.keys(stats).sort(), ["businesses", "friends", "joinedYear"]);
+          assert.ok(Number.isInteger(stats.businesses) && stats.businesses >= 0);
+          assert.ok(Number.isInteger(stats.friends) && stats.friends >= 0);
+          assert.equal(stats.joinedYear, new Date().getUTCFullYear());
           await show(owner, false);
           await denied(() => connections.readPublic(founderId), 404);
         },
