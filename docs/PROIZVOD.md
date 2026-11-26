@@ -272,6 +272,16 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   pločice. „Uputstva” djelatnosti bez upisane lokacije vode na njenu stranicu. S crteža nema:
   prekidač „Moji termini / Kod mene” (dolazi s vlasnikovom stranom), jedna lista za sve vrste
   (ostaju tri grupe, svaka sa svojim stranicama) i Ahi Credits u historiji **[novo]**.
+- **Najam vozila [urađeno 26. 11. 2026.]:** po crtežu Najam. Posjetilac na stranici djelatnosti
+  bira vozilo među karticama (izabrano je otvoreno: slika ili znak, cijena, gorivo, mjenjač,
+  godište, sjedišta i opis), zatim preuzimanje i vraćanje u dvije pločice: gornji dio pločice
+  otvara kalendar uređaja, donji listu sati. Sat se bira u koracima od pola sata; prije se mogao
+  upisati bilo koji minut. Prva ponuda je sutra u 09:00 na 24 sata. Ispod stoje zauzeti dani u
+  narednih šest mjeseci, sažetak (broj započetih sati ili započetih 24 sata, cijena, ukupno) i
+  „Pošalji zahtjev”. Zauzet period se kaže odmah i dugme se gasi. Poslan zahtjev pokaže šta je
+  traženo i vodi u „Moji termini”. Pravila (obračun, provjera dostupnosti, zahtjev s nepoznatim
+  ishodom, prijava) su ista kao prije. Vlasnik i dalje koristi stari kalendar vozila. S crteža
+  nema: poseban ekran sa zaglavljem djelatnosti i ikone u oznakama vozila **[novo]**.
 - **Stranica „u izradi” [urađeno 26. 11. 2026., uključeno do otvaranja]:** po crtežu „U izradi”.
   Odluka vlasnika od 26. 11. 2026.: prikazuje se posjetiocima bez prijave, a otvaranje je u petak
   4. 12. 2026. nakon džume; upisano je 13:00 po sarajevskom vremenu. Dok dan otvaranja ne prođe, posjetilac koji nije prijavljen umjesto javnih
