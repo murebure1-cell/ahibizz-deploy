@@ -1,4 +1,6 @@
 import Link from "next/link";
+import help from "../../../components/content-hub/help.module.css";
+import { Icon } from "../../../components/Icon";
 import { rich } from "../../../components/i18n/Rich";
 import styles from "../../../components/support/resources.module.css";
 import { supportEmail } from "../../../lib/support-requests";
@@ -12,6 +14,9 @@ export default async function PrivacyPage() {
   const t = await getTranslator();
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
+      <Link href="/pomoc" className={help.back} aria-label={t("Nazad na pomoć")}>
+        <Icon name="arrow" aria-hidden="true" />
+      </Link>
       <h1>{t("Privatnost na AhiBizzu")}</h1>
       <p>
         {t(
@@ -172,6 +177,13 @@ export default async function PrivacyPage() {
           </li>
         </ul>
       </section>
+      <nav className={help.rows} aria-label={t("Pitanja o ovom tekstu")}>
+        <Link href="/pomoc#kontakt">
+          <Icon name="mail" aria-hidden="true" />
+          <span>{t("Piši podršci")}</span>
+          <Icon name="chevron" aria-hidden="true" />
+        </Link>
+      </nav>
     </main>
   );
 }
