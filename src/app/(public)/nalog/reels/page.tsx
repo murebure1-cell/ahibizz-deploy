@@ -3,7 +3,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ReelManager } from "../../../../components/reels/ReelManager";
 import styles from "../../../../components/reels/reels.module.css";
+import { ScreenBar } from "../../../../components/ui/Rows";
 import { businessUuid } from "../../../../lib/business-today";
+import { packageName } from "../../../../lib/packages";
 import { AccountAccessError } from "../../../../server/auth/accounts";
 import { getTranslator, titled } from "../../../../server/i18n";
 import { manageReels } from "../../../../server/reels/service";
@@ -33,12 +35,13 @@ export default async function ManageReelsPage({ searchParams }: { searchParams: 
     `/nalog/reels?stranica=${n}${selected ? `&djelatnost=${selected}` : ""}`;
   return (
     <main id="glavni-sadrzaj" className={styles.page}>
-      <header>
-        <Link href="/nalog" className={styles.back}>
-          {t("Moj nalog")}
-        </Link>
-        <h1>{t("Moji reels")}</h1>
-      </header>
+      <ScreenBar title={t("Moji reels")} backHref="/nalog" backLabel={t("Moj nalog")}>
+        {list?.allowance && (
+          <span className={styles.packagePill} data-package={list.allowance.package}>
+            {t("Paket")} <strong>{packageName(list.allowance.package)}</strong>
+          </span>
+        )}
+      </ScreenBar>
       {list ? (
         <ReelManager
           key={list.accountId}
@@ -47,6 +50,7 @@ export default async function ManageReelsPage({ searchParams }: { searchParams: 
           businessId={selected}
           reels={list.reels}
           admin={false}
+          allowance={list.allowance}
         />
       ) : (
         <p className={styles.empty}>{t("Moji reels trenutno nisu dostupni.")}</p>

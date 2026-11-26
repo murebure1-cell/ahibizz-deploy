@@ -29,10 +29,17 @@ export type PublicBusinessView = {
   verified: boolean;
   localFeatured?: boolean;
   featured?: boolean;
+  /** The owner's paid package: a mark on the card, never a verification. */
+  package?: "startup" | "business";
   image?: { src: string; alt: string };
   gallery?: { src: string; alt: string }[];
   logo?: { src: string; alt: string };
 };
+
+/** Only a paid package is shown; anything else leaves the card plain. */
+export function paidPackage(value: unknown): "startup" | "business" | undefined {
+  return value === "startup" || value === "business" ? value : undefined;
+}
 
 export function publicBusinessImages(
   businessId: string,

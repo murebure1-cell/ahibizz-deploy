@@ -266,60 +266,48 @@ function ReelSlide({
         )}
       </div>
 
-      <header className={styles.header}>
-        <Link href={businessPath} prefetch={false} className={styles.identity}>
-          <span className={styles.avatar} aria-hidden="true">
-            <BusinessLogo src={logo} alt="" sizes="44px" />
-          </span>
-          <span className={styles.identityCopy}>
-            <strong className={styles.author} dir="auto">
-              {reel.businessTitle}
-            </strong>
-            {reel.publishedAt && (
-              <time className={styles.meta} dateTime={reel.publishedAt} suppressHydrationWarning>
-                {ageLabel(reel.publishedAt, t)}
-              </time>
-            )}
-          </span>
+      <header className={styles.top}>
+        <Link
+          href={closePath}
+          replace
+          prefetch={false}
+          className={styles.circleButton}
+          aria-label={t("Zatvori Reels")}
+        >
+          <Icon name="arrow" className={styles.backIcon} />
         </Link>
-        <div className={styles.headerActions}>
-          <button
-            type="button"
-            className={styles.iconButton}
-            aria-label={muted ? t("Uključi zvuk") : t("Isključi zvuk")}
-            onClick={() => {
-              const element = video.current;
-              if (element) element.muted = !muted;
-              onMute(!muted);
-            }}
-          >
-            <Icon name={muted ? "mute" : "volume"} />
-          </button>
-          <Link
-            href={closePath}
-            replace
-            prefetch={false}
-            className={styles.iconButton}
-            aria-label={t("Zatvori Reels")}
-          >
-            <Icon name="close" />
-          </Link>
-        </div>
-      </header>
-
-      <div className={styles.actionRail}>
+        <span className={styles.topTitle} aria-hidden="true">
+          Reels
+        </span>
         <button
           type="button"
-          className={styles.railAction}
+          className={styles.circleButton}
+          aria-label={muted ? t("Uključi zvuk") : t("Isključi zvuk")}
+          onClick={() => {
+            const element = video.current;
+            if (element) element.muted = !muted;
+            onMute(!muted);
+          }}
+        >
+          <Icon name={muted ? "mute" : "volume"} />
+        </button>
+      </header>
+
+      <div className={styles.rail}>
+        <button
+          type="button"
+          className={styles.railButton}
           aria-label={t("Sviđa mi se")}
           aria-describedby={engagement ? `reel-likes-${reel.id}` : undefined}
           aria-pressed={engagement?.liked ?? false}
           disabled={!engagement || likePending}
           onClick={() => void toggleLike()}
         >
-          <Icon name="heart" />
+          <span className={styles.railCircle}>
+            <Icon name="heart" />
+          </span>
           {engagement && (
-            <span className={styles.railLabel} id={`reel-likes-${reel.id}`}>
+            <span className={styles.railText} id={`reel-likes-${reel.id}`}>
               {numbers.format(engagement.likes)}
               <span className={styles.srOnly}> {t("lajkova")}</span>
             </span>
@@ -328,64 +316,73 @@ function ReelSlide({
         <Link
           href={messageLink({ kind: "business", targetId: reel.businessId })}
           prefetch={false}
-          className={styles.railAction}
+          className={styles.railButton}
+          aria-label={t("Pošalji poruku djelatnosti")}
         >
-          <Icon name="message" />
-          <span className={styles.railLabel}>{t("Poruka")}</span>
+          <span className={styles.railCircle}>
+            <Icon name="message" />
+          </span>
         </Link>
-        <button type="button" className={styles.railAction} onClick={() => void share()}>
-          <Icon name="share" />
-          <span className={styles.railLabel}>{t("Podijeli")}</span>
+        <button
+          type="button"
+          className={styles.railButton}
+          aria-label={t("Podijeli")}
+          onClick={() => void share()}
+        >
+          <span className={styles.railCircle}>
+            <Icon name="share" />
+          </span>
         </button>
         <Link
           href={reportUrl("reel", reel.id)}
           prefetch={false}
-          className={styles.railAction}
+          className={styles.railButton}
           aria-label={t("Prijavi Reel")}
         >
-          <Icon name="shield" />
-          <span className={styles.railLabel}>{t("Prijavi")}</span>
+          <span className={styles.railCircle}>
+            <Icon name="shield" />
+          </span>
         </Link>
-        <span className={styles.railAction}>
-          <Icon name="eye" />
-          {engagement && (
-            <span className={styles.railLabel}>{numbers.format(engagement.views)}</span>
-          )}
-          <span className={styles.srOnly}> {t("pregleda")}</span>
-        </span>
       </div>
 
-      <div className={styles.reelInfo}>
-        {reel.caption && <p className={styles.caption}>{reel.caption}</p>}
-        <div className={styles.teaser}>
-          <span className={styles.teaserThumb} aria-hidden="true">
-            {poster ? (
-              // biome-ignore lint/performance/noImgElement: This thumbnail reuses the normalized Reel poster.
-              <img src={poster} alt="" decoding="async" />
-            ) : (
-              <Icon name="shop" />
-            )}
+      <div className={styles.info}>
+        <Link href={businessPath} prefetch={false} className={styles.who}>
+          <span className={styles.whoAvatar} aria-hidden="true">
+            <BusinessLogo src={logo} alt="" sizes="40px" />
           </span>
-          <div className={styles.teaserText}>
-            {active ? (
-              <h1 className={styles.teaserTitle} dir="auto">
-                {reel.title}
-              </h1>
-            ) : (
-              <strong className={styles.teaserTitle} dir="auto">
-                {reel.title}
-              </strong>
-            )}
-            {reel.city && (
-              <span className={styles.teaserMeta} dir="auto">
-                {reel.city}
-              </span>
-            )}
-          </div>
-          <Link href={businessPath} prefetch={false} className={styles.profileButton}>
-            {t("Pogledaj djelatnost")}
-          </Link>
-        </div>
+          <span className={styles.whoText}>
+            <strong className={styles.whoName} dir="auto">
+              {reel.businessTitle}
+            </strong>
+            <span className={styles.whoMeta}>
+              {[
+                reel.city,
+                reel.publishedAt ? ageLabel(reel.publishedAt, t) : null,
+                engagement ? `${numbers.format(engagement.views)} ${t("pregleda")}` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          </span>
+        </Link>
+        {active ? (
+          <h1 className={styles.infoTitle} dir="auto">
+            {reel.title}
+          </h1>
+        ) : (
+          <strong className={styles.infoTitle} dir="auto">
+            {reel.title}
+          </strong>
+        )}
+        {reel.caption && (
+          <p className={styles.infoCaption} dir="auto">
+            {reel.caption}
+          </p>
+        )}
+        <Link href={businessPath} prefetch={false} className={styles.open}>
+          {t("Otvori djelatnost")}
+          <Icon name="chevron" />
+        </Link>
       </div>
       {status && (
         <p role="status" className={styles.status}>

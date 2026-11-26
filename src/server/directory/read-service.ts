@@ -74,6 +74,9 @@ const publicColumns = [
   "b.version",
   "b.is_verified AS verified",
   "FALSE AS featured",
+  // The owner's paid package marks the card (canvas ProfilPaketi); Basic and owners carry none.
+  `(SELECT p.package FROM account_package p JOIN auth_user pu ON pu.id=p.user_id
+     WHERE p.user_id=b.owner_user_id AND p.package IN ('startup','business') AND pu.role='member') AS "ownerPackage"`,
   'b.created_at AS "createdAt"',
   'b.updated_at AS "updatedAt"',
   'b.published_at AS "publishedAt"',

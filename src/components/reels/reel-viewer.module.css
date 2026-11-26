@@ -620,3 +620,215 @@
     scroll-snap-type: y proximity;
   }
 }
+
+/*
+ * The reel as drawn (canvas Reels): back, the word Reels and the sound on top; round glass
+ * buttons on the right; the business, the title, the caption and "Otvori djelatnost" at the
+ * foot, straight on the picture without panels.
+ */
+.top {
+  position: absolute;
+  z-index: 3;
+  inset: calc(var(--reel-top) + 6px) 0 auto;
+  display: flex;
+  inline-size: min(100%, var(--reel-stage));
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: var(--reel-left) var(--reel-right);
+  margin-inline: auto;
+  box-sizing: border-box;
+  color: #ffffff;
+  pointer-events: none;
+}
+.circleButton,
+.railCircle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  box-sizing: border-box;
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 50%;
+  background: rgb(11 13 16 / 42%);
+  color: #ffffff;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.circleButton {
+  inline-size: 44px;
+  block-size: 44px;
+  padding: 0;
+  pointer-events: auto;
+  transition: transform 160ms var(--ease-out);
+}
+.circleButton:active,
+.railButton:active .railCircle {
+  transform: scale(0.94);
+}
+.circleButton svg {
+  inline-size: 20px;
+  block-size: 20px;
+}
+.backIcon {
+  transform: scaleX(-1);
+}
+.topTitle {
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 2px rgb(13 15 18 / 55%);
+}
+.rail {
+  position: absolute;
+  z-index: 3;
+  inset-inline-end: max(14px, calc((100% - var(--reel-stage)) / 2));
+  inset-block-end: calc(var(--reel-controls-bottom) + 100px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.railButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.railCircle {
+  inline-size: 48px;
+  block-size: 48px;
+  transition: transform 160ms var(--ease-out);
+}
+.railCircle svg {
+  inline-size: 22px;
+  block-size: 22px;
+}
+.railButton[aria-pressed="true"] .railCircle {
+  color: var(--reel-accent);
+  border-color: rgb(135 231 191 / 60%);
+}
+.railButton[aria-pressed="true"] svg {
+  fill: currentcolor;
+}
+.railButton:disabled {
+  cursor: default;
+}
+.railText {
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgb(13 15 18 / 70%);
+}
+.info {
+  position: absolute;
+  z-index: 3;
+  inset-inline-start: max(16px, calc((100% - var(--reel-stage)) / 2));
+  inset-inline-end: max(84px, calc((100% - var(--reel-stage)) / 2 + 84px));
+  inset-block-end: calc(var(--reel-controls-bottom) + 6px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  max-inline-size: 36rem;
+  color: #ffffff;
+}
+.who {
+  display: flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  align-items: center;
+  gap: 10px;
+  color: #ffffff;
+  text-decoration: none;
+}
+.whoAvatar {
+  display: grid;
+  inline-size: 40px;
+  block-size: 40px;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 2px solid var(--reel-accent);
+  border-radius: 50%;
+  background: #0b0d10;
+}
+.whoAvatar img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+.whoText {
+  display: flex;
+  min-inline-size: 0;
+  flex-direction: column;
+}
+.whoName {
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.whoMeta {
+  overflow: hidden;
+  color: #d5dae0;
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.infoTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgb(13 15 18 / 60%);
+  overflow-wrap: anywhere;
+}
+.infoCaption {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 20px;
+  text-shadow: 0 1px 2px rgb(13 15 18 / 60%);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  block-size: 44px;
+  padding: 0 16px;
+  border-radius: 14px;
+  background: var(--reel-accent);
+  color: var(--reel-ink);
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: transform 160ms var(--ease-out);
+}
+.open:active {
+  transform: scale(0.97);
+}
+.open svg {
+  inline-size: 16px;
+  block-size: 16px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .circleButton,
+  .railCircle,
+  .open {
+    transition: none;
+  }
+}
