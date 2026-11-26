@@ -7,6 +7,7 @@ import { type AccountOverviewFacts, readOverview } from "../../lib/account-overv
 import type { AccountSection } from "../../lib/account-return";
 import { accountShortcuts } from "../../lib/account-shortcuts";
 import { menuPath } from "../../lib/app-menu";
+import { readProfileVisibility } from "../../lib/connections";
 import { msg } from "../../lib/i18n/translate";
 import { packageFullText, packageName } from "../../lib/packages";
 import { type PersonalProfile, profileImageUrl } from "../../lib/people";
@@ -71,6 +72,12 @@ function readOwnProfile(body: unknown, expectedId: string): PersonalProfile {
   return profile;
 }
 
+function readOwnVisibility(body: unknown) {
+  if (!body || typeof body !== "object" || !("visibility" in body))
+    throw new Error("Invalid visibility");
+  return readProfileVisibility(body.visibility);
+}
+
 function ReadError({ retry }: { retry: () => void }) {
   const { t } = useI18n();
   return (
@@ -110,6 +117,12 @@ export function AccountOverview({
     readOverview,
   );
   const own = useAccountRead("/api/people/me", accountId, active && !profile, readOwnProfile);
+  const visibility = useAccountRead(
+    "/api/connections/visibility",
+    accountId,
+    active,
+    readOwnVisibility,
+  );
   // biome-ignore lint/correctness/useExhaustiveDependencies: the parent callback is not part of the read.
   useEffect(() => {
     if (own.result) onProfile?.(own.result);
@@ -120,6 +133,7 @@ export function AccountOverview({
       name={name}
       administrator={administrator}
       profile={profile ?? own.result}
+      isPublic={visibility.result?.isPublic}
       onSection={onSection}
       onAddBusiness={onAddBusiness}
       error={error ? <ReadError retry={retry} /> : null}
@@ -146,11 +160,14 @@ export function AccountSummary({
   name,
   administrator = false,
   profile,
+  isPublic,
   onSection,
   onAddBusiness,
   error,
   children,
 }: {
+  /** Whether others can open the profile; unknown leaves the link out. */
+  isPublic?: boolean;
   facts: AccountOverviewFacts | null;
   name: string;
   administrator?: boolean;
@@ -262,7 +279,7 @@ export function AccountSummary({
           <button type="button" className={styles.outline} onClick={() => onSection("profile")}>
             <Icon name="user" /> {t("Uredi profil")}
           </button>
-          {facts && (
+          {facts && isPublic === true && (
             <Link
               className={styles.outline}
               href={`/ljudi/${encodeURIComponent(facts.accountId)}`}
@@ -270,6 +287,11 @@ export function AccountSummary({
             >
               <Icon name="eye" /> {t("Kako me drugi vide")}
             </Link>
+          )}
+          {isPublic === false && (
+            <button type="button" className={styles.outline} onClick={() => onSection("profile")}>
+              <Icon name="lock" /> {t("Profil vidiš samo ti.")}
+            </button>
           )}
         </div>
         {medals.length > 0 && (

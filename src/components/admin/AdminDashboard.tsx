@@ -13,6 +13,7 @@ import {
   readAdminNavigation,
 } from "../../lib/admin-navigation";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
+import { AccountSwitch } from "../account/AccountSwitch";
 import { BusinessManager } from "../directory/BusinessManager";
 import { Icon, type IconName } from "../Icon";
 import { ReviewsAdmin } from "../reviews/ReviewsAdmin";
@@ -168,11 +169,8 @@ export function AdminDashboard({
             </Link>
           </section>
         </nav>
-        <Link className={styles.accountLink} href="/nalog">
-          <Icon name="user" />
-          Moj nalog
-          <Icon name="arrow" />
-        </Link>
+        {/* Back to the personal account is a switch, never /nalog of the administration. */}
+        <AccountSwitch currentId={initial.id} buttonClassName={styles.accountLink} />
       </aside>
       <section id="admin-content" className={styles.content} data-design="admin-panel">
         <header className={styles.pageHeading}>
