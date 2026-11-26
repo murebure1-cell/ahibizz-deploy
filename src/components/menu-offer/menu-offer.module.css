@@ -1,0 +1,206 @@
+/* Jelovnik and Porijeklo mesa, as drawn on the Djelatnost board. */
+.menu h2,
+.meat h2,
+.block h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.menu,
+.meat {
+  padding: 0 4px;
+}
+.menu ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.menu li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--ui-border);
+  font-size: 16px;
+  line-height: 22px;
+}
+.menu li:last-child {
+  border-bottom: 0;
+}
+.menu li strong {
+  flex: none;
+  font-weight: 800;
+}
+.more summary {
+  padding: 10px 0 0;
+  color: var(--ui-accent-text);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+.more summary::-webkit-details-marker {
+  display: none;
+}
+.more[open] summary {
+  display: none;
+}
+.meatCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 8px;
+  padding: 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: var(--ui-surface);
+}
+.source {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.source span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.source small {
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.source strong {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 800;
+}
+.source em {
+  flex: none;
+  padding: 4px 11px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  color: var(--ui-muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+.meatCard p {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+/* The owner's editor. */
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 8px 20px 32px;
+}
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hint {
+  margin: 0 0 4px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.itemRow {
+  display: flex;
+  gap: 8px;
+}
+.itemRow input {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 14px;
+  background: var(--ui-glass);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 16px;
+}
+.itemRow input.price {
+  flex: none;
+  width: 86px;
+}
+.itemRow input.kind {
+  flex: 0 0 40%;
+}
+.remove {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--ui-muted);
+  cursor: pointer;
+}
+.remove svg,
+.add svg {
+  width: 18px;
+  height: 18px;
+}
+.add {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ui-accent-text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.save {
+  min-height: 52px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.save:disabled {
+  opacity: 0.6;
+}
+.ok,
+.error {
+  margin: 0;
+  font-size: 14px;
+}
+.ok {
+  color: var(--ui-success);
+}
+.error {
+  color: var(--ui-danger);
+}
+/* Rows never grow past the screen: inputs share the width that is left. */
+.editor,
+.block,
+.itemRow {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.itemRow input {
+  width: 0;
+  box-sizing: border-box;
+}

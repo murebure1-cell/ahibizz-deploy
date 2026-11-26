@@ -9,6 +9,7 @@ import {
 } from "../../src/server/auth/administration.ts";
 import { readCurrentAuthUser } from "../../src/server/auth/index.ts";
 import { createAuthHttpHandler } from "../../src/server/auth-http.ts";
+import { readPublicMenu, saveOwnMenu } from "../../src/server/business-menu.ts";
 import { recordView, viewTarget } from "../../src/server/views.ts";
 
 /**
@@ -238,5 +239,33 @@ export async function testAdministration(t, { auth, pool, owner, member, create,
       ])
     ).rows[0];
     assert.equal(row.n, 2);
+  });
+
+  await t.test("only the business owner writes its menu, guarded by version", async () => {
+    const business = (
+      await pool.query(
+        "SELECT id, status FROM directory_business WHERE owner_user_id=$1 AND deleted_at IS NULL AND status<>'archived' LIMIT 1",
+        [member.user.id],
+      )
+    ).rows[0];
+    if (!business) return;
+    const input = {
+      items: [{ name: "Begova čorba", priceCents: 700 }],
+      meat: [{ kind: "Piletina", supplier: "Mesnica" }],
+      expectedVersion: 0,
+    };
+    await assert.rejects(
+      () => saveOwnMenu(auth, pool, owner.headers, business.id, input),
+      (error) => error.status === 404,
+    );
+    const saved = await saveOwnMenu(auth, pool, member.headers, business.id, input);
+    assert.equal(saved.version, 1);
+    await assert.rejects(
+      () => saveOwnMenu(auth, pool, member.headers, business.id, input),
+      (error) => error.status === 409,
+    );
+    const shown = await readPublicMenu(pool, business.id);
+    if (business.status === "published") assert.deepEqual(shown.items, input.items);
+    else assert.deepEqual(shown.items, []);
   });
 }
