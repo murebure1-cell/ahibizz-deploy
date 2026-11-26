@@ -42,6 +42,8 @@ export type DirectoryBusiness = BusinessFields & {
   verified: boolean;
   featured: boolean;
   localFeatured?: boolean;
+  /** The owner's paid package, shown as a mark on the card; null for Basic. */
+  ownerPackage?: "startup" | "business" | null;
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;

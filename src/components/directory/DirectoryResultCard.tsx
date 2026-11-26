@@ -50,6 +50,7 @@ export function DirectoryResultCard({
       className={styles.card}
       data-design="directory-card"
       data-compact={compact || undefined}
+      data-package={business.package}
     >
       <div className={styles.media}>
         <div className={styles.favorite}>
@@ -102,6 +103,12 @@ export function DirectoryResultCard({
             </Link>
             {business.verified && <VerificationBadge kind="business" />}
           </h2>
+          {business.package && (
+            <span className={styles.packageMark} data-package={business.package}>
+              {t("Paket")}{" "}
+              <strong>{business.package === "business" ? "Business" : "Startup"}</strong>
+            </span>
+          )}
           {hasLocation && (
             <p className={styles.location}>
               <Icon name="pin" />

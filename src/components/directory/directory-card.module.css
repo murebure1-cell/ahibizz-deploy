@@ -278,3 +278,47 @@
 .cover:focus-visible {
   outline-offset: -4px;
 }
+
+/*
+ * The owner's paid package, as drawn (ProfilPaketi): Startup an accent rim, Business a dark card
+ * with the word Business in gold. A package never looks like the verification seal.
+ */
+.card[data-package="startup"] {
+  border: 1.5px solid var(--ui-accent-border);
+}
+.card[data-package="business"] {
+  --ui-text: var(--ui-on-ink);
+  --ui-muted: var(--ui-on-ink-muted);
+  --ui-text-secondary: var(--ui-on-ink-muted);
+  --ui-border: var(--ui-ink-line);
+  --ui-surface: var(--ui-ink);
+  --ui-surface-soft: var(--ui-ink-raised);
+  border-color: color-mix(in srgb, var(--ui-gold) 45%, transparent);
+  background: var(--ui-ink);
+  color: var(--ui-on-ink);
+  box-shadow: 0 10px 30px -18px color-mix(in srgb, var(--ui-gold) 45%, transparent);
+}
+.packageMark {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 3px 11px;
+  border: 1px solid var(--ui-accent-border);
+  border-radius: 999px;
+  color: var(--ui-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+.packageMark strong {
+  color: var(--ui-accent-text);
+  font-weight: 800;
+}
+.packageMark[data-package="business"] {
+  border-color: color-mix(in srgb, var(--ui-gold) 45%, transparent);
+  color: var(--ui-on-ink-muted);
+}
+.packageMark[data-package="business"] strong {
+  color: var(--ui-gold);
+}

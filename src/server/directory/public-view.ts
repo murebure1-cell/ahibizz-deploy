@@ -1,4 +1,8 @@
-import { type PublicBusinessView, publicBusinessImages } from "../../lib/public-business";
+import {
+  type PublicBusinessView,
+  paidPackage,
+  publicBusinessImages,
+} from "../../lib/public-business";
 import type { DirectoryCategory, PublicDirectoryBusiness } from "./types";
 
 export function publicBusinessView(
@@ -22,6 +26,7 @@ export function publicBusinessView(
     verified: business.verified,
     featured: business.featured === true,
     localFeatured: business.localFeatured === true,
+    ...(paidPackage(business.ownerPackage) ? { package: paidPackage(business.ownerPackage) } : {}),
     details: business.details ?? null,
     reviews: business.reviews ?? { count: 0, sum: 0 },
     ...publicBusinessImages(business.id, business.media),
