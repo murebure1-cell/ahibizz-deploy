@@ -33,6 +33,13 @@ type WorkspaceProps = {
   onProfileChanged?: (profile: PersonalProfile) => void;
   onAccessDenied?: () => void;
   onBusinesses?: () => void;
+  /**
+   * "Moj profil" itself is the account's start (AccountSummary); this pane only edits. The old
+   * profile card is not shown, so the person never sees two profiles.
+   */
+  editOnly?: boolean;
+  /** Leaving the editor in edit-only mode (Odustani). */
+  onDone?: () => void;
 };
 
 export function PersonalProfileWorkspace(props: WorkspaceProps) {
@@ -68,6 +75,8 @@ function ProfileWorkspace({
   onProfileChanged,
   onAccessDenied,
   onBusinesses,
+  editOnly = false,
+  onDone,
 }: WorkspaceProps) {
   const t = useT();
   const [profile, setProfile] = useState<PersonalProfile | null>(null),
@@ -356,8 +365,9 @@ function ProfileWorkspace({
           {t("Otvaram profil…")}
         </p>
       )}
+      {profile && editOnly && visibility && visibilityBox()}
       {profile &&
-        (editing ? (
+        (editing || editOnly ? (
           <PersonalProfileEditor
             profile={profile}
             busy={busy || blocked}
@@ -365,6 +375,7 @@ function ProfileWorkspace({
             onCancel={() => {
               setEditing(false);
               setError("");
+              if (editOnly) onDone?.();
             }}
             onUploadPhoto={(file) => upload("photo", file)}
             onUploadCover={(file) => upload("cover", file)}
@@ -386,41 +397,43 @@ function ProfileWorkspace({
             onBusinesses={onBusinesses}
           />
         ))}
-      {profile && visibility && !editing && (
-        <div className={styles.visibility}>
-          <div>
-            <h2>{t("Vidljivost profila")}</h2>
-            <p>
-              {visibility.isPublic
-                ? t("Tvoj profil se može pronaći među ljudima.")
-                : t("Profil vidiš samo ti.")}
-            </p>
-          </div>
-          <button
-            type="button"
-            aria-label={t("Javni profil")}
-            aria-pressed={visibility.isPublic}
-            aria-description={
-              pendingVisibility.current && !busy
-                ? t("Ponovi potvrdu prethodne promjene.")
-                : undefined
-            }
-            disabled={busy || (blocked && !pendingVisibility.current)}
-            onClick={() => void changeVisibility()}
-          >
-            <span className={styles.visibilitySwitch} aria-hidden="true" />
-            <span>
-              Javni profil
-              {pendingVisibility.current && !busy && <small>{t("Ponovi potvrdu")}</small>}
-            </span>
-          </button>
-          {visibility.isPublic && (
-            <Link href={publicHref?.(profile.id) ?? `/ljudi/${encodeURIComponent(profile.id)}`}>
-              {t("Pogledaj javni profil")}
-            </Link>
-          )}
-        </div>
-      )}
+      {profile && visibility && !editing && !editOnly && visibilityBox()}
     </section>
   );
+  function visibilityBox() {
+    if (!profile || !visibility) return null;
+    return (
+      <div className={styles.visibility}>
+        <div>
+          <h2>{t("Vidljivost profila")}</h2>
+          <p>
+            {visibility.isPublic
+              ? t("Tvoj profil se može pronaći među ljudima.")
+              : t("Profil vidiš samo ti.")}
+          </p>
+        </div>
+        <button
+          type="button"
+          aria-label={t("Javni profil")}
+          aria-pressed={visibility.isPublic}
+          aria-description={
+            pendingVisibility.current && !busy ? t("Ponovi potvrdu prethodne promjene.") : undefined
+          }
+          disabled={busy || (blocked && !pendingVisibility.current)}
+          onClick={() => void changeVisibility()}
+        >
+          <span className={styles.visibilitySwitch} aria-hidden="true" />
+          <span>
+            Javni profil
+            {pendingVisibility.current && !busy && <small>{t("Ponovi potvrdu")}</small>}
+          </span>
+        </button>
+        {visibility.isPublic && (
+          <Link href={publicHref?.(profile.id) ?? `/ljudi/${encodeURIComponent(profile.id)}`}>
+            {t("Pogledaj javni profil")}
+          </Link>
+        )}
+      </div>
+    );
+  }
 }
