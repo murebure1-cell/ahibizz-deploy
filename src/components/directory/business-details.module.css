@@ -95,209 +95,405 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* The open status as a fact that leads somewhere: a press opens the week. */
+.hoursButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.hoursButton > svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ui-muted);
+}
+.hoursButton:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+/* The week as drawn: whether it is open now, then seven days with today marked. */
 .hours {
-  min-width: 0;
-}
-.hoursHeader {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
+  min-width: 0;
+  flex-direction: column;
   gap: 10px;
-  margin-bottom: 15px;
 }
-/* On a card the pill is not over a photo, so it takes the card's own quiet surface. */
-.hoursHeader .openStatus {
-  border-color: var(--ui-border);
-  background: var(--ui-surface-soft);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-.hoursHeader small {
-  color: var(--ui-text-secondary);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-.hours dl {
-  margin: 0;
-}
-.hours dl > div {
-  display: grid;
-  grid-template-columns: minmax(90px, 1fr) minmax(0, 1.6fr);
-  gap: 12px;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--ui-border);
-  font-size: 14px;
-  line-height: 1.7;
-}
-.hours dl > div:last-child {
-  border-bottom: 0;
-}
-.hours dt {
-  font-weight: 600;
-}
-.hours dd {
-  margin: 0;
-  text-align: right;
-  color: var(--ui-text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-.editor {
-  display: grid;
-  gap: 20px;
-  width: 100%;
-}
-.editorHeader {
+.hoursNow {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  justify-content: space-between;
-}
-.editorHeader h2 {
+  align-items: center;
+  gap: 2px 8px;
   margin: 0;
-  font-size: 23px;
-  letter-spacing: -0.7px;
-}
-.editorHeader p {
-  margin: 5px 0 0;
-  color: var(--ui-text-secondary);
+  color: var(--ui-muted);
   font-size: 14px;
+  line-height: 20px;
 }
-.panel {
-  margin: 0;
-  min-width: 0;
-  padding: 22px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-xl);
-  background: var(--ui-surface);
-  box-shadow: 0 8px 28px #0e121806;
-}
-.panel legend {
+.hoursNow strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-weight: 700;
-  padding: 0 6px;
 }
-.switch,
-.amenityChoice {
+.hoursNow[data-open="true"] strong {
+  color: var(--ui-accent-text);
+}
+.hoursNow .openDot {
+  background: currentColor;
+}
+.hoursLock {
+  width: 14px;
+  height: 14px;
+}
+.hoursWeek {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hoursDay {
   display: flex;
   align-items: center;
-  gap: 9px;
-  font-size: 14px;
-  font-weight: 600;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 12px;
+  border-radius: 14px;
+  font-size: 15px;
+  line-height: 20px;
 }
-.switch input,
-.amenityChoice input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--ui-accent-text);
-}
-.timezone {
-  display: grid;
-  gap: 6px;
-  max-width: 320px;
-  margin: 18px 0;
-  font-size: 13px;
-  font-weight: 600;
-}
-.timezone input,
-.window input {
-  width: 100%;
+.hoursDayName {
+  flex: 1;
   min-width: 0;
-  min-height: 42px;
-  padding: 9px 10px;
+  font-weight: 600;
+}
+.hoursDayTimes {
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+.hoursDay[data-today] {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+  font-weight: 800;
+}
+.hoursDay[data-today] :is(.hoursDayName, .hoursDayTimes) {
+  color: inherit;
+  font-weight: inherit;
+}
+.hoursToday {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 16px;
+}
+.hoursZone {
+  margin: 0;
+  padding: 0 12px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+/*
+ * The owner's "Radno vrijeme" as drawn: a bar with the way back, what the page will say now,
+ * a card with a row for each day (times and a switch), then the pause, the zone and what the
+ * place offers, and one button that saves it all.
+ */
+.editor {
+  --hairline: color-mix(in srgb, var(--ui-text) 16%, transparent);
+  display: flex;
+  width: min(560px, 100%);
+  flex-direction: column;
+  gap: 12px;
+}
+.editorBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.editorBar h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.editorBack {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-sm);
+  border-radius: 50%;
   background: var(--ui-surface);
   color: var(--ui-text);
-  font: inherit;
+  cursor: pointer;
+  transition: scale 160ms var(--ease-out);
 }
-.hint {
-  color: var(--ui-text-secondary);
-  font-size: 13px;
-  line-height: 1.6;
+.editorBack:active {
+  scale: 0.94;
 }
-.week {
-  display: grid;
+.editorBack svg {
+  width: 20px;
+  height: 20px;
+  transform: rotate(180deg);
 }
-.day {
-  display: grid;
-  grid-template-columns: 112px minmax(0, 1fr);
-  align-items: start;
-  gap: 16px;
-  padding: 16px 0;
-  border-top: 1px solid var(--ui-border);
-}
-.day > strong {
-  padding-top: 10px;
-  font-size: 13px;
-}
-.dayBody {
-  display: grid;
-  gap: 9px;
-}
-.dayBody > small {
-  padding: 10px 0;
-  color: var(--ui-text-secondary);
-}
-.window {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 10px minmax(0, 1fr) 38px;
-  align-items: center;
-  gap: 6px;
-  max-width: 340px;
-}
-.window input {
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
-}
-.window button {
-  min-height: 38px;
-  width: 38px;
-  padding: 8px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-sm);
-  background: var(--ui-surface-soft);
-  color: var(--ui-text-secondary);
-}
-.window button svg {
-  width: 17px;
-  height: 17px;
-}
-.addWindow {
-  justify-self: start;
-  border: 0;
-  background: transparent;
-  padding: 7px 0;
-  color: var(--ui-accent-text);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-}
-.choices {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-}
-.actions {
+.editorNow {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0;
+  padding: 0 4px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
 }
-@media (max-width: 560px) {
-  .panel {
-    padding: 18px 15px;
-  }
-  .day {
-    grid-template-columns: 1fr;
-    gap: 5px;
-  }
-  .day > strong {
-    padding-top: 0;
-  }
-  .window {
-    max-width: none;
-  }
-  .choices {
-    grid-template-columns: 1fr;
-  }
+.editorCard {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+}
+.editorCard > :not(legend) ~ :not(legend) {
+  border-top: 1px solid var(--ui-border);
+}
+.editorRow,
+.day {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 8px 14px;
+  box-sizing: border-box;
+}
+.editorRow > svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--ui-muted);
+}
+.editorRowText {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.editorRowTitle {
+  color: var(--ui-text);
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+}
+/* A day is its name, its times and its switch in one line; a day with a pause puts its two
+   stretches under the name, because three of them do not fit beside it on a phone. */
+.day {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "name times switch";
+  gap: 8px;
+}
+.day[data-many] {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name switch"
+    "times times";
+}
+.day > :last-child {
+  grid-area: switch;
+}
+.dayName {
+  grid-area: name;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.dayClosed {
+  grid-area: times;
+  color: var(--ui-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+.daySpans {
+  display: flex;
+  grid-area: times;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.day[data-many] .daySpans {
+  align-items: flex-start;
+  padding-bottom: 4px;
+}
+.daySpan {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-muted);
+}
+/* A time as drawn: a small outlined field. The browser's own picker opens from it. */
+.time {
+  width: 64px;
+  height: 38px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.time::-webkit-calendar-picker-indicator {
+  display: none;
+}
+.time:focus-visible,
+.zone:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+.spanRemove {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ui-muted);
+  cursor: pointer;
+}
+.spanRemove svg {
+  width: 16px;
+  height: 16px;
+}
+.editorMinor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  border: 1px solid var(--hairline);
+  border-radius: var(--ui-radius-md);
+  background: none;
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: scale 160ms var(--ease-out);
+}
+.editorMinor:active {
+  scale: 0.98;
+}
+.editorMinor svg {
+  width: 18px;
+  height: 18px;
+}
+.editorHint {
+  margin: 0;
+  padding: 0 4px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.editorGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 6px;
+}
+.editorGroup h3 {
+  margin: 0;
+  padding: 0 4px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+.zone {
+  width: min(220px, 100%);
+  height: 38px;
+  margin-top: 4px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 14px;
+}
+.editorSave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 54px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: scale 160ms var(--ease-out);
+}
+.editorSave:active {
+  scale: 0.98;
+}
+.editor :is(.editorSave, .editorMinor, .editorBack):disabled,
+.editorCard:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Signs that point along the reading direction turn round with it. */
+:global([dir="rtl"]) .hoursButton > svg {
+  transform: scaleX(-1);
+}
+:global([dir="rtl"]) .editorBack svg {
+  transform: none;
 }

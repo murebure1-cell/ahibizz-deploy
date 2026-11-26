@@ -243,6 +243,16 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
   je Googleov. Bez dozvole za lokaciju, ili kad Google ne vrati putanju, ostaju poruka, zračna
   udaljenost i „Otvori u Google Maps”. Pregled djelatnosti koja još nije javna i dalje vodi u
   Google Maps. Šta se pritom šalje Googleu piše u Privatnosti **[novo]**.
+- **Radno vrijeme [urađeno 26. 11. 2026.]:** po crtežima Radno vrijeme i „Radno vrijeme,
+  prikaz”. Na stranici djelatnosti stanje („Otvoreno do 22:00”) otvara list odozdo: je li
+  otvoreno i kad se to mijenja („zatvara se u…”, „otvara se u…”), pa sedam dana s označenim
+  današnjim. Odjeljak s radnim vremenom u samoj stranici više ne postoji. Vlasnik uređuje sedmicu
+  u redovima: dan, od–do i prekidač; „Kopiraj ponedjeljak na radne dane”; „Pauza u toku dana”
+  dijeli sve otvorene dane u koje stane, a pojedini dan se potom može posebno dotjerati;
+  vremenska zona i sadržaji (Wi-Fi, parking i ostalo) su na istom ekranu. Rad poslije ponoći
+  upisuje se kao jedno vrijeme (18:00–02:00) i tako se i prikazuje; u bazi ostaje podijeljen po
+  danima kao i dosad, pa migracije nema. S crteža još nema: neradni dani (praznici), jer taj
+  podatak ne postoji, a tiče se i termina **[novo]**.
 - **Poruke [urađeno 25. 11. 2026.]:** po crtežima Poruke i Razgovor. Lista: naslov s brojem
   nepročitanih razgovora, pretraga, tri oznake (Lično, Moje djelatnosti, Nepročitani) i razgovori
   u jednoj kartici; vrijeme je sat za danas, zatim „jučer”, dan u sedmici, pa datum. Razgovor:

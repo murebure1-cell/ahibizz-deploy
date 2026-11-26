@@ -20,7 +20,7 @@ import { Icon } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
 import { BusinessReviews } from "../reviews/BusinessReviews";
 import { VerificationBadge } from "../VerificationBadge";
-import { BusinessAmenities, BusinessHours, BusinessOpenStatus } from "./BusinessDetails";
+import { BusinessAmenities, BusinessHoursSheet } from "./BusinessDetails";
 import { BusinessGallery } from "./BusinessGallery";
 import { BusinessLogo } from "./BusinessLogo";
 import { BusinessRating } from "./BusinessRating";
@@ -170,11 +170,7 @@ export function PublicBusinessProfile({
           </div>
         </div>
         <div className={styles.facts}>
-          {business.details?.hours && (
-            <a href="#business-hours" aria-label={t("Radno vrijeme")}>
-              <BusinessOpenStatus details={business.details} inline />
-            </a>
-          )}
+          {business.details?.hours && <BusinessHoursSheet details={business.details} />}
           {Boolean(business.reviews?.count) &&
             (preview ? (
               <span className={styles.reviewLink}>
@@ -246,7 +242,6 @@ export function PublicBusinessProfile({
 
       <nav className={styles.sectionNavigation} aria-label={t("Na ovoj stranici")}>
         {hasAbout && <a href="#business-about">{t("O djelatnosti")}</a>}
-        {business.details?.hours && <a href="#business-hours">{t("Radno vrijeme")}</a>}
         {offerLinks}
         {hasAppointments && (
           <a className={styles.appointmentsLink} href="#business-appointments">
@@ -276,19 +271,6 @@ export function PublicBusinessProfile({
                 </p>
               )}
               <BusinessAmenities details={business.details} />
-            </section>
-          )}
-
-          {business.details?.hours && (
-            <section
-              className={styles.section}
-              id="business-hours"
-              aria-labelledby="business-hours-heading"
-            >
-              <div className={styles.sectionHeading}>
-                <h2 id="business-hours-heading">{t("Radno vrijeme")}</h2>
-              </div>
-              <BusinessHours details={business.details} />
             </section>
           )}
 
