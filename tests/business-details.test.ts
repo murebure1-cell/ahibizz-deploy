@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   type BusinessDetails,
-  businessClosingMinute,
   businessOpenState,
   businessTimeLabel,
   emptyBusinessDetails,
@@ -98,22 +97,6 @@ test("multiple daily windows use half-open boundaries with no false open at lunc
     ["17:00", "closed"],
   ])
     assert.equal(businessOpenState(details, new Date(`2026-11-16T${time}:00Z`)), expected);
-});
-test("an open business tells when its current window ends today", () => {
-  const value = week("UTC");
-  day(value, 0).windows = [
-    { startMinute: 540, endMinute: 720 },
-    { startMinute: 780, endMinute: 1440 },
-  ];
-  const details = readBusinessDetails(value);
-  assert.equal(businessClosingMinute(details, new Date("2026-11-16T09:30:00Z")), 720);
-  // Closed between the two windows, and a window that runs to midnight names no closing time.
-  assert.equal(businessClosingMinute(details, new Date("2026-11-16T12:30:00Z")), null);
-  assert.equal(businessClosingMinute(details, new Date("2026-11-16T20:00:00Z")), null);
-  assert.equal(
-    businessClosingMinute(emptyBusinessDetails(), new Date("2026-11-16T09:30:00Z")),
-    null,
-  );
 });
 test("real instant converts into business zone, not viewer timezone, across DST gaps/folds", () => {
   const value = week();

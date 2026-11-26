@@ -203,8 +203,16 @@ export function mapPlaces(pins: MapPin[]): MapPlace[] {
 
 export type MapBounds = { south: number; west: number; north: number; east: number };
 /** The box around a group of points. A single point gets a small box so the map can frame it. */
+/** Degrees a country's frame keeps on each side of businesses that all stand in one place. */
+export const countryFrameMargin = 1.2;
+
+/**
+ * The box round points, for framing them on a map. A box narrower or lower than `margin`
+ * degrees gets that much added on both sides, so one point is never framed as a dot.
+ */
 export function pointBounds(
   points: readonly { latitude: number; longitude: number }[],
+  margin = 0.004,
 ): MapBounds | null {
   if (!points.length) return null;
   let south = 90,
@@ -217,7 +225,6 @@ export function pointBounds(
     west = Math.min(west, point.longitude);
     east = Math.max(east, point.longitude);
   }
-  const margin = 0.004;
   if (north - south < margin) {
     south -= margin;
     north += margin;

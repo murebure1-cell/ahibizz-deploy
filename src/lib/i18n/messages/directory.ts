@@ -9,6 +9,18 @@ export const directory: Messages = {
     "İşletmeleri keşfet",
   ],
   "Otvoreno sada": ["Open now", "Jetzt geöffnet", "مفتوح الآن", "Şu an açık"],
+  "zatvara se u {time}": [
+    "closes at {time}",
+    "schließt um {time}",
+    "يغلق الساعة {time}",
+    "{time} itibarıyla kapanır",
+  ],
+  "otvara se u {time}": [
+    "opens at {time}",
+    "öffnet um {time}",
+    "يفتح الساعة {time}",
+    "{time} itibarıyla açılır",
+  ],
   "Istaknuto u kategoriji": [
     "Featured in category",
     "In der Kategorie hervorgehoben",

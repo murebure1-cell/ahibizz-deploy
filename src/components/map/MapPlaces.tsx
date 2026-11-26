@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   cityPins,
+  countryFrameMargin,
   countryKey,
   countryPins,
   distanceLabel,
@@ -192,7 +193,8 @@ export function MapPlaces({
       // Google refuses a lower limit above the upper one, even for a moment: widen first, then narrow.
       map.setOptions({ minZoom: 3 });
       map.setOptions({ maxZoom: streetsFromZoom - 1 });
-      const bounds = pointBounds(inCountry);
+      // One business, or one city, still shows the country round it and not a patch of land.
+      const bounds = pointBounds(inCountry, countryFrameMargin);
       if (bounds) map.fitBounds(bounds, room("country"));
       return;
     }

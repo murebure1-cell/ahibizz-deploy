@@ -1,0 +1,62 @@
+/* The drawn switch: a 48 by 28 track, a 22 px knob that slides and takes the accent's colours. */
+.switch {
+  --knob: var(--ui-surface);
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 48px;
+  height: 28px;
+}
+:global(:root[data-theme="dark"]) .switch {
+  --knob: var(--ui-text);
+}
+.switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.switch span {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-text) 18%, transparent);
+  pointer-events: none;
+  transition: background-color 150ms ease;
+}
+.switch span::after {
+  position: absolute;
+  top: 3px;
+  inset-inline-start: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--knob);
+  content: "";
+  transition:
+    translate 200ms var(--ease-out),
+    background-color 150ms ease;
+}
+.switch input:checked + span {
+  background: var(--ui-accent);
+}
+.switch input:checked + span::after {
+  background: var(--ui-on-accent);
+  translate: 20px 0;
+}
+:global([dir="rtl"]) .switch input:checked + span::after {
+  translate: -20px 0;
+}
+.switch input:focus-visible + span {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+.switch input:disabled {
+  cursor: default;
+}
+.switch input:disabled + span {
+  opacity: 0.55;
+}
