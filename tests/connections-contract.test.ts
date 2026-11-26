@@ -71,7 +71,6 @@ test("public person accepts only bounded primitive fields, known status and posi
     { ...person, name: "x".repeat(101) },
     { ...person, verified: "true" },
     { ...person, verified: true, platformAdministrator: true },
-    { ...person, platformFounder: true },
     { ...person, platformFounder: 1 },
     { ...person, city: "" },
     { ...person, city: "x".repeat(101) },

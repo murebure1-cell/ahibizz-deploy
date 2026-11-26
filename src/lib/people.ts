@@ -77,8 +77,8 @@ export function readProfileBadges(
   for (const flag of [row.verified, row.platformFounder, row.platformAdministrator]) {
     if (flag !== undefined && typeof flag !== "boolean") throw new Error(errorCode);
   }
-  if ((row.platformFounder && !row.verified) || (row.platformAdministrator && !row.platformFounder))
-    throw new Error(errorCode);
+  // The founder mark is a role, not an identity check: it may stand without verification.
+  if (row.platformAdministrator && !row.platformFounder) throw new Error(errorCode);
   return {
     verified: row.verified === true,
     platformFounder: row.platformFounder === true,

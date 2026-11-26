@@ -73,6 +73,29 @@
   background: var(--ui-surface);
   overflow: hidden;
 }
+/* The founder alone: the accent with a crown, and an accent ring around his initials. */
+.avatar[data-founder] {
+  box-shadow:
+    0 0 0 3px var(--ui-surface),
+    0 0 0 5px var(--ui-accent);
+}
+.founder {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 10px;
+  border-radius: 999px;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+}
+.founder svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.2;
+}
 .role {
   color: var(--ui-muted);
   font-size: 13px;

@@ -57,7 +57,10 @@ export function appMenuGroups(
     groups.push({
       id: "admin",
       title: msg("Administracija"),
-      rows: [{ label: msg("Upravljanje platformom"), icon: "shield", href: "/administracija" }],
+      rows: [
+        { label: msg("Upravljanje platformom"), icon: "shield", href: "/administracija" },
+        { label: msg("Odvojena administracija"), icon: "swap", href: "/administracija/odvojena" },
+      ],
     });
   const help: AppMenuRow[] = [
     { label: msg("Pomoć i česta pitanja"), icon: "help", href: "/pomoc" },

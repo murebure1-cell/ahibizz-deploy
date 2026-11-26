@@ -341,17 +341,22 @@ async function beginUpload(
     return prior.status;
   }
   const limits = (
-    await client.query<{ overall: number; listing: number; recent: number }>(
+    await client.query<{ overall: number; listing: number; recent: number; free: boolean }>(
       `SELECT count(*) FILTER (WHERE b.owner_user_id=$1 AND b.deleted_at IS NULL AND (r.status IN ('uploading','pending') OR (r.status='published' AND ${live})))::int AS overall,
         count(*) FILTER (WHERE r.business_id=$2 AND (r.status IN ('uploading','pending') OR (r.status='published' AND ${live})))::int AS listing,
-        count(*) FILTER (WHERE r.created_at>clock_timestamp()-interval '24 hours')::int AS recent
+        count(*) FILTER (WHERE r.created_at>clock_timestamp()-interval '24 hours')::int AS recent,
+        COALESCE((SELECT u.role='owner' OR u.founder FROM auth_user u WHERE u.id=$1),false) AS free
        ${fromReels} WHERE r.submitted_by=$1`,
       [actorId, input.businessId],
     )
   ).rows[0];
-  if (!limits || limits.overall >= reelAccountLimit || limits.listing >= reelBusinessLimit)
-    throw new AccountAccessError(409, "REEL_LIMIT");
-  if (limits.recent >= 24) throw new AccountAccessError(429, "REEL_DAILY_LIMIT");
+  if (!limits) throw new AccountAccessError(409, "REEL_LIMIT");
+  // The founder and the administration publish as many reels as they want, any day.
+  if (!limits.free) {
+    if (limits.overall >= reelAccountLimit || limits.listing >= reelBusinessLimit)
+      throw new AccountAccessError(409, "REEL_LIMIT");
+    if (limits.recent >= 24) throw new AccountAccessError(429, "REEL_DAILY_LIMIT");
+  }
   const inserted = await client.query(
     `INSERT INTO business_reel (id,business_id,submitted_by,title,caption,source_size,has_poster)
        VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING`,

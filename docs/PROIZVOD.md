@@ -362,6 +362,20 @@ potkategorije; tačan spisak ide vlasniku na potvrdu prije unosa.
 - Ekrani koje svaka aplikacija mora imati, a kod nas su nedovršeni: prvi koraci nakon prve prijave,
   prazna stanja, greška, bez mreže, učitavanje.
 
+## 9a. Odvojena administracija i osnivač
+
+Odluka vlasnika od 26. 11. 2026:
+
+- **Administracija ima svoj nalog**, „AhiBizz administracija“ (administracija@ahibizz.com; na prijavi se može upisati i `administrator`). Taj nalog odobrava naloge, objavljuje i odlučuje.
+- **Lični nalog osnivača je običan nalog** s oznakom „Osnivač AhiBizza“ (krunica, akcent oko fotografije na javnom profilu). Oznaka je uloga, a ne verifikacija.
+- **Bez ograničenja:** osnivač drži djelatnosti i objavljuje reelse koliko hoće. Administracija isto objavljuje reelse koliko hoće, u jednom danu također.
+- **Kako se odvaja** (Meni → Odvojena administracija):
+  1. Osnivač, dok još ima ulogu vlasnika, napravi nalog.
+  2. Lozinku bira sam, na jednokratnom linku koji vrijedi sat vremena. Lozinku nikad ne pravi ni ne vidi niko drugi.
+  3. Doda taj nalog na uređaj (Prebaci nalog → Dodaj nalog).
+  4. Kao administracija pritisne „Završi odvajanje“.
+- Svaki korak ostaje zabilježen (auth_account_audit). Migracija je 0059.
+
 ## 10. Redoslijed gradnje
 
 Svaka faza završava nečim što se vidi i može probati.
