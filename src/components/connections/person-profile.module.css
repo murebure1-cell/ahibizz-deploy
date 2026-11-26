@@ -247,3 +247,23 @@
     transition: none;
   }
 }
+/* Edge to edge, as drawn: no card around the profile and no strip beside it on a phone. */
+article.page {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.screen {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0 0 120px;
+}
+@media (min-width: 700px) {
+  .screen {
+    padding-top: 24px;
+  }
+  .page .cover {
+    border-radius: 24px;
+  }
+}

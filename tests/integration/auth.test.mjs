@@ -1204,6 +1204,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             package: "basic",
             businessLimit: 1,
             promotedBusinesses: 0,
+            friends: 0,
             nextAppointment: null,
             unreadThreads: 0,
           });

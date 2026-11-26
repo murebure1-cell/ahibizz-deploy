@@ -7,12 +7,12 @@ import { type AccountOverviewFacts, readOverview } from "../../lib/account-overv
 import type { AccountSection } from "../../lib/account-return";
 import { accountShortcuts } from "../../lib/account-shortcuts";
 import { menuPath } from "../../lib/app-menu";
-import { localDate } from "../../lib/display-date";
 import { msg } from "../../lib/i18n/translate";
 import { packageFullText, packageName } from "../../lib/packages";
 import { type PersonalProfile, profileImageUrl } from "../../lib/people";
 import { readPersonalProfile } from "../../lib/people-client";
-import { Icon } from "../Icon";
+import look from "../connections/person-profile.module.css";
+import { Icon, type IconName } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
 import { personalProfileImage, profileInitials } from "../people/PersonalProfileCard";
 import { PlatformBadges } from "../people/PlatformBadges";
@@ -160,10 +160,20 @@ export function AccountSummary({
   error?: ReactNode;
   children?: ReactNode;
 }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const businessesHeading = useId();
   const displayName = profile?.name ?? name;
   const photo = profile ? personalProfileImage(profileImageUrl(profile, "photo")) : null;
+  const cover = profile ? personalProfileImage(profileImageUrl(profile, "cover")) : null;
+  // Earned marks, as on the drawn profile: the founder's two, verification, keeping a business.
+  const medals: { icon: IconName; label: string }[] = [];
+  if (profile?.platformFounder)
+    medals.push(
+      { icon: "crown", label: msg("Osnivač") },
+      { icon: "star", label: msg("Prvi član") },
+    );
+  if (profile?.verified) medals.push({ icon: "shield", label: msg("Verifikovan") });
+  if (facts && facts.businesses > 0) medals.push({ icon: "shop", label: msg("Vlasnik") });
   const full =
     facts !== null && facts.businessLimit !== null && facts.businesses >= facts.businessLimit;
   const unread = facts?.unreadThreads ?? 0;
@@ -175,42 +185,108 @@ export function AccountSummary({
           <Icon name="menu" />
         </Link>
       </div>
-      <header className={styles.head} data-design="account-summary">
-        <span className={styles.avatar}>
-          {photo ? (
-            <Image src={photo} alt="" width={176} height={176} unoptimized />
-          ) : (
-            <span aria-hidden="true">{profileInitials(displayName)}</span>
-          )}
-        </span>
-        <h1>
-          <bdi>{displayName}</bdi>
-          {profile?.verified && <VerificationBadge kind="person" />}
-        </h1>
-        <div className={styles.tags}>
-          {facts?.package && (
-            <span className={styles.package} data-package={facts.package}>
-              {t("Paket")} <strong>{packageName(facts.package)}</strong>
-            </span>
-          )}
-          {profile ? (
-            <PlatformBadges
-              platformFounder={profile.platformFounder}
-              platformAdministrator={profile.platformAdministrator}
+      <header
+        className={`${look.page} ${styles.own}`}
+        data-founder={profile?.platformFounder ? "" : undefined}
+        data-design="account-summary"
+      >
+        <div className={`${look.cover} ${styles.ownCover}`}>
+          {cover && (
+            <Image
+              className={look.coverPhoto}
+              src={cover}
+              alt=""
+              width={1600}
+              height={600}
+              unoptimized
             />
-          ) : (
-            administrator && <span className={styles.package}>{t("Administrator")}</span>
+          )}
+        </div>
+        <div className={look.identity}>
+          <span className={look.portrait}>
+            {profile?.platformFounder && <span className={look.ring} aria-hidden="true" />}
+            <span className={styles.avatar}>
+              {photo ? (
+                <Image src={photo} alt="" width={224} height={224} unoptimized />
+              ) : (
+                <span aria-hidden="true">{profileInitials(displayName)}</span>
+              )}
+            </span>
+          </span>
+          <h1 className={look.name}>
+            <bdi>{displayName}</bdi>
+            {profile?.verified && <VerificationBadge kind="person" />}
+          </h1>
+          <div className={styles.tags}>
+            {facts?.package && (
+              <span className={styles.package} data-package={facts.package}>
+                {t("Paket")} <strong>{packageName(facts.package)}</strong>
+              </span>
+            )}
+            {profile ? (
+              <PlatformBadges
+                platformFounder={profile.platformFounder}
+                platformAdministrator={profile.platformAdministrator}
+              />
+            ) : (
+              administrator && <span className={styles.package}>{t("Administrator")}</span>
+            )}
+          </div>
+          {profile?.bio && (
+            <p className={look.bio} dir="auto">
+              {profile.bio}
+            </p>
           )}
         </div>
         {facts && (
-          <p className={styles.since}>
-            {t("Na AhiBizzu od")}{" "}
-            <time dateTime={facts.joinedAt}>{localDate(facts.joinedAt, locale)}</time>
-          </p>
+          <dl className={look.stats}>
+            <div>
+              <dt>{t("djelatnosti")}</dt>
+              <dd>{facts.businesses}</dd>
+            </div>
+            {facts.friends !== undefined && (
+              <div>
+                <dt>{t("prijatelja")}</dt>
+                <dd>{facts.friends}</dd>
+              </div>
+            )}
+            <div>
+              <dt>{t("član od")}</dt>
+              <dd>
+                <time dateTime={facts.joinedAt}>{new Date(facts.joinedAt).getUTCFullYear()}.</time>
+              </dd>
+            </div>
+          </dl>
         )}
-        <button type="button" className={styles.edit} onClick={() => onSection("profile")}>
-          <Icon name="user" /> {t("Uredi profil")}
-        </button>
+        <div className={look.actions}>
+          <button type="button" className={styles.outline} onClick={() => onSection("profile")}>
+            <Icon name="user" /> {t("Uredi profil")}
+          </button>
+          {facts && (
+            <Link
+              className={styles.outline}
+              href={`/ljudi/${encodeURIComponent(facts.accountId)}`}
+              prefetch={false}
+            >
+              <Icon name="eye" /> {t("Kako me drugi vide")}
+            </Link>
+          )}
+        </div>
+        {medals.length > 0 && (
+          <section className={look.section} aria-labelledby={`${businessesHeading}-medals`}>
+            <h2 id={`${businessesHeading}-medals`}>{t("Značke")}</h2>
+            <ul className={look.medals}>
+              {medals.map((medal) => (
+                <li key={medal.label}>
+                  <span aria-hidden="true">
+                    <Icon name={medal.icon} />
+                  </span>
+                  {t(medal.label)}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </header>
       {error}
       {facts?.nextAppointment && (
