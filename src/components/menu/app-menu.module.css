@@ -65,6 +65,14 @@
 .package[data-package="business"] b {
   color: var(--ui-gold);
 }
+/* "Prebaci nalog" stands alone under the account card, as one row. */
+.switch {
+  margin: 10px 20px 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  background: var(--ui-surface);
+  overflow: hidden;
+}
 .role {
   color: var(--ui-muted);
   font-size: 13px;
