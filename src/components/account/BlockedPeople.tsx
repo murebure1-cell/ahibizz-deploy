@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -9,8 +8,10 @@ import {
   blockRequestMessage,
   blocksRequest,
 } from "../../lib/account-blocks";
-import { Icon } from "../Icon";
+import { accountDate } from "../../lib/display-date";
 import { useT } from "../i18n/LocaleProvider";
+import { profileInitials } from "../people/PersonalProfileCard";
+import { Switch } from "../ui/Switch";
 import styles from "./blocks.module.css";
 
 export function BlockedPeople({ accountId, initial }: { accountId: string; initial: BlockedList }) {
@@ -61,38 +62,22 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
 
   return (
     <div className={styles.workspace} aria-busy={busy}>
-      <section className={styles.filterPanel} aria-label={t("Vidljivost u pretrazi")}>
-        <label className={styles.option}>
-          <input
-            type="checkbox"
-            checked={data.hideInSearch}
-            disabled={busy}
-            onChange={(event) => {
-              const hideInSearch = event.currentTarget.checked;
-              void update(data.page, async (signal) => {
-                await blocksRequest(accountId, "", {
-                  method: "PATCH",
-                  body: JSON.stringify({ hideInSearch }),
-                  signal,
-                });
-              });
-            }}
-          />
-          <span>
-            <strong>{t("Sakrij djelatnosti blokiranih korisnika u pretrazi")}</strong>
-            <span>{t("Važi za pretragu i prijedloge u Reelsima dok koristiš svoj nalog.")}</span>
-          </span>
-        </label>
-      </section>
       <section className={styles.listPanel} aria-label={t("Blokirani korisnici")}>
         {data.items.length > 0 ? (
           <ul className={styles.list}>
             {data.items.map((item) => (
               <li key={item.id}>
-                <span className={styles.personIcon}>
-                  <Icon name="user" />
+                <span className={styles.initials} aria-hidden="true">
+                  {profileInitials(item.name)}
                 </span>
-                <strong dir="auto">{item.name}</strong>
+                <span className={styles.who}>
+                  <strong dir="auto">{item.name}</strong>
+                  {item.blockedAt && (
+                    <small>
+                      {t("Blokiran")} {accountDate(item.blockedAt)}
+                    </small>
+                  )}
+                </span>
                 <div className={styles.actions}>
                   {confirm === item.id ? (
                     <>
@@ -132,7 +117,7 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
                       type="button"
                       disabled={busy}
                       onClick={() => setConfirm(item.id)}
-                      aria-label={`Odblokiraj ${item.name}`}
+                      aria-label={`${t("Odblokiraj")} ${item.name}`}
                     >
                       {t("Odblokiraj")}
                     </button>
@@ -153,7 +138,7 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
             >
               {t("Prethodna")}
             </button>
-            <span>Stranica {data.page}</span>
+            <span>{data.page}</span>
             <button
               type="button"
               disabled={busy || !data.hasMore}
@@ -173,9 +158,28 @@ export function BlockedPeople({ accountId, initial }: { accountId: string; initi
           </button>
         </div>
       )}
-      <Link className={styles.backLink} href="/nalog?odjeljak=postavke">
-        <Icon name="sliders" /> Postavke naloga
-      </Link>
+      <section className={styles.filterPanel} aria-label={t("Vidljivost u pretrazi")}>
+        <div className={styles.option}>
+          <span>
+            <strong>{t("Sakrij djelatnosti blokiranih korisnika u pretrazi")}</strong>
+            <span>{t("Važi za pretragu i prijedloge u Reelsima dok koristiš svoj nalog.")}</span>
+          </span>
+          <Switch
+            checked={data.hideInSearch}
+            disabled={busy}
+            label={t("Sakrij djelatnosti blokiranih korisnika u pretrazi")}
+            onChange={(hideInSearch) => {
+              void update(data.page, async (signal) => {
+                await blocksRequest(accountId, "", {
+                  method: "PATCH",
+                  body: JSON.stringify({ hideInSearch }),
+                  signal,
+                });
+              });
+            }}
+          />
+        </div>
+      </section>
     </div>
   );
 }

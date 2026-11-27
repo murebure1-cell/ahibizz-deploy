@@ -825,3 +825,240 @@
     transition: none;
   }
 }
+
+/*
+ * Friends and people as drawn (2026-11-27): chips for the lists, one card with a row per
+ * person, the answers to a request on their own line, and a message button for friends.
+ */
+.workspace {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 14px var(--rows-inset, 20px) 24px;
+}
+.workspace .heading {
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+.workspace .search {
+  margin-bottom: 16px;
+}
+.workspace .searchField {
+  min-height: 52px;
+  border-radius: 16px;
+}
+.workspace .tabs {
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  overflow-x: auto;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  scrollbar-width: none;
+}
+.workspace .tabs button {
+  flex: none;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  color: var(--ui-text);
+  font-weight: 700;
+}
+.workspace .tabs button[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--ui-text);
+  color: var(--ui-page);
+  box-shadow: none;
+}
+.workspace .connectionList,
+.workspace .grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+}
+.workspace .connectionCard,
+.workspace .personCard {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.workspace .connectionCard + .connectionCard,
+.workspace .personCard + .personCard {
+  border-top: 1px solid var(--ui-border);
+}
+.workspace .connectionCard {
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  padding: 12px 14px;
+}
+.workspace .connectionIdentity {
+  flex: 1 1 180px;
+}
+.workspace .avatar {
+  width: 44px;
+  height: 44px;
+  font-size: 14px;
+}
+.workspace .actions {
+  flex: none;
+  flex-wrap: nowrap;
+}
+.workspace .connectionCard[data-view="incoming"] .actions {
+  flex: 1 1 100%;
+}
+.workspace .connectionCard[data-view="incoming"] .actions > button {
+  flex: 1;
+}
+.workspace :where(.primary, .secondary, .quietButton, .dangerButton) {
+  min-height: 40px;
+  border-radius: 12px;
+}
+.workspace .personLink {
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 0;
+}
+.workspace .personLink:hover {
+  box-shadow: none;
+}
+.workspace .personLink > svg:last-child {
+  color: var(--ui-muted);
+}
+.workspace .location {
+  margin-top: 2px;
+}
+.workspace .personWork {
+  margin-top: 2px;
+}
+.workspace .skills {
+  margin-top: 6px;
+}
+.workspace .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 0;
+  background: none;
+  padding: 40px 12px;
+}
+.messageLink {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: var(--ui-muted);
+}
+.messageLink:hover {
+  background: var(--ui-surface-hover);
+  color: var(--ui-text);
+}
+
+/* On a phone the screen bar above already names the screen and holds the search. */
+@media (max-width: 700px) {
+  .workspace[data-in-account] > .heading {
+    display: none;
+  }
+}
+.groupTitle {
+  margin: 4px 4px -4px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}
+.workspace .connectionCard {
+  flex-direction: row;
+  align-items: center;
+}
+.workspace .connectionCard > .actions {
+  padding-left: 0;
+}
+.workspace .connectionCard[data-view="incoming"] .actions {
+  padding-left: 56px;
+}
+.workspace .connectionList + .groupTitle {
+  margin-top: 18px;
+}
+.workspace .groupTitle + .connectionList {
+  margin-top: 10px;
+}
+.workspace .connectionCard[data-view="incoming"] .actions {
+  padding-left: 0;
+}
+.workspace .avatar {
+  border: 0;
+  background: var(--ui-text);
+  color: var(--ui-page);
+  font-weight: 800;
+}
+
+/* Ljudi as drawn: a search field alone, filter chips, and a row with its own add button. */
+.workspace .search {
+  display: block;
+}
+.workspace .search .searchField {
+  width: 100%;
+}
+.personRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 14px;
+}
+.personRow > .personLink {
+  flex: 1;
+  min-width: 0;
+}
+.personRow > .personLink > .personInfo {
+  min-width: 0;
+}
+.personRow .location {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rowAdd,
+.rowSent {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+.rowAdd {
+  border: 0;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  cursor: pointer;
+  transition: scale 160ms var(--ease-out);
+}
+.rowAdd:active {
+  scale: 0.97;
+}
+.rowAdd svg {
+  width: 15px;
+  height: 15px;
+}
+.rowSent {
+  border: 1px solid var(--ui-border);
+  color: var(--ui-text);
+}
+.publicNote {
+  margin: 12px 4px 0;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}

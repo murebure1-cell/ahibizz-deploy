@@ -362,8 +362,8 @@ export function createConnectionsService({
       return transaction(pool, async (client) => {
         const rows = (
           await client.query<PublicPerson>(
-            `SELECT ${publicColumns} FROM auth_user u ${publicJoins} WHERE ${publicEligibility} AND (u.name ILIKE $1 OR p.city ILIKE $1) ORDER BY lower(u.name),u.id COLLATE "C" LIMIT $2 OFFSET $3`,
-            [pattern, pageSize + 1, (value.page - 1) * pageSize],
+            `SELECT ${publicColumns} FROM auth_user u ${publicJoins} WHERE ${publicEligibility} AND (u.name ILIKE $1 OR p.city ILIKE $1 OR array_to_string(p.skills,' ') ILIKE $1) AND ($4::text IS NULL OR p.work_status=$4) AND ($5::text IS NULL OR lower(p.city)=lower($5)) ORDER BY lower(u.name),u.id COLLATE "C" LIMIT $2 OFFSET $3`,
+            [pattern, pageSize + 1, (value.page - 1) * pageSize, value.status, value.city],
           )
         ).rows;
         return {
@@ -415,6 +415,32 @@ export function createConnectionsService({
         ).rows[0];
         if (!row) await readPublic(client, id);
         return relationship(row, actor.id, id);
+      });
+    },
+    /** The signed-in person's relationship with each of the given people (one search page). */
+    async relationships(
+      headers: Headers,
+      inputIds: string[],
+    ): Promise<Record<string, ConnectionRelationship>> {
+      const current = await session(headers);
+      const ids = [...new Set(inputIds.map(personId))].filter((id) => id !== current.userId);
+      if (ids.length === 0) return {};
+      if (ids.length > pageSize) fail(400, "INVALID_CONNECTION_INPUT");
+      return transaction(pool, async (client) => {
+        const { actor } = await authority(client, current);
+        const rows = (
+          await client.query<Pair>(
+            "SELECT * FROM people_connection WHERE (left_user_id=$1 AND right_user_id=ANY($2::text[])) OR (right_user_id=$1 AND left_user_id=ANY($2::text[]))",
+            [actor.id, ids],
+          )
+        ).rows;
+        const result: Record<string, ConnectionRelationship> = {};
+        for (const id of ids) {
+          if (id === actor.id) continue;
+          const row = rows.find((item) => otherId(item, actor.id) === id);
+          result[id] = relationship(row, actor.id, id);
+        }
+        return result;
       });
     },
     async list(headers: Headers, input: unknown): Promise<ConnectionPage> {

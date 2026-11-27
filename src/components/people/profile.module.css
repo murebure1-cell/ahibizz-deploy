@@ -679,3 +679,232 @@ textarea.input {
     transform: none;
   }
 }
+
+/*
+ * Uredi profil as drawn (2026-11-27): the cover on top with its button, the photo over its lower
+ * edge with a camera button, the fields one under another, the public switch, and a save bar.
+ */
+.editor[data-drawn] {
+  padding: 0 0 8px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.editCover {
+  position: relative;
+  height: 132px;
+  margin: 16px var(--rows-inset, 20px) 0;
+  overflow: hidden;
+  border-radius: 22px;
+  background: linear-gradient(160deg, var(--ui-accent-soft), var(--ui-page));
+}
+.editCover .defaultCover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0 16px 14px;
+}
+.editCover .defaultCover::after {
+  display: none;
+}
+.editCover .coverBrand {
+  position: static;
+  width: 96px;
+  height: auto;
+  opacity: 0.8;
+}
+.coverActions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+}
+.coverButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-over-line, var(--ui-border-strong));
+  border-radius: 999px;
+  background: var(--ui-over, var(--ui-surface));
+  color: var(--ui-text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+}
+.coverButton svg {
+  width: 16px;
+  height: 16px;
+}
+.editAvatarRow {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  margin: -44px var(--rows-inset, 20px) 0;
+}
+.editAvatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 88px;
+  height: 88px;
+  border: 3px solid var(--ui-page);
+  border-radius: 50%;
+  background: var(--ui-surface-soft);
+}
+.editAvatar .avatarImage {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.editAvatar .initials {
+  font-size: 26px;
+  font-weight: 800;
+}
+.photoButton {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 3px solid var(--ui-page);
+  border-radius: 50%;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  cursor: pointer;
+}
+.photoButton svg {
+  width: 16px;
+  height: 16px;
+}
+.editAvatarNote {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding-bottom: 6px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.editAvatarNote .remove {
+  min-height: 32px;
+  padding: 0;
+  font-size: 13px;
+}
+.editor[data-drawn] .error,
+.editor[data-drawn] .status {
+  margin: 14px var(--rows-inset, 20px) 0;
+}
+.editFields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px var(--rows-inset, 20px) 0;
+}
+.editFields .row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.editFields .skillField .chips {
+  margin: 0 0 8px;
+}
+.editor[data-drawn] .footer {
+  position: sticky;
+  bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 76px);
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px var(--rows-inset, 20px);
+  border-top: 1px solid var(--ui-border);
+  background: var(--ui-page);
+}
+.editor[data-drawn] .footer :where(.primary, .secondary) {
+  justify-content: center;
+  min-height: 54px;
+  border-radius: 18px;
+}
+@media (min-width: 900px) {
+  .editor[data-drawn] .footer {
+    bottom: 0;
+  }
+}
+/* As drawn: a soft accent cover without the logo, a dark photo circle, small field labels,
+   dark skill chips and a "+ Dodaj vještinu" pill. */
+.editCover .defaultCover {
+  background: linear-gradient(160deg, var(--ui-accent-soft), transparent 90%);
+}
+.editCover .coverBrand {
+  display: none;
+}
+.editAvatar {
+  background: var(--ui-text);
+  color: var(--ui-page);
+}
+.editFields .field {
+  gap: 6px;
+  margin-bottom: 0;
+  color: var(--ui-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.editFields .input {
+  min-height: 52px;
+  border-radius: 16px;
+  font-size: 16px;
+}
+.editFields .skillField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.editFields .skillField .chips {
+  margin: 0;
+}
+.editFields .chip {
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-text);
+  color: var(--ui-page);
+  font-size: 13px;
+  font-weight: 700;
+}
+.editFields .chip:has(.skillRemove) {
+  min-height: 36px;
+  padding-left: 14px;
+}
+.editFields .chip .skillRemove {
+  width: 28px;
+  height: 36px;
+  color: inherit;
+}
+.addSkill {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.editFields .skillField {
+  margin: 0;
+}

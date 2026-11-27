@@ -23,7 +23,7 @@ import { Icon, type IconName } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
 import { PersonalProfileWorkspace } from "../people/PersonalProfileWorkspace";
 import { CommunityRulesPrompt } from "../support/CommunityRulesPrompt";
-import { ScreenBar } from "../ui/Rows";
+import { rowStyles, ScreenBar } from "../ui/Rows";
 import { AccountAuthorityBoundary } from "./AccountAuthorityBoundary";
 import { AccountOverview } from "./AccountOverview";
 import { AccountSettings } from "./AccountSettings";
@@ -306,7 +306,18 @@ function AccountWorkspace({
                     title={section === "profile" ? t("Uredi profil") : t(current.label)}
                     backHref="/nalog"
                     backLabel={t("Moj profil")}
-                  />
+                  >
+                    {section === "connections" && (
+                      <Link
+                        href="/ljudi"
+                        className={rowStyles.barAction}
+                        aria-label={t("Pronađi ljude")}
+                        prefetch={false}
+                      >
+                        <Icon name="search" />
+                      </Link>
+                    )}
+                  </ScreenBar>
                 </div>
               )}
             {IS_PLAY_EDITION &&
@@ -391,6 +402,7 @@ function AccountWorkspace({
             </AccountPane>
             <AccountPane selected={section === "connections"}>
               <ConnectionsPanel
+                inAccount
                 active={hasAccess && section === "connections"}
                 expectedAccountId={initial.id}
               />

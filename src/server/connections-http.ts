@@ -68,7 +68,10 @@ function query(url: URL, allowed: string[]) {
       if (number > (key === "page" ? 1000 : 2147483647)) invalid();
       result[key] = number;
     } else {
-      if (key === "q" && (value.trim().length > 100 || unsafeSearch(value))) invalid();
+      if ((key === "q" || key === "city") && (value.trim().length > 100 || unsafeSearch(value)))
+        invalid();
+      if (key === "status" && !["open_to_collaboration", "business_owner"].includes(value))
+        invalid();
       if (key === "view" && !["incoming", "outgoing", "contacts"].includes(value)) invalid();
       result[key] = value;
     }
@@ -155,11 +158,29 @@ export function createConnectionsHttpHandler({
         );
       if (request.method === "GET") {
         if (path === "/people") {
-          const result = await service.searchPublic(query(url, ["q", "page"]));
+          const result = await service.searchPublic(query(url, ["q", "page", "status", "city"]));
+          const items = result.items.map(readPublicPerson);
+          // A signed-in viewer also gets where they stand with each person, for the row's button.
+          const viewer = await service.readViewer(request.headers).catch(() => null);
+          const relationships: Record<string, ReturnType<typeof readRelationship>> = {};
+          if (viewer && items.length > 0) {
+            const known = await service
+              .relationships(
+                request.headers,
+                items.map((item) => item.id),
+              )
+              .catch(() => null);
+            for (const item of items) {
+              const value = known && Object.hasOwn(known, item.id) ? known[item.id] : null;
+              if (value && item.id !== viewer.id) relationships[item.id] = readRelationship(value);
+            }
+          }
           return reply({
-            items: result.items.map(readPublicPerson),
+            items,
             page: result.page,
             hasMore: result.hasMore,
+            viewerId: viewer?.id ?? null,
+            relationships,
           });
         }
         if (person) {

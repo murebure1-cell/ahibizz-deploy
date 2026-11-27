@@ -17,6 +17,7 @@ import {
   profileError,
   readPersonalProfile,
 } from "../../lib/people-client";
+import { Icon } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
 import { PersonalProfileCard } from "./PersonalProfileCard";
 import { PersonalProfileEditor } from "./PersonalProfileEditor";
@@ -365,7 +366,6 @@ function ProfileWorkspace({
           {t("Otvaram profil…")}
         </p>
       )}
-      {profile && editOnly && visibility && visibilityBox()}
       {profile &&
         (editing || editOnly ? (
           <PersonalProfileEditor
@@ -383,7 +383,9 @@ function ProfileWorkspace({
             onRemoveCover={() => remove("cover")}
             photoUrl={photoUrl}
             coverUrl={coverUrl}
-          />
+          >
+            {visibility && visibilityRow()}
+          </PersonalProfileEditor>
         ) : (
           <PersonalProfileCard
             profile={profile}
@@ -400,6 +402,33 @@ function ProfileWorkspace({
       {profile && visibility && !editing && !editOnly && visibilityBox()}
     </section>
   );
+  /** The public profile switch as a row under the fields, as drawn for Uredi profil. */
+  function visibilityRow() {
+    if (!profile || !visibility) return null;
+    return (
+      <div className={styles.visibilityRow}>
+        <Icon name="globe" />
+        <span>
+          <strong>{t("Javni profil")}</strong>
+          <small>
+            {visibility.isPublic
+              ? t("Drugi te mogu pronaći među ljudima")
+              : t("Profil vidiš samo ti.")}
+          </small>
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-label={t("Javni profil")}
+          aria-checked={visibility.isPublic}
+          disabled={busy || (blocked && !pendingVisibility.current)}
+          onClick={() => void changeVisibility()}
+        >
+          <span className={styles.visibilitySwitch} aria-hidden="true" />
+        </button>
+      </div>
+    );
+  }
   function visibilityBox() {
     if (!profile || !visibility) return null;
     return (
