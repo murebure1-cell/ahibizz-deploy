@@ -39,7 +39,10 @@ export function PublicBusinessProfile({
   offerLinks: _offerLinks,
   offerSections,
   sponsor,
+  storyHref,
 }: {
+  /** Set when the business has live Reels: a ring on the logo opens them as a story. */
+  storyHref?: string;
   business: PublicBusinessView;
   backHref?: string | null;
   preview?: boolean;
@@ -155,9 +158,22 @@ export function PublicBusinessProfile({
 
       <header className={styles.identity}>
         <div className={styles.identityTop}>
-          <div className={styles.logo}>
-            <BusinessLogo src={logo?.src} alt={logo ? t(logo.alt) : ""} sizes="54px" priority />
-          </div>
+          {storyHref ? (
+            <Link
+              href={storyHref}
+              className={styles.storyRing}
+              aria-label={t("Pogledaj reels")}
+              prefetch={false}
+            >
+              <span className={styles.logo}>
+                <BusinessLogo src={logo?.src} alt="" sizes="54px" priority />
+              </span>
+            </Link>
+          ) : (
+            <div className={styles.logo}>
+              <BusinessLogo src={logo?.src} alt={logo ? t(logo.alt) : ""} sizes="54px" priority />
+            </div>
+          )}
           <div className={styles.title}>
             <Title>
               <bdi>{business.title}</bdi>

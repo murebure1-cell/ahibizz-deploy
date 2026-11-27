@@ -2496,4 +2496,9 @@ export const account: Messages = {
   utorak: ["Tuesday", "Dienstag", "الثلاثاء", "salı"],
   "{n} dana": ["{n} days", "{n} Tage", "{n} يومًا", "{n} gün"],
   četvrtak: ["Thursday", "Donnerstag", "الخميس", "perşembe"],
+  "Pogledaj reels": ["Watch reels", "Reels ansehen", "شاهد الريلز", "Reels'i izle"],
+  Prethodni: ["Previous", "Vorheriger", "السابق", "Önceki"],
+  Sljedeći: ["Next", "Nächster", "التالي", "Sonraki"],
+  upravo: ["just now", "gerade eben", "الآن", "az önce"],
+  "prije {n} h": ["{n} h ago", "vor {n} Std.", "قبل {n} س", "{n} sa önce"],
 };

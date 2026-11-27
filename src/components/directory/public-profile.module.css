@@ -772,3 +772,26 @@ a.coverControl > svg[data-icon="arrow"] {
     padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* Live Reels, as drawn (2026-11-27): a turning-free accent ring around the logo opens the story. */
+.storyRing {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 200deg,
+    var(--ui-accent),
+    var(--ui-accent-border),
+    var(--ui-accent)
+  );
+  transition: scale 160ms var(--ease-out);
+}
+.storyRing:active {
+  scale: 0.96;
+}
+.storyRing > .logo {
+  box-shadow: 0 0 0 3px var(--ui-page);
+}

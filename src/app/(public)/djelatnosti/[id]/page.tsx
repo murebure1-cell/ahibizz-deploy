@@ -7,7 +7,6 @@ import { PublicBusinessProfile } from "../../../../components/directory/PublicBu
 import profileStyles from "../../../../components/directory/public-profile.module.css";
 import styles from "../../../../components/directory/public-search.module.css";
 import { BusinessMenuBlock } from "../../../../components/menu-offer/BusinessMenuSections";
-import { BusinessReels } from "../../../../components/reels/ReelShelf";
 import { RentalFleet } from "../../../../components/rentals/RentalFleet";
 import { StayUnits } from "../../../../components/stays/StayUnits";
 import { ViewBeacon } from "../../../../components/ViewBeacon";
@@ -19,6 +18,8 @@ import { getBookingService } from "../../../../server/booking";
 import { DirectoryAccessError, getPublicDirectoryService } from "../../../../server/directory";
 import { publicBusinessView } from "../../../../server/directory/public-view";
 import { getTranslator } from "../../../../server/i18n";
+import { listPublicReels } from "../../../../server/reels/service";
+import { currentReelViewer } from "../../../../server/reels/viewer";
 import { getRentalService } from "../../../../server/rentals/service";
 import { getStayService } from "../../../../server/stays/service";
 
@@ -156,12 +157,18 @@ export default async function PublicBusinessPage({
           ),
         },
       ];
+      // Live Reels open as a story from the ring on the logo (drawn 2026-11-27).
+      const storyHref = (await listPublicReels(id, 1, 0, await currentReelViewer()).catch(() => []))
+        .length
+        ? `/story/${id}`
+        : undefined;
       return (
         <main id="glavni-sadrzaj">
           <ViewBeacon kind="business" id={business.id} />
           <PublicBusinessProfile
             backHref={`/pretraga${directorySearchSuffix(search)}`}
             business={publicBusinessView(business, categories)}
+            storyHref={storyHref}
             offerLinks={offers.map((offer) => (
               <Suspense key={offer.id} fallback={null}>
                 <ListingOffer offer={offer} link />
@@ -173,11 +180,6 @@ export default async function PublicBusinessPage({
               </Suspense>,
               ...offers.map((offer) => (
                 <Fragment key={offer.id}>
-                  {offer.id === "business-appointments" && (
-                    <Suspense fallback={null}>
-                      <BusinessReels businessId={id} />
-                    </Suspense>
-                  )}
                   <Suspense fallback={null}>
                     <ListingOffer offer={offer} />
                   </Suspense>
