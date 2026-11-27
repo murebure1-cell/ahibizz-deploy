@@ -417,6 +417,7 @@ function AccountWorkspace({
                 initial={initial}
                 active={hasAccess && section === "settings"}
                 focusNotifications={focusNotifications}
+                onLogout={() => void logout()}
                 verified={personal ? personal.verified : null}
                 onConfirmed={(next) =>
                   setProfile((current) => ({

@@ -33,6 +33,8 @@ type Props = {
   initial: SafeAccountProfile;
   active?: boolean;
   focusNotifications?: boolean;
+  /** As drawn, Postavke end with Odjava. */
+  onLogout?: () => void;
   /** Whether the personal profile carries the verification badge; null while that is unknown. */
   verified?: boolean | null;
   request?: typeof accountSettingsRequest;
@@ -47,6 +49,7 @@ function SettingsWorkspace({
   initial,
   active = true,
   focusNotifications = false,
+  onLogout,
   verified = null,
   request = accountSettingsRequest,
   onConfirmed,
@@ -238,7 +241,6 @@ function SettingsWorkspace({
                 )
               }
             />
-            <Row icon="shop" title={t("Moje djelatnosti")} href="/nalog?odjeljak=djelatnosti" />
             <Row
               icon="key"
               title={t("Lozinka")}
@@ -246,7 +248,6 @@ function SettingsWorkspace({
               href="/nalog/lozinka"
             />
             <Row icon="globe" title={t("Google nalog")} href="/nalog/google" />
-            <Row icon="lock" title={t("Aktivne prijave")} href="/nalog/prijave" />
           </RowGroup>
           <RowGroup title={t("Verifikacija")}>
             {verified === false ? (
@@ -327,7 +328,7 @@ function SettingsWorkspace({
         )}
       </div>
       {own && (
-        <RowGroup title={t("Obavijesti na uređaju")}>
+        <RowGroup title={t("Obavijesti")}>
           <section
             className={styles.push}
             ref={deviceNotifications}
@@ -336,24 +337,30 @@ function SettingsWorkspace({
           >
             <DevicePush actor={initial.id} />
           </section>
+          <Row
+            icon="bell"
+            title={t("Vrste obavijesti")}
+            sub={t("Poruke, termini, reels · telefon i email")}
+            href="/nalog/obavijesti"
+          />
         </RowGroup>
       )}
-      <RowGroup title={t("Privatnost i podaci")}>
-        <Row icon="eye" title={t("Vidljivost profila")} href="/nalog?odjeljak=profil" />
-        <Row icon="block" title={t("Blokirani korisnici")} href={blockedPeoplePath} />
-        <Row icon="lock" title={t("Pravila privatnosti")} href="/privatnost" />
-        <Row
-          icon="download"
-          title={t("Zatraži pristup podacima")}
-          href="/pomoc?tema=sigurnost#kontakt"
-        />
-        <Row
-          icon="trash"
-          title={t("Zatraži brisanje naloga")}
-          href="/brisanje-naloga"
-          tone="danger"
-        />
-      </RowGroup>
+      {own && (
+        <RowGroup title={t("Privatnost")}>
+          <Row icon="eye" title={t("Vidljivost profila")} href="/nalog/vidljivost" />
+          <Row icon="block" title={t("Blokirani korisnici")} href={blockedPeoplePath} />
+          <Row icon="phone" title={t("Aktivne prijave")} href="/nalog/prijave" />
+          <Row icon="download" title={t("Preuzmi svoje podatke")} href="/nalog/podaci" />
+        </RowGroup>
+      )}
+      {onLogout && (
+        <div className={styles.logoutWrap}>
+          <button type="button" className={styles.logoutButton} onClick={onLogout}>
+            <Icon name="logout" />
+            {t("Odjava")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

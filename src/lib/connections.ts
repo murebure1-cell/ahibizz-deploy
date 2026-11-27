@@ -19,14 +19,15 @@ export type PublicPerson = ProfileBadges & {
   coverVersion: number | null;
 };
 /** The counts on a public profile, as drawn: published businesses, friends, year of joining. */
-export type PublicPersonStats = { businesses: number; friends: number; joinedYear: number };
+/** Friends is null when the person chose not to show how many friends they have. */
+export type PublicPersonStats = { businesses: number; friends: number | null; joinedYear: number };
 export function readPublicPersonStats(value: unknown): PublicPersonStats | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const row = value as Record<string, unknown>;
   const count = (item: unknown) => Number.isSafeInteger(item) && (item as number) >= 0;
   if (
     !count(row.businesses) ||
-    !count(row.friends) ||
+    !(row.friends === null || count(row.friends)) ||
     !Number.isSafeInteger(row.joinedYear) ||
     (row.joinedYear as number) < 2000 ||
     (row.joinedYear as number) > 3000
@@ -34,7 +35,7 @@ export function readPublicPersonStats(value: unknown): PublicPersonStats | null 
     return null;
   return {
     businesses: row.businesses as number,
-    friends: row.friends as number,
+    friends: row.friends as number | null,
     joinedYear: row.joinedYear as number,
   };
 }
