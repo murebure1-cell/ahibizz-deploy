@@ -1,6 +1,7 @@
 import type { ReactNode, SVGProps } from "react";
 
 export type IconName =
+  | "camera"
   | "card"
   | "arrow"
   | "search"
@@ -197,6 +198,12 @@ const paths: Record<IconName, ReactNode> = {
   home: (
     <>
       <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" />
+    </>
+  ),
+  camera: (
+    <>
+      <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.6-2h5.8L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5Z" />
+      <circle cx="12" cy="13" r="3.5" />
     </>
   ),
   user: (

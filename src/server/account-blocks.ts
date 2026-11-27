@@ -120,13 +120,23 @@ async function readAccountBlocks(
   page: number,
 ): Promise<BlockedPeople> {
   const size = 20;
-  const { rows } = await client.query<BlockedPeople["items"][number]>(
-    `SELECT b.target_id AS id,u.name,b.version FROM people_block b JOIN auth_user u ON u.id=b.target_id
+  const { rows } = await client.query<{
+    id: string;
+    name: string;
+    version: number;
+    blockedAt: Date;
+  }>(
+    `SELECT b.target_id AS id,u.name,b.version,b.updated_at AS "blockedAt" FROM people_block b JOIN auth_user u ON u.id=b.target_id
       WHERE b.actor_id=$1 AND b.blocked ORDER BY b.updated_at DESC,b.target_id LIMIT $2 OFFSET $3`,
     [actor, size + 1, (page - 1) * size],
   );
   return {
-    items: rows.slice(0, size),
+    items: rows.slice(0, size).map((row) => ({
+      id: row.id,
+      name: row.name,
+      version: row.version,
+      blockedAt: new Date(row.blockedAt).toISOString(),
+    })),
     page,
     hasMore: rows.length > size,
     hideInSearch: await hideBlockedBusinesses(client, actor),

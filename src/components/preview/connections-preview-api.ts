@@ -97,7 +97,7 @@ export function createConnectionsPreviewApi(people: ReturnType<typeof createPeop
       method = (options.method ?? "GET").toUpperCase();
     const allowedQuery =
       method === "GET" && route === "people"
-        ? ["q", "page"]
+        ? ["q", "page", "status", "city"]
         : method === "GET" && route === "connections"
           ? ["view", "page"]
           : [];
@@ -121,15 +121,24 @@ export function createConnectionsPreviewApi(people: ReturnType<typeof createPeop
       if (route === "visibility") return { visibility: people.getVisibility() };
       if (route === "people") {
         const q = (url.searchParams.get("q") ?? "").normalize("NFKC").toLocaleLowerCase("bs");
+        const status = url.searchParams.get("status"),
+          city = url.searchParams.get("city")?.toLocaleLowerCase("bs");
         const all = [...fixtures, ...(people.getVisibility().isPublic ? [ownPublic()] : [])].filter(
           (p) =>
-            `${p.name} ${p.city ?? ""} ${p.skills.join(" ")}`.toLocaleLowerCase("bs").includes(q),
+            `${p.name} ${p.city ?? ""} ${p.skills.join(" ")}`.toLocaleLowerCase("bs").includes(q) &&
+            (!status || p.workStatus === status) &&
+            (!city || (p.city ?? "").toLocaleLowerCase("bs") === city),
         );
         const page = Number(url.searchParams.get("page") ?? 1);
+        const items = all.slice((page - 1) * 12, page * 12);
         return {
-          items: all.slice((page - 1) * 12, page * 12),
+          items,
           page,
           hasMore: all.length > page * 12,
+          viewerId: ownId,
+          relationships: Object.fromEntries(
+            items.filter((p) => p.id !== ownId).map((p) => [p.id, relationship(p.id)]),
+          ),
         };
       }
       const detail = /^people\/([^/]+)$/.exec(route);

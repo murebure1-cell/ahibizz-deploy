@@ -1,7 +1,7 @@
 import { msg } from "./i18n/translate";
 export const blockedPeoplePath = "/blokirani-korisnici";
 export type BlockState = { blockedByMe: boolean; canContact: boolean; version: number };
-export type BlockedPerson = { id: string; name: string; version: number };
+export type BlockedPerson = { id: string; name: string; version: number; blockedAt?: string };
 export type BlockedPeople = {
   items: BlockedPerson[];
   page: number;

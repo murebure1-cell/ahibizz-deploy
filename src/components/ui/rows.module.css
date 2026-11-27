@@ -203,3 +203,23 @@
     padding-top: 24px;
   }
 }
+/* A round control at the end of the bar, the same size as the way back (search, add). */
+.barAction {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--ui-border);
+  border-radius: 50%;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  transition: scale 160ms var(--ease-out);
+}
+.barAction:active {
+  scale: 0.94;
+}
+.barAction svg {
+  width: 20px;
+  height: 20px;
+}

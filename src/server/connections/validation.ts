@@ -52,8 +52,33 @@ function page(input: unknown): number {
     fail(400, "INVALID_CONNECTION_INPUT");
   return input as number;
 }
+const searchStatuses = ["open_to_collaboration", "business_owner"] as const;
+function unsafeText(text: string) {
+  return [...text].some((character) => {
+    const code = character.charCodeAt(0);
+    return (
+      code < 32 ||
+      code === 127 ||
+      (code >= 0x202a && code <= 0x202e) ||
+      (code >= 0x2066 && code <= 0x2069)
+    );
+  });
+}
 export function searchInput(input: unknown) {
-  const value = object(input, ["q", "page"]);
+  const value = object(input, ["q", "page", "status", "city"]);
+  if (
+    value.status !== undefined &&
+    !searchStatuses.includes(value.status as (typeof searchStatuses)[number])
+  )
+    fail(400, "INVALID_CONNECTION_INPUT");
+  if (
+    value.city !== undefined &&
+    (typeof value.city !== "string" ||
+      !value.city.trim() ||
+      value.city.trim().length > 100 ||
+      unsafeText(value.city))
+  )
+    fail(400, "INVALID_CONNECTION_INPUT");
   if (
     value.q !== undefined &&
     (typeof value.q !== "string" ||
@@ -69,7 +94,12 @@ export function searchInput(input: unknown) {
       }))
   )
     fail(400, "INVALID_CONNECTION_INPUT");
-  return { q: typeof value.q === "string" ? value.q.trim() : "", page: page(value.page) };
+  return {
+    q: typeof value.q === "string" ? value.q.trim() : "",
+    page: page(value.page),
+    status: (value.status as (typeof searchStatuses)[number] | undefined) ?? null,
+    city: typeof value.city === "string" ? value.city.trim() : null,
+  };
 }
 export function listInput(input: unknown) {
   const value = object(input, ["view", "page"]);
