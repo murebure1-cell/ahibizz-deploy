@@ -65,6 +65,7 @@ function fixture(
         "readPublicMedia",
         "readViewer",
         "relationship",
+        "relationships",
         "list",
         "request",
         "transition",
@@ -133,6 +134,8 @@ test("public people endpoints whitelist person data and distinguish anonymous, o
     items: [person],
     page: 1,
     hasMore: false,
+    viewerId: "fixture-viewer",
+    relationships: {},
   });
   assert.deepEqual(f.calls[0]?.args[0], { q: "Tuzla", page: 1 });
   assert.deepEqual(await (await f.send("GET", `people/${person.id}`)).json(), {

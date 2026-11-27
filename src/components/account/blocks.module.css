@@ -142,3 +142,60 @@
     grid-column: 2;
   }
 }
+
+/* Blokirani korisnici as drawn (2026-11-27): the list first, initials in a dark circle, the
+   day of the block under the name, and the search option as a switch row below. */
+.workspace {
+  padding: 16px var(--rows-inset, 20px) 0;
+}
+.initials {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ui-text);
+  color: var(--ui-page);
+  font-size: 12px;
+  font-weight: 800;
+}
+.who {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.who small {
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.list li {
+  padding: 12px 14px;
+}
+.workspace .list button {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.option {
+  align-items: center;
+  justify-content: space-between;
+  cursor: default;
+}
+.option > span:first-child {
+  flex: 1;
+}
+.option input {
+  appearance: none;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+.option span span[aria-hidden="true"] {
+  margin-top: 0;
+}
+.empty {
+  text-align: center;
+}

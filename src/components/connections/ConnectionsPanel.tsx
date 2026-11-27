@@ -17,6 +17,7 @@ import {
   connectionRequest,
 } from "../../lib/connections-client";
 import { msg } from "../../lib/i18n/translate";
+import { messageLink } from "../../lib/messaging";
 import { Icon } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
 import { VerificationBadge } from "../VerificationBadge";
@@ -32,8 +33,8 @@ type PendingWrite = {
 };
 const views = [
   ["contacts", msg("Prijatelji")],
-  ["incoming", msg("Primljeni zahtjevi")],
-  ["outgoing", msg("Poslani zahtjevi")],
+  ["incoming", msg("Zahtjevi")],
+  ["outgoing", msg("Poslani")],
 ] as const;
 const emptyMessages: Record<ConnectionView, string> = {
   contacts: msg("Još nemaš prijatelja na AhiBizzu."),
@@ -49,9 +50,12 @@ export function ConnectionsPanel({
   peopleHref = "/ljudi",
   imageUrl,
   expectedAccountId,
+  inAccount = false,
 }: {
   active?: boolean;
   heading?: boolean;
+  /** Inside "Moj nalog", where the phone screen bar above holds the title and the search. */
+  inAccount?: boolean;
   request?: typeof connectionRequest;
   profileHref?: (id: string) => string;
   peopleHref?: string;
@@ -69,7 +73,10 @@ export function ConnectionsPanel({
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [pending, setPending] = useState<PendingWrite | null>(null),
-    [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+    [confirmRemove, setConfirmRemove] = useState<string | null>(null),
+    // New requests shown above the friends, as drawn, and the counts on the chips once known.
+    [incoming, setIncoming] = useState<ConnectionItem[]>([]),
+    [counts, setCounts] = useState<Partial<Record<ConnectionView, number>>>({});
   const api = useRef(request),
     revision = useRef(0),
     controller = useRef<AbortController | null>(null),
@@ -139,9 +146,30 @@ export function ConnectionsPanel({
     setLoading(true);
     setError("");
     try {
-      const result = await scopedRequest(`connections?view=${view}&page=${page}`, {
-        signal: nextController.signal,
-      });
+      const [result, extra] = await Promise.all([
+        scopedRequest(`connections?view=${view}&page=${page}`, {
+          signal: nextController.signal,
+        }),
+        view === "contacts" && page === 1
+          ? scopedRequest("connections?view=incoming&page=1", {
+              signal: nextController.signal,
+            })
+              .then((side) =>
+                Array.isArray(side.items) && typeof side.hasMore === "boolean"
+                  ? {
+                      items: side.items
+                        .map(readConnectionItem)
+                        .filter(
+                          (item: ConnectionItem) =>
+                            item.status === "pending" && item.direction === "incoming",
+                        ),
+                      hasMore: side.hasMore,
+                    }
+                  : null,
+              )
+              .catch(() => null)
+          : Promise.resolve(null),
+      ]);
       if (
         !Array.isArray(result.items) ||
         result.page !== page ||
@@ -167,6 +195,12 @@ export function ConnectionsPanel({
         return;
       const next = { items: nextItems, page, hasMore: result.hasMore };
       cache.current.set(key, next);
+      if (view === "contacts" && page === 1) setIncoming(extra?.items ?? []);
+      setCounts((known) => ({
+        ...known,
+        ...(page === 1 && !result.hasMore ? { [view]: nextItems.length } : {}),
+        ...(extra && !extra.hasMore ? { incoming: extra.items.length } : {}),
+      }));
       setItems(next.items);
       setHasMore(next.hasMore);
       setReady(true);
@@ -304,12 +338,91 @@ export function ConnectionsPanel({
   }
 
   const disabled = busy || loading || pending !== null;
+  function renderRow(item: ConnectionItem, rowView: ConnectionView) {
+    return (
+      <li key={item.id} className={styles.connectionCard} data-view={rowView}>
+        <div className={styles.connectionIdentity}>
+          {item.person ? (
+            <PersonAvatar person={item.person} imageUrl={imageUrl} />
+          ) : (
+            <div className={styles.avatar} aria-hidden="true">
+              <Icon name="user" />
+            </div>
+          )}
+          <div className={styles.personInfo}>
+            <h3>
+              {item.person ? (
+                <Link href={profileHref(item.person.id)}>
+                  {item.person.name}
+                  {item.person.verified && <VerificationBadge kind="person" />}
+                </Link>
+              ) : (
+                t("Profil nije javno dostupan")
+              )}
+            </h3>
+            {item.person && personLocation(item.person, locale) && (
+              <p className={styles.location}>{personLocation(item.person, locale)}</p>
+            )}
+          </div>
+        </div>
+        <div className={styles.actions}>
+          {rowView === "incoming" ? (
+            <>
+              {item.person && (
+                <button
+                  type="button"
+                  className={styles.primary}
+                  disabled={disabled}
+                  onClick={() => act(item, "accept")}
+                >
+                  <Icon name="check" /> {t("Prihvati")}
+                </button>
+              )}
+              <button
+                type="button"
+                className={styles.secondary}
+                disabled={disabled}
+                onClick={() => act(item, "decline")}
+              >
+                {t("Odbij")}
+              </button>
+            </>
+          ) : rowView === "outgoing" ? (
+            <button
+              type="button"
+              className={styles.secondary}
+              disabled={disabled}
+              onClick={() => act(item, "cancel")}
+            >
+              {t("Povuci zahtjev")}
+            </button>
+          ) : (
+            item.person && (
+              <Link
+                className={styles.messageLink}
+                href={messageLink({ kind: "person", targetId: item.person.id })}
+                aria-label={t("Poruka")}
+                prefetch={false}
+              >
+                <Icon name="message" />
+              </Link>
+            )
+          )}
+        </div>
+      </li>
+    );
+  }
+
   return (
-    <section className={styles.workspace} aria-label={t("Prijatelji")}>
+    <section
+      className={styles.workspace}
+      aria-label={t("Prijatelji")}
+      data-in-account={inAccount ? "" : undefined}
+    >
       <div className={styles.heading}>
         {heading && <h2>{t("Prijatelji")}</h2>}
         <Link className={styles.secondary} href={peopleHref}>
-          <Icon name="search" /> Pronađi ljude
+          <Icon name="search" /> {t("Pronađi ljude")}
         </Link>
       </div>
       <fieldset className={styles.tabs}>
@@ -323,6 +436,7 @@ export function ConnectionsPanel({
             onClick={() => switchView(key)}
           >
             {t(label)}
+            {key !== "outgoing" && counts[key] ? ` · ${counts[key]}` : ""}
           </button>
         ))}
       </fieldset>
@@ -351,6 +465,15 @@ export function ConnectionsPanel({
           <span />
         </section>
       )}
+      {view === "contacts" && incoming.length > 0 && (
+        <>
+          <h3 className={styles.groupTitle}>{t("Novi zahtjevi")}</h3>
+          <ul className={styles.connectionList} aria-busy={loading || busy}>
+            {incoming.map((item) => renderRow(item, "incoming"))}
+          </ul>
+          <h3 className={styles.groupTitle}>{t("Prijatelji")}</h3>
+        </>
+      )}
       {ready && items.length === 0 && !loading && (
         <div className={styles.empty}>
           <Icon name="user" />
@@ -364,90 +487,7 @@ export function ConnectionsPanel({
       )}
       {ready && items.length > 0 && (
         <ul className={styles.connectionList} aria-busy={loading || busy}>
-          {items.map((item) => (
-            <li key={item.id} className={styles.connectionCard}>
-              <div className={styles.connectionIdentity}>
-                {item.person ? (
-                  <PersonAvatar person={item.person} imageUrl={imageUrl} />
-                ) : (
-                  <div className={styles.avatar} aria-hidden="true">
-                    <Icon name="user" />
-                  </div>
-                )}
-                <div className={styles.personInfo}>
-                  <h3>
-                    {item.person ? (
-                      <Link href={profileHref(item.person.id)}>
-                        {item.person.name}
-                        {item.person.verified && <VerificationBadge kind="person" />}
-                      </Link>
-                    ) : (
-                      t("Profil nije javno dostupan")
-                    )}
-                  </h3>
-                  {item.person && personLocation(item.person, locale) && (
-                    <p className={styles.location}>{personLocation(item.person, locale)}</p>
-                  )}
-                </div>
-              </div>
-              <div className={styles.actions}>
-                {view === "incoming" ? (
-                  <>
-                    {item.person && (
-                      <button
-                        type="button"
-                        className={styles.primary}
-                        disabled={disabled}
-                        onClick={() => act(item, "accept")}
-                      >
-                        <Icon name="check" /> Prihvati
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className={styles.secondary}
-                      disabled={disabled}
-                      onClick={() => act(item, "decline")}
-                    >
-                      {t("Odbij")}
-                    </button>
-                  </>
-                ) : view === "outgoing" ? (
-                  <button
-                    type="button"
-                    className={styles.secondary}
-                    disabled={disabled}
-                    onClick={() => act(item, "cancel")}
-                  >
-                    {t("Povuci zahtjev")}
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className={
-                        confirmRemove === item.id ? styles.dangerButton : styles.quietButton
-                      }
-                      disabled={disabled}
-                      onClick={() => act(item, "remove")}
-                    >
-                      {confirmRemove === item.id ? t("Potvrdi uklanjanje") : t("Ukloni")}
-                    </button>
-                    {confirmRemove === item.id && (
-                      <button
-                        type="button"
-                        className={styles.secondary}
-                        disabled={disabled}
-                        onClick={() => setConfirmRemove(null)}
-                      >
-                        {t("Odustani")}
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </li>
-          ))}
+          {items.map((item) => renderRow(item, view))}
         </ul>
       )}
       {ready && (page > 1 || hasMore) && (

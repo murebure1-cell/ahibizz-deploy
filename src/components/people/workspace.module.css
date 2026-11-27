@@ -144,3 +144,61 @@
     transition: none;
   }
 }
+
+/* The public profile switch as a row under the fields of Uredi profil. */
+.visibilityRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px var(--rows-inset, 20px) 0;
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+}
+.visibilityRow > svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: var(--ui-muted);
+}
+.visibilityRow > span {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+.visibilityRow strong {
+  font-size: 15px;
+  line-height: 20px;
+}
+.visibilityRow small {
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.visibilityRow button {
+  display: grid;
+  place-items: center;
+  min-width: 52px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.visibilityRow .visibilitySwitch {
+  width: 44px;
+  height: 26px;
+}
+.visibilityRow .visibilitySwitch::after {
+  width: 20px;
+  height: 20px;
+}
+.visibilityRow button[aria-checked="true"] .visibilitySwitch {
+  background: var(--ui-accent);
+}
+.visibilityRow button[aria-checked="true"] .visibilitySwitch::after {
+  transform: translateX(18px);
+  background: var(--ui-on-accent);
+}
