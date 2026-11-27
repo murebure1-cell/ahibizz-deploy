@@ -1,8 +1,13 @@
 name: CI
 
+# A work branch is tested once, through its pull request (on the code merged with its base).
+# Pushes run only where code lands: the integration branch and main. Before 2026-11-27 every push
+# to a work branch ran the same tests a second time, half of all minutes in November.
 on:
   push:
+    branches: [integration/ahibizz, main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
