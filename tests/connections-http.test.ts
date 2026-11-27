@@ -143,6 +143,7 @@ test("public people endpoints whitelist person data and distinguish anonymous, o
     viewerId: "fixture-viewer",
     relationship,
     stats: { businesses: 2, friends: 5, joinedYear: 2026 },
+    storyBusinessId: null,
   });
   const headers = f.calls.find((call) => call.method === "relationship")?.args[0];
   assert.ok(headers instanceof Headers);
@@ -154,6 +155,7 @@ test("public people endpoints whitelist person data and distinguish anonymous, o
       viewerId: viewer?.id ?? null,
       relationship: { id: null, personId: person.id, status: "none", direction: null, version: 0 },
       stats: { businesses: 2, friends: 5, joinedYear: 2026 },
+      storyBusinessId: null,
     });
     assert.equal(
       special.calls.some((call) => call.method === "relationship"),

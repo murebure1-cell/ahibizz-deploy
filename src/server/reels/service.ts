@@ -718,3 +718,21 @@ export async function reelMediaAccess(
     },
   };
 }
+
+/**
+ * The newest business of an owner that has a live Reel, for the story ring on the owner's
+ * personal profile (owner's wish of 2026-11-27). Null when none, or when the viewer blocked them.
+ */
+export async function readOwnerStoryBusiness(
+  ownerId: string,
+  viewerId: string | null = null,
+  database: PublicReadDatabase | null = publicReadDatabase(),
+): Promise<string | null> {
+  if (!database || !/^[A-Za-z0-9_-]{1,128}$/.test(ownerId)) return null;
+  const { rows } = await database.query(
+    `SELECT b.id ${publicReels} AND b.owner_user_id=$1 AND ${visibleToViewer("$2")}
+     ORDER BY r.published_at DESC, r.id DESC LIMIT 1`,
+    [ownerId, viewerId],
+  );
+  return (rows[0] as { id: string } | undefined)?.id ?? null;
+}
