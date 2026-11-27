@@ -20,6 +20,8 @@ const fields: Record<string, readonly string[]> = {
   "/request-password-reset": ["email", "redirectTo"],
   "/reset-password": ["newPassword", "token"],
   "/sign-in/social": ["provider", "callbackURL", "errorCallbackURL", "newUserCallbackURL"],
+  // The native app trades its one-time code for a session; starting one is server-only.
+  "/app-handoff/exchange": ["code", "verifier"],
 };
 const redirectFields = ["callbackURL", "redirectTo", "errorCallbackURL", "newUserCallbackURL"];
 const getPaths = new Set(["/get-session", "/verify-email"]);
