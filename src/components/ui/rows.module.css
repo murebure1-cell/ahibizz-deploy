@@ -223,3 +223,10 @@
   width: 20px;
   height: 20px;
 }
+
+/* On a phone a screen with its own bar has no site header above it, as drawn; the dock stays. */
+@media (max-width: 700px) {
+  :global(body):has(main .bar) :global(.site-header) {
+    display: none;
+  }
+}

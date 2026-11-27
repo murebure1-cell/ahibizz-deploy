@@ -20,6 +20,7 @@ import { Icon } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
 import { BusinessReviews } from "../reviews/BusinessReviews";
 import { VerificationBadge } from "../VerificationBadge";
+import { sendTouch } from "../ViewBeacon";
 import { BusinessAmenities, BusinessHoursSheet } from "./BusinessDetails";
 import { BusinessGallery } from "./BusinessGallery";
 import { BusinessLogo } from "./BusinessLogo";
@@ -186,7 +187,11 @@ export function PublicBusinessProfile({
         </div>
         <div className={styles.quickActions}>
           {links.phone ? (
-            <a className={styles.secondary} href={links.phone}>
+            <a
+              className={styles.secondary}
+              href={links.phone}
+              onClick={preview ? undefined : () => sendTouch(business.id, "call")}
+            >
               <Icon name="phone" />
               {t("Pozovi")}
             </a>
@@ -210,12 +215,21 @@ export function PublicBusinessProfile({
             )
           )}
           {contactMessage && (
-            <Link className={styles.primary} href={contactMessage} aria-label={t("Pošalji poruku")}>
+            <Link
+              className={styles.primary}
+              href={contactMessage}
+              aria-label={t("Pošalji poruku")}
+              onClick={preview ? undefined : () => sendTouch(business.id, "message")}
+            >
               <Icon name="message" /> {t("Poruka")}
             </Link>
           )}
           {driving && !preview ? (
-            <Link className={styles.secondary} href={`/djelatnosti/${business.id}/uputstva`}>
+            <Link
+              className={styles.secondary}
+              href={`/djelatnosti/${business.id}/uputstva`}
+              onClick={() => sendTouch(business.id, "map")}
+            >
               <Icon name="route" />
               {t("Uputstva")}
             </Link>
