@@ -10,6 +10,7 @@ import { readReelRange } from "../../../../server/reels/range";
 import {
   applyReelCommand,
   isModerationCommand,
+  listPublicReels,
   parseReelCommand,
   readReelFeed,
   reelMediaAccess,
@@ -168,6 +169,31 @@ export async function GET(request: Request, params: Params) {
   try {
     const { path } = await params.params;
     const [area, id] = path;
+    // Live public Reels, newest first, for the native app's Reels tab and story rings:
+    // "?djelatnost=<id>" keeps one business, "?strana=2" goes on by 20.
+    if (area === "public" && path.length === 1) {
+      const query = new URL(request.url).searchParams;
+      const keys = [...query.keys()];
+      const scope = query.get("djelatnost");
+      const page = Number(query.get("strana") ?? 1);
+      if (
+        keys.some((key) => key !== "djelatnost" && key !== "strana") ||
+        new Set(keys).size !== keys.length ||
+        (scope !== null && !businessUuid(scope)) ||
+        !Number.isInteger(page) ||
+        page < 1 ||
+        page > 50
+      )
+        throw new AccountAccessError(400, "REEL_INPUT");
+      const viewer = await getSearchBlockViewer(request.headers);
+      const items = await listPublicReels(
+        scope?.toLowerCase() ?? null,
+        21,
+        (page - 1) * 20,
+        viewer,
+      );
+      return json({ items: items.slice(0, 20), page, hasMore: items.length > 20 });
+    }
     if (area === "feed" || area === "engagement") {
       if (!businessUuid(id) || path.length !== 2) throw notFound();
       const query = new URL(request.url).searchParams;
