@@ -25,7 +25,7 @@ export async function readyHealth(database: HealthDatabase): Promise<HealthRepor
     if (!database.configured()) return unavailable("unconfigured");
     const result = await database.query(
       "SELECT 1 AS ready FROM platform_migrations WHERE version = $1 LIMIT 1",
-      ["0061_business_menu.sql"],
+      ["0062_privacy_and_notification_choices.sql"],
     );
     if (result.rows[0]?.ready !== 1) return unavailable("unavailable");
     return { status: 200, body: { status: "ok", checks: { database: "ready" } } };

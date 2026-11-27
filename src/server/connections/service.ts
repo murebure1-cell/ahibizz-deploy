@@ -48,8 +48,8 @@ type Pair = {
   version: number;
 };
 const pageSize = 20;
-const publicColumns = `u.id,u.name,${platformBadgeColumns},p.city,p.country_code AS "countryCode",p.bio,p.skills,p.work_status AS "workStatus",photo.version AS "photoVersion",CASE WHEN cover.version IS NOT NULL THEN CASE WHEN ${canCustomizeCoverSql} THEN cover.version END END AS "coverVersion"`;
-const publicJoins = `JOIN personal_profile p ON p.user_id=u.id AND p.is_public=true ${platformFounderJoin} LEFT JOIN personal_profile_image photo ON photo.user_id=u.id AND photo.kind='photo' LEFT JOIN personal_profile_image cover ON cover.user_id=u.id AND cover.kind='cover'`;
+const publicColumns = `u.id,u.name,${platformBadgeColumns},CASE WHEN COALESCE(pref.show_city,true) THEN p.city END AS city,p.country_code AS "countryCode",p.bio,p.skills,p.work_status AS "workStatus",photo.version AS "photoVersion",CASE WHEN cover.version IS NOT NULL THEN CASE WHEN ${canCustomizeCoverSql} THEN cover.version END END AS "coverVersion"`;
+const publicJoins = `JOIN personal_profile p ON p.user_id=u.id AND p.is_public=true LEFT JOIN auth_account_preferences pref ON pref.user_id=u.id ${platformFounderJoin} LEFT JOIN personal_profile_image photo ON photo.user_id=u.id AND photo.kind='photo' LEFT JOIN personal_profile_image cover ON cover.user_id=u.id AND cover.kind='cover'`;
 const publicEligibility = `u.approval='approved' AND u."emailVerified"=true AND u.role IN ('member','owner')`;
 
 function eligible(user: CurrentAuthUser | undefined): asserts user is CurrentAuthUser {
@@ -151,8 +151,8 @@ async function readPublicStats(query: Query, id: string): Promise<PublicPersonSt
       `SELECT
          (SELECT count(*)::int FROM directory_business b
            WHERE b.owner_user_id=u.id AND b.deleted_at IS NULL AND b.status='published') AS businesses,
-         (SELECT count(*)::int FROM people_connection c
-           WHERE c.status='accepted' AND u.id IN (c.left_user_id,c.right_user_id)) AS friends,
+         CASE WHEN COALESCE(pref.show_friend_count,true) THEN (SELECT count(*)::int FROM people_connection c
+           WHERE c.status='accepted' AND u.id IN (c.left_user_id,c.right_user_id)) END AS friends,
          extract(year FROM u."createdAt" AT TIME ZONE 'Europe/Sarajevo')::int AS "joinedYear"
        FROM auth_user u ${publicJoins} WHERE u.id=$1 AND ${publicEligibility}`,
       [id],
@@ -362,7 +362,7 @@ export function createConnectionsService({
       return transaction(pool, async (client) => {
         const rows = (
           await client.query<PublicPerson>(
-            `SELECT ${publicColumns} FROM auth_user u ${publicJoins} WHERE ${publicEligibility} AND (u.name ILIKE $1 OR p.city ILIKE $1 OR array_to_string(p.skills,' ') ILIKE $1) AND ($4::text IS NULL OR p.work_status=$4) AND ($5::text IS NULL OR lower(p.city)=lower($5)) ORDER BY lower(u.name),u.id COLLATE "C" LIMIT $2 OFFSET $3`,
+            `SELECT ${publicColumns} FROM auth_user u ${publicJoins} WHERE ${publicEligibility} AND (u.name ILIKE $1 OR (COALESCE(pref.show_city,true) AND p.city ILIKE $1) OR array_to_string(p.skills,' ') ILIKE $1) AND ($4::text IS NULL OR p.work_status=$4) AND ($5::text IS NULL OR (COALESCE(pref.show_city,true) AND lower(p.city)=lower($5))) ORDER BY lower(u.name),u.id COLLATE "C" LIMIT $2 OFFSET $3`,
             [pattern, pageSize + 1, (value.page - 1) * pageSize, value.status, value.city],
           )
         ).rows;
