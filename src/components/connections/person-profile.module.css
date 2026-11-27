@@ -267,3 +267,33 @@ article.page {
     border-radius: 24px;
   }
 }
+
+/*
+ * 2026-11-27: the friends and people screens give .workspace an inset; the public profile shares
+ * that class and must stay edge to edge, with the cover reaching the top of a phone screen and no
+ * site header above it, as drawn.
+ */
+.screen > section {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0;
+}
+@media (max-width: 700px) {
+  :global(body):has(.screen) :global(.site-header) {
+    display: none;
+  }
+  .screen .cover {
+    height: calc(196px + env(safe-area-inset-top, 0px));
+    border-radius: 0;
+  }
+  .screen .coverBar {
+    inset: calc(14px + env(safe-area-inset-top, 0px)) 16px auto;
+  }
+}
+.screen .section h2 {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
