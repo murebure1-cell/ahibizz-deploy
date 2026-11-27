@@ -173,27 +173,26 @@ export function AccountSummary({
       <div className={styles.top}>
         <span>{t("Moj profil")}</span>
         <span className={styles.topActions}>
-          <button
-            type="button"
-            className={styles.menu}
-            aria-label={t("Uredi profil")}
-            onClick={() => onSection("profile")}
-          >
-            <Icon name="sliders" />
-          </button>
           <Link href={menuPath} className={styles.menu} aria-label={t("Meni")} prefetch={false}>
             <Icon name="menu" />
           </Link>
         </span>
       </div>
       <header className={styles.head} data-design="account-summary">
-        <span className={styles.avatar} data-founder={profile?.platformFounder ? "" : undefined}>
+        {/* As drawn, the photo itself opens Uredi profil. */}
+        <button
+          type="button"
+          className={styles.avatar}
+          data-founder={profile?.platformFounder ? "" : undefined}
+          aria-label={t("Uredi profil")}
+          onClick={() => onSection("profile")}
+        >
           {photo ? (
             <Image src={photo} alt="" width={176} height={176} unoptimized />
           ) : (
             <span aria-hidden="true">{profileInitials(displayName)}</span>
           )}
-        </span>
+        </button>
         <h1>
           <bdi>{displayName}</bdi>
           {profile?.verified && <VerificationBadge kind="person" />}
@@ -232,6 +231,17 @@ export function AccountSummary({
           </div>
         </div>
       )}
+      <div className={styles.pair}>
+        <button type="button" onClick={() => onSection("connections")}>
+          <Icon name="people" />
+          <span>{t("Prijatelji")}</span>
+          {typeof facts?.friends === "number" && <small>{numbers.format(facts.friends)}</small>}
+        </button>
+        <button type="button" onClick={() => onSection("saved")}>
+          <Icon name="heart" />
+          <span>{t("Sačuvano")}</span>
+        </button>
+      </div>
       {error}
       {facts?.nextAppointment && (
         <NextAppointmentCard row={facts.nextAppointment} open={() => onSection("appointments")} />
@@ -310,8 +320,6 @@ export function AccountSummary({
           }
         />
         <Row icon="calendar" title={t("Termini")} onClick={() => onSection("appointments")} />
-        <Row icon="people" title={t("Prijatelji")} onClick={() => onSection("connections")} />
-        <Row icon="heart" title={t("Sačuvano")} onClick={() => onSection("saved")} />
         <Row icon="play" title={t("Moji reels")} href={accountShortcuts.manageReels} />
         <Row
           icon="layers"

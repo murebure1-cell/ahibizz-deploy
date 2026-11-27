@@ -2276,4 +2276,28 @@ export const account: Messages = {
       "Engelleme aranızdaki yeni mesajları ve arkadaşlık isteklerini durdurur. Kişiye bildirim gitmez.",
     ],
   Blokiran: ["Blocked", "Gesperrt am", "تم الحظر", "Engellendi"],
+  "Uredi sačuvane pretrage": [
+    "Edit saved searches",
+    "Gespeicherte Suchen bearbeiten",
+    "تعديل عمليات البحث المحفوظة",
+    "Kayıtlı aramaları düzenle",
+  ],
+  "Članci trenutno nisu dostupni.": [
+    "Articles are not available right now.",
+    "Artikel sind gerade nicht verfügbar.",
+    "المقالات غير متاحة حاليًا.",
+    "Makaleler şu anda kullanılamıyor.",
+  ],
+  "{minutes} min čitanja": [
+    "{minutes} min read",
+    "{minutes} Min. Lesezeit",
+    "{minutes} دقيقة قراءة",
+    "{minutes} dk okuma",
+  ],
+  "Svi sačuvani članci": [
+    "All saved articles",
+    "Alle gespeicherten Artikel",
+    "كل المقالات المحفوظة",
+    "Tüm kayıtlı makaleler",
+  ],
 };
