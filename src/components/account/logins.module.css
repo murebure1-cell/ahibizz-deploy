@@ -1,0 +1,107 @@
+/* The sign-in screens under Postavke: a small action at the end of a row, a full-width action
+   under a group, and a short note. */
+.inline {
+  margin: 0;
+}
+.small {
+  flex: none;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ui-danger);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: scale 140ms var(--ease-out);
+}
+.small:active,
+.wide:active,
+.primary:active {
+  scale: 0.97;
+}
+.actions {
+  display: flex;
+  padding: 14px var(--rows-inset, 20px) 0;
+}
+.actions form {
+  display: flex;
+  flex: 1;
+}
+.wide,
+.primary {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border-radius: 16px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  transition: scale 140ms var(--ease-out);
+}
+.wide {
+  border: 1px solid var(--ui-border);
+  background: transparent;
+  color: var(--ui-danger);
+}
+.primary {
+  border: 0;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+}
+.note {
+  margin: 0;
+  padding: 12px calc(var(--rows-inset, 20px) + 4px) 0;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 19px;
+}
+.feedback {
+  margin: 0;
+  padding: 12px calc(var(--rows-inset, 20px) + 4px) 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.feedback[data-kind="error"] {
+  color: var(--ui-danger);
+}
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 28px 0;
+  text-align: center;
+}
+.hero strong {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 800;
+}
+.hero p {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 14px;
+  line-height: 21px;
+}
+.mark {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+}
+.mark svg {
+  width: 34px;
+  height: 34px;
+}

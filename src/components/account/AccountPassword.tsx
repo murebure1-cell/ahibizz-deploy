@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { type FormEvent, useRef, useState } from "react";
 import { msg } from "../../lib/i18n/translate";
-import { Icon } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
-import { rowStyles } from "../ui/Rows";
 import styles from "./settings.module.css";
 
 const errors: Record<string, string> = {
@@ -15,13 +13,13 @@ const errors: Record<string, string> = {
   TOO_MANY_REQUESTS: msg("Previše pokušaja. Pokušaj ponovo za minutu."),
 };
 
-export function AccountPassword({ accountId, email }: { accountId: string; email: string }) {
+/** The password change form, on its own screen under Postavke. */
+export function PasswordForm({ accountId, email }: { accountId: string; email: string }) {
   const t = useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const submitting = useRef(false);
-  const details = useRef<HTMLDetailsElement>(null);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting.current) return;
@@ -59,7 +57,6 @@ export function AccountPassword({ accountId, email }: { accountId: string; email
         return;
       }
       form.reset();
-      if (details.current) details.current.open = false;
       setNotice(t("Lozinka je promijenjena. Na drugim uređajima prijavi se novom lozinkom."));
     } catch {
       setError(t("Promjena nije potvrđena. Provjeri vezu ili zatraži link za novu lozinku."));
@@ -69,75 +66,65 @@ export function AccountPassword({ accountId, email }: { accountId: string; email
     }
   }
   return (
-    <>
-      <details ref={details} className={styles.password}>
-        <summary className={rowStyles.row}>
-          <Icon name="key" className={rowStyles.icon} />
-          <span className={rowStyles.text}>
-            <span className={rowStyles.title}>{t("Lozinka")}</span>
-          </span>
-          <span className={rowStyles.value}>{t("Promijeni lozinku")}</span>
-          <Icon name="chevron" className={rowStyles.chevron} />
-        </summary>
-        <form method="post" action="/api/account/password" onSubmit={submit} aria-busy={busy}>
-          <input type="hidden" name="username" autoComplete="username" value={email} />
-          <label>
-            {t("Trenutna lozinka")}
-            <input
-              type="password"
-              name="currentPassword"
-              autoComplete="current-password"
-              required
-              maxLength={128}
-              disabled={busy}
-            />
-          </label>
-          <label>
-            {t("Nova lozinka")}
-            <input
-              type="password"
-              name="newPassword"
-              autoComplete="new-password"
-              required
-              minLength={12}
-              maxLength={128}
-              aria-describedby="password-length"
-              disabled={busy}
-            />
-          </label>
-          <small id="password-length">{t("Najmanje 12 znakova.")}</small>
-          <label>
-            {t("Potvrdi novu lozinku")}
-            <input
-              type="password"
-              name="confirmPassword"
-              autoComplete="new-password"
-              required
-              minLength={12}
-              maxLength={128}
-              disabled={busy}
-            />
-          </label>
-          {error && (
-            <p role="alert" className={styles.error}>
-              {error}
-            </p>
-          )}
-          <div className={styles.actions}>
-            <button type="submit" disabled={busy}>
-              {busy ? t("Spremam…") : t("Sačuvaj novu lozinku")}
-            </button>
-          </div>
-          <Link href="/zaboravljena-lozinka" className={styles.forgot}>
-            {t("Zaboravljena lozinka")}
-          </Link>
-        </form>
-      </details>
-      {notice && (
-        <p role="status" className={styles.notice}>
-          {notice}
-        </p>
-      )}
-    </>
+    <div className={styles.password} data-screen="">
+      <form method="post" action="/api/account/password" onSubmit={submit} aria-busy={busy}>
+        <input type="hidden" name="username" autoComplete="username" value={email} />
+        <label>
+          {t("Trenutna lozinka")}
+          <input
+            type="password"
+            name="currentPassword"
+            autoComplete="current-password"
+            required
+            maxLength={128}
+            disabled={busy}
+          />
+        </label>
+        <label>
+          {t("Nova lozinka")}
+          <input
+            type="password"
+            name="newPassword"
+            autoComplete="new-password"
+            required
+            minLength={12}
+            maxLength={128}
+            aria-describedby="password-length"
+            disabled={busy}
+          />
+        </label>
+        <small id="password-length">{t("Najmanje 12 znakova.")}</small>
+        <label>
+          {t("Potvrdi novu lozinku")}
+          <input
+            type="password"
+            name="confirmPassword"
+            autoComplete="new-password"
+            required
+            minLength={12}
+            maxLength={128}
+            disabled={busy}
+          />
+        </label>
+        {error && (
+          <p role="alert" className={styles.error}>
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p role="status" className={styles.notice}>
+            {notice}
+          </p>
+        )}
+        <div className={styles.actions}>
+          <button type="submit" disabled={busy}>
+            {busy ? t("Spremam…") : t("Sačuvaj novu lozinku")}
+          </button>
+        </div>
+        <Link href="/zaboravljena-lozinka" className={styles.forgot}>
+          {t("Ne sjećaš se trenutne?")}
+        </Link>
+      </form>
+    </div>
   );
 }
