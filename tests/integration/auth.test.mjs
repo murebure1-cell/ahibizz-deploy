@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { createServer, request as localHttpRequest } from "node:http";
 import path from "node:path";
 import test from "node:test";
@@ -1004,6 +1004,148 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             (await pool.query("SELECT count(*)::integer AS n FROM auth_session")).rows[0].n,
             2,
           );
+        },
+      );
+
+      await t.test(
+        "the app signs in through the website once, only with its own verifier, never past approval",
+        async () => {
+          const sha = (value, encoding) => createHash("sha256").update(value).digest(encoding);
+          const pair = () => {
+            const verifier = randomBytes(32).toString("base64url");
+            return { verifier, challenge: sha(verifier, "base64url") };
+          };
+          const start = (cookies, body) =>
+            auth.api.startAppHandoff({ headers: accountHeaders(cookies), body });
+          const exchange = (cookies, body, origin) =>
+            request("POST", "/api/auth/app-handoff/exchange", { body, cookies, origin });
+          const codes = async () =>
+            (
+              await pool.query(
+                "SELECT identifier, value FROM auth_verification WHERE identifier LIKE 'app-handoff:%'",
+              )
+            ).rows;
+          const sessions = async () =>
+            (await pool.query("SELECT count(*)::integer AS n FROM auth_session")).rows[0].n;
+          const before = await sessions();
+
+          // Starting is for the server's own confirmation form; HTTP never reaches it.
+          assert.equal(
+            (
+              await request("POST", "/api/auth/app-handoff/start", {
+                body: { challenge: pair().challenge, account: userId },
+                cookies: first,
+              })
+            ).response.status,
+            404,
+          );
+          await assert.rejects(
+            () => start(new Cookies(), { challenge: pair().challenge, account: userId }),
+            (error) => error.statusCode === 401,
+          );
+          await assert.rejects(
+            () => start(first, { challenge: pair().challenge, account: "another-account" }),
+            (error) => error.statusCode === 409,
+          );
+          await assert.rejects(
+            () => start(first, { challenge: "too-short", account: userId }),
+            (error) => error.statusCode === 400,
+          );
+          assert.deepEqual(await codes(), []);
+
+          // Only a hash is stored, and the first attempt spends the code, right or wrong.
+          const wrong = pair();
+          const spent = (await start(first, { challenge: wrong.challenge, account: userId })).code;
+          assert.match(spent, /^[A-Za-z0-9_-]{43}$/);
+          const stored = await codes();
+          assert.equal(stored.length, 1);
+          assert.equal(stored[0].identifier, `app-handoff:${sha(spent, "hex")}`);
+          assert.deepEqual(JSON.parse(stored[0].value), { userId, challenge: wrong.challenge });
+          const app = new Cookies();
+          const refused = await exchange(app, { code: spent, verifier: pair().verifier });
+          assert.equal(refused.response.status, 401);
+          assert.deepEqual(refused.data, { code: "INVALID_APP_CODE" });
+          assert.equal(
+            (await exchange(app, { code: spent, verifier: wrong.verifier })).response.status,
+            401,
+          );
+          assert.equal(app.header(), "");
+
+          // Another origin or an extra field is refused before the code is touched.
+          const right = pair();
+          const code = (await start(first, { challenge: right.challenge, account: userId })).code;
+          assert.equal(
+            (await exchange(app, { code, verifier: right.verifier }, "https://untrusted.invalid"))
+              .response.status,
+            403,
+          );
+          assert.equal(
+            (await exchange(app, { code, verifier: right.verifier, rememberMe: true })).response
+              .status,
+            400,
+          );
+          assert.equal(
+            (await exchange(app, { code, verifier: right.verifier })).response.status,
+            200,
+          );
+          const own = await auth.api.getSession({ headers: accountHeaders(app) });
+          const web = await auth.api.getSession({ headers: accountHeaders(first) });
+          assert.equal(own.user.id, userId);
+          assert.notEqual(own.session.id, web.session.id);
+          const lifetime = new Date(own.session.expiresAt).getTime() - Date.now();
+          assert.ok(lifetime > 29 * 86400000 && lifetime <= 30 * 86400000);
+          assert.equal((await session(app)).user.id, userId);
+          assert.equal(
+            (await exchange(new Cookies(), { code, verifier: right.verifier })).response.status,
+            401,
+          );
+
+          // An expired code is refused.
+          const late = pair();
+          const old = (await start(first, { challenge: late.challenge, account: userId })).code;
+          await pool.query(
+            `UPDATE auth_verification SET "expiresAt" = now() - interval '1 second' WHERE identifier = $1`,
+            [`app-handoff:${sha(old, "hex")}`],
+          );
+          assert.equal(
+            (await exchange(new Cookies(), { code: old, verifier: late.verifier })).response.status,
+            401,
+          );
+
+          // Approval is read again when the app exchanges its code.
+          const held = pair();
+          const waiting = (await start(first, { challenge: held.challenge, account: userId })).code;
+          await pool.query("UPDATE auth_user SET approval = 'suspended' WHERE id = $1", [userId]);
+          try {
+            const denied = await exchange(new Cookies(), {
+              code: waiting,
+              verifier: held.verifier,
+            });
+            assert.equal(denied.response.status, 403);
+            assert.deepEqual(denied.data, { code: "ACCOUNT_SUSPENDED" });
+          } finally {
+            await pool.query("UPDATE auth_user SET approval = 'approved' WHERE id = $1", [userId]);
+          }
+
+          // One account may start only a few codes in a while.
+          for (let index = 0; index < 6; index++)
+            await start(first, { challenge: pair().challenge, account: userId });
+          await assert.rejects(
+            () => start(first, { challenge: pair().challenge, account: userId }),
+            (error) => error.statusCode === 429,
+          );
+          await pool.query("DELETE FROM auth_verification WHERE identifier LIKE 'app-handoff:%'");
+
+          // Signing the app out ends only its own session.
+          assert.equal(
+            (await request("POST", "/api/auth/sign-out", { body: {}, cookies: app })).response
+              .status,
+            200,
+          );
+          assert.equal(await session(app), null);
+          assert.equal((await session(first)).user.id, userId);
+          assert.equal((await session(second)).user.id, userId);
+          assert.equal(await sessions(), before);
         },
       );
 

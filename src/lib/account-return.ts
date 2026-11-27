@@ -1,6 +1,7 @@
 import { blockedPeoplePath } from "./account-blocks";
 import { activityInboxPath, deviceNotificationSettingsPath } from "./activity";
 import { adminReturnPath } from "./admin-navigation";
+import { appHandoffReturnPath } from "./app-handoff";
 import { bookingReturnPath } from "./booking-return";
 import {
   businessInquiryPath,
@@ -103,6 +104,9 @@ export function accountReturnPath(value: unknown): string {
     (/^\/blog\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && value.length <= 86)
   )
     return value;
+  // Signing in to the app through the website comes back to its confirmation page.
+  const app = appHandoffReturnPath(value);
+  if (app) return app;
   if (value.startsWith("/pretraga?") && canonicalSavedSearch(value.slice("/pretraga".length)))
     return value;
   const reelReportPrefix = "/prijavi-sadrzaj?vrsta=reel&oznaka=";
