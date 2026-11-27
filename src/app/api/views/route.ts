@@ -1,6 +1,14 @@
 import { readAuthConfiguration } from "../../../server/auth/config";
 import { getAuthDatabasePool, getAuthService } from "../../../server/auth/service";
-import { recordView, viewTarget } from "../../../server/views";
+import {
+  recordTouch,
+  recordView,
+  type TouchKind,
+  touchKinds,
+  type ViewSource,
+  viewSources,
+  viewTarget,
+} from "../../../server/views";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,7 +17,11 @@ function reply(status: number) {
   return new Response(null, { status, headers: { "Cache-Control": "no-store" } });
 }
 
-/** One page view: { "kind": "person" | "business", "id": "…" }. Answers 204 either way. */
+/**
+ * One page view: { "kind": "person" | "business", "id": "…", "source"?: "search" | … }, or a tap
+ * on a business: { "kind": "touch", "id": "…", "touch": "call" | "message" | "map" }.
+ * Answers 204 either way.
+ */
 export async function POST(request: Request) {
   const configuration = readAuthConfiguration(),
     pool = getAuthDatabasePool(),
@@ -22,18 +34,36 @@ export async function POST(request: Request) {
   )
     return reply(415);
   let target: ReturnType<typeof viewTarget> = null;
+  let touch: TouchKind | null = null;
+  let source: ViewSource = "other";
   try {
     const text = await request.text();
     if (text.length > 512) return reply(400);
-    const body = JSON.parse(text) as { kind?: unknown; id?: unknown };
-    target = viewTarget(body?.kind, body?.id);
+    const body = JSON.parse(text) as {
+      kind?: unknown;
+      id?: unknown;
+      touch?: unknown;
+      source?: unknown;
+    };
+    if (body?.kind === "touch") {
+      target = viewTarget("business", body.id);
+      if (!touchKinds.includes(body.touch as TouchKind)) return reply(400);
+      touch = body.touch as TouchKind;
+    } else {
+      target = viewTarget(body?.kind, body?.id);
+      if (body?.source !== undefined) {
+        if (!viewSources.includes(body.source as ViewSource)) return reply(400);
+        source = body.source as ViewSource;
+      }
+    }
   } catch {
     return reply(400);
   }
   if (!target) return reply(400);
   try {
     const session = auth ? await auth.api.getSession({ headers: request.headers }) : null;
-    await recordView(pool, target, session?.user?.id ?? null);
+    if (touch) await recordTouch(pool, target.id, touch, session?.user?.id ?? null);
+    else await recordView(pool, target, session?.user?.id ?? null, source);
   } catch {
     // A view that cannot be counted is not worth an error on the visitor's page.
   }

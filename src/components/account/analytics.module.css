@@ -1,0 +1,244 @@
+/* "Analitika" as drawn (2026-11-27). */
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px var(--rows-inset, 20px) 120px;
+}
+.srOnly {
+  position: absolute;
+  overflow: hidden;
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  white-space: nowrap;
+}
+.pickers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.pickers select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+.failure,
+.note {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 14px;
+}
+.totals {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+.totals > div,
+.chart,
+.touches > div,
+.sources,
+.insights {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+}
+.totals > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px;
+}
+.totals strong {
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 800;
+}
+.totals span {
+  color: var(--ui-muted);
+  font-size: 13px;
+}
+.totals small {
+  color: var(--ui-accent-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+.totals small[data-down] {
+  color: var(--ui-muted);
+}
+.section h2 {
+  margin: 4px 0 10px;
+  font-size: 15px;
+  font-weight: 800;
+}
+.chart {
+  padding: 14px;
+}
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 92px;
+}
+.bars span {
+  flex: 1;
+  border-radius: 4px 4px 2px 2px;
+  background: var(--ui-accent);
+}
+.bars span[data-last] {
+  background: color-mix(in srgb, var(--ui-accent) 45%, var(--ui-surface));
+}
+.axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+.touches {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.touches > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+}
+.touches svg {
+  width: 18px;
+  height: 18px;
+  color: var(--ui-accent-text);
+}
+.touches strong {
+  font-size: 20px;
+  font-weight: 800;
+}
+.touches span {
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+.sources {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+}
+.sources > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.sources i {
+  grid-column: 1 / -1;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-text) 10%, transparent);
+}
+.sources b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ui-accent);
+}
+.insights {
+  overflow: hidden;
+}
+.insights p {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.insights p + p {
+  border-top: 1px solid var(--ui-border);
+}
+.insights svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--ui-accent-text);
+}
+.export {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.export svg {
+  width: 18px;
+  height: 18px;
+}
+.locked {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+}
+.lockedSample {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 130px;
+  padding: 14px;
+  filter: blur(6px);
+  opacity: 0.5;
+}
+.lockedSample span {
+  flex: 1;
+  border-radius: 4px;
+  background: var(--ui-accent);
+}
+.lockedText {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+}
+.lockedText strong {
+  font-size: 15px;
+}
+.lockedText > span:last-child {
+  color: var(--ui-muted);
+}
+.lockIcon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--ui-surface-soft);
+}
+.lockIcon svg {
+  width: 16px;
+  height: 16px;
+}
