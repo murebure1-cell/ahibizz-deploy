@@ -126,6 +126,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0059_administration_account.sql",
           "0060_view_counts.sql",
           "0061_business_menu.sql",
+          "0062_privacy_and_notification_choices.sql",
         ],
       );
 

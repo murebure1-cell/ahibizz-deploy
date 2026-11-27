@@ -383,10 +383,12 @@ function PersonProfile({
                 <dt>{t("djelatnosti")}</dt>
                 <dd>{stats.businesses}</dd>
               </div>
-              <div>
-                <dt>{t("prijatelja")}</dt>
-                <dd>{stats.friends}</dd>
-              </div>
+              {stats.friends !== null && (
+                <div>
+                  <dt>{t("prijatelja")}</dt>
+                  <dd>{stats.friends}</dd>
+                </div>
+              )}
               <div>
                 <dt>{t("član od")}</dt>
                 <dd>{stats.joinedYear}.</dd>

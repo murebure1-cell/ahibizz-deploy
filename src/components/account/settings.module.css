@@ -222,3 +222,32 @@
   max-width: none;
   padding: 16px var(--rows-inset, 20px) 0;
 }
+
+/* Odjava at the end of Postavke, as drawn. */
+.logoutWrap {
+  margin: 20px var(--rows-inset, 20px) 0;
+}
+.logoutButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: scale 160ms var(--ease-out);
+}
+.logoutButton:active {
+  scale: 0.98;
+}
+.logoutButton svg {
+  width: 18px;
+  height: 18px;
+}
