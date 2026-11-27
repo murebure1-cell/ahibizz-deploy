@@ -507,3 +507,19 @@ button.avatar:active {
   font-size: 13px;
   font-weight: 600;
 }
+/* The two numbers are links to "Analitika". */
+.stats > a {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  text-decoration: none;
+  transition: scale 160ms var(--ease-out);
+}
+.stats > a:active {
+  scale: 0.98;
+}

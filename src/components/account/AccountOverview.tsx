@@ -220,15 +220,16 @@ export function AccountSummary({
         </div>
       </header>
       {facts && (
+        // As drawn, the numbers open "Analitika".
         <div className={styles.stats}>
-          <div>
+          <Link href="/nalog/analitika" prefetch={false}>
             <strong>{numbers.format(facts.profileViews ?? 0)}</strong>
             <span>{t("Pregledi profila · 30 dana")}</span>
-          </div>
-          <div>
+          </Link>
+          <Link href="/nalog/analitika" prefetch={false}>
             <strong>{numbers.format(facts.businessViews ?? 0)}</strong>
             <span>{t("Pregledi djelatnosti · 30 dana")}</span>
-          </div>
+          </Link>
         </div>
       )}
       <div className={styles.pair}>

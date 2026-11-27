@@ -4,6 +4,11 @@
  * each page once per session (ViewBeacon).
  */
 export type ViewKind = "person" | "business";
+/** Where a business visitor came from (migration 0063), read from the page they left. */
+export const viewSources = ["search", "category", "map", "other"] as const;
+export type ViewSource = (typeof viewSources)[number];
+export const touchKinds = ["call", "message", "map"] as const;
+export type TouchKind = (typeof touchKinds)[number];
 type Query = {
   query(text: string, values?: unknown[]): Promise<{ rowCount?: number | null }>;
 };
@@ -24,6 +29,7 @@ export async function recordView(
   database: Query,
   target: { kind: ViewKind; id: string },
   viewerId: string | null,
+  source: ViewSource = "other",
 ): Promise<boolean> {
   const result =
     target.kind === "business"
@@ -45,6 +51,38 @@ export async function recordView(
            ON CONFLICT (user_id, day) DO UPDATE SET views = profile_view_day.views + 1`,
           [target.id, viewerId],
         );
+  const counted = (result.rowCount ?? 0) > 0;
+  if (counted && target.kind === "business") {
+    await database.query(
+      `INSERT INTO business_source_day (business_id, day, source, views) VALUES ($1, ${today}, $2, 1)
+       ON CONFLICT (business_id, day, source) DO UPDATE SET views = business_source_day.views + 1`,
+      [target.id, source],
+    );
+    await database.query(
+      `INSERT INTO business_view_hour (business_id, day, hour, views)
+       VALUES ($1, ${today}, extract(hour FROM clock_timestamp() AT TIME ZONE 'Europe/Sarajevo')::smallint, 1)
+       ON CONFLICT (business_id, day, hour) DO UPDATE SET views = business_view_hour.views + 1`,
+      [target.id],
+    );
+  }
+  return counted;
+}
+
+/** Counts a tap on call, message or map of a published business; an owner's own is not. */
+export async function recordTouch(
+  database: Query,
+  id: string,
+  kind: TouchKind,
+  viewerId: string | null,
+): Promise<boolean> {
+  const result = await database.query(
+    `INSERT INTO business_touch_day (business_id, day, kind, touches)
+     SELECT b.id, ${today}, $2, 1 FROM directory_business b
+     WHERE b.id=$1 AND b.deleted_at IS NULL AND b.status='published'
+       AND ($3::text IS NULL OR b.owner_user_id<>$3)
+     ON CONFLICT (business_id, day, kind) DO UPDATE SET touches = business_touch_day.touches + 1`,
+    [id, kind, viewerId],
+  );
   return (result.rowCount ?? 0) > 0;
 }
 
