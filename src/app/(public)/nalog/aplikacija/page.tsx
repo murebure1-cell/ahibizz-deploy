@@ -10,9 +10,10 @@ import {
 import { titled } from "../../../../server/i18n";
 
 export const dynamic = "force-dynamic";
+// No referrer policy of its own: with "no-referrer" a browser sends "Origin: null" with the
+// confirmation form, and the form is refused (seen live on 2026-11-27).
 export const generateMetadata = titled("Prijava u aplikaciju", {
   robots: { index: false, follow: false },
-  referrer: "no-referrer",
 });
 
 /**
