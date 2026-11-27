@@ -13,6 +13,7 @@ import {
   type ConnectionsService,
   getConnectionsService,
 } from "./connections";
+import { readOwnerStoryBusiness } from "./reels/service";
 
 const noCache = { "Cache-Control": "no-store", Pragma: "no-cache" };
 function reply(body: unknown, status = 200) {
@@ -195,7 +196,17 @@ export function createConnectionsHttpHandler({
           const stats = await Promise.resolve()
             .then(async () => readPublicPersonStats(await service.readPublicStats(record.id)))
             .catch(() => null);
-          return reply({ person: record, viewerId: viewer?.id ?? null, relationship, stats });
+          // A ring on the photo when one of the person's businesses has live Reels.
+          const story = await readOwnerStoryBusiness(record.id, viewer?.id ?? null).catch(
+            () => null,
+          );
+          return reply({
+            person: record,
+            viewerId: viewer?.id ?? null,
+            relationship,
+            stats,
+            storyBusinessId: story,
+          });
         }
         if (media) {
           const options = query(url, ["v"]);

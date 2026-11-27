@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { BlockState } from "../../lib/account-blocks";
+import { businessUuid } from "../../lib/business-today";
 import {
   type PublicPerson,
   type PublicPersonStats,
@@ -93,6 +94,7 @@ function PersonProfile({
   const { t, locale } = useI18n();
   const [contact, setContact] = useState<BlockState | null>(null);
   const [stats, setStats] = useState<PublicPersonStats | null>(null);
+  const [story, setStory] = useState<string | null>(null);
   const tabId = useId();
   const [person, setPerson] = useState<PublicPerson | null>(null),
     [relationship, setRelationship] = useState<Relationship | null>(null),
@@ -153,6 +155,11 @@ function PersonProfile({
       capturedActor.current = result.viewerId;
       setPerson(next);
       setStats(readPublicPersonStats(result.stats));
+      setStory(
+        typeof result.storyBusinessId === "string" && businessUuid(result.storyBusinessId)
+          ? result.storyBusinessId
+          : null,
+      );
       setRelationship(relation);
       setViewerId(result.viewerId);
       return relation;
@@ -179,6 +186,7 @@ function PersonProfile({
 
   useEffect(() => {
     setStats(null);
+    setStory(null);
     setPerson(null);
     setRelationship(null);
     setViewerId(null);
@@ -343,10 +351,23 @@ function PersonProfile({
             </div>
           </div>
           <div className={look.identity}>
-            <span className={look.portrait}>
-              {person.platformFounder && <span className={look.ring} aria-hidden="true" />}
-              <PersonAvatar person={person} imageUrl={imageUrl} large />
-            </span>
+            {story && !preview ? (
+              <Link
+                href={`/story/${story}?osoba=${encodeURIComponent(person.id)}`}
+                className={look.portrait}
+                data-story=""
+                aria-label={t("Pogledaj reels")}
+                prefetch={false}
+              >
+                <span className={look.storyRing} aria-hidden="true" />
+                <PersonAvatar person={person} imageUrl={imageUrl} large />
+              </Link>
+            ) : (
+              <span className={look.portrait}>
+                {person.platformFounder && <span className={look.ring} aria-hidden="true" />}
+                <PersonAvatar person={person} imageUrl={imageUrl} large />
+              </span>
+            )}
             <h1 className={look.name}>
               <bdi>{person.name}</bdi>
               {person.verified && <VerificationBadge kind="person" />}

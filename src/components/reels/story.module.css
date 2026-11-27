@@ -1,0 +1,194 @@
+/* Reels as a story (drawn 2026-11-27). The viewer always sits on black, like a photo. */
+.story {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  animation: story-in 400ms var(--ease-out);
+}
+@keyframes story-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    rgb(0 0 0 / 0.55),
+    transparent 22%,
+    transparent 70%,
+    rgb(0 0 0 / 0.7)
+  );
+  pointer-events: none;
+}
+.bars {
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: 10px;
+  right: 10px;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+}
+.bars > span {
+  flex: 1;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.32);
+}
+.bars > span > span {
+  display: block;
+  height: 100%;
+  background: #fff;
+  transform-origin: 0 50%;
+}
+.back,
+.next {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.back {
+  left: 0;
+  width: 33%;
+}
+.next {
+  right: 0;
+  width: 67%;
+}
+.head {
+  position: absolute;
+  top: calc(22px + env(safe-area-inset-top, 0px));
+  left: 12px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.who {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  text-decoration: none;
+}
+.who > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.who strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.who small {
+  font-size: 12px;
+  opacity: 0.8;
+}
+.logo {
+  display: grid;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.16);
+}
+.logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+}
+.icon svg {
+  width: 22px;
+  height: 22px;
+}
+.text {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+.text strong {
+  font-size: 17px;
+}
+.text span {
+  font-size: 14px;
+  line-height: 20px;
+  opacity: 0.9;
+}
+@media (prefers-reduced-motion: reduce) {
+  .story {
+    animation: none;
+  }
+}
+.text {
+  right: 80px;
+}
+.like {
+  position: absolute;
+  right: 18px;
+  bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+  z-index: 3;
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 0.5);
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.2);
+  color: #fff;
+  cursor: pointer;
+  transition: scale 160ms var(--ease-out);
+}
+.like:active {
+  scale: 0.94;
+}
+.like[aria-pressed="true"] {
+  color: var(--ui-accent);
+}
+.like svg {
+  width: 22px;
+  height: 22px;
+}
