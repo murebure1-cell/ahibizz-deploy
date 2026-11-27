@@ -1,0 +1,156 @@
+/*
+ * Signing in to the native app through the website: one plain column on the page colour, like
+ * the sign-in screen on a phone. A sign, a heading, the account that will be signed in, and one
+ * action.
+ */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(440px, calc(100% - 32px));
+  margin: 48px auto 72px;
+}
+.head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.sign {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 10px;
+  border-radius: 22px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+}
+.sign[data-kind="error"] {
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+}
+.sign svg {
+  width: 28px;
+  height: 28px;
+}
+.head h1 {
+  margin: 0;
+  color: var(--ui-text);
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+.intro {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 15px;
+  line-height: 22px;
+}
+.account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+}
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ui-text);
+  color: var(--ui-page);
+  font-size: 15px;
+  font-weight: 800;
+}
+.who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.who strong,
+.who span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.who strong {
+  color: var(--ui-text);
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 800;
+}
+.who span {
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 19px;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+.submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 54px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: scale 140ms var(--ease-out);
+}
+.submit:active {
+  scale: 0.97;
+}
+.submit:focus-visible,
+.quiet:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 3px;
+}
+.quiet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  border-radius: var(--ui-radius-md);
+  color: var(--ui-accent-text);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.error {
+  margin: 0;
+  padding: 13px 15px;
+  border: 1px solid var(--ui-danger-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+  font-size: 14px;
+  line-height: 20px;
+}
+.note {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 19px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .submit {
+    transition: none;
+  }
+}

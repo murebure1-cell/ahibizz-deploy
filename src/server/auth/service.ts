@@ -7,6 +7,7 @@ import {
 } from "better-auth/api";
 import { multiSession } from "better-auth/plugins";
 import { Pool } from "pg";
+import { createAppHandoff } from "./app-handoff";
 import { authOrigin, authSecret, type GoogleConfiguration, readAuthConfiguration } from "./config";
 import { type AuthIngressConfiguration, authIpAddressHeaders } from "./ingress";
 import { type AuthEmailSender, createSmtpSender, guardedAuthEmailSender } from "./mail";
@@ -187,6 +188,8 @@ export function createAuthService(options: {
         "/send-verification-email": { window: 60, max: shared ? 30 : 5 },
         // Starting Google sign-in sends no password; the provider limits its own attempts.
         "/sign-in/social": { window: 60, max: shared ? 120 : 10 },
+        // A code is 256 random bits and single-use; this only keeps floods off the database.
+        "/app-handoff/exchange": { window: 60, max: shared ? 120 : 10 },
       },
     },
     advanced: {
@@ -197,7 +200,12 @@ export function createAuthService(options: {
     },
     // Several accounts signed in on one device, one of them active. Session tokens stay in
     // signed, httpOnly cookies; only server code lists or switches them (device-accounts.ts).
-    plugins: [multiSession({ maximumSessions: deviceAccountLimit }), rememberDeviceSession],
+    // The native app signs in through the website with a one-time code (app-handoff.ts).
+    plugins: [
+      multiSession({ maximumSessions: deviceAccountLimit }),
+      rememberDeviceSession,
+      createAppHandoff(options.pool),
+    ],
     hooks: {
       before: createAuthMiddleware(async (context) => {
         if (
