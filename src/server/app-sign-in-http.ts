@@ -54,13 +54,26 @@ function statusOf(error: unknown) {
 }
 
 /**
+ * The form must come from this site. A browser names the page's origin; when a referrer policy
+ * hides it ("Origin: null") it still marks the request same-origin in Sec-Fetch-Site, a header no
+ * page can set. Anything else, including another site that hides its origin, is refused.
+ */
+function fromThisSite(request: Request, origin: string) {
+  const sent = request.headers.get("origin");
+  if (sent === origin) return true;
+  return (
+    (sent === null || sent === "null") && request.headers.get("sec-fetch-site") === "same-origin"
+  );
+}
+
+/**
  * "Nastavi u aplikaciji": an ordinary form, so the code travels only in the redirect the browser
  * hands to the app. A script on the page can neither read that redirect nor follow it.
  */
 export function createAppSignInHandler(options: { baseURL: string; start: StartAppHandoff }) {
   const origin = new URL(options.baseURL).origin;
   return async function appSignIn(request: Request): Promise<Response> {
-    if (request.headers.get("origin") !== origin) return plain(403);
+    if (!fromThisSite(request, origin)) return plain(403);
     if (
       request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() !==
       "application/x-www-form-urlencoded"

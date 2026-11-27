@@ -63,14 +63,21 @@ test("only one written form of the confirmation page is read and survives sign-i
   assert.equal(appReturnLink("code", state), `ahibizz://povratak?kod=code&stanje=${state}`);
 });
 
-function form(fields: [string, string][], init: { origin?: string; type?: string } = {}) {
+/** `origin: null` sends no Origin at all; `site` is the browser's Sec-Fetch-Site. */
+function form(
+  fields: [string, string][],
+  init: { origin?: string | null; type?: string; site?: string } = {},
+) {
+  const headers = new Headers({
+    "Content-Type": init.type ?? "application/x-www-form-urlencoded",
+    Cookie: "session=fixture",
+  });
+  const origin = init.origin === undefined ? baseURL : init.origin;
+  if (origin !== null) headers.set("Origin", origin);
+  if (init.site) headers.set("Sec-Fetch-Site", init.site);
   return new Request(`${baseURL}/api/account/app-sign-in`, {
     method: "POST",
-    headers: {
-      Origin: init.origin ?? baseURL,
-      "Content-Type": init.type ?? "application/x-www-form-urlencoded",
-      Cookie: "session=fixture",
-    },
+    headers,
     body: new URLSearchParams(fields).toString(),
   });
 }
@@ -115,8 +122,25 @@ test("the confirmation form opens the app with its code and returns failures to 
     assert.equal(response.headers.get("location"), location);
   }
 
+  // A page whose referrer policy hides its origin sends "Origin: null" (seen live on
+  // 2026-11-27); the browser's Sec-Fetch-Site still says whether it came from this site.
+  outcome = { code: "one-time-code" };
+  for (const origin of ["null", null])
+    assert.equal(
+      (await http(form(fields, { origin, site: "same-origin" }))).headers.get("location"),
+      `ahibizz://povratak?kod=one-time-code&stanje=${state}`,
+    );
   calls.length = 0;
-  assert.equal((await http(form(fields, { origin: "https://untrusted.invalid" }))).status, 403);
+  for (const refused of [
+    { origin: "https://untrusted.invalid" },
+    { origin: "https://untrusted.invalid", site: "same-origin" },
+    { origin: "null" },
+    { origin: "null", site: "cross-site" },
+    { origin: "null", site: "same-site" },
+    { origin: null },
+    { origin: null, site: "none" },
+  ])
+    assert.equal((await http(form(fields, refused))).status, 403, JSON.stringify(refused));
   assert.equal((await http(form(fields, { type: "application/json" }))).status, 415);
   for (const broken of [
     fields.slice(1),
