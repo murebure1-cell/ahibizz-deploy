@@ -18,7 +18,7 @@ import { clearBrowserMessagingRecovery } from "../../lib/messaging-recovery-stor
 import { type PersonalProfile, profileImageUrl } from "../../lib/people";
 import type { SafeAccountProfile } from "../../server/auth/accounts";
 import { useAppAppearance } from "../appearance/AppAppearance";
-import { SavedBusinesses } from "../favorites/SavedBusinesses";
+import { SavedOverview } from "../favorites/SavedOverview";
 import { Icon, type IconName } from "../Icon";
 import { useT } from "../i18n/LocaleProvider";
 import { PersonalProfileWorkspace } from "../people/PersonalProfileWorkspace";
@@ -64,7 +64,7 @@ const accountMenu = [
   { id: "profile", label: msg("Moj profil"), icon: "user", group: msg("Lični nalog") },
   { id: "appointments", label: msg("Moji termini"), icon: "calendar", group: msg("Lični nalog") },
   { id: "connections", label: msg("Prijatelji"), icon: "people", group: msg("Lični nalog") },
-  { id: "saved", label: msg("Sačuvane djelatnosti"), icon: "heart", group: msg("Lični nalog") },
+  { id: "saved", label: msg("Sačuvano"), icon: "heart", group: msg("Lični nalog") },
   { id: "settings", label: msg("Postavke"), icon: "sliders", group: msg("Lični nalog") },
 ] as {
   id: AccountSection;
@@ -299,27 +299,26 @@ function AccountWorkspace({
           >
             {/* On a phone every part of the account is a screen of its own with a way back to
                 "Moj profil"; the old card with tabs is gone (see account.module.css). */}
-            {current &&
-              !["overview", "settings", "messages", "businesses", "saved"].includes(section) && (
-                <div className={styles.phoneBar}>
-                  <ScreenBar
-                    title={section === "profile" ? t("Uredi profil") : t(current.label)}
-                    backHref="/nalog"
-                    backLabel={t("Moj profil")}
-                  >
-                    {section === "connections" && (
-                      <Link
-                        href="/ljudi"
-                        className={rowStyles.barAction}
-                        aria-label={t("Pronađi ljude")}
-                        prefetch={false}
-                      >
-                        <Icon name="search" />
-                      </Link>
-                    )}
-                  </ScreenBar>
-                </div>
-              )}
+            {current && !["overview", "settings", "messages", "businesses"].includes(section) && (
+              <div className={styles.phoneBar}>
+                <ScreenBar
+                  title={section === "profile" ? t("Uredi profil") : t(current.label)}
+                  backHref="/nalog"
+                  backLabel={t("Moj profil")}
+                >
+                  {section === "connections" && (
+                    <Link
+                      href="/ljudi"
+                      className={rowStyles.barAction}
+                      aria-label={t("Pronađi ljude")}
+                      prefetch={false}
+                    >
+                      <Icon name="search" />
+                    </Link>
+                  )}
+                </ScreenBar>
+              </div>
+            )}
             {IS_PLAY_EDITION &&
               hasAccess &&
               ["profile", "businesses", "messages"].includes(section) && (
@@ -387,15 +386,7 @@ function AccountWorkspace({
               />
             </AccountPane>
             <AccountPane selected={section === "saved"}>
-              <nav aria-label={t("Sačuvano")} className={styles.savedLinks} hidden={!hasAccess}>
-                <Link className="text-link" href="/sacuvane-pretrage">
-                  {t("Sačuvane pretrage")}
-                </Link>
-                <Link className="text-link" href="/blog?sacuvano=1">
-                  {t("Sačuvani članci")}
-                </Link>
-              </nav>
-              <SavedBusinesses
+              <SavedOverview
                 active={hasAccess && section === "saved"}
                 expectedAccountId={initial.id}
               />

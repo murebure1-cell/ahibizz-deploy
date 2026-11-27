@@ -458,3 +458,52 @@
   font-size: 13px;
   line-height: 18px;
 }
+
+/* As drawn (2026-11-27): the photo opens Uredi profil; Prijatelji and Sačuvano side by side. */
+button.avatar {
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+  transition: scale 160ms var(--ease-out);
+}
+button.avatar:active {
+  scale: 0.97;
+}
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+.pair button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: scale 160ms var(--ease-out);
+}
+.pair button:active {
+  scale: 0.98;
+}
+.pair svg {
+  width: 18px;
+  height: 18px;
+  color: var(--ui-muted);
+}
+.pair span {
+  flex: 1;
+  text-align: start;
+}
+.pair small {
+  color: var(--ui-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
