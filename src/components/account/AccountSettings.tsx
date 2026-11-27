@@ -341,7 +341,7 @@ function SettingsWorkspace({
             icon="bell"
             title={t("Vrste obavijesti")}
             sub={t("Poruke, termini, reels · telefon i email")}
-            href="/nalog/obavijesti"
+            href="/nalog/obavijesti/postavke"
           />
         </RowGroup>
       )}
