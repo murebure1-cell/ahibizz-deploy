@@ -21,7 +21,6 @@ import { Icon } from "../Icon";
 import { useI18n } from "../i18n/LocaleProvider";
 import { DevicePush } from "../pwa/DevicePush";
 import { Row, RowGroup, RowPill, rowStyles } from "../ui/Rows";
-import { AccountPassword } from "./AccountPassword";
 import styles from "./settings.module.css";
 
 const choices = [
@@ -240,7 +239,14 @@ function SettingsWorkspace({
               }
             />
             <Row icon="shop" title={t("Moje djelatnosti")} href="/nalog?odjeljak=djelatnosti" />
-            <AccountPassword accountId={account.id} email={account.email} />
+            <Row
+              icon="key"
+              title={t("Lozinka")}
+              value={t("Promijeni lozinku")}
+              href="/nalog/lozinka"
+            />
+            <Row icon="globe" title={t("Google nalog")} href="/nalog/google" />
+            <Row icon="lock" title={t("Aktivne prijave")} href="/nalog/prijave" />
           </RowGroup>
           <RowGroup title={t("Verifikacija")}>
             {verified === false ? (
@@ -249,13 +255,14 @@ function SettingsWorkspace({
                 title={t("Verifikacija profila")}
                 sub={manual}
                 value={t("Zatraži verifikaciju")}
-                href="/pomoc?tema=nalog#kontakt"
+                href="/nalog/verifikacija"
               />
             ) : (
               <Row
                 icon="shield"
                 title={t("Verifikacija profila")}
                 sub={manual}
+                href="/nalog/verifikacija"
                 end={verified ? <RowPill kind="ok">{t("Verifikovan")}</RowPill> : undefined}
               />
             )}
@@ -332,6 +339,7 @@ function SettingsWorkspace({
         </RowGroup>
       )}
       <RowGroup title={t("Privatnost i podaci")}>
+        <Row icon="eye" title={t("Vidljivost profila")} href="/nalog?odjeljak=profil" />
         <Row icon="block" title={t("Blokirani korisnici")} href={blockedPeoplePath} />
         <Row icon="lock" title={t("Pravila privatnosti")} href="/privatnost" />
         <Row

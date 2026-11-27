@@ -216,3 +216,9 @@
   border: 0;
   white-space: nowrap;
 }
+
+/* The form on its own screen under Postavke. */
+.password[data-screen] form {
+  max-width: none;
+  padding: 16px var(--rows-inset, 20px) 0;
+}
