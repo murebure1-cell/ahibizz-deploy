@@ -57,6 +57,10 @@ test("a user agent becomes a short device and browser name", () => {
     device: "Windows",
     browser: "Edge",
   });
+  assert.deepEqual(describeUserAgent("AhiBizz/1.0.0 (Android)"), {
+    device: "Android",
+    browser: "AhiBizz",
+  });
   assert.deepEqual(describeUserAgent(undefined), { device: "", browser: "" });
 });
 

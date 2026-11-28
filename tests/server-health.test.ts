@@ -52,7 +52,7 @@ test("readiness requires configuration and an applied schema without leaking err
     configured: () => true,
     async query(sql, values) {
       assert.match(sql, /platform_migrations/);
-      assert.deepEqual(values, ["0063_business_analytics.sql"]);
+      assert.deepEqual(values, ["0064_attempt_limits.sql"]);
       return { rows: [{ ready: 1 }] };
     },
   });

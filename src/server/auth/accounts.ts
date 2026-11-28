@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import { readOwnerOverview } from "../account-overview";
 import { readAdminTodayQueues } from "../admin-today";
 import { readBusinessToday } from "../business-today";
+import { clearAttempts, countAttempt } from "./attempt-limit";
 import { bootstrapInitialOwnerRecord, InitialOwnerError } from "./initial-owner";
 import {
   type AccountApproval,
@@ -234,17 +235,8 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
       const credential = await accountTransaction(pool, async (client) => {
         const user = await authority(client, current, false, "read");
         // Commit failed attempts, with one bounded window per account across devices and instances.
-        const attempt = await client.query(
-          `INSERT INTO auth_rate_limit (id,key,count,"lastRequest")
-           VALUES ($1,$1,1,(extract(epoch from clock_timestamp())*1000)::bigint)
-           ON CONFLICT (key) DO UPDATE SET
-             count=CASE WHEN EXCLUDED."lastRequest"-auth_rate_limit."lastRequest">=60000 THEN 1 ELSE auth_rate_limit.count+1 END,
-             "lastRequest"=CASE WHEN EXCLUDED."lastRequest"-auth_rate_limit."lastRequest">=60000 THEN EXCLUDED."lastRequest" ELSE auth_rate_limit."lastRequest" END
-           WHERE auth_rate_limit.count<5 OR EXCLUDED."lastRequest"-auth_rate_limit."lastRequest">=60000
-           RETURNING count`,
-          [limitKey],
-        );
-        if (!attempt.rowCount) fail(429, "TOO_MANY_REQUESTS");
+        const attempt = await countAttempt(client, limitKey, { windowSeconds: 60, max: 5 });
+        if (!attempt.allowed) fail(429, "TOO_MANY_REQUESTS");
         return (
           await client.query<{ id: string; password: string | null }>(
             'SELECT id,password FROM auth_account WHERE "userId"=$1 AND "providerId"=\'credential\'',
@@ -274,7 +266,7 @@ export function createAccountService({ auth, pool }: { auth: AuthService; pool: 
           "DELETE FROM auth_verification WHERE value=$1 AND identifier LIKE 'reset-password:%'",
           [user.id],
         );
-        await client.query("DELETE FROM auth_rate_limit WHERE key=$1", [limitKey]);
+        await clearAttempts(client, limitKey);
       });
     },
     async overview(headers: Headers) {

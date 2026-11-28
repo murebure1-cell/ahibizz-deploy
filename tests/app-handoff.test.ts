@@ -113,6 +113,7 @@ test("the confirmation form opens the app with its code and returns failures to 
   for (const [status, location] of [
     [401, `/prijava?nastavi=${encodeURIComponent(page)}`],
     [409, page],
+    [403, page],
     [429, `${page}&greska=previse`],
     [500, `${page}&greska=1`],
   ] as const) {
