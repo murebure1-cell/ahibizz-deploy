@@ -1,6 +1,7 @@
 import { helpTicketTopic } from "../lib/help-center";
 import {
   type OwnRequestOptions,
+  onlyKey,
   openOwnRequest,
   ownFailure,
   ownReply,
@@ -61,6 +62,43 @@ export function createSupportRequestHandler(
 }
 
 export const handleSupportRequest = createSupportRequestHandler({
+  auth: getAuthService,
+  baseURL: () => readAuthConfiguration()?.baseURL ?? null,
+  submit: () => {
+    const service = getSupportRequests();
+    return service ? service.submit.bind(service) : null;
+  },
+});
+
+/**
+ * "Brisanje naloga" as JSON, for the native app: the same request as the website's form.
+ *
+ * POST /api/support/deletion {"confirm": true} → { sent: true }
+ *
+ * It only records the request; support checks who sent it and carries it out by hand, as the
+ * page says. Sending it again while one is open changes nothing.
+ */
+export function createDeletionRequestHandler(
+  options: OwnRequestOptions & { submit: () => Submit | null },
+) {
+  return async function deletionRequest(request: Request): Promise<Response> {
+    try {
+      const opened = await openOwnRequest(request, options);
+      if (opened instanceof Response) return opened;
+      if (!opened.change) return ownReply({ code: "METHOD_NOT_ALLOWED" }, 405);
+      const submit = options.submit();
+      if (!submit) return ownReply({ code: "ACCOUNT_UNAVAILABLE" }, 503);
+      const [key, value] = onlyKey(await readOwnChange(request)) ?? [];
+      if (key !== "confirm" || value !== true) return ownReply({ code: "INVALID_REQUEST" }, 400);
+      await submit(request.headers, "deletion", "", "");
+      return ownReply({ sent: true });
+    } catch (error) {
+      return ownFailure(error);
+    }
+  };
+}
+
+export const handleDeletionRequest = createDeletionRequestHandler({
   auth: getAuthService,
   baseURL: () => readAuthConfiguration()?.baseURL ?? null,
   submit: () => {
