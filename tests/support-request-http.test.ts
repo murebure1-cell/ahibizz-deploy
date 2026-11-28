@@ -162,3 +162,57 @@ test("a deletion request from the app needs an explicit confirmation and nothing
   assert.deepEqual(await response.json(), { sent: true });
   assert.deepEqual(sent, [["deletion", "", ""]]);
 });
+
+test("a report from the app reaches support under its subject, with the reason in front", async () => {
+  const { createContentReportHandler } = await import("../src/server/support-request-http");
+  const sent: unknown[][] = [];
+  const api = {
+    getSession: async () => ({
+      user: { id: "u1" },
+      session: { id: "s1", userId: "u1", token: "secret" },
+    }),
+  };
+  const http = createContentReportHandler({
+    auth: () => ({ api }) as unknown as AuthService,
+    baseURL: () => baseURL,
+    submit: () => async (_headers, subject, reference, details) => {
+      sent.push([subject, reference, details]);
+    },
+  });
+  const reel = "0b6f0a52-6f0e-4a57-9d55-2f6f3b1c9a10";
+  const good = { subject: "reel", reference: reel, reason: "hate", details: " Vrijeđa. " };
+  const response = await call(http, "POST", { body: good });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { sent: true });
+  await call(http, "POST", {
+    body: { subject: "business", reference: "b-17", reason: "other", details: "" },
+  });
+  assert.deepEqual(sent, [
+    ["reel", reel, "Uvreda ili govor mržnje. Vrijeđa."],
+    ["business", "b-17", "Nešto drugo."],
+  ]);
+  for (const body of [
+    { ...good, subject: "help" },
+    { ...good, subject: "deletion", reference: "" },
+    { ...good, reference: "not-a-reel-id" },
+    { ...good, reason: "toString" },
+    { ...good, reason: "spam" },
+    { ...good, details: 5 },
+    { ...good, extra: true },
+    { subject: "reel", reference: reel, reason: "hate" },
+    [good],
+  ])
+    await refused(await call(http, "POST", { body }), 400, "INVALID_REQUEST");
+  await refused(await call(http, "GET"), 405, "METHOD_NOT_ALLOWED");
+  await refused(
+    await call(http, "POST", { body: good, origin: "https://other.invalid" }),
+    403,
+    "INVALID_ORIGIN",
+  );
+  await refused(
+    await call(http, "POST", { body: good, account: "u2" }),
+    401,
+    "ACCOUNT_IDENTITY_CHANGED",
+  );
+  assert.equal(sent.length, 2);
+});
