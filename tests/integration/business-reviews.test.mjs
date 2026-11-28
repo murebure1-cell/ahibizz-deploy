@@ -265,6 +265,23 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           false,
         );
       });
+      await t.test("badges are counted from what an account has really done", async () => {
+        const { readBadgeCounts } = await import("../../src/server/account-badges.ts");
+        assert.equal(await readBadgeCounts(pool, "no-such-account"), null);
+        const reviewer = await readBadgeCounts(pool, bob.user.id);
+        assert.equal(reviewer.reviews, 1);
+        assert.equal(reviewer.reviewedCategories, 1);
+        assert.equal(reviewer.profileComplete, false);
+        assert.equal(reviewer.saves, 0);
+        assert.equal(reviewer.topRated, false);
+        assert.equal(reviewer.visits, 0);
+        assert.ok(reviewer.rank >= 1 && reviewer.rank <= 4);
+        assert.ok(reviewer.joinedAt.includes("T"));
+        const ranks = [];
+        for (const actor of actors) ranks.push((await readBadgeCounts(pool, actor.user.id)).rank);
+        assert.deepEqual([...ranks].sort(), [1, 2, 3, 4]);
+        assert.equal((await readBadgeCounts(pool, owner.user.id)).topRated, false);
+      });
       await t.test(
         "the owner answers a review, nobody else can, and the answer is public",
         async () => {
