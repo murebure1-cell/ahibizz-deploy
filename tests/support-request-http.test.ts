@@ -116,3 +116,49 @@ test("the service's own refusals keep their status: too long, or too many in a d
     "INVALID_REQUEST",
   );
 });
+
+test("a deletion request from the app needs an explicit confirmation and nothing else", async () => {
+  const { createDeletionRequestHandler } = await import("../src/server/support-request-http");
+  const sent: unknown[][] = [];
+  const api = {
+    getSession: async () => ({
+      user: { id: "u1" },
+      session: { id: "s1", userId: "u1", token: "secret" },
+    }),
+  };
+  const http = createDeletionRequestHandler({
+    auth: () => ({ api }) as unknown as AuthService,
+    baseURL: () => baseURL,
+    submit: () => async (_headers, subject, reference, details) => {
+      sent.push([subject, reference, details]);
+    },
+  });
+  const post = (body: unknown, init: Call = {}) => {
+    const headers = new Headers({
+      Cookie: "session=fixture",
+      "Content-Type": "application/json",
+      Origin: init.origin ?? baseURL,
+      "X-AhiBizz-Account-ID": init.account ?? "u1",
+    });
+    return http(
+      new Request(`${baseURL}/api/support/deletion`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      }),
+    );
+  };
+  for (const body of [{}, { confirm: false }, { confirm: "yes" }, { confirm: true, details: "x" }])
+    await refused(await post(body), 400, "INVALID_REQUEST");
+  await refused(
+    await post({ confirm: true }, { origin: "https://untrusted.invalid" }),
+    403,
+    "INVALID_ORIGIN",
+  );
+  await refused(await post({ confirm: true }, { account: "u2" }), 401, "ACCOUNT_IDENTITY_CHANGED");
+  assert.equal(sent.length, 0);
+  const response = await post({ confirm: true });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { sent: true });
+  assert.deepEqual(sent, [["deletion", "", ""]]);
+});
