@@ -1382,4 +1382,16 @@ export const business: Messages = {
   "npr. Piletina": ["e.g. Chicken", "z. B. Hähnchen", "مثل الدجاج", "ör. Tavuk"],
   Dobavljač: ["Supplier", "Lieferant", "المورد", "Tedarikçi"],
   "Dodaj dobavljača": ["Add a supplier", "Lieferanten hinzufügen", "أضف موردًا", "Tedarikçi ekle"],
+  "Odgovor vlasnika": ["Owner's reply", "Antwort des Inhabers", "ردّ المالك", "Sahibinin yanıtı"],
+  "Izmijeni odgovor": ["Change the reply", "Antwort ändern", "عدّل الرد", "Yanıtı değiştir"],
+  Odgovori: ["Reply", "Antworten", "ردّ", "Yanıtla"],
+  "Tvoj odgovor": ["Your reply", "Deine Antwort", "ردّك", "Yanıtın"],
+  "Odgovor nije sačuvan. Pokušaj ponovo.": [
+    "The reply was not saved. Try again.",
+    "Die Antwort wurde nicht gespeichert. Versuch es erneut.",
+    "لم يُحفظ الرد. حاول مجددًا.",
+    "Yanıt kaydedilmedi. Yeniden dene.",
+  ],
+  "Sačuvaj odgovor": ["Save the reply", "Antwort speichern", "احفظ الرد", "Yanıtı kaydet"],
+  "Ukloni odgovor": ["Remove the reply", "Antwort entfernen", "أزل الرد", "Yanıtı kaldır"],
 };
