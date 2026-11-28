@@ -266,6 +266,39 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         );
       });
       await t.test(
+        "the owner answers a review, nobody else can, and the answer is public",
+        async () => {
+          const { listReviewReplies, saveReviewReply } = await import(
+            "../../src/server/review-replies.ts"
+          );
+          assert.deepEqual(await listReviewReplies(pool, business), []);
+          assert.equal(await saveReviewReply(pool, alice.user.id, b.id, "Nije moje."), false);
+          assert.equal(await saveReviewReply(pool, admin.user.id, b.id, "Ni moje."), false);
+          assert.equal(await saveReviewReply(pool, owner.user.id, randomUUID(), "Nema je."), false);
+          assert.equal(
+            await saveReviewReply(pool, owner.user.id, b.id, "Hvala na recenziji."),
+            true,
+          );
+          assert.equal(await saveReviewReply(pool, owner.user.id, b.id, "Hvala, vidimo se."), true);
+          const listed = await listReviewReplies(pool, business);
+          assert.equal(listed.length, 1);
+          assert.equal(listed[0].reviewId, b.id);
+          assert.equal(listed[0].text, "Hvala, vidimo se.");
+          assert.deepEqual(await listReviewReplies(pool, other), []);
+          // An answer is shown only while its review is: hide the business and it is gone.
+          await pool.query("UPDATE directory_business SET status='draft' WHERE id=$1", [business]);
+          assert.deepEqual(await listReviewReplies(pool, business), []);
+          assert.equal(await saveReviewReply(pool, owner.user.id, b.id, "Skriveno."), false);
+          await pool.query("UPDATE directory_business SET status='published' WHERE id=$1", [
+            business,
+          ]);
+          assert.equal(await saveReviewReply(pool, alice.user.id, b.id, ""), false);
+          assert.equal((await listReviewReplies(pool, business)).length, 1);
+          assert.equal(await saveReviewReply(pool, owner.user.id, b.id, ""), true);
+          assert.deepEqual(await listReviewReplies(pool, business), []);
+        },
+      );
+      await t.test(
         "turning profile private removes name and profile link immediately",
         async () => {
           await pool.query("UPDATE personal_profile SET is_public=false WHERE user_id=$1", [

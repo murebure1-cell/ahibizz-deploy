@@ -20,6 +20,7 @@ import { reportUrl } from "../../lib/support-requests";
 import { useI18n } from "../i18n/LocaleProvider";
 import { CommunityRulesPrompt } from "../support/CommunityRulesPrompt";
 import styles from "./business-reviews.module.css";
+import { ReviewReply } from "./ReviewReply";
 
 type Pending =
   | { action: "save"; input: ReviewSaveInput }
@@ -64,7 +65,22 @@ export function BusinessReviews({
     [notice, setNotice] = useState(""),
     [pending, setPending] = useState<Pending | null>(null),
     [checkingOwn, setCheckingOwn] = useState(true),
-    [ready, setReady] = useState(false);
+    [ready, setReady] = useState(false),
+    // The owner's answers, by review; read beside the reviews and never blocking them.
+    [replies, setReplies] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let live = true;
+    fetch(`/api/review-replies/businesses/${businessId}`, { credentials: "same-origin" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { replies?: { reviewId: string; text: string }[] } | null) => {
+        if (live && data?.replies)
+          setReplies(Object.fromEntries(data.replies.map((row) => [row.reviewId, row.text])));
+      })
+      .catch(() => null);
+    return () => {
+      live = false;
+    };
+  }, [businessId]);
   const labelId = useId(),
     current = useRef(businessId),
     generation = useRef(0),
@@ -444,6 +460,17 @@ export function BusinessReviews({
               </span>
             </header>
             <p dir="auto">{review.text}</p>
+            <ReviewReply
+              reviewId={review.id}
+              text={replies[review.id] ?? null}
+              accountId={own && !own.canReview ? own.accountId : null}
+              onSaved={(next) =>
+                setReplies((before) => {
+                  const { [review.id]: _removed, ...rest } = before;
+                  return next ? { ...rest, [review.id]: next } : rest;
+                })
+              }
+            />
             <Link href={reportUrl("review", review.id)}>{t("Prijavi recenziju")}</Link>
           </article>
         ))}
