@@ -40,19 +40,22 @@ export function describeUserAgent(agent: unknown): { device: string; browser: st
             : /Linux/.test(ua)
               ? "Linux"
               : "";
-  const browser = /Edg\//.test(ua)
-    ? "Edge"
-    : /SamsungBrowser\//.test(ua)
-      ? "Samsung Internet"
-      : /OPR\/|Opera/.test(ua)
-        ? "Opera"
-        : /Firefox\//.test(ua)
-          ? "Firefox"
-          : /Chrome\//.test(ua)
-            ? "Chrome"
-            : /Safari\//.test(ua)
-              ? "Safari"
-              : "";
+  // The native app names itself ("AhiBizz/1.0.0 (Android)"), so its sign-in is told apart.
+  const browser = /^AhiBizz\//.test(ua)
+    ? "AhiBizz"
+    : /Edg\//.test(ua)
+      ? "Edge"
+      : /SamsungBrowser\//.test(ua)
+        ? "Samsung Internet"
+        : /OPR\/|Opera/.test(ua)
+          ? "Opera"
+          : /Firefox\//.test(ua)
+            ? "Firefox"
+            : /Chrome\//.test(ua)
+              ? "Chrome"
+              : /Safari\//.test(ua)
+                ? "Safari"
+                : "";
   return { device, browser };
 }
 

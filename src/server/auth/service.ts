@@ -188,8 +188,11 @@ export function createAuthService(options: {
         "/send-verification-email": { window: 60, max: shared ? 30 : 5 },
         // Starting Google sign-in sends no password; the provider limits its own attempts.
         "/sign-in/social": { window: 60, max: shared ? 120 : 10 },
-        // A code is 256 random bits and single-use; this only keeps floods off the database.
-        "/app-handoff/exchange": { window: 60, max: shared ? 120 : 10 },
+        // A code is 256 random bits and single-use, so nothing here can be guessed. With a
+        // trusted client IP each visitor gets ten tries a minute. Without one the library keeps a
+        // single bucket for everybody, which two requests a second would keep full: nobody could
+        // finish signing in to the app. So in that case this path has no library limit.
+        "/app-handoff/exchange": shared ? false : { window: 60, max: 10 },
       },
     },
     advanced: {

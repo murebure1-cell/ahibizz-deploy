@@ -4,18 +4,21 @@ import { createEmailRateLimiter, emailRateRules } from "../src/server/auth/email
 
 /** In-memory stand-in for the upsert: same fixed-window arithmetic as the SQL. */
 function fakeTable() {
-  const rows = new Map<string, { count: number; lastRequest: number }>();
+  const rows = new Map<string, { count: number; startedMs: number }>();
   return {
     rows,
-    async query(_text: string, values: unknown[] = []) {
-      const [, key, at, windowMs] = values as [string, string, number, number];
+    async query(text: string, values: unknown[] = []) {
+      // The occasional clean-up of old windows is a DELETE; only the upsert counts.
+      if (!text.trimStart().startsWith("INSERT")) return { rows: [] };
+      assert.match(text, /INSERT INTO auth_attempt_limit/);
+      const [key, at, windowMs] = values as [string, number, number];
       const row = rows.get(key);
       const next =
-        !row || at - row.lastRequest >= windowMs
-          ? { count: 1, lastRequest: at }
-          : { count: row.count + 1, lastRequest: row.lastRequest };
+        !row || at - row.startedMs >= windowMs
+          ? { count: 1, startedMs: at }
+          : { count: row.count + 1, startedMs: row.startedMs };
       rows.set(key, next);
-      return { rows: [{ count: next.count, lastRequest: String(next.lastRequest) }] };
+      return { rows: [{ count: next.count, startedMs: String(next.startedMs) }] };
     },
   };
 }

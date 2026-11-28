@@ -7,6 +7,8 @@ import {
   getAccountService,
   type SafeAccountProfile,
 } from "../../../../server/auth/accounts";
+import { administrationAccount } from "../../../../server/auth/app-handoff";
+import { getAuthDatabasePool } from "../../../../server/auth/service";
 import { titled } from "../../../../server/i18n";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +45,15 @@ export default async function AppSignInPage({
   }
   if (signedOut) redirect(`/prijava?nastavi=${encodeURIComponent(path)}`);
   if (!account) return <AppSignIn view={{ kind: "unavailable" }} />;
+  const pool = getAuthDatabasePool();
+  if (!pool) return <AppSignIn view={{ kind: "unavailable" }} />;
+  let administration: boolean;
+  try {
+    administration = await administrationAccount(pool, account.id);
+  } catch {
+    return <AppSignIn view={{ kind: "unavailable" }} />;
+  }
+  if (administration) return <AppSignIn view={{ kind: "refused", path }} />;
   return (
     <AppSignIn
       view={{

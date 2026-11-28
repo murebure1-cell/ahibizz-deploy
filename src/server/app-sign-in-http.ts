@@ -100,8 +100,9 @@ export function createAppSignInHandler(options: { baseURL: string; start: StartA
       const status = statusOf(error);
       // Signed out meanwhile: sign in, then back to the same confirmation.
       if (status === 401) return go(`/prijava?nastavi=${encodeURIComponent(page)}`);
-      // Another account became the active one: show the page again with it.
-      if (status === 409) return go(page);
+      // Another account became the active one, or this one may not sign in to the app: the page
+      // shows which it is.
+      if (status === 409 || status === 403) return go(page);
       return go(`${page}&greska=${status === 429 ? "previse" : "1"}`);
     }
   };
