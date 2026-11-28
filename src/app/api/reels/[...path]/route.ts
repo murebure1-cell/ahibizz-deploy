@@ -11,6 +11,7 @@ import {
   applyReelCommand,
   isModerationCommand,
   listPublicReels,
+  manageReels,
   parseReelCommand,
   readReelFeed,
   reelMediaAccess,
@@ -193,6 +194,23 @@ export async function GET(request: Request, params: Params) {
         viewer,
       );
       return json({ items: items.slice(0, 20), page, hasMore: items.length > 20 });
+    }
+    // The signed-in person's own Reels with their state, for the native app's "Moji reels":
+    // the same list the web page renders, 30 a page.
+    if (area === "mine" && path.length === 1) {
+      const query = new URL(request.url).searchParams;
+      const page = query.get("strana") ?? "1";
+      if ([...query.keys()].some((key) => key !== "strana") || !/^[1-9]\d{0,2}$/.test(page))
+        throw new AccountAccessError(400, "REEL_INPUT");
+      if (!request.headers.get("X-AhiBizz-Account-ID"))
+        throw new AccountAccessError(401, "AUTHENTICATION_REQUIRED");
+      const list = await manageReels(request.headers, false, (Number(page) - 1) * 30);
+      return json({
+        reels: list.reels,
+        hasMore: list.hasMore,
+        allowance: list.allowance,
+        page: Number(page),
+      });
     }
     if (area === "feed" || area === "engagement") {
       if (!businessUuid(id) || path.length !== 2) throw notFound();
