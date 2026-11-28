@@ -722,6 +722,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0061_business_menu.sql",
           "0062_privacy_and_notification_choices.sql",
           "0063_business_analytics.sql",
+          "0064_attempt_limits.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
@@ -1127,12 +1128,42 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             await pool.query("UPDATE auth_user SET approval = 'approved' WHERE id = $1", [userId]);
           }
 
-          // One account may start only a few codes in a while.
-          for (let index = 0; index < 6; index++)
+          // The administration account never signs in to the app: no new code, and a code
+          // started before it became the administration is refused too.
+          const office = pair();
+          const early = (await start(first, { challenge: office.challenge, account: userId })).code;
+          await pool.query("UPDATE auth_user SET account_kind = 'administration' WHERE id = $1", [
+            userId,
+          ]);
+          try {
+            await assert.rejects(
+              () => start(first, { challenge: pair().challenge, account: userId }),
+              (error) => error.statusCode === 403,
+            );
+            const kept = await exchange(new Cookies(), { code: early, verifier: office.verifier });
+            assert.equal(kept.response.status, 403);
+            assert.deepEqual(kept.data, { code: "APP_SIGN_IN_NOT_ALLOWED" });
+          } finally {
+            await pool.query("UPDATE auth_user SET account_kind = 'personal' WHERE id = $1", [
+              userId,
+            ]);
+          }
+
+          // One account may start only a few codes in a while (five were started above), and the
+          // counter is in our own table, where the sign-in library's clean-up cannot reach it.
+          for (let index = 0; index < 5; index++)
             await start(first, { challenge: pair().challenge, account: userId });
           await assert.rejects(
             () => start(first, { challenge: pair().challenge, account: userId }),
             (error) => error.statusCode === 429,
+          );
+          assert.deepEqual(
+            (
+              await pool.query("SELECT count FROM auth_attempt_limit WHERE key = $1", [
+                `account-app-handoff:${userId}`,
+              ])
+            ).rows,
+            [{ count: 11 }],
           );
           await pool.query("DELETE FROM auth_verification WHERE identifier LIKE 'app-handoff:%'");
 
@@ -2078,9 +2109,14 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           }
           assert.equal((await change(replacementPassword, choices[0])).response.status, 429);
           assert.equal((await session(otherDevice)).user.id, userId);
-          await pool.query(
-            'UPDATE auth_rate_limit SET "lastRequest" = "lastRequest" - 61000 WHERE key=$1',
-            [`account-password:${userId}`],
+          assert.equal(
+            (
+              await pool.query(
+                "UPDATE auth_attempt_limit SET window_started_at = window_started_at - interval '61 seconds' WHERE key=$1",
+                [`account-password:${userId}`],
+              )
+            ).rowCount,
+            1,
           );
           assert.equal(
             (
@@ -2118,7 +2154,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         },
       );
       await t.test(
-        "per-address limits count atomically in auth_rate_limit and restart after the window",
+        "per-address limits count atomically in their own table, outlive the library's clean-up and restart after the window",
         async () => {
           const { createEmailRateLimiter } = await import(
             "../../src/server/auth/email-rate-limit.ts"
@@ -2136,17 +2172,56 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           );
           const counters = (
             await pool.query(
-              "SELECT key,count FROM auth_rate_limit WHERE key LIKE 'ahibizz-email:%'",
+              "SELECT key,count FROM auth_attempt_limit WHERE key LIKE 'ahibizz-email:%'",
             )
           ).rows;
           assert.equal(counters.length, 1);
           assert.equal(counters[0].count, 10);
           assert.equal(counters[0].key.toLowerCase().includes("race"), false);
-          now += 15 * 60_000;
+          // The sign-in library deletes every row of its own table older than its longest window
+          // (60 seconds) when one of its buckets rolls over. Our counters used to sit there and
+          // lasted about a minute; they must not be in that table and must survive that clean-up.
+          assert.equal(
+            (
+              await pool.query(
+                "SELECT count(*)::integer AS n FROM auth_rate_limit WHERE key LIKE 'ahibizz-email:%' OR key LIKE 'account-%'",
+              )
+            ).rows[0].n,
+            0,
+          );
+          now += 5 * 60_000;
+          await pool.query(
+            "UPDATE auth_attempt_limit SET window_started_at = window_started_at - interval '5 minutes' WHERE key LIKE 'ahibizz-email:%'",
+          );
+          await pool.query('UPDATE auth_rate_limit SET "lastRequest" = "lastRequest" - 120000');
+          const libraryBuckets = (
+            await pool.query("SELECT count(*)::integer AS n FROM auth_rate_limit")
+          ).rows[0].n;
+          assert.ok(libraryBuckets > 0);
+          assert.equal(
+            (
+              await request("POST", "/api/auth/request-password-reset", {
+                body: { email: "nobody@auth-fixture.invalid", redirectTo: "/nova-lozinka" },
+              })
+            ).response.status,
+            200,
+          );
+          assert.ok(
+            (await pool.query("SELECT count(*)::integer AS n FROM auth_rate_limit")).rows[0].n <
+              libraryBuckets,
+            "the library should have cleared its old buckets",
+          );
+          const stillLimited = await limit("/sign-in/email", "race@fixture.invalid");
+          assert.equal(stillLimited.allowed, false);
+          assert.ok(stillLimited.retryAfter > 0 && stillLimited.retryAfter <= 600);
+          now += 10 * 60_000;
+          await pool.query(
+            "UPDATE auth_attempt_limit SET window_started_at = window_started_at - interval '10 minutes' WHERE key LIKE 'ahibizz-email:%'",
+          );
           assert.deepEqual(await limit("/sign-in/email", "race@fixture.invalid"), {
             allowed: true,
           });
-          await pool.query("DELETE FROM auth_rate_limit WHERE key LIKE 'ahibizz-email:%'");
+          await pool.query("DELETE FROM auth_attempt_limit WHERE key LIKE 'ahibizz-email:%'");
         },
       );
       assert.ok(

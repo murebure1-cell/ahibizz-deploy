@@ -8,10 +8,11 @@ import {
   appHandoffSeconds,
   appHandoffVerifier,
 } from "../../lib/app-handoff";
+import { countAttempt } from "./attempt-limit";
 
 const prefix = "app-handoff:";
 /** Codes one account may start in the window: room for a few retries, not for a flood. */
-const startLimit = { windowMs: 10 * 60 * 1000, max: 10 };
+const startLimit = { windowSeconds: 10 * 60, max: 10 };
 
 /** The database keeps only a code's SHA-256, so nothing stored there can be exchanged. */
 export function appHandoffIdentifier(code: string): string {
@@ -56,6 +57,23 @@ const startBody = {
   },
 };
 
+/**
+ * The administration account does its work on the website. It never signs in to the app, so a
+ * mistaken tap on "Nastavi u aplikaciji" cannot hand its rights to a phone.
+ */
+export async function administrationAccount(pool: Pool, userId: string) {
+  const { rows } = await pool.query<{ account_kind: string }>(
+    "SELECT account_kind FROM auth_user WHERE id = $1",
+    [userId],
+  );
+  return rows[0]?.account_kind === "administration";
+}
+const notForThisAccount = () =>
+  new APIError("FORBIDDEN", {
+    code: "APP_SIGN_IN_NOT_ALLOWED",
+    message: "Ovaj nalog se ne prijavljuje u aplikaciju.",
+  });
+
 const invalidCode = () =>
   new APIError("UNAUTHORIZED", {
     code: "INVALID_APP_CODE",
@@ -64,8 +82,9 @@ const invalidCode = () =>
 
 /**
  * Signing in to the native app through the website (see lib/app-handoff.ts). Starting is for the
- * server only: the confirmation form calls it with the browser's session, and auth-http.ts never
- * routes to it. Exchanging is the app's request; it creates a new session of the app's own, so
+ * server only: the confirmation form calls it with the browser's session. Two locks keep it off
+ * the internet: the library does not route a SERVER_ONLY endpoint, and auth-http.ts does not
+ * list it. Exchanging is the app's request; it creates a new session of the app's own, so
  * signing out on the website leaves the app signed in and the other way round.
  */
 export function createAppHandoff(pool: Pool) {
@@ -74,7 +93,13 @@ export function createAppHandoff(pool: Pool) {
     endpoints: {
       startAppHandoff: createAuthEndpoint(
         "/app-handoff/start",
-        { method: "POST", requireHeaders: true, use: [sessionMiddleware], body: startBody },
+        {
+          method: "POST",
+          requireHeaders: true,
+          use: [sessionMiddleware],
+          body: startBody,
+          metadata: { SERVER_ONLY: true },
+        },
         async (context) => {
           const { challenge, account } = context.body;
           const { user } = context.context.session;
@@ -85,18 +110,9 @@ export function createAppHandoff(pool: Pool) {
               code: "ACCOUNT_CHANGED",
               message: "Prijavljeni nalog se promijenio.",
             });
-          const key = `account-app-handoff:${user.id}`;
-          const attempt = await pool.query(
-            `INSERT INTO auth_rate_limit (id,key,count,"lastRequest")
-             VALUES ($1,$1,1,(extract(epoch from clock_timestamp())*1000)::bigint)
-             ON CONFLICT (key) DO UPDATE SET
-               count=CASE WHEN EXCLUDED."lastRequest"-auth_rate_limit."lastRequest">=$2 THEN 1 ELSE auth_rate_limit.count+1 END,
-               "lastRequest"=CASE WHEN EXCLUDED."lastRequest"-auth_rate_limit."lastRequest">=$2 THEN EXCLUDED."lastRequest" ELSE auth_rate_limit."lastRequest" END
-             WHERE auth_rate_limit.count<$3 OR EXCLUDED."lastRequest"-auth_rate_limit."lastRequest">=$2
-             RETURNING count`,
-            [key, startLimit.windowMs, startLimit.max],
-          );
-          if (!attempt.rowCount)
+          if (await administrationAccount(pool, user.id)) throw notForThisAccount();
+          const attempt = await countAttempt(pool, `account-app-handoff:${user.id}`, startLimit);
+          if (!attempt.allowed)
             throw new APIError("TOO_MANY_REQUESTS", {
               code: "RATE_LIMITED",
               message: "Previše pokušaja. Pokušaj za nekoliko minuta.",
@@ -138,6 +154,7 @@ export function createAppHandoff(pool: Pool) {
             throw invalidCode();
           const user = await context.context.internalAdapter.findUserById(stored.userId);
           if (!user) throw invalidCode();
+          if (await administrationAccount(pool, user.id)) throw notForThisAccount();
           // The session hook reads approval and email confirmation again, as for any sign-in.
           const session = await context.context.internalAdapter.createSession(user.id, false);
           if (!session)

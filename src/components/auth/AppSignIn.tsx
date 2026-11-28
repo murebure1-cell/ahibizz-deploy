@@ -6,6 +6,8 @@ import styles from "./app-sign-in.module.css";
 export type AppSignInView =
   | { kind: "invalid" }
   | { kind: "unavailable" }
+  /** The administration account works on the website only; `path` leads back here. */
+  | { kind: "refused"; path: string }
   | {
       kind: "confirm";
       challenge: string;
@@ -33,6 +35,27 @@ function initials(name: string) {
  */
 export async function AppSignIn({ view }: { view: AppSignInView }) {
   const t = await getTranslator();
+  if (view.kind === "refused")
+    return (
+      <main id="glavni-sadrzaj" className={styles.page}>
+        <div className={styles.head}>
+          <span className={styles.sign} data-kind="error">
+            <Icon name="shield" />
+          </span>
+          <h1>{t("Ovaj nalog se ne prijavljuje u aplikaciju")}</h1>
+          <p className={styles.intro}>
+            {t("Nalog administracije radi samo na webu. U aplikaciju se prijavi ličnim nalogom.")}
+          </p>
+        </div>
+        <Link
+          href={`/prijava?dodaj=1&nastavi=${encodeURIComponent(view.path)}`}
+          className={styles.submit}
+          prefetch={false}
+        >
+          {t("Prijavi se drugim nalogom")}
+        </Link>
+      </main>
+    );
   if (view.kind !== "confirm")
     return (
       <main id="glavni-sadrzaj" className={styles.page}>

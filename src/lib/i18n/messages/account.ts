@@ -2561,4 +2561,16 @@ export const account: Messages = {
     "يحصل التطبيق على تسجيل دخول خاص به. تسجيل الخروج على الويب لا يسجّل خروجه.",
     "Uygulama kendi girişini alır. Webde çıkış yapmak onu çıkış yaptırmaz.",
   ],
+  "Ovaj nalog se ne prijavljuje u aplikaciju": [
+    "This account does not sign in to the app",
+    "Dieses Konto meldet sich nicht in der App an",
+    "هذا الحساب لا يسجّل الدخول إلى التطبيق",
+    "Bu hesap uygulamaya giriş yapmaz",
+  ],
+  "Nalog administracije radi samo na webu. U aplikaciju se prijavi ličnim nalogom.": [
+    "The administration account works on the web only. Sign in to the app with your personal account.",
+    "Das Verwaltungskonto arbeitet nur im Web. Melde dich in der App mit deinem persönlichen Konto an.",
+    "حساب الإدارة يعمل على الويب فقط. سجّل الدخول إلى التطبيق بحسابك الشخصي.",
+    "Yönetim hesabı yalnızca webde çalışır. Uygulamaya kişisel hesabınla giriş yap.",
+  ],
 };
