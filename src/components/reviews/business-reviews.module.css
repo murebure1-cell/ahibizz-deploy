@@ -242,3 +242,22 @@ span.stars span {
     row-gap: 8px;
   }
 }
+
+/* The owner's answer sits under the review, set in from it. */
+.reply {
+  display: grid;
+  gap: 8px;
+  margin-inline-start: 16px;
+  padding-inline-start: 12px;
+  border-inline-start: 2px solid var(--line);
+}
+
+.reply p {
+  margin: 0;
+}
+
+.replyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

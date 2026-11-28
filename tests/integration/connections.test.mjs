@@ -144,6 +144,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           "0062_privacy_and_notification_choices.sql",
           "0063_business_analytics.sql",
           "0064_attempt_limits.sql",
+          "0065_review_replies.sql",
         ],
       );
       assert.deepEqual(await runMigrations({ pool, migrations }), {
