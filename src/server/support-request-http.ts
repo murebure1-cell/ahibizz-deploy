@@ -1,4 +1,5 @@
 import { helpTicketTopic } from "../lib/help-center";
+import { supportTarget } from "../lib/support-requests";
 import {
   type OwnRequestOptions,
   onlyKey,
@@ -99,6 +100,74 @@ export function createDeletionRequestHandler(
 }
 
 export const handleDeletionRequest = createDeletionRequestHandler({
+  auth: getAuthService,
+  baseURL: () => readAuthConfiguration()?.baseURL ?? null,
+  submit: () => {
+    const service = getSupportRequests();
+    return service ? service.submit.bind(service) : null;
+  },
+});
+
+// The reasons drawn on "Prijavi sadržaj"; the chosen one opens the text support reads.
+const reportReasons: Record<string, string> = {
+  fake: "Lažan profil ili djelatnost",
+  fraud: "Prevara ili traženje novca",
+  hate: "Uvreda ili govor mržnje",
+  inappropriate: "Neprimjeren sadržaj",
+  other: "Nešto drugo",
+};
+
+/**
+ * "Prijavi sadržaj" as JSON, for the native app: a report of a profile, a business, a review, a
+ * conversation or a reel.
+ *
+ * POST /api/support/reports {"subject": "reel", "reference": "<id>", "reason": "hate", "details": "…"}
+ *   → { sent: true }
+ *
+ * It is the website's report under the same subjects and the same daily limit. The reason is one
+ * of the listed keys and is written in front of the person's own words, which may be empty.
+ */
+export function createContentReportHandler(
+  options: OwnRequestOptions & { submit: () => Submit | null },
+) {
+  return async function contentReport(request: Request): Promise<Response> {
+    try {
+      const opened = await openOwnRequest(request, options);
+      if (opened instanceof Response) return opened;
+      if (!opened.change) return ownReply({ code: "METHOD_NOT_ALLOWED" }, 405);
+      const submit = options.submit();
+      if (!submit) return ownReply({ code: "ACCOUNT_UNAVAILABLE" }, 503);
+      const payload = await readOwnChange(request);
+      if (!payload || typeof payload !== "object" || Array.isArray(payload))
+        return ownReply({ code: "INVALID_REQUEST" }, 400);
+      const body = payload as Record<string, unknown>;
+      const target = supportTarget(body.subject, body.reference);
+      const reason = typeof body.reason === "string" ? reportReasons[body.reason] : undefined;
+      if (
+        Object.keys(body).sort().join(",") !== "details,reason,reference,subject" ||
+        !target ||
+        target.subject === "deletion" ||
+        target.subject === "help" ||
+        !Object.hasOwn(reportReasons, String(body.reason)) ||
+        !reason ||
+        typeof body.details !== "string"
+      )
+        return ownReply({ code: "INVALID_REQUEST" }, 400);
+      const words = body.details.trim();
+      await submit(
+        request.headers,
+        target.subject,
+        target.reference,
+        words ? `${reason}. ${words}` : `${reason}.`,
+      );
+      return ownReply({ sent: true });
+    } catch (error) {
+      return ownFailure(error);
+    }
+  };
+}
+
+export const handleContentReport = createContentReportHandler({
   auth: getAuthService,
   baseURL: () => readAuthConfiguration()?.baseURL ?? null,
   submit: () => {
