@@ -63,10 +63,42 @@ test("only one written form of the confirmation page is read and survives sign-i
   assert.equal(appReturnLink("code", state), `ahibizz://povratak?kod=code&stanje=${state}`);
 });
 
+const chromeOnAndroid =
+  "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36";
+
+test("Chrome on Android is told which app may receive the code; others get the plain address", () => {
+  const plain = `ahibizz://povratak?kod=code&stanje=${state}`;
+  const pinned = `intent://povratak?kod=code&stanje=${state}#Intent;scheme=ahibizz;package=com.ahibizz.app;end`;
+  for (const agent of [
+    chromeOnAndroid,
+    // Samsung Internet, Edge and the other browsers built on Chrome.
+    "Mozilla/5.0 (Linux; Android 14; SAMSUNG SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/26.0 Chrome/122.0.0.0 Mobile Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 EdgA/131.0.0.0",
+  ])
+    assert.equal(appReturnLink("code", state, agent), pinned, agent);
+  // What the app is handed is the same address either way.
+  assert.equal(pinned.replace("intent://", "ahibizz://").split("#")[0], plain);
+  for (const agent of [
+    undefined,
+    null,
+    "",
+    // Firefox, which is not built on Chrome.
+    "Mozilla/5.0 (Android 14; Mobile; rv:133.0) Gecko/133.0 Firefox/133.0",
+    // A page embedded in another app: that app decides what a link does.
+    "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A.240805.005; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0.6778.39 Mobile Safari/537.36",
+    // Not Android at all.
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/131.0.6778.73 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1",
+    "AhiBizz/1.0.0 (Android)",
+  ])
+    assert.equal(appReturnLink("code", state, agent), plain, String(agent));
+});
+
 /** `origin: null` sends no Origin at all; `site` is the browser's Sec-Fetch-Site. */
 function form(
   fields: [string, string][],
-  init: { origin?: string | null; type?: string; site?: string } = {},
+  init: { origin?: string | null; type?: string; site?: string; agent?: string } = {},
 ) {
   const headers = new Headers({
     "Content-Type": init.type ?? "application/x-www-form-urlencoded",
@@ -75,6 +107,7 @@ function form(
   const origin = init.origin === undefined ? baseURL : init.origin;
   if (origin !== null) headers.set("Origin", origin);
   if (init.site) headers.set("Sec-Fetch-Site", init.site);
+  if (init.agent) headers.set("User-Agent", init.agent);
   return new Request(`${baseURL}/api/account/app-sign-in`, {
     method: "POST",
     headers,
@@ -109,6 +142,11 @@ test("the confirmation form opens the app with its code and returns failures to 
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0]?.body, { challenge, account: "account_1" });
   assert.equal(calls[0]?.headers.get("cookie"), "session=fixture");
+  // In Chrome on Android the same code goes to the installed app by its package name.
+  assert.equal(
+    (await http(form(fields, { agent: chromeOnAndroid }))).headers.get("location"),
+    `intent://povratak?kod=one-time-code&stanje=${state}#Intent;scheme=ahibizz;package=com.ahibizz.app;end`,
+  );
 
   for (const [status, location] of [
     [401, `/prijava?nastavi=${encodeURIComponent(page)}`],
