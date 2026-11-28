@@ -2573,4 +2573,10 @@ export const account: Messages = {
     "حساب الإدارة يعمل على الويب فقط. سجّل الدخول إلى التطبيق بحسابك الشخصي.",
     "Yönetim hesabı yalnızca webde çalışır. Uygulamaya kişisel hesabınla giriş yap.",
   ],
+  "Radi sigurnosti se prvo odjavi i ponovo prijavi, pa odvoji Google nalog.": [
+    "For security, sign out and sign in again first, then detach the Google account.",
+    "Melde dich zur Sicherheit zuerst ab und wieder an, dann trenne das Google-Konto.",
+    "لأسباب أمنية، سجّل الخروج ثم سجّل الدخول من جديد أولًا، ثم افصل حساب Google.",
+    "Güvenlik için önce çıkış yapıp yeniden giriş yap, sonra Google hesabını ayır.",
+  ],
 };

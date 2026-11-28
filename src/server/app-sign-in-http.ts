@@ -95,7 +95,7 @@ export function createAppSignInHandler(options: { baseURL: string; start: StartA
         headers: request.headers,
         body: { challenge: handoff.challenge, account },
       });
-      return go(appReturnLink(code, handoff.state));
+      return go(appReturnLink(code, handoff.state, request.headers.get("user-agent")));
     } catch (error) {
       const status = statusOf(error);
       // Signed out meanwhile: sign in, then back to the same confirmation.
