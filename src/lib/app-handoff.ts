@@ -10,6 +10,9 @@ export const appHandoffPath = "/nalog/aplikacija";
 /** The installed app's own address. The server never sends a code anywhere else. */
 export const appReturnAddress = "ahibizz://povratak";
 
+/** The installed app's package: the only one an intent: link is delivered to. */
+export const appPackage = "com.ahibizz.app";
+
 /** How long a code lives: enough to come back from the browser, not to linger. */
 export const appHandoffSeconds = 120;
 
@@ -58,9 +61,32 @@ export function appHandoffPagePath({ challenge, state }: AppHandoff): string {
   return `${appHandoffPath}?izazov=${challenge}&stanje=${state}`;
 }
 
-/** Where the browser goes after confirming: the app, with its code and its own state. */
-export function appReturnLink(code: string, state: string): string {
-  return `${appReturnAddress}?kod=${code}&stanje=${state}`;
+/**
+ * Chrome on Android and the browsers built on it, but not a page embedded inside another app
+ * (a WebView, marked "wv"), where the embedding app decides what a link does.
+ */
+function understandsIntentLinks(userAgent: string | null | undefined): boolean {
+  return (
+    typeof userAgent === "string" &&
+    userAgent.includes("Android") &&
+    userAgent.includes(" Chrome/") &&
+    !userAgent.includes("; wv)")
+  );
+}
+
+/**
+ * Where the browser goes after confirming: the app, with its code and its own state.
+ *
+ * Any Android app can claim the ahibizz:// address. Chrome and the browsers built on it also
+ * understand intent: links, which name the one package that may receive them, so there the link
+ * is delivered to com.ahibizz.app and to nothing else. The app receives the same ahibizz://
+ * address either way. Other browsers keep the plain address.
+ */
+export function appReturnLink(code: string, state: string, userAgent?: string | null): string {
+  const query = `kod=${code}&stanje=${state}`;
+  return understandsIntentLinks(userAgent)
+    ? `intent://povratak?${query}#Intent;scheme=ahibizz;package=${appPackage};end`
+    : `${appReturnAddress}?${query}`;
 }
 
 /** Only the canonical page address survives sign-in; anything else is not this page. */

@@ -1219,6 +1219,243 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       );
 
       await t.test(
+        "the app lists the account's sign-ins and signs other devices out by id, never by token",
+        async () => {
+          const { createAccountSessionsHandler } = await import(
+            "../../src/server/account-sessions-http.ts"
+          );
+          const sessionsHttp = createAccountSessionsHandler({
+            auth: () => auth,
+            baseURL: () => baseURL,
+          });
+          const call = async (
+            method,
+            cookies,
+            { body, account = userId, origin = baseURL } = {},
+          ) => {
+            const headers = new Headers({ origin });
+            if (cookies.header()) headers.set("cookie", cookies.header());
+            if (account) headers.set("X-AhiBizz-Account-ID", account);
+            if (body !== undefined) headers.set("content-type", "application/json");
+            const response = await sessionsHttp(
+              new Request(new URL("/api/account/sessions", baseURL), {
+                method,
+                headers,
+                body: body === undefined ? undefined : JSON.stringify(body),
+              }),
+            );
+            assert.equal(response.headers.get("cache-control"), "private, no-store");
+            const text = await response.text();
+            assert.doesNotMatch(text, /token|userAgent|ipAddress/);
+            return { status: response.status, data: JSON.parse(text) };
+          };
+          // Other devices of the same account, each last active a known while ago.
+          const device = async (agent, age) =>
+            (
+              await pool.query(
+                `INSERT INTO auth_session (id, "expiresAt", token, "userId", "userAgent", "createdAt", "updatedAt")
+                 VALUES ($1, now() + interval '1 day', $2, $3, $4, now() - $5::interval, now() - $5::interval)
+                 RETURNING id`,
+                [
+                  `device-${randomBytes(12).toString("hex")}`,
+                  randomBytes(24).toString("hex"),
+                  userId,
+                  agent,
+                  age,
+                ],
+              )
+            ).rows[0].id;
+          // Sorted here, not by the database: its collation orders upper and lower case
+          // differently from JavaScript.
+          const stored = async () =>
+            (await pool.query('SELECT id FROM auth_session WHERE "userId" = $1', [userId])).rows
+              .map((row) => row.id)
+              .sort();
+          const ids = (list) => list.map((entry) => entry.id);
+          const mine = (await auth.api.getSession({ headers: accountHeaders(second) })).session.id;
+          assert.deepEqual(await stored(), [mine]);
+          // This device signed in three days ago. The sign-in library's own list answers only
+          // within a day of signing in; the account's sign-ins must stay readable after that.
+          await pool.query(
+            `UPDATE auth_session SET "createdAt" = now() - interval '3 days' WHERE id = $1`,
+            [mine],
+          );
+          const phone = await device("AhiBizz/1.0.0 (Android)", "1 hour");
+          const laptop = await device(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "2 days",
+          );
+          const unnamed = await device(null, "3 days");
+
+          // Signed out, or not naming the account the screen was showing, nothing is listed.
+          const guest = await call("GET", new Cookies());
+          assert.equal(guest.status, 401);
+          assert.deepEqual(guest.data, { code: "AUTHENTICATION_REQUIRED" });
+          for (const account of ["another-account", ""]) {
+            const other = await call("GET", second, { account });
+            assert.equal(other.status, 401);
+            assert.deepEqual(other.data, { code: "ACCOUNT_IDENTITY_CHANGED" });
+          }
+
+          // This device first, then the others by last activity; the app names itself.
+          const listed = await call("GET", second);
+          assert.equal(listed.status, 200);
+          assert.deepEqual(
+            listed.data.sessions.map((entry) => [
+              entry.id,
+              entry.device,
+              entry.browser,
+              entry.current,
+            ]),
+            [
+              [mine, "", "", true],
+              [phone, "Android", "AhiBizz", false],
+              [laptop, "Windows", "Chrome", false],
+              [unnamed, "", "", false],
+            ],
+          );
+          for (const entry of listed.data.sessions)
+            assert.deepEqual(Object.keys(entry).sort(), [
+              "browser",
+              "current",
+              "device",
+              "id",
+              "lastActive",
+            ]);
+
+          // Another site, this device itself, an unknown device or two requests in one: refused,
+          // and nothing is signed out.
+          const from = await call("POST", second, {
+            body: { id: phone },
+            origin: "https://untrusted.invalid",
+          });
+          assert.equal(from.status, 403);
+          const self = await call("POST", second, { body: { id: mine } });
+          assert.equal(self.status, 400);
+          assert.deepEqual(self.data, { code: "CURRENT_SESSION" });
+          const unknown = await call("POST", second, { body: { id: "unknown-device" } });
+          assert.equal(unknown.status, 404);
+          assert.equal(
+            (await call("POST", second, { body: { id: phone, others: true } })).status,
+            400,
+          );
+          assert.equal((await call("POST", new Cookies(), { body: { id: phone } })).status, 401);
+          assert.deepEqual(await stored(), [mine, phone, laptop, unnamed].sort());
+
+          // One device by its id.
+          const one = await call("POST", second, { body: { id: phone } });
+          assert.equal(one.status, 200);
+          assert.deepEqual(ids(one.data.sessions), [mine, laptop, unnamed]);
+          assert.deepEqual(await stored(), [mine, laptop, unnamed].sort());
+
+          // Then every other device at once; this one stays signed in.
+          const rest = await call("POST", second, { body: { others: true } });
+          assert.equal(rest.status, 200);
+          assert.deepEqual(ids(rest.data.sessions), [mine]);
+          assert.deepEqual(await stored(), [mine]);
+          assert.equal((await session(second)).user.id, userId);
+          await pool.query(`UPDATE auth_session SET "createdAt" = now() WHERE id = $1`, [mine]);
+        },
+      );
+
+      await t.test(
+        "the app reads how the account signs in; Google is detached only soon after signing in",
+        async () => {
+          const { createAccountLoginsHandler } = await import(
+            "../../src/server/account-logins-http.ts"
+          );
+          const loginsHttp = createAccountLoginsHandler({
+            auth: () => auth,
+            baseURL: () => baseURL,
+          });
+          const call = async (
+            method,
+            cookies,
+            { body, account = userId, origin = baseURL } = {},
+          ) => {
+            const headers = new Headers({ origin });
+            if (cookies.header()) headers.set("cookie", cookies.header());
+            if (account) headers.set("X-AhiBizz-Account-ID", account);
+            if (body !== undefined) headers.set("content-type", "application/json");
+            const response = await loginsHttp(
+              new Request(new URL("/api/account/logins", baseURL), {
+                method,
+                headers,
+                body: body === undefined ? undefined : JSON.stringify(body),
+              }),
+            );
+            assert.equal(response.headers.get("cache-control"), "private, no-store");
+            const text = await response.text();
+            assert.doesNotMatch(text, /token|accountId|scope/i);
+            return { status: response.status, data: JSON.parse(text) };
+          };
+          const linked = async () =>
+            (
+              await pool.query('SELECT "providerId" FROM auth_account WHERE "userId" = $1', [
+                userId,
+              ])
+            ).rows
+              .map((row) => row.providerId)
+              .sort();
+          const mine = (await auth.api.getSession({ headers: accountHeaders(second) })).session.id;
+          const signedInAgo = (age) =>
+            pool.query(`UPDATE auth_session SET "createdAt" = now() - $2::interval WHERE id = $1`, [
+              mine,
+              age,
+            ]);
+
+          assert.equal((await call("GET", new Cookies())).status, 401);
+          assert.deepEqual((await call("GET", second)).data, {
+            logins: { google: false, password: true },
+          });
+          const none = await call("POST", second, { body: { google: false } });
+          assert.equal(none.status, 404);
+          assert.deepEqual(none.data, { code: "GOOGLE_NOT_LINKED" });
+
+          // Google joins the account, as signing in with it would, under a made-up Google id.
+          await pool.query(
+            `INSERT INTO auth_account (id, "accountId", "providerId", "userId") VALUES ($1, $2, 'google', $3)`,
+            [
+              `google-${randomBytes(8).toString("hex")}`,
+              `fixture-${randomBytes(8).toString("hex")}`,
+              userId,
+            ],
+          );
+
+          // Days after signing in the account is still read, but the sign-in library does not
+          // remove a way of signing in. The app is told to sign in again, not to try later.
+          await signedInAgo("3 days");
+          assert.deepEqual((await call("GET", second)).data, {
+            logins: { google: true, password: true },
+          });
+          const stale = await call("POST", second, { body: { google: false } });
+          assert.equal(stale.status, 403);
+          assert.deepEqual(stale.data, { code: "SIGN_IN_AGAIN" });
+          assert.deepEqual(await linked(), ["credential", "google"]);
+
+          // Signed in a moment ago: another site is still refused, this one detaches Google,
+          // and the password stays.
+          await signedInAgo("1 minute");
+          assert.equal(
+            (
+              await call("POST", second, {
+                body: { google: false },
+                origin: "https://untrusted.invalid",
+              })
+            ).status,
+            403,
+          );
+          assert.equal((await call("POST", second, { body: { google: true } })).status, 400);
+          assert.deepEqual(await linked(), ["credential", "google"]);
+          const done = await call("POST", second, { body: { google: false } });
+          assert.equal(done.status, 200);
+          assert.deepEqual(done.data, { logins: { google: false, password: true } });
+          assert.deepEqual(await linked(), ["credential"]);
+          assert.equal((await session(second)).user.id, userId);
+        },
+      );
+
+      await t.test(
         "captured reset link is single-use, changes the hash and revokes existing sessions",
         async () => {
           const reset = await request("POST", "/api/auth/request-password-reset", {

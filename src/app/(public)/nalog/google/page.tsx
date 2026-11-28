@@ -28,8 +28,9 @@ async function unlink() {
     await unlinkMyGoogle(auth, await headers());
   } catch (error) {
     if (error instanceof MyLoginsError && error.status === 401) redirect(login);
+    const code = error instanceof MyLoginsError ? error.code : "";
     outcome =
-      error instanceof MyLoginsError && error.code === "PASSWORD_REQUIRED" ? "lozinka" : "greska";
+      code === "PASSWORD_REQUIRED" ? "lozinka" : code === "SIGN_IN_AGAIN" ? "ponovo" : "greska";
   }
   redirect(`${path}?ishod=${outcome}`);
 }
@@ -62,6 +63,11 @@ export default async function GoogleSignInPage({
       {outcome === "lozinka" && (
         <p role="alert" className={styles.feedback} data-kind="error">
           {t("Prije odvajanja postavi lozinku, da se možeš prijaviti emailom.")}
+        </p>
+      )}
+      {outcome === "ponovo" && (
+        <p role="alert" className={styles.feedback} data-kind="error">
+          {t("Radi sigurnosti se prvo odjavi i ponovo prijavi, pa odvoji Google nalog.")}
         </p>
       )}
       {outcome === "greska" && (
