@@ -1265,12 +1265,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
                 ],
               )
             ).rows[0].id;
+          // Sorted here, not by the database: its collation orders upper and lower case
+          // differently from JavaScript.
           const stored = async () =>
-            (
-              await pool.query('SELECT id FROM auth_session WHERE "userId" = $1 ORDER BY id', [
-                userId,
-              ])
-            ).rows.map((row) => row.id);
+            (await pool.query('SELECT id FROM auth_session WHERE "userId" = $1', [userId])).rows
+              .map((row) => row.id)
+              .sort();
           const ids = (list) => list.map((entry) => entry.id);
           const mine = (await auth.api.getSession({ headers: accountHeaders(second) })).session.id;
           assert.deepEqual(await stored(), [mine]);
@@ -1353,6 +1353,104 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           assert.equal(rest.status, 200);
           assert.deepEqual(ids(rest.data.sessions), [mine]);
           assert.deepEqual(await stored(), [mine]);
+          assert.equal((await session(second)).user.id, userId);
+          await pool.query(`UPDATE auth_session SET "createdAt" = now() WHERE id = $1`, [mine]);
+        },
+      );
+
+      await t.test(
+        "the app reads how the account signs in; Google is detached only soon after signing in",
+        async () => {
+          const { createAccountLoginsHandler } = await import(
+            "../../src/server/account-logins-http.ts"
+          );
+          const loginsHttp = createAccountLoginsHandler({
+            auth: () => auth,
+            baseURL: () => baseURL,
+          });
+          const call = async (
+            method,
+            cookies,
+            { body, account = userId, origin = baseURL } = {},
+          ) => {
+            const headers = new Headers({ origin });
+            if (cookies.header()) headers.set("cookie", cookies.header());
+            if (account) headers.set("X-AhiBizz-Account-ID", account);
+            if (body !== undefined) headers.set("content-type", "application/json");
+            const response = await loginsHttp(
+              new Request(new URL("/api/account/logins", baseURL), {
+                method,
+                headers,
+                body: body === undefined ? undefined : JSON.stringify(body),
+              }),
+            );
+            assert.equal(response.headers.get("cache-control"), "private, no-store");
+            const text = await response.text();
+            assert.doesNotMatch(text, /token|accountId|scope/i);
+            return { status: response.status, data: JSON.parse(text) };
+          };
+          const linked = async () =>
+            (
+              await pool.query('SELECT "providerId" FROM auth_account WHERE "userId" = $1', [
+                userId,
+              ])
+            ).rows
+              .map((row) => row.providerId)
+              .sort();
+          const mine = (await auth.api.getSession({ headers: accountHeaders(second) })).session.id;
+          const signedInAgo = (age) =>
+            pool.query(`UPDATE auth_session SET "createdAt" = now() - $2::interval WHERE id = $1`, [
+              mine,
+              age,
+            ]);
+
+          assert.equal((await call("GET", new Cookies())).status, 401);
+          assert.deepEqual((await call("GET", second)).data, {
+            logins: { google: false, password: true },
+          });
+          const none = await call("POST", second, { body: { google: false } });
+          assert.equal(none.status, 404);
+          assert.deepEqual(none.data, { code: "GOOGLE_NOT_LINKED" });
+
+          // Google joins the account, as signing in with it would, under a made-up Google id.
+          await pool.query(
+            `INSERT INTO auth_account (id, "accountId", "providerId", "userId") VALUES ($1, $2, 'google', $3)`,
+            [
+              `google-${randomBytes(8).toString("hex")}`,
+              `fixture-${randomBytes(8).toString("hex")}`,
+              userId,
+            ],
+          );
+
+          // Days after signing in the account is still read, but the sign-in library does not
+          // remove a way of signing in. The app is told to sign in again, not to try later.
+          await signedInAgo("3 days");
+          assert.deepEqual((await call("GET", second)).data, {
+            logins: { google: true, password: true },
+          });
+          const stale = await call("POST", second, { body: { google: false } });
+          assert.equal(stale.status, 403);
+          assert.deepEqual(stale.data, { code: "SIGN_IN_AGAIN" });
+          assert.deepEqual(await linked(), ["credential", "google"]);
+
+          // Signed in a moment ago: another site is still refused, this one detaches Google,
+          // and the password stays.
+          await signedInAgo("1 minute");
+          assert.equal(
+            (
+              await call("POST", second, {
+                body: { google: false },
+                origin: "https://untrusted.invalid",
+              })
+            ).status,
+            403,
+          );
+          assert.equal((await call("POST", second, { body: { google: true } })).status, 400);
+          assert.deepEqual(await linked(), ["credential", "google"]);
+          const done = await call("POST", second, { body: { google: false } });
+          assert.equal(done.status, 200);
+          assert.deepEqual(done.data, { logins: { google: false, password: true } });
+          assert.deepEqual(await linked(), ["credential"]);
           assert.equal((await session(second)).user.id, userId);
         },
       );
